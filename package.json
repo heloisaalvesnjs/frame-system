@@ -1,0 +1,19 @@
+{
+  "name": "frame-system",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/dashboard\"",
+    "build": "npm run build -w apps/api && npm run build -w apps/dashboard",
+    "db:migrate": "npm run migrate -w apps/api",
+    "docker:up": "docker compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

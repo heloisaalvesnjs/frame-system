@@ -1,0 +1,172 @@
+{
+  "name": "🔔 Lembrete de Consulta (clientes)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Todos os dias às 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tomorrow = new Date();\ntomorrow.setDate(tomorrow.getDate() + 1);\nconst year = tomorrow.getFullYear();\nconst month = String(tomorrow.getMonth() + 1).padStart(2, '0');\nconst day = String(tomorrow.getDate()).padStart(2, '0');\nreturn [{ json: { date: `${year}-${month}-${day}` } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Calcular data de amanhã",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://host.docker.internal:3001/api/internal/appointments?date={{ $json.date }}&status=scheduled",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "4be8733fbabf7d0b6d7b7b886d64ebbdfdd5b63e522386c8151653ca5be479ee"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Buscar consultas de amanhã",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.appointments.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Tem consultas amanhã?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "appointments",
+        "include": "noOtherFields"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Para cada consulta",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const appt = $json;\nconst hora = new Date(appt.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });\nconst nome = appt.client_name || 'cliente';\nconst nutri = appt.nutritionist_name || 'sua nutricionista';\n\nconst texto = `Olá, ${nome}! 👋\\n\\nPassando para lembrar da sua consulta com ${nutri} *amanhã às ${hora}*.\\n\\nConfirme sua presença respondendo *SIM* ou avise caso precise reagendar. 😊\\n\\nAté amanhã! 💚`;\n\nreturn [{ json: { ...appt, mensagem: texto } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Montar mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "id": "cond-002",
+              "leftValue": "={{ $json.instance_name }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "WhatsApp conectado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/internal/whatsapp/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "4be8733fbabf7d0b6d7b7b886d64ebbdfdd5b63e522386c8151653ca5be479ee"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instance_name: $json.instance_name, phone: $json.client_phone, text: $json.mensagem }) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000008",
+      "name": "Enviar lembrete WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 100]
+    }
+  ],
+  "connections": {
+    "Todos os dias às 8h": {
+      "main": [[{ "node": "Calcular data de amanhã", "type": "main", "index": 0 }]]
+    },
+    "Calcular data de amanhã": {
+      "main": [[{ "node": "Buscar consultas de amanhã", "type": "main", "index": 0 }]]
+    },
+    "Buscar consultas de amanhã": {
+      "main": [[{ "node": "Tem consultas amanhã?", "type": "main", "index": 0 }]]
+    },
+    "Tem consultas amanhã?": {
+      "main": [
+        [{ "node": "Para cada consulta", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Para cada consulta": {
+      "main": [[{ "node": "Montar mensagem", "type": "main", "index": 0 }]]
+    },
+    "Montar mensagem": {
+      "main": [[{ "node": "WhatsApp conectado?", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp conectado?": {
+      "main": [
+        [{ "node": "Enviar lembrete WhatsApp", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true }
+}

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "PowerShell(-join \\(\\(1..64\\) | ForEach-Object { '{0:x}' -f \\(Get-Random -Maximum 16\\) }\\))",
+      "PowerShell($dest = \"$env:USERPROFILE\\\\.local\\\\bin\"; New-Item -ItemType Directory -Force $dest | Out-Null; Write-Output \"Dir: $dest\"; $inPath = \\($env:PATH -split \";\"\\) -contains $dest; Write-Output \"In PATH: $inPath\")",
+      "PowerShell(Get-ChildItem \"$env:TEMP\\\\rtk-extract\" -Recurse | Select-Object Name, FullName)"
+    ]
+  }
+}
