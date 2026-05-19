@@ -2,14 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Instala dependências
 COPY package*.json ./
-COPY apps/dashboard/package*.json ./apps/dashboard/
-RUN npm install --workspace=apps/dashboard
+RUN npm install
 
-# Copia o código
-COPY apps/dashboard ./apps/dashboard
+COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev", "-w", "apps/dashboard"]
+CMD ["npm", "run", "dev"]
