@@ -22,6 +22,9 @@ export async function createInstance(instanceName: string): Promise<string> {
 
   const body = await res.json() as any
 
+  console.log('[Evolution createInstance] status:', res.status)
+  console.log('[Evolution createInstance] body:', JSON.stringify(body))
+
   if (!res.ok) {
     const msg = body?.message || JSON.stringify(body)
     if (!msg.includes('already')) {
