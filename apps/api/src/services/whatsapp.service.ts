@@ -10,18 +10,13 @@ const headers = {
 
 // ── Criar instância ────────────────────────────────────────
 export async function createInstance(instanceName: string): Promise<string> {
-  const webhookUrl = `${process.env.API_URL || 'http://localhost:3001'}/webhook/whatsapp`
-
   const res = await fetch(`${EVOLUTION_URL}/instance/create`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       instanceName,
       qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-      webhookUrl,
-      webhookByEvents: true,
-      webhookEvents: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
+      integration: 'WHATSAPP-BAILEYS'
     })
   })
 
