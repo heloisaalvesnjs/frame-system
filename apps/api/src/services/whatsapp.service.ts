@@ -40,25 +40,19 @@ export async function createInstance(instanceName: string): Promise<string> {
 export async function getQRCode(instanceName: string): Promise<string> {
   await new Promise(r => setTimeout(r, 3000))
 
-  // Tenta via fetchInstances (Evolution API v2)
-  const res = await fetch(`${EVOLUTION_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
+  const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
     headers
   })
 
+  const body = await res.text()
+  console.log('[Evolution getQRCode] status:', res.status, 'body:', body)
+
   if (!res.ok) {
-    const body = await res.text()
     throw new Error(`Erro ao buscar QR Code: ${body}`)
   }
 
-  const data = await res.json() as any
-  const instance = Array.isArray(data) ? data[0] : data
-
-  return (
-    instance?.qrcode?.base64 ||
-    instance?.instance?.qrcode?.base64 ||
-    instance?.base64 ||
-    ''
-  )
+  const data = JSON.parse(body) as any
+  return data.base64 || data.qrcode?.base64 || data.code || ''
 }
 
 // ── Status da instância ────────────────────────────────────
@@ -104,8 +98,10 @@ export async function sendMessage(instanceName: string, phone: string, text: str
 
 // ── Deletar instância ──────────────────────────────────────
 export async function deleteInstance(instanceName: string): Promise<void> {
-  await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
+  const res = await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
     method: 'DELETE',
     headers
   })
+  const body = await res.text()
+  console.log('[Evolution deleteInstance] status:', res.status, 'body:', body)
 }
