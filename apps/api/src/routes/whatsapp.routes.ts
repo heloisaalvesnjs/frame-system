@@ -33,12 +33,11 @@ export async function whatsappRoutes(app: FastifyInstance) {
 
     // Recria instância para garantir webhook URL atualizada
     await deleteInstance(instanceName)
+    await new Promise(r => setTimeout(r, 2000)) // aguarda delete propagar
     let qrCode = await createInstance(instanceName)
 
-    // Se o QR não veio na criação, busca separadamente
-    if (!qrCode) {
-      qrCode = await getQRCode(instanceName)
-    }
+    // QR Code sempre vem via polling no connect endpoint
+    qrCode = await getQRCode(instanceName)
 
     await query(
       'UPDATE whatsapp_connections SET qr_code = $1 WHERE nutritionist_id = $2',

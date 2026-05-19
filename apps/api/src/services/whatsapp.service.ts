@@ -22,14 +22,14 @@ export async function createInstance(instanceName: string): Promise<string> {
 
   const body = await res.json() as any
 
-  console.log('[Evolution createInstance] status:', res.status)
-  console.log('[Evolution createInstance] body:', JSON.stringify(body))
+  console.log('[Evolution createInstance] status:', res.status, JSON.stringify(body))
 
   if (!res.ok) {
-    const msg = body?.message || JSON.stringify(body)
-    if (!msg.includes('already')) {
+    const msg = (Array.isArray(body?.response?.message) ? body.response.message[0] : body?.message) || JSON.stringify(body)
+    if (!msg.toLowerCase().includes('already') && !msg.toLowerCase().includes('in use')) {
       throw new Error(`Erro ao criar instância: ${msg}`)
     }
+    // Instância já existe — segue para buscar QR
   }
 
   // Evolution API v2 retorna o QR code direto na criação
