@@ -39,23 +39,16 @@ export async function whatsappRoutes(app: FastifyInstance) {
     return reply.send({ status: 'connecting', instanceName })
   })
 
-  // GET /api/whatsapp/qr — busca QR Code atual (frontend faz polling)
+  // GET /api/whatsapp/qr — lê QR Code do banco (salvo pelo webhook)
   app.get('/qr', auth, async (request, reply) => {
     const { id } = (request as any).user
 
     const connection = await queryOne<any>(
-      'SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1',
+      'SELECT qr_code FROM whatsapp_connections WHERE nutritionist_id = $1',
       [id]
     )
 
-    if (!connection) return reply.send({ qrCode: null })
-
-    try {
-      const qrCode = await getQRCode(connection.instance_name)
-      return reply.send({ qrCode: qrCode || null })
-    } catch {
-      return reply.send({ qrCode: null })
-    }
+    return reply.send({ qrCode: connection?.qr_code || null })
   })
 
   // GET /api/whatsapp/status — status da conexão

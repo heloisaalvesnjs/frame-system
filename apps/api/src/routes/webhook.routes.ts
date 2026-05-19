@@ -5,12 +5,40 @@ import { sendMessage } from '../services/whatsapp.service'
 
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // POST /webhook/whatsapp — recebe mensagens da Evolution API
+  // POST /webhook/whatsapp — recebe eventos da Evolution API
   app.post('/whatsapp', async (request, reply) => {
     const payload = request.body as any
+    const event = payload.event
+
+    // QR Code gerado
+    if (event === 'qrcode.updated') {
+      const instanceName = payload.instance
+      const qrCode = payload.data?.qrcode?.base64 || payload.data?.base64 || ''
+      if (instanceName && qrCode) {
+        await query(
+          'UPDATE whatsapp_connections SET qr_code = $1 WHERE instance_name = $2',
+          [qrCode, instanceName]
+        )
+      }
+      return reply.send({ ok: true })
+    }
+
+    // WhatsApp conectado
+    if (event === 'connection.update') {
+      const instanceName = payload.instance
+      const state = payload.data?.state
+      if (state === 'open' && instanceName) {
+        await query(
+          `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW(), qr_code = NULL
+           WHERE instance_name = $1`,
+          [instanceName]
+        )
+      }
+      return reply.send({ ok: true })
+    }
 
     // Ignora eventos que não são mensagens
-    if (payload.event !== 'messages.upsert') return reply.send({ ok: true })
+    if (event !== 'messages.upsert') return reply.send({ ok: true })
 
     const msg = payload.data?.messages?.[0]
     if (!msg || msg.key?.fromMe) return reply.send({ ok: true }) // ignora mensagens enviadas pela própria nutri
