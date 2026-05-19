@@ -9,7 +9,7 @@ const headers = {
 }
 
 // ── Criar instância ────────────────────────────────────────
-export async function createInstance(instanceName: string): Promise<void> {
+export async function createInstance(instanceName: string): Promise<string> {
   const res = await fetch(`${EVOLUTION_URL}/instance/create`, {
     method: 'POST',
     headers,
@@ -25,18 +25,21 @@ export async function createInstance(instanceName: string): Promise<void> {
     })
   })
 
+  const body = await res.json() as any
+
   if (!res.ok) {
-    const body = await res.text()
-    // Se a instância já existe, não é erro
-    if (!body.includes('already')) {
-      throw new Error(`Erro ao criar instância Evolution API: ${body}`)
+    const msg = body?.message || JSON.stringify(body)
+    if (!msg.includes('already')) {
+      throw new Error(`Erro ao criar instância: ${msg}`)
     }
   }
+
+  // Evolution API v2 retorna o QR code direto na criação
+  return body?.qrcode?.base64 || body?.base64 || ''
 }
 
-// ── Buscar QR Code ─────────────────────────────────────────
+// ── Buscar QR Code (fallback) ──────────────────────────────
 export async function getQRCode(instanceName: string): Promise<string> {
-  // Aguarda a Evolution API gerar o QR
   await new Promise(r => setTimeout(r, 3000))
 
   const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
@@ -46,7 +49,6 @@ export async function getQRCode(instanceName: string): Promise<string> {
   if (!res.ok) throw new Error('Erro ao buscar QR Code')
 
   const data = await res.json() as any
-  // Evolution API v2 pode retornar em diferentes formatos
   return data.base64 || data.qrcode?.base64 || data.code || ''
 }
 
