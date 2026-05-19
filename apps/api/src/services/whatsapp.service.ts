@@ -38,18 +38,29 @@ export async function createInstance(instanceName: string): Promise<string> {
   return body?.qrcode?.base64 || body?.base64 || ''
 }
 
-// ── Buscar QR Code (fallback) ──────────────────────────────
+// ── Buscar QR Code ─────────────────────────────────────────
 export async function getQRCode(instanceName: string): Promise<string> {
   await new Promise(r => setTimeout(r, 3000))
 
-  const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+  // Tenta via fetchInstances (Evolution API v2)
+  const res = await fetch(`${EVOLUTION_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
     headers
   })
 
-  if (!res.ok) throw new Error('Erro ao buscar QR Code')
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Erro ao buscar QR Code: ${body}`)
+  }
 
   const data = await res.json() as any
-  return data.base64 || data.qrcode?.base64 || data.code || ''
+  const instance = Array.isArray(data) ? data[0] : data
+
+  return (
+    instance?.qrcode?.base64 ||
+    instance?.instance?.qrcode?.base64 ||
+    instance?.base64 ||
+    ''
+  )
 }
 
 // ── Status da instância ────────────────────────────────────
