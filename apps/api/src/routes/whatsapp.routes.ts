@@ -31,7 +31,8 @@ export async function whatsappRoutes(app: FastifyInstance) {
       )
     }
 
-    // Cria instância na Evolution API
+    // Recria instância para garantir webhook URL atualizada
+    await deleteInstance(instanceName)
     await createInstance(instanceName)
     const qrCode = await getQRCode(instanceName)
 
