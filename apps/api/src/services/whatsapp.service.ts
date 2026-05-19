@@ -36,24 +36,17 @@ export async function createInstance(instanceName: string): Promise<string> {
   return body?.qrcode?.base64 || body?.base64 || ''
 }
 
-// ── Buscar QR Code (com retry) ────────────────────────────
+// ── Buscar QR Code ─────────────────────────────────────────
 export async function getQRCode(instanceName: string): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    await new Promise(r => setTimeout(r, 2000))
+  const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+    headers
+  })
 
-    const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-      headers
-    })
+  if (!res.ok) return ''
 
-    if (!res.ok) continue
-
-    const data = await res.json() as any
-    const qr = data.base64 || data.qrcode?.base64 || data.code || ''
-
-    if (qr && data.count !== 0) return qr
-  }
-
-  throw new Error('Tempo esgotado ao gerar QR Code')
+  const data = await res.json() as any
+  console.log('[Evolution getQRCode]', JSON.stringify(data))
+  return data.base64 || data.qrcode?.base64 || data.code || ''
 }
 
 // ── Status da instância ────────────────────────────────────

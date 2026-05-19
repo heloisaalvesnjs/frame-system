@@ -252,24 +252,43 @@ function TabWhatsApp() {
     setConnecting(true)
     setError('')
     try {
-      const { data } = await api.post('/api/whatsapp/connect')
-      setQrCode(data.qrCode)
+      await api.post('/api/whatsapp/connect')
 
-      const interval = setInterval(async () => {
-        const { data: s } = await api.get('/api/whatsapp/status')
-        if (s.status === 'connected') {
-          clearInterval(interval)
-          setQrCode(null)
-          refetch()
+      // Polling do QR code até aparecer (máx 60s)
+      let attempts = 0
+      const qrInterval = setInterval(async () => {
+        attempts++
+        if (attempts > 30) {
+          clearInterval(qrInterval)
+          setConnecting(false)
+          setError('Tempo esgotado ao gerar QR Code. Tente novamente.')
+          return
         }
-      }, 3000)
+        try {
+          const { data: qrData } = await api.get('/api/whatsapp/qr')
+          if (qrData.qrCode) {
+            clearInterval(qrInterval)
+            setConnecting(false)
+            setQrCode(qrData.qrCode)
+
+            // Polling do status após ter QR
+            const statusInterval = setInterval(async () => {
+              const { data: s } = await api.get('/api/whatsapp/status')
+              if (s.status === 'connected') {
+                clearInterval(statusInterval)
+                setQrCode(null)
+                refetch()
+              }
+            }, 3000)
+          }
+        } catch {}
+      }, 2000)
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
           : null
-      setError(message || 'Erro ao gerar QR Code')
-    } finally {
+      setError(message || 'Erro ao iniciar conexão')
       setConnecting(false)
     }
   }

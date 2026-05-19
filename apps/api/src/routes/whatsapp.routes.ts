@@ -5,11 +5,10 @@ import { createInstance, getQRCode, getInstanceStatus, deleteInstance } from '..
 export async function whatsappRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
 
-  // POST /api/whatsapp/connect — inicia conexão e retorna QR Code
+  // POST /api/whatsapp/connect — inicia criação da instância (não bloqueia)
   app.post('/connect', auth, async (request, reply) => {
     const { id } = (request as any).user
 
-    // Garante que não há instância existente ativa
     const existing = await queryOne<any>(
       'SELECT * FROM whatsapp_connections WHERE nutritionist_id = $1',
       [id]
@@ -31,20 +30,32 @@ export async function whatsappRoutes(app: FastifyInstance) {
       )
     }
 
-    // Recria instância para garantir webhook URL atualizada
-    await deleteInstance(instanceName)
-    await new Promise(r => setTimeout(r, 2000)) // aguarda delete propagar
-    let qrCode = await createInstance(instanceName)
+    // Recria a instância em background (sem bloquear a resposta)
+    deleteInstance(instanceName)
+      .then(() => new Promise(r => setTimeout(r, 2000)))
+      .then(() => createInstance(instanceName))
+      .catch(() => {}) // ignora erros no background
 
-    // QR Code sempre vem via polling no connect endpoint
-    qrCode = await getQRCode(instanceName)
+    return reply.send({ status: 'connecting', instanceName })
+  })
 
-    await query(
-      'UPDATE whatsapp_connections SET qr_code = $1 WHERE nutritionist_id = $2',
-      [qrCode, id]
+  // GET /api/whatsapp/qr — busca QR Code atual (frontend faz polling)
+  app.get('/qr', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const connection = await queryOne<any>(
+      'SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1',
+      [id]
     )
 
-    return reply.send({ qrCode, instanceName })
+    if (!connection) return reply.send({ qrCode: null })
+
+    try {
+      const qrCode = await getQRCode(connection.instance_name)
+      return reply.send({ qrCode: qrCode || null })
+    } catch {
+      return reply.send({ qrCode: null })
+    }
   })
 
   // GET /api/whatsapp/status — status da conexão
@@ -60,7 +71,6 @@ export async function whatsappRoutes(app: FastifyInstance) {
       return reply.send({ status: 'disconnected' })
     }
 
-    // Verifica status em tempo real na Evolution API
     const liveStatus = await getInstanceStatus(connection.instance_name)
 
     if (liveStatus === 'connected' && connection.status !== 'connected') {
