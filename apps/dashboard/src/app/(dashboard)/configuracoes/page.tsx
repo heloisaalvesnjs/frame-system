@@ -292,7 +292,9 @@ function TabWhatsApp() {
           } catch {}
         }, 2000)
       } else {
-        setConnecting(false)
+        // Modo código: aguarda 5s para instância ficar pronta, depois gera código
+        await new Promise(r => setTimeout(r, 5000))
+        await handleRequestPairingCode(true)
       }
     } catch (err: unknown) {
       const message =
@@ -304,9 +306,9 @@ function TabWhatsApp() {
     }
   }
 
-  async function handleRequestPairingCode() {
+  async function handleRequestPairingCode(fromConnect = false) {
     if (!pairingPhone.trim()) return
-    setLoadingPairing(true)
+    if (!fromConnect) setLoadingPairing(true)
     setError('')
     try {
       const { data } = await api.post('/api/whatsapp/pairing-code', { phone: pairingPhone })
@@ -436,19 +438,13 @@ function TabWhatsApp() {
                   onChange={(e) => setPairingPhone(e.target.value)}
                   className="flex-1 h-9 rounded-lg border border-ui-border bg-white/5 px-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
                 />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleConnect} loading={connecting} variant="outline" size="sm">
-                  1. Preparar instância
-                </Button>
                 <Button
-                  onClick={handleRequestPairingCode}
-                  loading={loadingPairing}
+                  onClick={handleConnect}
+                  loading={connecting}
                   disabled={!pairingPhone.trim()}
-                  size="sm"
                 >
                   <Smartphone className="w-4 h-4" />
-                  2. Gerar código
+                  Conectar
                 </Button>
               </div>
             </div>
