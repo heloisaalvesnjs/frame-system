@@ -292,9 +292,10 @@ function TabWhatsApp() {
           } catch {}
         }, 2000)
       } else {
-        // Modo código: aguarda 5s para instância ficar pronta, depois gera código
-        await new Promise(r => setTimeout(r, 5000))
+        // Modo código: aguarda 10s para instância ficar pronta, depois gera código
+        await new Promise(r => setTimeout(r, 10000))
         await handleRequestPairingCode(true)
+        setConnecting(false)
       }
     } catch (err: unknown) {
       const message =

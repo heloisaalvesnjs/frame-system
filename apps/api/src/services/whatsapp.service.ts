@@ -97,7 +97,7 @@ export async function getPairingCode(instanceName: string, phoneNumber: string):
   const res = await fetch(`${EVOLUTION_URL}/instance/pairingCode/${instanceName}`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ phoneNumber: phone })
+    body: JSON.stringify({ number: phone })
   })
 
   const data = await res.json() as any
