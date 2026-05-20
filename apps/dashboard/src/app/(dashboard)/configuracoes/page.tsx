@@ -86,7 +86,7 @@ function TabProfile() {
           Salvar alterações
         </Button>
         {success && (
-          <span className="flex items-center gap-1.5 text-sm text-green-600">
+          <span className="flex items-center gap-1.5 text-sm text-brand-400">
             <CheckCircle className="w-4 h-4" />
             Salvo com sucesso
           </span>
@@ -176,7 +176,7 @@ function TabAssistant() {
         <div className="flex items-center gap-3">
           <Button type="submit" loading={isSubmitting}>Salvar</Button>
           {success && (
-            <span className="flex items-center gap-1.5 text-sm text-green-600">
+            <span className="flex items-center gap-1.5 text-sm text-brand-400">
               <CheckCircle className="w-4 h-4" />
               Salvo
             </span>
@@ -185,18 +185,18 @@ function TabAssistant() {
       </form>
 
       {/* PDF */}
-      <div className="border-t border-gray-100 pt-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-1">Manual de instruções (PDF)</h3>
-        <p className="text-xs text-gray-500 mb-4">
+      <div className="border-t border-ui-border pt-6">
+        <h3 className="text-sm font-semibold text-white/80 mb-1">Manual de instruções (PDF)</h3>
+        <p className="text-xs text-white/30 mb-4">
           Envie um PDF com seu protocolo, perguntas frequentes e como você gosta de atender.
           A assistente usará este documento como base de conhecimento.
         </p>
 
         {assistant?.pdf_filename ? (
-          <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-200 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-brand-500/10 border border-brand-500/20 rounded-lg">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-brand-700 truncate">{assistant.pdf_filename}</p>
-              <p className="text-xs text-brand-500">PDF ativo</p>
+              <p className="text-sm font-medium text-brand-400 truncate">{assistant.pdf_filename}</p>
+              <p className="text-xs text-brand-500/60">PDF ativo</p>
             </div>
             <Button variant="danger" size="sm" onClick={handleDeletePdf}>
               <Trash2 className="w-3.5 h-3.5" />
@@ -204,8 +204,8 @@ function TabAssistant() {
             </Button>
           </div>
         ) : (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 text-center">
-            <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+          <div className="border-2 border-dashed border-ui-border rounded-lg p-5 text-center hover:border-white/15 transition-colors">
+            <Upload className="w-6 h-6 text-white/20 mx-auto mb-2" />
             <input
               type="file"
               accept=".pdf"
@@ -213,16 +213,16 @@ function TabAssistant() {
               id="pdf-replace"
               onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
             />
-            <label htmlFor="pdf-replace" className="cursor-pointer text-sm text-brand-600 font-medium hover:underline">
+            <label htmlFor="pdf-replace" className="cursor-pointer text-sm text-brand-400 font-medium hover:text-brand-300 transition-colors">
               Selecionar PDF
             </label>
-            <p className="text-xs text-gray-400 mt-1">Até 10 MB</p>
+            <p className="text-xs text-white/20 mt-1">Até 10 MB</p>
           </div>
         )}
 
         {pdfFile && (
           <div className="flex items-center gap-3 mt-3">
-            <p className="text-sm text-gray-600 flex-1 truncate">{pdfFile.name}</p>
+            <p className="text-sm text-white/50 flex-1 truncate">{pdfFile.name}</p>
             <Button size="sm" onClick={handleUploadPdf} loading={uploading}>
               Enviar
             </Button>
@@ -254,7 +254,6 @@ function TabWhatsApp() {
     try {
       await api.post('/api/whatsapp/connect')
 
-      // Polling do QR code até aparecer (máx 60s)
       let attempts = 0
       const qrInterval = setInterval(async () => {
         attempts++
@@ -271,7 +270,6 @@ function TabWhatsApp() {
             setConnecting(false)
             setQrCode(qrData.qrCode)
 
-            // Polling do status após ter QR
             const statusInterval = setInterval(async () => {
               const { data: s } = await api.get('/api/whatsapp/status')
               if (s.status === 'connected') {
@@ -304,24 +302,26 @@ function TabWhatsApp() {
     <div className="flex flex-col gap-6">
       {/* Status */}
       <div className={cn(
-        'flex items-center gap-4 p-4 rounded-xl border',
-        isConnected ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+        'flex items-center gap-4 p-4 rounded-xl border transition-colors',
+        isConnected
+          ? 'bg-brand-500/10 border-brand-500/20'
+          : 'bg-white/3 border-ui-border'
       )}>
         <div className={cn(
-          'w-10 h-10 rounded-full flex items-center justify-center',
-          isConnected ? 'bg-green-100' : 'bg-gray-200'
+          'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
+          isConnected ? 'bg-brand-500/20' : 'bg-white/5'
         )}>
           {isConnected ? (
-            <Wifi className="w-5 h-5 text-green-600" />
+            <Wifi className="w-5 h-5 text-brand-400" />
           ) : (
-            <WifiOff className="w-5 h-5 text-gray-500" />
+            <WifiOff className="w-5 h-5 text-white/30" />
           )}
         </div>
         <div>
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-white">
             {isConnected ? 'Conectado' : 'Desconectado'}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-white/30">
             {isConnected
               ? `Número: ${status?.phone || 'WhatsApp ativo'}`
               : 'Nenhum número conectado'}
@@ -337,7 +337,7 @@ function TabWhatsApp() {
       {/* Actions */}
       {isConnected ? (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-white/40">
             Sua assistente está ativa e respondendo mensagens no WhatsApp. Para desconectar o número,
             clique no botão abaixo.
           </p>
@@ -347,23 +347,23 @@ function TabWhatsApp() {
         </div>
       ) : qrCode ? (
         <div className="flex flex-col items-center gap-4">
-          <p className="text-sm text-gray-600 text-center">
+          <p className="text-sm text-white/40 text-center">
             Abra o WhatsApp → Dispositivos vinculados → Vincular dispositivo → Escaneie o QR
           </p>
-          <div className="border border-gray-200 rounded-xl p-4">
+          <div className="border border-ui-border rounded-xl p-4 bg-white">
             <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56" />
           </div>
-          <p className="text-xs text-gray-400 animate-pulse">Aguardando conexão...</p>
+          <p className="text-xs text-white/25 animate-pulse">Aguardando conexão...</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-sm text-blue-400">
             Recomendamos usar um número de WhatsApp exclusivo para o consultório.
             Não use seu número pessoal.
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           )}
@@ -391,23 +391,23 @@ export default function ConfiguracoesPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Gerencie seu perfil e as configurações da assistente</p>
+        <h1 className="text-xl font-bold text-white">Configurações</h1>
+        <p className="text-sm text-white/30 mt-0.5">Gerencie seu perfil e as configurações da assistente</p>
       </div>
 
       <Card>
         {/* Tabs */}
-        <div className="border-b border-gray-100 px-6">
+        <div className="border-b border-ui-border px-6">
           <div className="flex gap-1">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+                  'flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-all duration-150 -mb-px',
                   activeTab === id
-                    ? 'border-brand-600 text-brand-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-brand-500 text-brand-400'
+                    : 'border-transparent text-white/30 hover:text-white/60'
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -418,9 +418,9 @@ export default function ConfiguracoesPage() {
         </div>
 
         <CardContent className="py-6">
-          {activeTab === 'profile' && <TabProfile />}
+          {activeTab === 'profile'   && <TabProfile />}
           {activeTab === 'assistant' && <TabAssistant />}
-          {activeTab === 'whatsapp' && <TabWhatsApp />}
+          {activeTab === 'whatsapp'  && <TabWhatsApp />}
         </CardContent>
       </Card>
     </div>

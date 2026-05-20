@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ChevronLeft, ChevronRight, Calendar, Clock, User, CheckCircle, XCircle, Plus
+  ChevronLeft, ChevronRight, Calendar, Clock, User, CheckCircle, XCircle,
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -28,10 +28,10 @@ interface Appointment {
 }
 
 const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' | 'info' }> = {
-  scheduled: { label: 'Agendado', variant: 'info' },
-  confirmed: { label: 'Confirmado', variant: 'success' },
-  cancelled: { label: 'Cancelado', variant: 'danger' },
-  completed: { label: 'Realizado', variant: 'default' },
+  scheduled:  { label: 'Agendado',   variant: 'info' },
+  confirmed:  { label: 'Confirmado', variant: 'success' },
+  cancelled:  { label: 'Cancelado',  variant: 'danger' },
+  completed:  { label: 'Realizado',  variant: 'default' },
 }
 
 // ─── Appointment Card ─────────────────────────────────────────────
@@ -48,31 +48,31 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
   const time = format(parseISO(appt.scheduled_at), 'HH:mm')
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-white hover:border-gray-200 transition-colors">
+    <div className="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-elevated hover:border-white/15 transition-colors">
       <div className="flex-shrink-0 w-14 text-center">
-        <p className="text-lg font-bold text-brand-600">{time}</p>
-        <p className="text-xs text-gray-400">{appt.duration_minutes}min</p>
+        <p className="text-base font-bold text-brand-400">{time}</p>
+        <p className="text-xs text-white/25">{appt.duration_minutes}min</p>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">{appt.client_name}</p>
+          <p className="text-sm font-semibold text-white/80 truncate">{appt.client_name}</p>
           <Badge variant={config.variant}>{config.label}</Badge>
         </div>
-        <p className="text-xs text-gray-500">{appt.client_phone}</p>
-        {appt.notes && <p className="text-xs text-gray-400 mt-1 truncate">{appt.notes}</p>}
+        <p className="text-xs text-white/30">{appt.client_phone}</p>
+        {appt.notes && <p className="text-xs text-white/20 mt-1 truncate">{appt.notes}</p>}
       </div>
       {appt.status === 'scheduled' && (
         <div className="flex gap-1 flex-shrink-0">
           <button
             onClick={() => updateStatus.mutate('confirmed')}
-            className="p-1.5 rounded-md text-green-600 hover:bg-green-50 transition-colors"
+            className="p-1.5 rounded-md text-brand-400 hover:bg-brand-500/10 transition-colors"
             title="Confirmar"
           >
             <CheckCircle className="w-4 h-4" />
           </button>
           <button
             onClick={() => updateStatus.mutate('cancelled')}
-            className="p-1.5 rounded-md text-red-500 hover:bg-red-50 transition-colors"
+            className="p-1.5 rounded-md text-red-400 hover:bg-red-500/10 transition-colors"
             title="Cancelar"
           >
             <XCircle className="w-4 h-4" />
@@ -97,16 +97,12 @@ export default function AgendaPage() {
     refetchInterval: 30000,
   })
 
-  // Calendar days
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
-
-  // Leading blank days (fill to start on Monday)
   const startDayOfWeek = (monthStart.getDay() + 6) % 7
   const leadingBlanks = Array.from({ length: startDayOfWeek })
 
-  // Appointments on a given date
   function appointmentsOnDate(date: Date) {
     return appointments.filter((a) => isSameDay(parseISO(a.scheduled_at), date))
   }
@@ -119,8 +115,8 @@ export default function AgendaPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Gerencie suas consultas agendadas</p>
+          <h1 className="text-xl font-bold text-white">Agenda</h1>
+          <p className="text-sm text-white/30 mt-0.5">Gerencie suas consultas agendadas</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="info">{appointments.filter((a) => a.status === 'scheduled').length} agendados</Badge>
@@ -133,36 +129,34 @@ export default function AgendaPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 capitalize">
+              <h2 className="font-semibold text-white capitalize">
                 {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
               </h2>
               <div className="flex gap-1">
                 <button
                   onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
                 >
-                  <ChevronLeft className="w-4 h-4 text-gray-600" />
+                  <ChevronLeft className="w-4 h-4 text-white/40" />
                 </button>
                 <button
                   onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                  <ChevronRight className="w-4 h-4 text-white/40" />
                 </button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {/* Week headers */}
             <div className="grid grid-cols-7 mb-2">
               {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
-                <div key={d} className="text-xs font-medium text-gray-400 text-center py-2">
+                <div key={d} className="text-xs font-medium text-white/25 text-center py-2">
                   {d}
                 </div>
               ))}
             </div>
 
-            {/* Days */}
             <div className="grid grid-cols-7 gap-1">
               {leadingBlanks.map((_, i) => (
                 <div key={`blank-${i}`} />
@@ -179,13 +173,13 @@ export default function AgendaPage() {
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
                     className={cn(
-                      'relative flex flex-col items-center justify-center rounded-lg h-10 text-sm font-medium transition-colors',
-                      !isSameMonth(day, currentMonth) && 'text-gray-300',
+                      'relative flex flex-col items-center justify-center rounded-lg h-10 text-sm font-medium transition-all duration-150',
+                      !isSameMonth(day, currentMonth) && 'text-white/15',
                       isSelected
-                        ? 'bg-brand-600 text-white'
+                        ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/30'
                         : today
-                          ? 'bg-brand-50 text-brand-700 font-bold'
-                          : 'hover:bg-gray-50 text-gray-700'
+                          ? 'bg-brand-500/10 text-brand-400 font-bold'
+                          : 'hover:bg-white/5 text-white/50'
                     )}
                   >
                     {format(day, 'd')}
@@ -203,8 +197,8 @@ export default function AgendaPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-brand-600" />
-              <h2 className="font-semibold text-gray-900">
+              <Calendar className="w-4 h-4 text-brand-400" />
+              <h2 className="font-semibold text-white">
                 {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
               </h2>
             </div>
@@ -212,9 +206,9 @@ export default function AgendaPage() {
           <CardContent className="px-4">
             {selectedAppointments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Clock className="w-8 h-8 text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">Nenhuma consulta</p>
-                <p className="text-xs text-gray-400 mt-1">Sem agendamentos para este dia</p>
+                <Clock className="w-7 h-7 text-white/10 mb-2" />
+                <p className="text-sm text-white/30">Nenhuma consulta</p>
+                <p className="text-xs text-white/20 mt-1">Sem agendamentos para este dia</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -227,36 +221,36 @@ export default function AgendaPage() {
         </Card>
       </div>
 
-      {/* Upcoming appointments */}
+      {/* Upcoming */}
       <div className="mt-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Próximas consultas</h2>
+        <h2 className="text-base font-semibold text-white mb-4">Próximas consultas</h2>
         <div className="flex flex-col gap-3">
           {appointments
             .filter((a) => ['scheduled', 'confirmed'].includes(a.status))
             .sort((a, b) => parseISO(a.scheduled_at).getTime() - parseISO(b.scheduled_at).getTime())
             .slice(0, 5)
             .map((appt) => (
-              <div key={appt.id} className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
+              <div key={appt.id} className="bg-ui-card border border-ui-border rounded-xl px-5 py-4 flex items-center gap-4 hover:border-white/10 transition-colors">
                 <div className="text-center flex-shrink-0">
-                  <p className="text-xs text-gray-400 capitalize">
+                  <p className="text-xs text-white/25 capitalize">
                     {format(parseISO(appt.scheduled_at), 'EEE', { locale: ptBR })}
                   </p>
-                  <p className="text-xl font-bold text-gray-900">
+                  <p className="text-xl font-bold text-white">
                     {format(parseISO(appt.scheduled_at), 'd')}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-white/25">
                     {format(parseISO(appt.scheduled_at), 'MMM', { locale: ptBR })}
                   </p>
                 </div>
-                <div className="w-px h-10 bg-gray-200 flex-shrink-0" />
+                <div className="w-px h-10 bg-ui-border flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{appt.client_name}</p>
+                  <p className="font-semibold text-white/80">{appt.client_name}</p>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-white/30">
                       {format(parseISO(appt.scheduled_at), 'HH:mm')}
                     </span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-sm text-gray-500">{appt.duration_minutes} min</span>
+                    <span className="text-xs text-white/15">•</span>
+                    <span className="text-sm text-white/30">{appt.duration_minutes} min</span>
                   </div>
                 </div>
                 <Badge variant={statusConfig[appt.status].variant}>
@@ -266,8 +260,8 @@ export default function AgendaPage() {
             ))}
 
           {appointments.filter((a) => ['scheduled', 'confirmed'].includes(a.status)).length === 0 && (
-            <div className="text-center py-10 text-gray-400">
-              <Calendar className="w-10 h-10 mx-auto mb-2 opacity-40" />
+            <div className="text-center py-10 text-white/20">
+              <Calendar className="w-9 h-9 mx-auto mb-2 opacity-40" />
               <p className="text-sm">Nenhuma consulta agendada</p>
             </div>
           )}

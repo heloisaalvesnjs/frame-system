@@ -55,19 +55,19 @@ export default function CadastroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-ui-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-600 mb-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-500 mb-5 shadow-lg shadow-brand-500/30">
             <span className="text-white text-xl font-bold">F</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Frame</h1>
-          <p className="text-gray-500 mt-1 text-sm">Sua recepcionista virtual</p>
+          <h1 className="text-2xl font-bold text-white">Frame</h1>
+          <p className="text-white/30 mt-1 text-sm">Sua recepcionista virtual</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Criar conta</h2>
+        <div className="bg-ui-card rounded-2xl border border-ui-border p-8">
+          <h2 className="text-base font-semibold text-white mb-6">Criar conta</h2>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <Input
@@ -110,19 +110,19 @@ export default function CadastroPage() {
             />
 
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
                 {error}
               </div>
             )}
 
-            <Button type="submit" loading={isSubmitting} className="w-full mt-2" size="lg">
+            <Button type="submit" loading={isSubmitting} className="w-full mt-1" size="lg">
               Criar conta
             </Button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-white/30 mt-6">
             Já tem conta?{' '}
-            <Link href="/login" className="text-brand-600 font-medium hover:underline">
+            <Link href="/login" className="text-brand-400 font-medium hover:text-brand-300 transition-colors">
               Entrar
             </Link>
           </p>
