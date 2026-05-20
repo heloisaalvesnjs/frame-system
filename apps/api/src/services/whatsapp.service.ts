@@ -90,6 +90,26 @@ export async function sendMessage(instanceName: string, phone: string, text: str
   }
 }
 
+// ── Pairing Code ──────────────────────────────────────────
+export async function getPairingCode(instanceName: string, phoneNumber: string): Promise<string> {
+  const phone = phoneNumber.replace(/\D/g, '')
+
+  const res = await fetch(`${EVOLUTION_URL}/instance/pairingCode/${instanceName}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ phoneNumber: phone })
+  })
+
+  const data = await res.json() as any
+  console.log('[Evolution getPairingCode]', JSON.stringify(data))
+
+  if (!res.ok) {
+    throw new Error(data?.message || 'Erro ao gerar código de pareamento')
+  }
+
+  return data.code || ''
+}
+
 // ── Deletar instância ──────────────────────────────────────
 export async function deleteInstance(instanceName: string): Promise<void> {
   const res = await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {

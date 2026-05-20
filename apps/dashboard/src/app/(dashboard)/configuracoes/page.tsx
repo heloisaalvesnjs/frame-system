@@ -237,6 +237,10 @@ function TabAssistant() {
 function TabWhatsApp() {
   const [connecting, setConnecting] = useState(false)
   const [qrCode, setQrCode] = useState<string | null>(null)
+  const [pairingCode, setPairingCode] = useState<string | null>(null)
+  const [pairingPhone, setPairingPhone] = useState('')
+  const [loadingPairing, setLoadingPairing] = useState(false)
+  const [mode, setMode] = useState<'qr' | 'code'>('code')
   const [error, setError] = useState('')
 
   const { data: status, refetch } = useQuery<WhatsAppStatus>({
@@ -248,39 +252,48 @@ function TabWhatsApp() {
     refetchInterval: 5000,
   })
 
+  function startStatusPolling() {
+    const statusInterval = setInterval(async () => {
+      const { data: s } = await api.get('/api/whatsapp/status')
+      if (s.status === 'connected') {
+        clearInterval(statusInterval)
+        setQrCode(null)
+        setPairingCode(null)
+        refetch()
+      }
+    }, 3000)
+  }
+
   async function handleConnect() {
     setConnecting(true)
     setError('')
+    setPairingCode(null)
+    setQrCode(null)
     try {
       await api.post('/api/whatsapp/connect')
-
-      let attempts = 0
-      const qrInterval = setInterval(async () => {
-        attempts++
-        if (attempts > 30) {
-          clearInterval(qrInterval)
-          setConnecting(false)
-          setError('Tempo esgotado ao gerar QR Code. Tente novamente.')
-          return
-        }
-        try {
-          const { data: qrData } = await api.get('/api/whatsapp/qr')
-          if (qrData.qrCode) {
+      if (mode === 'qr') {
+        let attempts = 0
+        const qrInterval = setInterval(async () => {
+          attempts++
+          if (attempts > 30) {
             clearInterval(qrInterval)
             setConnecting(false)
-            setQrCode(qrData.qrCode)
-
-            const statusInterval = setInterval(async () => {
-              const { data: s } = await api.get('/api/whatsapp/status')
-              if (s.status === 'connected') {
-                clearInterval(statusInterval)
-                setQrCode(null)
-                refetch()
-              }
-            }, 3000)
+            setError('Tempo esgotado. Tente novamente.')
+            return
           }
-        } catch {}
-      }, 2000)
+          try {
+            const { data: qrData } = await api.get('/api/whatsapp/qr')
+            if (qrData.qrCode) {
+              clearInterval(qrInterval)
+              setConnecting(false)
+              setQrCode(qrData.qrCode)
+              startStatusPolling()
+            }
+          } catch {}
+        }, 2000)
+      } else {
+        setConnecting(false)
+      }
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err
@@ -291,8 +304,29 @@ function TabWhatsApp() {
     }
   }
 
+  async function handleRequestPairingCode() {
+    if (!pairingPhone.trim()) return
+    setLoadingPairing(true)
+    setError('')
+    try {
+      const { data } = await api.post('/api/whatsapp/pairing-code', { phone: pairingPhone })
+      setPairingCode(data.code)
+      startStatusPolling()
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+          : null
+      setError(message || 'Erro ao gerar código. Tente novamente.')
+    } finally {
+      setLoadingPairing(false)
+    }
+  }
+
   async function handleDisconnect() {
     await api.post('/api/whatsapp/disconnect')
+    setPairingCode(null)
+    setQrCode(null)
     refetch()
   }
 
@@ -303,28 +337,18 @@ function TabWhatsApp() {
       {/* Status */}
       <div className={cn(
         'flex items-center gap-4 p-4 rounded-xl border transition-colors',
-        isConnected
-          ? 'bg-brand-500/10 border-brand-500/20'
-          : 'bg-white/3 border-ui-border'
+        isConnected ? 'bg-brand-500/10 border-brand-500/20' : 'bg-white/3 border-ui-border'
       )}>
         <div className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
           isConnected ? 'bg-brand-500/20' : 'bg-white/5'
         )}>
-          {isConnected ? (
-            <Wifi className="w-5 h-5 text-brand-400" />
-          ) : (
-            <WifiOff className="w-5 h-5 text-white/30" />
-          )}
+          {isConnected ? <Wifi className="w-5 h-5 text-brand-400" /> : <WifiOff className="w-5 h-5 text-white/30" />}
         </div>
         <div>
-          <p className="font-semibold text-white">
-            {isConnected ? 'Conectado' : 'Desconectado'}
-          </p>
+          <p className="font-semibold text-white">{isConnected ? 'Conectado' : 'Desconectado'}</p>
           <p className="text-sm text-white/30">
-            {isConnected
-              ? `Número: ${status?.phone || 'WhatsApp ativo'}`
-              : 'Nenhum número conectado'}
+            {isConnected ? `Número: ${status?.phone || 'WhatsApp ativo'}` : 'Nenhum número conectado'}
           </p>
         </div>
         <div className="ml-auto">
@@ -338,12 +362,22 @@ function TabWhatsApp() {
       {isConnected ? (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-white/40">
-            Sua assistente está ativa e respondendo mensagens no WhatsApp. Para desconectar o número,
-            clique no botão abaixo.
+            Sua assistente está ativa e respondendo mensagens no WhatsApp.
           </p>
           <Button variant="danger" onClick={handleDisconnect} className="w-fit">
             Desconectar WhatsApp
           </Button>
+        </div>
+      ) : pairingCode ? (
+        <div className="flex flex-col items-center gap-5">
+          <p className="text-sm text-white/50 text-center">
+            No WhatsApp → <strong className="text-white/80">Dispositivos vinculados</strong> → <strong className="text-white/80">Vincular com número de telefone</strong> → digite o código:
+          </p>
+          <div className="bg-ui-elevated border border-ui-border rounded-2xl px-10 py-6 text-center">
+            <p className="text-4xl font-bold text-brand-400 tracking-[0.3em]">{pairingCode}</p>
+            <p className="text-xs text-white/25 mt-2">O código expira em alguns minutos</p>
+          </div>
+          <p className="text-xs text-white/25 animate-pulse">Aguardando conexão...</p>
         </div>
       ) : qrCode ? (
         <div className="flex flex-col items-center gap-4">
@@ -356,10 +390,31 @@ function TabWhatsApp() {
           <p className="text-xs text-white/25 animate-pulse">Aguardando conexão...</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-sm text-blue-400">
             Recomendamos usar um número de WhatsApp exclusivo para o consultório.
-            Não use seu número pessoal.
+          </div>
+
+          {/* Mode toggle */}
+          <div className="flex gap-1 p-1 bg-white/5 rounded-lg w-fit">
+            <button
+              onClick={() => setMode('code')}
+              className={cn(
+                'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
+                mode === 'code' ? 'bg-brand-500 text-white' : 'text-white/40 hover:text-white'
+              )}
+            >
+              Código
+            </button>
+            <button
+              onClick={() => setMode('qr')}
+              className={cn(
+                'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
+                mode === 'qr' ? 'bg-brand-500 text-white' : 'text-white/40 hover:text-white'
+              )}
+            >
+              QR Code
+            </button>
           </div>
 
           {error && (
@@ -368,10 +423,41 @@ function TabWhatsApp() {
             </div>
           )}
 
-          <Button onClick={handleConnect} loading={connecting} className="w-fit">
-            <Smartphone className="w-4 h-4" />
-            Conectar WhatsApp
-          </Button>
+          {mode === 'code' ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-white/30">
+                Digite seu número com código do país e DDD (ex: 5511999999999)
+              </p>
+              <div className="flex gap-3">
+                <input
+                  type="tel"
+                  placeholder="5511999999999"
+                  value={pairingPhone}
+                  onChange={(e) => setPairingPhone(e.target.value)}
+                  className="flex-1 h-9 rounded-lg border border-ui-border bg-white/5 px-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleConnect} loading={connecting} variant="outline" size="sm">
+                  1. Preparar instância
+                </Button>
+                <Button
+                  onClick={handleRequestPairingCode}
+                  loading={loadingPairing}
+                  disabled={!pairingPhone.trim()}
+                  size="sm"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  2. Gerar código
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button onClick={handleConnect} loading={connecting} className="w-fit">
+              <Smartphone className="w-4 h-4" />
+              Conectar via QR Code
+            </Button>
+          )}
         </div>
       )}
     </div>
