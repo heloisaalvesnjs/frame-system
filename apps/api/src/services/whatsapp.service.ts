@@ -104,10 +104,15 @@ export async function getPairingCode(instanceName: string, phoneNumber: string):
   console.log('[Evolution getPairingCode]', JSON.stringify(data))
 
   if (!res.ok) {
-    throw new Error(data?.message || 'Erro ao gerar código de pareamento')
+    const msg =
+      data?.message ||
+      data?.error ||
+      (Array.isArray(data?.response?.message) ? data.response.message[0] : null) ||
+      JSON.stringify(data)
+    throw new Error(msg)
   }
 
-  return data.code || ''
+  return data.code || data.pairingCode || ''
 }
 
 // ── Deletar instância ──────────────────────────────────────
