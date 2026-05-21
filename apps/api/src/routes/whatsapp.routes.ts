@@ -5,7 +5,7 @@ import { createInstance, getQRCode, getInstanceStatus, deleteInstance, getPairin
 export async function whatsappRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
 
-  // POST /api/whatsapp/connect — inicia criação da instância (não bloqueia)
+  // POST /api/whatsapp/connect — recria instância de forma síncrona
   app.post('/connect', auth, async (request, reply) => {
     const { id } = (request as any).user
 
@@ -30,11 +30,10 @@ export async function whatsappRoutes(app: FastifyInstance) {
       )
     }
 
-    // Recria a instância em background (sem bloquear a resposta)
-    deleteInstance(instanceName)
-      .then(() => new Promise(r => setTimeout(r, 2000)))
-      .then(() => createInstance(instanceName))
-      .catch(() => {}) // ignora erros no background
+    // Recria a instância de forma síncrona para garantir que está pronta
+    try { await deleteInstance(instanceName) } catch {}
+    await new Promise(r => setTimeout(r, 2000))
+    await createInstance(instanceName)
 
     return reply.send({ status: 'connecting', instanceName })
   })

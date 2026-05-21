@@ -292,8 +292,8 @@ function TabWhatsApp() {
           } catch {}
         }, 2000)
       } else {
-        // Modo código: aguarda 10s para instância ficar pronta, depois gera código
-        await new Promise(r => setTimeout(r, 10000))
+        // /connect já retorna com instância criada — aguarda 2s para estabilizar
+        await new Promise(r => setTimeout(r, 2000))
         await handleRequestPairingCode(true)
         setConnecting(false)
       }
