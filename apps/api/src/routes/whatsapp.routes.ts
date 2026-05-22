@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
-import { createInstance, getQRCode, getInstanceStatus, deleteInstance, getPairingCode } from '../services/whatsapp.service'
+import { getQRCode, getInstanceStatus, getPairingCode, disconnectInstance } from '../services/whatsapp.service'
 
 export async function whatsappRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
 
-  // POST /api/whatsapp/connect — recria instância de forma síncrona
+  // POST /api/whatsapp/connect — registra intenção de conectar
   app.post('/connect', auth, async (request, reply) => {
     const { id } = (request as any).user
 
@@ -14,13 +14,11 @@ export async function whatsappRoutes(app: FastifyInstance) {
       [id]
     )
 
-    const instanceName = `nutri_${id.replace(/-/g, '').slice(0, 12)}`
-
     if (!existing) {
       await query(
         `INSERT INTO whatsapp_connections (nutritionist_id, instance_name, status)
-         VALUES ($1, $2, 'connecting')`,
-        [id, instanceName]
+         VALUES ($1, 'zapi', 'connecting')`,
+        [id]
       )
     } else {
       await query(
@@ -30,24 +28,13 @@ export async function whatsappRoutes(app: FastifyInstance) {
       )
     }
 
-    // Recria a instância de forma síncrona para garantir que está pronta
-    try { await deleteInstance(instanceName) } catch {}
-    await new Promise(r => setTimeout(r, 2000))
-    await createInstance(instanceName)
-
-    return reply.send({ status: 'connecting', instanceName })
+    return reply.send({ status: 'connecting' })
   })
 
-  // GET /api/whatsapp/qr — lê QR Code do banco (salvo pelo webhook)
-  app.get('/qr', auth, async (request, reply) => {
-    const { id } = (request as any).user
-
-    const connection = await queryOne<any>(
-      'SELECT qr_code FROM whatsapp_connections WHERE nutritionist_id = $1',
-      [id]
-    )
-
-    return reply.send({ qrCode: connection?.qr_code || null })
+  // GET /api/whatsapp/qr — busca QR Code do Z-API
+  app.get('/qr', auth, async (_request, reply) => {
+    const qrCode = await getQRCode()
+    return reply.send({ qrCode: qrCode || null })
   })
 
   // GET /api/whatsapp/status — status da conexão
@@ -63,11 +50,11 @@ export async function whatsappRoutes(app: FastifyInstance) {
       return reply.send({ status: 'disconnected' })
     }
 
-    const liveStatus = await getInstanceStatus(connection.instance_name)
+    const liveStatus = await getInstanceStatus()
 
     if (liveStatus === 'connected' && connection.status !== 'connected') {
       await query(
-        `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW(), qr_code = NULL
+        `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
          WHERE nutritionist_id = $1`,
         [id]
       )
@@ -80,26 +67,16 @@ export async function whatsappRoutes(app: FastifyInstance) {
     })
   })
 
-  // POST /api/whatsapp/pairing-code — gera código de pareamento por número
+  // POST /api/whatsapp/pairing-code — gera código de pareamento
   app.post('/pairing-code', auth, async (request, reply) => {
-    const { id } = (request as any).user
     const { phone } = request.body as { phone: string }
 
     if (!phone) {
       return reply.code(400).send({ error: 'Número de telefone obrigatório' })
     }
 
-    const connection = await queryOne<any>(
-      'SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1',
-      [id]
-    )
-
-    if (!connection) {
-      return reply.code(404).send({ error: 'Instância não encontrada. Clique em Conectar primeiro.' })
-    }
-
     try {
-      const code = await getPairingCode(connection.instance_name, phone)
+      const code = await getPairingCode(phone)
       return reply.send({ code })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao gerar código'
@@ -111,19 +88,12 @@ export async function whatsappRoutes(app: FastifyInstance) {
   app.post('/disconnect', auth, async (request, reply) => {
     const { id } = (request as any).user
 
-    const connection = await queryOne<any>(
-      'SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1',
+    await disconnectInstance()
+    await query(
+      `UPDATE whatsapp_connections SET status = 'disconnected', connected_at = NULL
+       WHERE nutritionist_id = $1`,
       [id]
     )
-
-    if (connection) {
-      await deleteInstance(connection.instance_name)
-      await query(
-        `UPDATE whatsapp_connections SET status = 'disconnected', connected_at = NULL
-         WHERE nutritionist_id = $1`,
-        [id]
-      )
-    }
 
     return reply.send({ ok: true })
   })

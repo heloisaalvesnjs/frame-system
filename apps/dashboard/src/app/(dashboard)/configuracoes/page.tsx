@@ -292,8 +292,7 @@ function TabWhatsApp() {
           } catch {}
         }, 2000)
       } else {
-        // /connect já retorna com instância criada — aguarda 2s para estabilizar
-        await new Promise(r => setTimeout(r, 2000))
+        // Z-API: instância sempre pronta, solicita código imediatamente
         await handleRequestPairingCode(true)
         setConnecting(false)
       }

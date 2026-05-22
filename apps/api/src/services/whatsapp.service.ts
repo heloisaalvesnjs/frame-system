@@ -1,126 +1,74 @@
-// ── Evolution API — Serviço WhatsApp ──────────────────────
+// ── Z-API — Serviço WhatsApp ──────────────────────────────────
 
-const EVOLUTION_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080'
-const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY || ''
+const ZAPI_INSTANCE_ID = process.env.ZAPI_INSTANCE_ID || ''
+const ZAPI_TOKEN       = process.env.ZAPI_TOKEN       || ''
+const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || ''
+
+const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`
 
 const headers = {
   'Content-Type': 'application/json',
-  'apikey': EVOLUTION_KEY
+  'Client-Token': ZAPI_CLIENT_TOKEN
 }
 
-// ── Criar instância ────────────────────────────────────────
-export async function createInstance(instanceName: string): Promise<string> {
-  const res = await fetch(`${EVOLUTION_URL}/instance/create`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      instanceName,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS'
-    })
-  })
-
-  const body = await res.json() as any
-
-  console.log('[Evolution createInstance] status:', res.status, JSON.stringify(body))
-
-  if (!res.ok) {
-    const msg = (Array.isArray(body?.response?.message) ? body.response.message[0] : body?.message) || JSON.stringify(body)
-    if (!msg.toLowerCase().includes('already') && !msg.toLowerCase().includes('in use')) {
-      throw new Error(`Erro ao criar instância: ${msg}`)
-    }
-    // Instância já existe — segue para buscar QR
-  }
-
-  // Evolution API v2 retorna o QR code direto na criação
-  return body?.qrcode?.base64 || body?.base64 || ''
-}
-
-// ── Buscar QR Code ─────────────────────────────────────────
-export async function getQRCode(instanceName: string): Promise<string> {
-  const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-    headers
-  })
-
-  if (!res.ok) return ''
-
-  const data = await res.json() as any
-  console.log('[Evolution getQRCode]', JSON.stringify(data))
-  return data.base64 || data.qrcode?.base64 || data.code || ''
-}
-
-// ── Status da instância ────────────────────────────────────
-export async function getInstanceStatus(instanceName: string): Promise<'connected' | 'connecting' | 'disconnected'> {
+// ── Status da instância ────────────────────────────────────────
+export async function getInstanceStatus(): Promise<'connected' | 'connecting' | 'disconnected'> {
   try {
-    const res = await fetch(`${EVOLUTION_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
-      headers
-    })
-
+    const res = await fetch(`${ZAPI_BASE}/status`, { headers })
     if (!res.ok) return 'disconnected'
-
     const data = await res.json() as any
-    const instance = Array.isArray(data) ? data[0] : data
-
-    const state = instance?.instance?.state || instance?.state || ''
-
-    if (state === 'open') return 'connected'
-    if (state === 'connecting') return 'connecting'
-    return 'disconnected'
+    console.log('[Z-API getStatus]', JSON.stringify(data))
+    if (data.connected === true) return 'connected'
+    return 'connecting'
   } catch {
     return 'disconnected'
   }
 }
 
-// ── Enviar mensagem ────────────────────────────────────────
-export async function sendMessage(instanceName: string, phone: string, text: string): Promise<void> {
-  const number = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`
+// ── QR Code ────────────────────────────────────────────────────
+export async function getQRCode(): Promise<string> {
+  const res = await fetch(`${ZAPI_BASE}/qr-code`, { headers })
+  if (!res.ok) return ''
+  const data = await res.json() as any
+  console.log('[Z-API getQRCode]', data?.value ? 'QR recebido' : JSON.stringify(data))
+  return data.value || ''
+}
 
-  const res = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+// ── Pairing Code ───────────────────────────────────────────────
+export async function getPairingCode(phoneNumber: string): Promise<string> {
+  const phone = phoneNumber.replace(/\D/g, '')
+  const res = await fetch(`${ZAPI_BASE}/paring-code`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      number,
-      text
-    })
+    body: JSON.stringify({ phone })
   })
+  const data = await res.json() as any
+  console.log('[Z-API getPairingCode]', JSON.stringify(data))
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || JSON.stringify(data))
+  }
+  return data.pairingCode || data.value || ''
+}
 
+// ── Enviar mensagem ────────────────────────────────────────────
+export async function sendMessage(phone: string, text: string): Promise<void> {
+  const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
+  const res = await fetch(`${ZAPI_BASE}/send-text`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ phone: number, message: text })
+  })
   if (!res.ok) {
     const body = await res.text()
     throw new Error(`Erro ao enviar mensagem: ${body}`)
   }
 }
 
-// ── Pairing Code ──────────────────────────────────────────
-export async function getPairingCode(instanceName: string, phoneNumber: string): Promise<string> {
-  const phone = phoneNumber.replace(/\D/g, '')
-
-  const res = await fetch(`${EVOLUTION_URL}/instance/pairingCode/${instanceName}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ number: phone })
-  })
-
-  const data = await res.json() as any
-  console.log('[Evolution getPairingCode]', JSON.stringify(data))
-
-  if (!res.ok) {
-    const msg =
-      data?.message ||
-      data?.error ||
-      (Array.isArray(data?.response?.message) ? data.response.message[0] : null) ||
-      JSON.stringify(data)
-    throw new Error(msg)
-  }
-
-  return data.code || data.pairingCode || ''
+// ── Desconectar ────────────────────────────────────────────────
+export async function disconnectInstance(): Promise<void> {
+  await fetch(`${ZAPI_BASE}/disconnect`, { method: 'GET', headers })
 }
 
-// ── Deletar instância ──────────────────────────────────────
-export async function deleteInstance(instanceName: string): Promise<void> {
-  const res = await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
-    method: 'DELETE',
-    headers
-  })
-  const body = await res.text()
-  console.log('[Evolution deleteInstance] status:', res.status, 'body:', body)
-}
+// ── Compatibilidade — não usados no Z-API ─────────────────────
+export async function createInstance(_name: string): Promise<string> { return '' }
+export async function deleteInstance(_name: string): Promise<void> {}
