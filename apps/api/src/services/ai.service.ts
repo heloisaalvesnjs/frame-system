@@ -9,7 +9,6 @@ const AI_PROVIDER = process.env.AI_PROVIDER || 'gemini'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
-console.log(`[AI] Provedor ativo: ${AI_PROVIDER}`)
 
 async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
   if (AI_PROVIDER === 'claude') {
