@@ -5,59 +5,32 @@ import { sendMessage } from '../services/whatsapp.service'
 
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // POST /webhook/whatsapp — recebe eventos da Evolution API
+  // POST /webhook/whatsapp — recebe mensagens do Z-API
   app.post('/whatsapp', async (request, reply) => {
     const payload = request.body as any
-    const event = payload.event
 
-    // QR Code gerado
-    if (event === 'qrcode.updated') {
-      const instanceName = payload.instance
-      const qrCode = payload.data?.qrcode?.base64 || payload.data?.base64 || ''
-      if (instanceName && qrCode) {
-        await query(
-          'UPDATE whatsapp_connections SET qr_code = $1 WHERE instance_name = $2',
-          [qrCode, instanceName]
-        )
-      }
+    // Z-API: filtra só mensagens recebidas de pacientes
+    const isReceived = payload.type === 'ReceivedCallback'
+    const fromMe     = payload.fromMe === true
+    const phone      = payload.phone        // número do paciente (ex: 5511999999999)
+    const messageText = payload.text?.message
+
+    if (!isReceived || fromMe || !phone || !messageText) {
       return reply.send({ ok: true })
     }
 
-    // WhatsApp conectado
-    if (event === 'connection.update') {
-      const instanceName = payload.instance
-      const state = payload.data?.state
-      if (state === 'open' && instanceName) {
-        await query(
-          `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW(), qr_code = NULL
-           WHERE instance_name = $1`,
-          [instanceName]
-        )
-      }
-      return reply.send({ ok: true })
-    }
-
-    // Ignora eventos que não são mensagens
-    if (event !== 'messages.upsert') return reply.send({ ok: true })
-
-    const msg = payload.data?.messages?.[0]
-    if (!msg || msg.key?.fromMe) return reply.send({ ok: true }) // ignora mensagens enviadas pela própria nutri
-
-    const instanceName = payload.instance
-    const clientPhone = msg.key?.remoteJid?.replace('@s.whatsapp.net', '')
-    const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text
-
-    if (!clientPhone || !messageText) return reply.send({ ok: true })
+    app.log.info(`[webhook] Mensagem de ${phone}: ${messageText}`)
 
     try {
-      // Identifica a nutricionista pelo nome da instância
+      // Identifica a nutricionista pela conexão Z-API ativa
       const connection = await queryOne<any>(
-        'SELECT nutritionist_id FROM whatsapp_connections WHERE instance_name = $1 AND status = $2',
-        [instanceName, 'connected']
+        `SELECT nutritionist_id FROM whatsapp_connections
+         WHERE instance_name = 'zapi'
+         ORDER BY updated_at DESC LIMIT 1`
       )
 
       if (!connection) {
-        app.log.warn(`Instância ${instanceName} não encontrada ou desconectada`)
+        app.log.warn('[webhook] Nenhuma conexão Z-API encontrada')
         return reply.send({ ok: true })
       }
 
@@ -68,33 +41,54 @@ export async function webhookRoutes(app: FastifyInstance) {
         `SELECT * FROM conversations
          WHERE nutritionist_id = $1 AND client_phone = $2
          ORDER BY created_at DESC LIMIT 1`,
-        [nutritionist_id, clientPhone]
+        [nutritionist_id, phone]
       )
 
       if (conversation?.status === 'human_takeover') {
         // Só salva a mensagem, não responde automaticamente
         await query(
-          'INSERT INTO messages (conversation_id, role, content, whatsapp_message_id) VALUES ($1, $2, $3, $4)',
-          [conversation.id, 'user', messageText, msg.key?.id]
+          'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+          [conversation.id, 'user', messageText]
         )
         return reply.send({ ok: true })
       }
 
-      // Processa com a IA
+      // Processa com a IA (busca assistente, histórico, chama Claude)
       const response = await processMessage({
         nutritionist_id,
-        client_phone: clientPhone,
+        client_phone: phone,
         message: messageText,
         conversation_id: conversation?.id
       })
 
-      // Envia resposta via WhatsApp
-      await sendMessage(instanceName, clientPhone, response.text)
+      // Envia resposta via Z-API
+      await sendMessage(phone, response.text)
 
-      reply.send({ ok: true })
+      app.log.info(`[webhook] Resposta enviada para ${phone}`)
     } catch (err) {
-      app.log.error(err, 'Erro ao processar mensagem do webhook')
-      reply.send({ ok: true }) // sempre responde 200 para não retentar
+      app.log.error(err, '[webhook] Erro ao processar mensagem')
     }
+
+    return reply.send({ ok: true }) // sempre 200 — Z-API não retenta em erro
+  })
+
+  // POST /webhook/whatsapp-status — atualiza status de conexão
+  app.post('/whatsapp-status', async (request, reply) => {
+    const payload = request.body as any
+    app.log.info('[webhook/status]', JSON.stringify(payload))
+
+    if (payload.connected === true) {
+      await query(
+        `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
+         WHERE instance_name = 'zapi'`
+      )
+    } else if (payload.connected === false) {
+      await query(
+        `UPDATE whatsapp_connections SET status = 'disconnected'
+         WHERE instance_name = 'zapi'`
+      )
+    }
+
+    return reply.send({ ok: true })
   })
 }
