@@ -22,10 +22,9 @@ export async function webhookRoutes(app: FastifyInstance) {
     app.log.info(`[webhook] Mensagem de ${phone}: ${messageText}`)
 
     try {
-      // Identifica a nutricionista pela conexão Z-API ativa
+      // Identifica a nutricionista pela conexão mais recente
       const connection = await queryOne<any>(
         `SELECT nutritionist_id FROM whatsapp_connections
-         WHERE instance_name = 'zapi'
          ORDER BY updated_at DESC LIMIT 1`
       )
 

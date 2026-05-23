@@ -22,7 +22,7 @@ export async function whatsappRoutes(app: FastifyInstance) {
       )
     } else {
       await query(
-        `UPDATE whatsapp_connections SET status = 'connecting', updated_at = NOW()
+        `UPDATE whatsapp_connections SET status = 'connecting', instance_name = 'zapi', updated_at = NOW()
          WHERE nutritionist_id = $1`,
         [id]
       )
