@@ -2,6 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { query, queryOne } from '../db'
 import { getAvailableSlots } from './appointment.service'
 
+console.log('[AI] ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY?.slice(0, 20) || 'NÃO DEFINIDA')
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 })
