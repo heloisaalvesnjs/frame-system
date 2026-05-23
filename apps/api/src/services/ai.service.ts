@@ -24,7 +24,7 @@ async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistan
 
   // Gemini (padrão)
   const model = genai.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     systemInstruction: systemPrompt
   })
   const history = messages.map(m => ({
