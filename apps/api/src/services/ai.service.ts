@@ -1,12 +1,40 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { query, queryOne } from '../db'
 import { getAvailableSlots } from './appointment.service'
 
-console.log('[AI] ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY?.slice(0, 20) || 'NÃO DEFINIDA')
+// ── Provedor de IA (claude | gemini) ──────────────────────────
+const AI_PROVIDER = process.env.AI_PROVIDER || 'gemini'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-})
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+
+console.log(`[AI] Provedor ativo: ${AI_PROVIDER}`)
+
+async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  if (AI_PROVIDER === 'claude') {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [...messages, { role: 'user', content: userMessage }]
+    })
+    return response.content[0].type === 'text' ? response.content[0].text : ''
+  }
+
+  // Gemini (padrão)
+  const model = genai.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: systemPrompt
+  })
+  const history = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }))
+  const chat = model.startChat({ history })
+  const result = await chat.sendMessage(userMessage)
+  return result.response.text()
+}
 
 // ── Tipos ──────────────────────────────────────────────────
 interface ProcessMessageInput {
@@ -88,21 +116,12 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     contextData
   })
 
-  // 7. Chama o Claude
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [
-      ...historyReversed.map((m: any) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      })),
-      { role: 'user', content: message }
-    ]
-  })
-
-  const responseText = response.content[0].type === 'text' ? response.content[0].text : ''
+  // 7. Chama a IA (Claude ou Gemini conforme AI_PROVIDER)
+  const responseText = await callAI(
+    systemPrompt,
+    historyReversed.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    message
+  )
 
   // 8. Salva a resposta da assistente
   await query(
