@@ -25,7 +25,7 @@ async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistan
 
   if (AI_PROVIDER === 'groq') {
     const response = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
+      model: 'gemma2-9b-it',
       max_tokens: 300,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -105,7 +105,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   const history = await query<any>(
     `SELECT role, content FROM messages
      WHERE conversation_id = $1
-     ORDER BY sent_at DESC LIMIT 20`,
+     ORDER BY sent_at DESC LIMIT 10`,
     [convId]
   )
   const historyReversed = history.reverse()
