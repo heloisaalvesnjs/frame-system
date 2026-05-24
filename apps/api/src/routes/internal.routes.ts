@@ -129,6 +129,34 @@ export async function internalRoutes(app: FastifyInstance) {
     return reply.send({ ok: true, appointment: updated })
   })
 
+  // ── DELETE /api/internal/conversations/reset ─────────────
+  // Apaga histórico de conversa de um número (útil para testes).
+  // Body: { phone, nutritionist_id? }
+  app.delete('/conversations/reset', auth, async (request, reply) => {
+    const { phone, nutritionist_id } = request.body as { phone: string, nutritionist_id?: string }
+
+    if (!phone) return reply.code(400).send({ error: 'phone obrigatório' })
+
+    const params: unknown[] = [phone.replace(/\D/g, '')]
+    let filter = nutritionist_id ? ` AND nutritionist_id = $2` : ''
+    if (nutritionist_id) params.push(nutritionist_id)
+
+    // Apaga mensagens das conversas desse número
+    await query(`
+      DELETE FROM messages WHERE conversation_id IN (
+        SELECT id FROM conversations WHERE client_phone = $1${filter}
+      )
+    `, params)
+
+    // Apaga as conversas
+    const deleted = await query(
+      `DELETE FROM conversations WHERE client_phone = $1${filter} RETURNING id`,
+      params
+    )
+
+    return reply.send({ ok: true, deleted: deleted.length })
+  })
+
   // ── GET /api/internal/conversations/open ─────────────────
   // Lista conversas ativas das últimas N horas (padrão 24h).
   // Útil para o n8n monitorar conversas sem resposta.
