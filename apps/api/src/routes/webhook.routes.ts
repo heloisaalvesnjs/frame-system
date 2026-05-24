@@ -41,6 +41,22 @@ export async function webhookRoutes(app: FastifyInstance) {
         [nutritionist_id, phone]
       )
 
+      // Comando /new — reinicia a conversa
+      if (messageText.trim().toLowerCase() === '/new') {
+        if (conversation) {
+          await query(
+            `DELETE FROM messages WHERE conversation_id = $1`,
+            [conversation.id]
+          )
+          await query(
+            `DELETE FROM conversations WHERE id = $1`,
+            [conversation.id]
+          )
+        }
+        await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.')
+        return reply.send({ ok: true })
+      }
+
       if (conversation?.status === 'human_takeover') {
         // Só salva a mensagem, não responde automaticamente
         await query(
