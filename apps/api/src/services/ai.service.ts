@@ -5,7 +5,7 @@ import { query, queryOne } from '../db'
 import { getAvailableSlots } from './appointment.service'
 
 // ── Provedor de IA (claude | gemini | groq) ───────────────────
-const AI_PROVIDER = process.env.AI_PROVIDER || 'groq'
+const AI_PROVIDER = process.env.AI_PROVIDER || 'claude'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
@@ -15,7 +15,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5',
-    max_tokens: 300,
+    max_tokens: 120,
     system: systemPrompt,
     messages: [...messages, { role: 'user', content: userMessage }]
   })
@@ -25,7 +25,7 @@ async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assi
 async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: 300,
+    max_tokens: 120,
     messages: [
       { role: 'system', content: systemPrompt },
       ...messages.map(m => ({ role: m.role, content: m.content })),
@@ -191,7 +191,13 @@ LEIA O CLIENTE:
 - Curioso → responda em 1 frase, convide para consulta
 - Hesitante ("deixa eu pensar") → descubra o obstáculo real
 
-FLUXO: acolhimento → 1-2 perguntas de descoberta → valide a dor → "é exatamente isso que a ${nutritionist.name} resolve" → ofereça agendamento → colete APENAS o primeiro nome → confirme.
+FLUXO (máximo 5 trocas até oferecer agendamento):
+1. Acolhimento + 1 pergunta sobre objetivo
+2. Descoberta da dor ("o que já tentou?" OU "como isso te afeta?") — escolha UMA
+3. Validação + ponte: "é exatamente isso que a ${nutritionist.name} resolve"
+4. Oferta do agendamento
+5. Coleta do primeiro nome → confirma imediatamente
+Se o cliente já demonstrou interesse antes da troca 5, pule direto para a oferta.
 
 AGENDAMENTO — REGRAS CRÍTICAS:
 - Pergunte APENAS o primeiro nome. NUNCA peça sobrenome, telefone, e-mail ou qualquer outro dado.
