@@ -53,16 +53,14 @@ export async function getPairingCode(phoneNumber: string): Promise<string> {
 // ── Enviar mensagem ────────────────────────────────────────────
 export async function sendMessage(phone: string, text: string): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-  console.log(`[sendMessage] Enviando para ${number}: ${text.slice(0, 60)}`)
   const res = await fetch(`${ZAPI_BASE}/send-text`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ phone: number, message: text })
   })
-  const responseBody = await res.text()
-  console.log(`[sendMessage] Z-API status ${res.status}: ${responseBody}`)
   if (!res.ok) {
-    throw new Error(`Erro ao enviar mensagem: ${responseBody}`)
+    const body = await res.text()
+    throw new Error(`Erro ao enviar mensagem: ${body}`)
   }
 }
 

@@ -9,8 +9,6 @@ export async function webhookRoutes(app: FastifyInstance) {
   app.post('/whatsapp', async (request, reply) => {
     const payload = request.body as any
 
-    console.log('[webhook] payload recebido:', JSON.stringify(payload).slice(0, 200))
-
     // Z-API: filtra só mensagens recebidas de pacientes
     const isReceived = payload.type === 'ReceivedCallback'
     const fromMe     = payload.fromMe === true
@@ -18,11 +16,8 @@ export async function webhookRoutes(app: FastifyInstance) {
     const messageText = payload.text?.message
 
     if (!isReceived || fromMe || !phone || !messageText) {
-      console.log(`[webhook] ignorado — type=${payload.type} fromMe=${payload.fromMe} phone=${phone}`)
       return reply.send({ ok: true })
     }
-
-    console.log(`[webhook] Mensagem de ${phone}: ${messageText}`)
 
     try {
       // Identifica a nutricionista pela conexão mais recente
@@ -66,9 +61,8 @@ export async function webhookRoutes(app: FastifyInstance) {
       // Envia resposta via Z-API
       await sendMessage(phone, response.text)
 
-      console.log(`[webhook] Resposta enviada para ${phone}`)
     } catch (err) {
-      console.error('[webhook] Erro ao processar mensagem:', err)
+      app.log.error(err, '[webhook] Erro ao processar mensagem')
     }
 
     return reply.send({ ok: true }) // sempre 200 — Z-API não retenta em erro
