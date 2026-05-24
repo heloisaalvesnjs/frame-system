@@ -1,13 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import { query, queryOne } from '../db'
 import { getAvailableSlots } from './appointment.service'
 
-// ── Provedor de IA (claude | gemini) ──────────────────────────
-const AI_PROVIDER = process.env.AI_PROVIDER || 'gemini'
+// ── Provedor de IA (claude | gemini | groq) ───────────────────
+const AI_PROVIDER = process.env.AI_PROVIDER || 'groq'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
 
 async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
@@ -21,7 +23,20 @@ async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistan
     return response.content[0].type === 'text' ? response.content[0].text : ''
   }
 
-  // Gemini (padrão)
+  if (AI_PROVIDER === 'groq') {
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: userMessage }
+      ]
+    })
+    return response.choices[0]?.message?.content || ''
+  }
+
+  // Gemini
   const model = genai.getGenerativeModel({
     model: 'gemini-2.0-flash',
     systemInstruction: systemPrompt
