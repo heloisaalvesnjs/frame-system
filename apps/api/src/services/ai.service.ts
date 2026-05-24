@@ -12,42 +12,55 @@ const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
 
-async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  if (AI_PROVIDER === 'claude') {
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [...messages, { role: 'user', content: userMessage }]
-    })
-    return response.content[0].type === 'text' ? response.content[0].text : ''
-  }
-
-  if (AI_PROVIDER === 'groq') {
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 300,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userMessage }
-      ]
-    })
-    return response.choices[0]?.message?.content || ''
-  }
-
-  // Gemini
-  const model = genai.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: systemPrompt
+async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 300,
+    system: systemPrompt,
+    messages: [...messages, { role: 'user', content: userMessage }]
   })
-  const history = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }))
-  const chat = model.startChat({ history })
-  const result = await chat.sendMessage(userMessage)
-  return result.response.text()
+  return response.content[0].type === 'text' ? response.content[0].text : ''
+}
+
+async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    max_tokens: 300,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: userMessage }
+    ]
+  })
+  return response.choices[0]?.message?.content || ''
+}
+
+async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  // Define ordem dos providers: primary → fallback
+  const providers = AI_PROVIDER === 'claude'
+    ? [
+        { name: 'claude', fn: callClaude },
+        { name: 'groq',   fn: callGroq   }
+      ]
+    : [
+        { name: 'groq',   fn: callGroq   },
+        { name: 'claude', fn: callClaude }
+      ]
+
+  for (let i = 0; i < providers.length; i++) {
+    const { name, fn } = providers[i]
+    try {
+      const result = await fn(systemPrompt, messages, userMessage)
+      if (i > 0) console.log(`[AI] Fallback para ${name} funcionou`)
+      return result
+    } catch (err: any) {
+      const isLast = i === providers.length - 1
+      console.error(`[AI] ${name} falhou (${err?.status || err?.message}). ${isLast ? 'Sem mais fallbacks.' : 'Tentando próximo...'}`)
+      if (isLast) throw err
+    }
+  }
+
+  throw new Error('Todos os providers de IA falharam')
 }
 
 // ── Tipos ──────────────────────────────────────────────────
