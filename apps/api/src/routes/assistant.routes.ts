@@ -13,6 +13,8 @@ export async function assistantRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
     const assistant = await queryOne<any>(
       `SELECT id, name, tone, greeting_message, is_active, created_at,
+              consultation_price, consultation_modalities, specialties,
+              vacation_mode, vacation_message,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -26,7 +28,12 @@ export async function assistantRoutes(app: FastifyInstance) {
     const schema = z.object({
       name: z.string().min(1),
       tone: z.enum(['acolhedor', 'formal', 'descontraido']).default('acolhedor'),
-      greeting_message: z.string().optional()
+      greeting_message: z.string().optional(),
+      consultation_price: z.string().optional(),
+      consultation_modalities: z.string().optional(),
+      specialties: z.string().optional(),
+      vacation_mode: z.boolean().optional(),
+      vacation_message: z.string().optional()
     })
 
     const body = schema.parse(request.body)
@@ -36,17 +43,32 @@ export async function assistantRoutes(app: FastifyInstance) {
     let assistant
     if (existing) {
       ;[assistant] = await query(
-        `UPDATE assistants SET name = $2, tone = $3, greeting_message = $4, updated_at = NOW()
+        `UPDATE assistants SET
+           name = $2, tone = $3, greeting_message = $4,
+           consultation_price = $5, consultation_modalities = $6, specialties = $7,
+           vacation_mode = COALESCE($8, vacation_mode), vacation_message = $9,
+           updated_at = NOW()
          WHERE nutritionist_id = $1
-         RETURNING id, name, tone, greeting_message, is_active`,
-        [id, body.name, body.tone, body.greeting_message]
+         RETURNING id, name, tone, greeting_message, is_active,
+                   consultation_price, consultation_modalities, specialties,
+                   vacation_mode, vacation_message`,
+        [id, body.name, body.tone, body.greeting_message,
+         body.consultation_price, body.consultation_modalities, body.specialties,
+         body.vacation_mode, body.vacation_message]
       )
     } else {
       ;[assistant] = await query(
-        `INSERT INTO assistants (nutritionist_id, name, tone, greeting_message)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, name, tone, greeting_message, is_active`,
-        [id, body.name, body.tone, body.greeting_message]
+        `INSERT INTO assistants
+           (nutritionist_id, name, tone, greeting_message,
+            consultation_price, consultation_modalities, specialties,
+            vacation_mode, vacation_message)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, name, tone, greeting_message, is_active,
+                   consultation_price, consultation_modalities, specialties,
+                   vacation_mode, vacation_message`,
+        [id, body.name, body.tone, body.greeting_message,
+         body.consultation_price, body.consultation_modalities, body.specialties,
+         body.vacation_mode ?? false, body.vacation_message]
       )
     }
 

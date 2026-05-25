@@ -71,6 +71,33 @@ export async function nutritionistRoutes(app: FastifyInstance) {
     return reply.code(201).send(slot)
   })
 
+  // PUT /api/nutritionists/availability — substitui todos os horários de uma vez
+  app.put('/availability', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.array(z.object({
+      day_of_week: z.number().min(0).max(6),
+      start_time: z.string(),
+      end_time: z.string(),
+      slot_duration: z.number().default(60)
+    }))
+
+    const entries = schema.parse(request.body)
+
+    // Remove todos os horários atuais
+    await query('DELETE FROM availability WHERE nutritionist_id = $1', [id])
+
+    // Insere os novos
+    for (const entry of entries) {
+      await query(
+        `INSERT INTO availability (nutritionist_id, day_of_week, start_time, end_time, slot_duration)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, entry.day_of_week, entry.start_time, entry.end_time, entry.slot_duration]
+      )
+    }
+
+    return reply.send({ ok: true })
+  })
+
   // DELETE /api/nutritionists/availability/:slotId
   app.delete('/availability/:slotId', auth, async (request, reply) => {
     const { id } = (request as any).user

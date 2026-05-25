@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
 import { processMessage } from '../services/ai.service'
 import { sendMessage } from '../services/whatsapp.service'
+import { isWithinWorkingHours } from '../services/appointment.service'
 
 export async function webhookRoutes(app: FastifyInstance) {
 
@@ -66,6 +67,76 @@ export async function webhookRoutes(app: FastifyInstance) {
         return reply.send({ ok: true })
       }
 
+      // ── Verifica horário de funcionamento e modo férias ────────
+      const assistantConfig = await queryOne<any>(
+        `SELECT name, vacation_mode, vacation_message FROM assistants
+         WHERE nutritionist_id = $1 AND is_active = true`,
+        [nutritionist_id]
+      )
+
+      if (assistantConfig) {
+        let blocked = false
+        let outOfHoursMsg = ''
+
+        if (assistantConfig.vacation_mode) {
+          blocked = true
+          outOfHoursMsg = assistantConfig.vacation_message ||
+            'Estamos em período de férias. Em breve retornaremos! 🌴'
+        } else {
+          const isOpen = await isWithinWorkingHours(nutritionist_id)
+          if (!isOpen) {
+            blocked = true
+            outOfHoursMsg =
+              'Olá! No momento estamos fora do horário de atendimento. Retornaremos em breve 😊'
+          }
+        }
+
+        if (blocked) {
+          // Garante que a conversa existe para salvar a mensagem
+          let convId = conversation?.id
+          if (!convId) {
+            const [newConv] = await query(
+              `INSERT INTO conversations (nutritionist_id, client_phone, status, last_message_at)
+               VALUES ($1, $2, 'active', NOW()) RETURNING id`,
+              [nutritionist_id, phone]
+            )
+            convId = newConv.id
+          } else {
+            await query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [convId])
+          }
+
+          // Salva mensagem do usuário
+          await query(
+            'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+            [convId, 'user', messageText]
+          )
+
+          // Só envia aviso uma vez por conversa (evita spam)
+          const lastAssistantMsg = await queryOne<any>(
+            `SELECT content FROM messages
+             WHERE conversation_id = $1 AND role = 'assistant'
+             ORDER BY sent_at DESC LIMIT 1`,
+            [convId]
+          )
+
+          const alreadyWarned = lastAssistantMsg?.content && (
+            lastAssistantMsg.content.includes('fora do horário') ||
+            lastAssistantMsg.content.includes('férias')
+          )
+
+          if (!alreadyWarned) {
+            await sendMessage(phone, outOfHoursMsg)
+            await query(
+              'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+              [convId, 'assistant', outOfHoursMsg]
+            )
+          }
+
+          return reply.send({ ok: true })
+        }
+      }
+      // ─────────────────────────────────────────────────────────
+
       // Processa com a IA (busca assistente, histórico, chama Claude)
       const response = await processMessage({
         nutritionist_id,
@@ -87,7 +158,7 @@ export async function webhookRoutes(app: FastifyInstance) {
   // POST /webhook/whatsapp-status — atualiza status de conexão
   app.post('/whatsapp-status', async (request, reply) => {
     const payload = request.body as any
-    app.log.info('[webhook/status]', JSON.stringify(payload))
+    app.log.info({ payload }, '[webhook/status]')
 
     if (payload.connected === true) {
       await query(

@@ -174,3 +174,12 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE TRIGGER trg_whatsapp_updated BEFORE UPDATE ON whatsapp_connections FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- --------------------------------
+-- Epic 2: Configuração da IA (migration safe)
+-- --------------------------------
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS consultation_price TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS consultation_modalities TEXT DEFAULT 'online';
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS specialties TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_mode BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_message TEXT;

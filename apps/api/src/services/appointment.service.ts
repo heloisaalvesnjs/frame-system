@@ -1,8 +1,31 @@
-import { query } from '../db'
+import { query, queryOne } from '../db'
 
 interface TimeSlot {
   datetime: string   // ISO: "2026-05-21T14:00:00"
   label: string      // Legível: "21/05 às 14:00"
+}
+
+// ── Verifica se está dentro do horário de funcionamento (BRT) ──
+export async function isWithinWorkingHours(nutritionist_id: string): Promise<boolean> {
+  // Converte para horário de Brasília
+  const now = new Date()
+  const brazilDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const dayOfWeek = brazilDate.getDay()                         // 0=Dom … 6=Sab
+  const currentTime = brazilDate.toTimeString().slice(0, 5)    // "14:30"
+
+  const availability = await query<any>(
+    `SELECT start_time, end_time FROM availability
+     WHERE nutritionist_id = $1 AND day_of_week = $2 AND is_active = true`,
+    [nutritionist_id, dayOfWeek]
+  )
+
+  // Se não tem horários configurados → não bloqueia (nutri ainda não configurou)
+  if (!availability.length) return true
+
+  return availability.some((av: any) =>
+    currentTime >= av.start_time.slice(0, 5) &&
+    currentTime <  av.end_time.slice(0, 5)
+  )
 }
 
 export async function getAvailableSlots(nutritionist_id: string, date: string): Promise<TimeSlot[]> {
