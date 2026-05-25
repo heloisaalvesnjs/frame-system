@@ -2,14 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Calendar, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Calendar, Users, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/conversas', label: 'Conversas', icon: MessageSquare },
-  { href: '/agenda', label: 'Agenda', icon: Calendar },
-  { href: '/configuracoes', label: 'Configurações', icon: Settings },
+  { href: '/',             label: 'Dashboard',     icon: LayoutDashboard, exact: true },
+  { href: '/conversas',    label: 'Conversas',     icon: MessageSquare },
+  { href: '/agenda',       label: 'Agenda',        icon: Calendar },
+  { href: '/clientes',     label: 'Clientes',      icon: Users },
+  { href: '/configuracoes',label: 'Configurações', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -30,21 +32,24 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-              pathname.startsWith(href)
-                ? 'bg-brand-500/10 text-brand-400'
-                : 'text-white/40 hover:text-white hover:bg-white/5'
-            )}
-          >
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </Link>
-        ))}
+        {navItems.map(({ href, label, icon: Icon, exact }) => {
+          const active = exact ? pathname === href : pathname.startsWith(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                active
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              )}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
 
       {/* User */}

@@ -195,3 +195,10 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT 
 ALTER TABLE conversations  ADD COLUMN IF NOT EXISTS last_followup_at TIMESTAMPTZ;
 ALTER TABLE assistants     ADD COLUMN IF NOT EXISTS followup_enabled BOOLEAN DEFAULT true;
 ALTER TABLE assistants     ADD COLUMN IF NOT EXISTS followup_delay_hours INT DEFAULT 4;
+
+-- --------------------------------
+-- Epic 5: Dashboard Completo
+-- --------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthdate DATE;
+CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(nutritionist_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_appointments_created  ON appointments(nutritionist_id, created_at);

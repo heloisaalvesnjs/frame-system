@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { query, queryOne } from '../db'
 import { sendMessage } from '../services/whatsapp.service'
 import { runColdLeadFollowup, runAppointmentReminders } from '../services/followup.service'
+import { runWeeklyReport } from '../services/report.service'
 
 /**
  * Rotas internas — autenticadas via x-internal-key (para n8n e cron jobs).
@@ -205,5 +206,12 @@ export async function internalRoutes(app: FastifyInstance) {
   app.post('/reminders/run', auth, async (_request, reply) => {
     runAppointmentReminders().catch(console.error) // fire-and-forget
     return reply.send({ ok: true, message: 'Lembretes iniciados em background' })
+  })
+
+  // ── POST /api/internal/report/run ────────────────────────
+  // Dispara manualmente o relatório semanal (teste).
+  app.post('/report/run', auth, async (_request, reply) => {
+    runWeeklyReport().catch(console.error) // fire-and-forget
+    return reply.send({ ok: true, message: 'Relatório semanal iniciado em background' })
   })
 }

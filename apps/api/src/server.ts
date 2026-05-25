@@ -13,7 +13,10 @@ import { conversationRoutes } from './routes/conversation.routes'
 import { whatsappRoutes } from './routes/whatsapp.routes'
 import { webhookRoutes } from './routes/webhook.routes'
 import { internalRoutes } from './routes/internal.routes'
+import { metricsRoutes } from './routes/metrics.routes'
+import { clientRoutes } from './routes/client.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
+import { runWeeklyReport } from './services/report.service'
 
 const app = Fastify({
   logger: {
@@ -73,6 +76,8 @@ app.register(conversationRoutes, { prefix: '/api/conversations' })
 app.register(whatsappRoutes, { prefix: '/api/whatsapp' })
 app.register(webhookRoutes, { prefix: '/webhook' })
 app.register(internalRoutes, { prefix: '/api/internal' })
+app.register(metricsRoutes, { prefix: '/api/metrics' })
+app.register(clientRoutes,  { prefix: '/api/clients' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))
@@ -101,7 +106,16 @@ const start = async () => {
       runAppointmentReminders().catch(console.error)
     }, 60 * 60 * 1000)
 
-    console.log('⏰ Schedulers de follow-up registrados')
+    // Relatório semanal: toda segunda-feira às 08h BRT
+    // Verifica a cada hora se é segunda às 8h
+    setInterval(() => {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+      if (now.getDay() === 1 && now.getHours() === 8 && now.getMinutes() < 60) {
+        runWeeklyReport().catch(console.error)
+      }
+    }, 60 * 60 * 1000)
+
+    console.log('⏰ Schedulers de follow-up e relatório semanal registrados')
     // ──────────────────────────────────────────────────────────
 
   } catch (err) {
