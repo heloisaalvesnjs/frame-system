@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ChevronLeft, ChevronRight, Calendar, Clock, User, CheckCircle, XCircle,
+  ChevronLeft, ChevronRight, Calendar, Clock, CheckCircle, XCircle,
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
-  isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO
+  isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO, getYear
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import api from '@/lib/api'
@@ -97,6 +97,17 @@ export default function AgendaPage() {
     refetchInterval: 30000,
   })
 
+  // Feriados do ano corrente e próximo (para navegação de mês)
+  const { data: holidaysRaw = [] } = useQuery<{ date: string; name: string }[]>({
+    queryKey: ['holidays', getYear(currentMonth)],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/appointments/holidays?year=${getYear(currentMonth)}`)
+      return data.holidays
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24h
+  })
+  const holidayMap = new Map(holidaysRaw.map((h) => [h.date, h.name]))
+
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
@@ -167,24 +178,33 @@ export default function AgendaPage() {
                 const hasAppts = dayAppts.length > 0
                 const isSelected = isSameDay(day, selectedDate)
                 const today = isToday(day)
+                const dateKey = format(day, 'yyyy-MM-dd')
+                const holidayName = holidayMap.get(dateKey)
 
                 return (
                   <button
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
+                    title={holidayName ?? undefined}
                     className={cn(
                       'relative flex flex-col items-center justify-center rounded-lg h-10 text-sm font-medium transition-all duration-150',
                       !isSameMonth(day, currentMonth) && 'text-white/15',
+                      holidayName && !isSelected && 'bg-amber-500/10 text-amber-400',
                       isSelected
                         ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/30'
-                        : today
+                        : today && !holidayName
                           ? 'bg-brand-500/10 text-brand-400 font-bold'
-                          : 'hover:bg-white/5 text-white/50'
+                          : !holidayName
+                            ? 'hover:bg-white/5 text-white/50'
+                            : ''
                     )}
                   >
                     {format(day, 'd')}
                     {hasAppts && !isSelected && (
                       <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-500" />
+                    )}
+                    {holidayName && !hasAppts && !isSelected && (
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-500" />
                     )}
                   </button>
                 )
@@ -204,6 +224,14 @@ export default function AgendaPage() {
             </div>
           </CardHeader>
           <CardContent className="px-4">
+            {/* Indicador de feriado */}
+            {holidayMap.get(format(selectedDate, 'yyyy-MM-dd')) && (
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <span className="text-amber-400 text-xs font-medium">
+                  🇧🇷 Feriado: {holidayMap.get(format(selectedDate, 'yyyy-MM-dd'))}
+                </span>
+              </div>
+            )}
             {selectedAppointments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Clock className="w-7 h-7 text-white/10 mb-2" />

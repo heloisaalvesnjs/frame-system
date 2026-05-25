@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
-import { getAvailableSlots } from '../services/appointment.service'
+import { getAvailableSlots, listHolidays } from '../services/appointment.service'
 
 export async function appointmentRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
@@ -31,6 +31,14 @@ export async function appointmentRoutes(app: FastifyInstance) {
     sql += ' ORDER BY a.scheduled_at ASC'
     const appointments = await query(sql, params)
     return reply.send({ appointments })
+  })
+
+  // GET /api/appointments/holidays?year=2026 — feriados nacionais do ano
+  app.get('/holidays', auth, async (request, reply) => {
+    const { year } = request.query as any
+    const y = Number(year) || new Date().getFullYear()
+    const holidays = await listHolidays(y)
+    return reply.send({ holidays })
   })
 
   // GET /api/appointments/slots?date=2026-05-20 — horários disponíveis

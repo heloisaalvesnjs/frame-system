@@ -2,7 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import Groq from 'groq-sdk'
 import { query, queryOne } from '../db'
-import { getAvailableSlots } from './appointment.service'
+import { getNextAvailableSlots } from './appointment.service'
+import { sendMessage } from './whatsapp.service'
 
 // ── Provedor de IA (claude | gemini | groq) ───────────────────
 const AI_PROVIDER = process.env.AI_PROVIDER || 'claude'
@@ -129,10 +130,8 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     [convId, 'user', message]
   )
 
-  // 5. Busca horários disponíveis para contexto da IA
-  const today = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-  const availableSlots = await getAvailableSlots(nutritionist_id, tomorrow)
+  // 5. Busca próximos horários disponíveis (varre até 7 dias, pula feriados)
+  const availableSlots = await getNextAvailableSlots(nutritionist_id)
 
   // 6. Monta o system prompt personalizado
   const systemPrompt = buildSystemPrompt({
@@ -274,6 +273,44 @@ async function detectAndCreateAppointment({
       `UPDATE conversations SET status = 'resolved' WHERE id = $1`,
       [convId]
     )
+
+    // ── Notifica a nutricionista via WhatsApp pessoal ──────────
+    try {
+      const nutritionistData = await queryOne<any>(
+        'SELECT name, phone FROM nutritionists WHERE id = $1',
+        [nutritionist_id]
+      )
+
+      if (nutritionistData?.phone) {
+        const clientLabel = client.name && client.name !== 'Cliente'
+          ? client.name
+          : client_phone
+
+        // Formata data/hora em BRT legível
+        const apptDate = new Date(scheduledAt)
+        const formatted = apptDate.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          weekday: 'long',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+
+        const notifMsg =
+          `🗓️ *Nova consulta agendada pela Sofia!*\n\n` +
+          `👤 Cliente: ${clientLabel}\n` +
+          `📅 ${formatted}\n\n` +
+          `Veja os detalhes na sua agenda 👆`
+
+        await sendMessage(nutritionistData.phone, notifMsg)
+      }
+    } catch (notifErr) {
+      // Falha na notificação não deve cancelar o agendamento
+      console.error('[notif] Erro ao notificar nutricionista:', notifErr)
+    }
+    // ─────────────────────────────────────────────────────────
 
     return 'appointment_created'
   } catch (err) {
