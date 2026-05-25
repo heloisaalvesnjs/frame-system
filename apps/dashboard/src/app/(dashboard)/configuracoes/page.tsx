@@ -26,6 +26,8 @@ interface Assistant {
   specialties?: string
   vacation_mode?: boolean
   vacation_message?: string
+  followup_enabled?: boolean
+  followup_delay_hours?: number
   pdf_filename?: string
 }
 
@@ -108,6 +110,8 @@ const assistantSchema = z.object({
   tone: z.enum(['acolhedor', 'formal', 'descontraido']),
   greeting_message: z.string().min(10, 'Mensagem muito curta'),
   specialties: z.string().optional(),
+  followup_enabled: z.boolean().optional(),
+  followup_delay_hours: z.number().optional(),
   consultation_modalities: z.string().optional(),
   vacation_mode: z.boolean().optional(),
   vacation_message: z.string().optional(),
@@ -157,6 +161,8 @@ function TabAssistant() {
         consultation_modalities: assistant.consultation_modalities || 'online',
         vacation_mode: assistant.vacation_mode ?? false,
         vacation_message: assistant.vacation_message || '',
+        followup_enabled: assistant.followup_enabled ?? true,
+        followup_delay_hours: assistant.followup_delay_hours ?? 4,
       })
     }
   }, [assistant, reset])
@@ -309,6 +315,72 @@ function TabAssistant() {
             />
           )}
         </div>
+
+        {/* Follow-up automático */}
+        {(() => {
+          const followupEnabled = watch('followup_enabled')
+          return (
+            <div className={cn(
+              'flex flex-col gap-3 rounded-xl border p-4 transition-colors',
+              followupEnabled ? 'border-brand-500/20 bg-brand-500/5' : 'border-ui-border'
+            )}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={cn('text-sm font-medium', followupEnabled ? 'text-brand-300' : 'text-white/70')}>
+                    Follow-up automático
+                  </p>
+                  <p className="text-xs text-white/30">
+                    Sofia reengaja leads que param de responder
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('followup_enabled', !followupEnabled)}
+                  className={cn(
+                    'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+                    followupEnabled ? 'bg-brand-500' : 'bg-white/10'
+                  )}
+                >
+                  <span className={cn(
+                    'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
+                    followupEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+
+              {followupEnabled && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-white/50">
+                    Enviar após quanto tempo sem resposta?
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[2, 4, 6, 12, 24].map((h) => {
+                      const current = watch('followup_delay_hours')
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => setValue('followup_delay_hours', h)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                            current === h
+                              ? 'border-brand-500 bg-brand-500/10 text-brand-400'
+                              : 'border-ui-border bg-white/3 text-white/40 hover:border-white/20'
+                          )}
+                        >
+                          {h < 24 ? `${h}h` : '1 dia'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-white/20 mt-1">
+                    Apenas para leads sem agendamento. Máximo 1 mensagem a cada 24h.
+                  </p>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         <div className="flex items-center gap-3">
           <Button type="submit" loading={isSubmitting}>Salvar</Button>

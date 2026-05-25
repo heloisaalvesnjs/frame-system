@@ -183,3 +183,15 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS consultation_modalities TEXT DEF
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS specialties TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_mode BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_message TEXT;
+
+-- --------------------------------
+-- Epic 3: Agendamento
+-- --------------------------------
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false;
+
+-- --------------------------------
+-- Epic 4: Follow-up Automático
+-- --------------------------------
+ALTER TABLE conversations  ADD COLUMN IF NOT EXISTS last_followup_at TIMESTAMPTZ;
+ALTER TABLE assistants     ADD COLUMN IF NOT EXISTS followup_enabled BOOLEAN DEFAULT true;
+ALTER TABLE assistants     ADD COLUMN IF NOT EXISTS followup_delay_hours INT DEFAULT 4;

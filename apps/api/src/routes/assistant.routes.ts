@@ -15,6 +15,7 @@ export async function assistantRoutes(app: FastifyInstance) {
       `SELECT id, name, tone, greeting_message, is_active, created_at,
               consultation_price, consultation_modalities, specialties,
               vacation_mode, vacation_message,
+              followup_enabled, followup_delay_hours,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -33,7 +34,9 @@ export async function assistantRoutes(app: FastifyInstance) {
       consultation_modalities: z.string().optional(),
       specialties: z.string().optional(),
       vacation_mode: z.boolean().optional(),
-      vacation_message: z.string().optional()
+      vacation_message: z.string().optional(),
+      followup_enabled: z.boolean().optional(),
+      followup_delay_hours: z.number().int().min(1).max(48).optional()
     })
 
     const body = schema.parse(request.body)
@@ -47,28 +50,35 @@ export async function assistantRoutes(app: FastifyInstance) {
            name = $2, tone = $3, greeting_message = $4,
            consultation_price = $5, consultation_modalities = $6, specialties = $7,
            vacation_mode = COALESCE($8, vacation_mode), vacation_message = $9,
+           followup_enabled = COALESCE($10, followup_enabled),
+           followup_delay_hours = COALESCE($11, followup_delay_hours),
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
                    consultation_price, consultation_modalities, specialties,
-                   vacation_mode, vacation_message`,
+                   vacation_mode, vacation_message,
+                   followup_enabled, followup_delay_hours`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
-         body.vacation_mode, body.vacation_message]
+         body.vacation_mode, body.vacation_message,
+         body.followup_enabled, body.followup_delay_hours]
       )
     } else {
       ;[assistant] = await query(
         `INSERT INTO assistants
            (nutritionist_id, name, tone, greeting_message,
             consultation_price, consultation_modalities, specialties,
-            vacation_mode, vacation_message)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            vacation_mode, vacation_message,
+            followup_enabled, followup_delay_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, name, tone, greeting_message, is_active,
                    consultation_price, consultation_modalities, specialties,
-                   vacation_mode, vacation_message`,
+                   vacation_mode, vacation_message,
+                   followup_enabled, followup_delay_hours`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
-         body.vacation_mode ?? false, body.vacation_message]
+         body.vacation_mode ?? false, body.vacation_message,
+         body.followup_enabled ?? true, body.followup_delay_hours ?? 4]
       )
     }
 

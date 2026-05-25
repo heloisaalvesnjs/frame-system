@@ -13,6 +13,7 @@ import { conversationRoutes } from './routes/conversation.routes'
 import { whatsappRoutes } from './routes/whatsapp.routes'
 import { webhookRoutes } from './routes/webhook.routes'
 import { internalRoutes } from './routes/internal.routes'
+import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 
 const app = Fastify({
   logger: {
@@ -82,6 +83,27 @@ const start = async () => {
     const port = Number(process.env.API_PORT) || 3001
     await app.listen({ port, host: '0.0.0.0' })
     console.log(`\n🚀 Frame System API rodando na porta ${port}`)
+
+    // ── Schedulers de follow-up ────────────────────────────────
+    // Primeira execução: 1 min após o startup (servidor esquentar)
+    setTimeout(() => {
+      runColdLeadFollowup().catch(console.error)
+      runAppointmentReminders().catch(console.error)
+    }, 60_000)
+
+    // Lead frio: a cada 2 horas
+    setInterval(() => {
+      runColdLeadFollowup().catch(console.error)
+    }, 2 * 60 * 60 * 1000)
+
+    // Lembrete de consulta: a cada 1 hora
+    setInterval(() => {
+      runAppointmentReminders().catch(console.error)
+    }, 60 * 60 * 1000)
+
+    console.log('⏰ Schedulers de follow-up registrados')
+    // ──────────────────────────────────────────────────────────
+
   } catch (err) {
     app.log.error(err)
     process.exit(1)
