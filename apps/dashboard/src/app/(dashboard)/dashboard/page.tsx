@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   Users, Calendar, TrendingUp, DollarSign,
-  MessageSquare, ChevronRight, Clock, CheckCircle2
+  MessageSquare, ChevronRight, Clock, CheckCircle2, ClipboardList
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -44,6 +44,19 @@ interface ActivityItem {
   client_phone: string
   scheduled_at?: string
   status?: string
+}
+
+interface RecentCheckin {
+  client_id: string
+  client_name: string | null
+  client_phone: string
+  week_start: string
+  hunger_score: number
+  energy_score: number
+  sleep_score: number
+  mood_score: number
+  notes: string | null
+  created_at: string
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -221,6 +234,15 @@ export default function DashboardPage() {
       return data.activity as ActivityItem[]
     },
     staleTime: 30_000,
+  })
+
+  const { data: recentCheckins } = useQuery({
+    queryKey: ['patient-checkins-recent'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/patient/checkin/clients')
+      return data.checkins as RecentCheckin[]
+    },
+    staleTime: 60_000,
   })
 
   const m = metricsData
@@ -420,6 +442,54 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Check-ins recentes dos pacientes */}
+      {recentCheckins && recentCheckins.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="w-4 h-4 text-amber-400" />
+            <div>
+              <h2 className="text-sm font-semibold text-white/80">Check-ins dos pacientes</h2>
+              <p className="text-xs text-white/30 mt-0.5">Como seus pacientes estão se sentindo esta semana</p>
+            </div>
+          </div>
+
+          <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-4 px-5 py-2 border-b border-white/[0.04]">
+              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider flex-1">Paciente</p>
+              <div className="hidden md:flex gap-6 flex-shrink-0">
+                {['🍽️', '⚡', '😴', '😊'].map(l => (
+                  <p key={l} className="text-[11px] w-8 text-center">{l}</p>
+                ))}
+                <p className="text-[10px] font-semibold text-white/25 w-10 text-center">Média</p>
+              </div>
+            </div>
+            <ul className="divide-y divide-white/[0.04]">
+              {recentCheckins.slice(0, 8).map((c, i) => {
+                const avg = (c.hunger_score + c.energy_score + c.sleep_score + c.mood_score) / 4
+                const name = (c.client_name && c.client_name !== 'Cliente') ? c.client_name : formatPhone(c.client_phone)
+                const sc = (v: number) => v >= 4 ? 'text-emerald-400' : v <= 2 ? 'text-red-400' : 'text-amber-400'
+                return (
+                  <li key={i} className="flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                    <Link href={`/clientes/${c.client_id}`} className="flex-1 min-w-0 group">
+                      <p className="text-[13px] font-medium text-white/80 group-hover:text-white transition-colors truncate">{name}</p>
+                      <p className="text-[10px] text-white/25 mt-0.5">semana {c.week_start.slice(5).replace('-', '/')}</p>
+                    </Link>
+                    <div className="hidden md:flex gap-6 flex-shrink-0 items-center">
+                      {[c.hunger_score, c.energy_score, c.sleep_score, c.mood_score].map((v, j) => (
+                        <span key={j} className={`text-sm font-bold w-8 text-center ${sc(v)}`}>{v}</span>
+                      ))}
+                      <span className={`text-sm font-bold w-10 text-center ${sc(Math.round(avg))}`}>{avg.toFixed(1)}</span>
+                    </div>
+                    {/* Mobile: só a média */}
+                    <span className={`md:hidden text-sm font-bold flex-shrink-0 ${sc(Math.round(avg))}`}>{avg.toFixed(1)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

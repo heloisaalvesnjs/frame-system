@@ -76,6 +76,51 @@ export async function clientRoutes(app: FastifyInstance) {
     return reply.send({ client, appointments, conversations })
   })
 
+  // GET /api/clients/:clientId/tracking — dados de tracking do paciente (para a nutri)
+  app.get('/:clientId/tracking', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    // Verify ownership
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    // Weight history (last 60)
+    const weightLogs = await query<any>(
+      `SELECT id, weight_kg::text, waist_cm::text, hip_cm::text, notes, logged_at::text
+       FROM weight_logs WHERE client_id = $1 ORDER BY logged_at DESC LIMIT 60`,
+      [clientId]
+    )
+
+    // Check-ins (last 12 weeks)
+    const checkins = await query<any>(
+      `SELECT id, week_start::text, hunger_score, energy_score, sleep_score, mood_score, notes, created_at
+       FROM weekly_checkins WHERE client_id = $1 ORDER BY week_start DESC LIMIT 12`,
+      [clientId]
+    )
+
+    // Activity logs (last 30)
+    const activityLogs = await query<any>(
+      `SELECT id, activity_type, duration_minutes, notes, logged_at::text
+       FROM activity_logs WHERE client_id = $1 ORDER BY logged_at DESC LIMIT 30`,
+      [clientId]
+    )
+
+    // Water stats: last 7 days
+    const waterStats = await query<any>(
+      `SELECT logged_at::text, SUM(amount_ml)::int AS total_ml
+       FROM water_logs
+       WHERE client_id = $1 AND logged_at >= CURRENT_DATE - INTERVAL '6 days'
+       GROUP BY logged_at ORDER BY logged_at DESC`,
+      [clientId]
+    )
+
+    return reply.send({ weightLogs, checkins, activityLogs, waterStats })
+  })
+
   // PATCH /api/clients/:clientId — atualiza dados do paciente
   app.patch('/:clientId', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user
