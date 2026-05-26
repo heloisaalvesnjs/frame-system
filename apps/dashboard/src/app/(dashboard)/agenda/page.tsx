@@ -34,6 +34,20 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
   completed:  { label: 'Realizado',  variant: 'default' },
 }
 
+const STATUS_PILL: Record<string, string> = {
+  scheduled: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  confirmed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
+  completed: 'bg-white/5 text-white/30 border-white/10',
+}
+
+const STATUS_TIME_COLOR: Record<string, string> = {
+  scheduled: 'text-blue-400',
+  confirmed: 'text-emerald-400',
+  cancelled: 'text-red-400',
+  completed: 'text-white/30',
+}
+
 // ─── Appointment Card ─────────────────────────────────────────────
 function AppointmentCard({ appt }: { appt: Appointment }) {
   const queryClient = useQueryClient()
@@ -48,31 +62,33 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
   const time = format(parseISO(appt.scheduled_at), 'HH:mm')
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-ui-border bg-ui-elevated hover:border-white/15 transition-colors">
-      <div className="flex-shrink-0 w-14 text-center">
-        <p className="text-base font-bold text-brand-400">{time}</p>
-        <p className="text-xs text-white/25">{appt.duration_minutes}min</p>
+    <div className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.03] transition-all duration-150">
+      <div className="flex-shrink-0 w-12 text-center pt-0.5">
+        <p className={`text-base font-bold ${STATUS_TIME_COLOR[appt.status]}`}>{time}</p>
+        <p className="text-[10px] text-white/20 mt-0.5">{appt.duration_minutes}min</p>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-semibold text-white/80 truncate">{appt.client_name}</p>
-          <Badge variant={config.variant}>{config.label}</Badge>
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className="text-[13px] font-semibold text-white/90 truncate">{appt.client_name}</p>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium flex-shrink-0 ${STATUS_PILL[appt.status]}`}>
+            {config.label}
+          </span>
         </div>
-        <p className="text-xs text-white/30">{appt.client_phone}</p>
-        {appt.notes && <p className="text-xs text-white/20 mt-1 truncate">{appt.notes}</p>}
+        <p className="text-[11px] text-white/25">{appt.client_phone}</p>
+        {appt.notes && <p className="text-[11px] text-white/20 mt-1 truncate">{appt.notes}</p>}
       </div>
       {appt.status === 'scheduled' && (
         <div className="flex gap-1 flex-shrink-0">
           <button
             onClick={() => updateStatus.mutate('confirmed')}
-            className="p-1.5 rounded-md text-brand-400 hover:bg-brand-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors"
             title="Confirmar"
           >
             <CheckCircle className="w-4 h-4" />
           </button>
           <button
             onClick={() => updateStatus.mutate('cancelled')}
-            className="p-1.5 rounded-md text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
             title="Cancelar"
           >
             <XCircle className="w-4 h-4" />
@@ -122,16 +138,29 @@ export default function AgendaPage() {
     (a, b) => parseISO(a.scheduled_at).getTime() - parseISO(b.scheduled_at).getTime()
   )
 
+  const scheduledCount = appointments.filter((a) => a.status === 'scheduled').length
+  const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 md:p-8 max-w-6xl">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Agenda</h1>
-          <p className="text-sm text-white/30 mt-0.5">Gerencie suas consultas agendadas</p>
+          <h1 className="text-[22px] font-bold text-white tracking-tight">Agenda</h1>
+          <p className="text-sm text-white/35 mt-0.5">Gerencie suas consultas agendadas</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="info">{appointments.filter((a) => a.status === 'scheduled').length} agendados</Badge>
-          <Badge variant="success">{appointments.filter((a) => a.status === 'confirmed').length} confirmados</Badge>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {scheduledCount > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              {scheduledCount} agendado{scheduledCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {confirmedCount > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {confirmedCount} confirmado{confirmedCount !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
 
@@ -251,47 +280,51 @@ export default function AgendaPage() {
 
       {/* Upcoming */}
       <div className="mt-6">
-        <h2 className="text-base font-semibold text-white mb-4">Próximas consultas</h2>
-        <div className="flex flex-col gap-3">
-          {appointments
-            .filter((a) => ['scheduled', 'confirmed'].includes(a.status))
-            .sort((a, b) => parseISO(a.scheduled_at).getTime() - parseISO(b.scheduled_at).getTime())
-            .slice(0, 5)
-            .map((appt) => (
-              <div key={appt.id} className="bg-ui-card border border-ui-border rounded-xl px-5 py-4 flex items-center gap-4 hover:border-white/10 transition-colors">
-                <div className="text-center flex-shrink-0">
-                  <p className="text-xs text-white/25 capitalize">
-                    {format(parseISO(appt.scheduled_at), 'EEE', { locale: ptBR })}
-                  </p>
-                  <p className="text-xl font-bold text-white">
-                    {format(parseISO(appt.scheduled_at), 'd')}
-                  </p>
-                  <p className="text-xs text-white/25">
-                    {format(parseISO(appt.scheduled_at), 'MMM', { locale: ptBR })}
-                  </p>
-                </div>
-                <div className="w-px h-10 bg-ui-border flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white/80">{appt.client_name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-sm text-white/30">
-                      {format(parseISO(appt.scheduled_at), 'HH:mm')}
-                    </span>
-                    <span className="text-xs text-white/15">•</span>
-                    <span className="text-sm text-white/30">{appt.duration_minutes} min</span>
-                  </div>
-                </div>
-                <Badge variant={statusConfig[appt.status].variant}>
-                  {statusConfig[appt.status].label}
-                </Badge>
-              </div>
-            ))}
-
-          {appointments.filter((a) => ['scheduled', 'confirmed'].includes(a.status)).length === 0 && (
-            <div className="text-center py-10 text-white/20">
-              <Calendar className="w-9 h-9 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Nenhuma consulta agendada</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-white/80">Próximas consultas</h2>
+        </div>
+        <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+          {appointments.filter((a) => ['scheduled', 'confirmed'].includes(a.status)).length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-8 h-8 mx-auto mb-3 text-white/10" />
+              <p className="text-sm text-white/25">Nenhuma consulta agendada</p>
             </div>
+          ) : (
+            <ul className="divide-y divide-white/[0.04]">
+              {appointments
+                .filter((a) => ['scheduled', 'confirmed'].includes(a.status))
+                .sort((a, b) => parseISO(a.scheduled_at).getTime() - parseISO(b.scheduled_at).getTime())
+                .slice(0, 5)
+                .map((appt) => (
+                  <li key={appt.id} className="flex items-center gap-5 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="text-center flex-shrink-0 w-10">
+                      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider capitalize">
+                        {format(parseISO(appt.scheduled_at), 'EEE', { locale: ptBR })}
+                      </p>
+                      <p className="text-xl font-bold text-white leading-tight">
+                        {format(parseISO(appt.scheduled_at), 'd')}
+                      </p>
+                      <p className="text-[10px] text-white/25 capitalize">
+                        {format(parseISO(appt.scheduled_at), 'MMM', { locale: ptBR })}
+                      </p>
+                    </div>
+                    <div className="w-px h-8 bg-white/[0.06] flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-white/90 truncate">{appt.client_name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-white/35 font-medium">
+                          {format(parseISO(appt.scheduled_at), 'HH:mm')}
+                        </span>
+                        <span className="text-white/15 text-[10px]">·</span>
+                        <span className="text-[11px] text-white/25">{appt.duration_minutes} min</span>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] px-2 py-1 rounded-md border font-semibold flex-shrink-0 ${STATUS_PILL[appt.status]}`}>
+                      {statusConfig[appt.status].label}
+                    </span>
+                  </li>
+                ))}
+            </ul>
           )}
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { Search, Users, Calendar, MessageSquare, ChevronRight, Clock } from 'lucide-react'
+import { Search, Users, Calendar, ChevronRight, Clock, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -26,6 +26,19 @@ function formatPhone(phone: string) {
   return phone
 }
 
+const AVATAR_COLORS = [
+  'bg-blue-500/15 border-blue-500/25 text-blue-400',
+  'bg-violet-500/15 border-violet-500/25 text-violet-400',
+  'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
+  'bg-amber-500/15 border-amber-500/25 text-amber-400',
+  'bg-pink-500/15 border-pink-500/25 text-pink-400',
+]
+
+function avatarColor(id: string) {
+  const n = id.charCodeAt(0) + id.charCodeAt(id.length - 1)
+  return AVATAR_COLORS[n % AVATAR_COLORS.length]
+}
+
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
 
@@ -42,34 +55,34 @@ export default function ClientesPage() {
   const clients = data ?? []
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-6 md:p-8 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Clientes</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {clients.length} paciente{clients.length !== 1 ? 's' : ''} cadastrado{clients.length !== 1 ? 's' : ''}
+          <h1 className="text-[22px] font-bold text-white tracking-tight">Clientes</h1>
+          <p className="text-sm text-white/35 mt-0.5">
+            {isLoading ? '…' : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
+      <div className="relative mb-5">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
         <input
           type="text"
-          placeholder="Buscar por nome ou telefone..."
+          placeholder="Buscar por nome ou telefone…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-ui-card border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-500/40 transition-colors"
+          className="w-full bg-ui-card border border-white/[0.07] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 focus:bg-white/[0.03] transition-all duration-150"
         />
       </div>
 
       {/* Loading */}
       {isLoading && (
         <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-ui-card border border-white/5 rounded-xl animate-pulse" />
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-[68px] bg-ui-card border border-white/5 rounded-xl animate-pulse" style={{ opacity: 1 - i * 0.12 }} />
           ))}
         </div>
       )}
@@ -77,69 +90,86 @@ export default function ClientesPage() {
       {/* Empty */}
       {!isLoading && clients.length === 0 && (
         <div className="text-center py-20">
-          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-6 h-6 text-white/20" />
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mx-auto mb-4">
+            {search ? (
+              <Search className="w-6 h-6 text-white/15" />
+            ) : (
+              <UserPlus className="w-6 h-6 text-white/15" />
+            )}
           </div>
-          <p className="text-sm text-white/30">
-            {search ? 'Nenhum cliente encontrado para essa busca' : 'Nenhum cliente cadastrado ainda'}
+          <p className="text-sm font-medium text-white/30">
+            {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}
           </p>
+          {search && (
+            <p className="text-xs text-white/20 mt-1">Tente outro nome ou número</p>
+          )}
         </div>
       )}
 
       {/* List */}
       {!isLoading && clients.length > 0 && (
-        <div className="bg-ui-card border border-white/5 rounded-2xl overflow-hidden">
-          <ul className="divide-y divide-white/5">
-            {clients.map(client => (
-              <li key={client.id}>
-                <Link
-                  href={`/clientes/${client.id}`}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors group"
-                >
-                  {/* Avatar */}
-                  <div className="w-9 h-9 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-brand-400">
-                      {(client.name && client.name !== 'Cliente')
-                        ? client.name.charAt(0).toUpperCase()
-                        : '#'}
-                    </span>
-                  </div>
+        <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+          <ul className="divide-y divide-white/[0.04]">
+            {clients.map(client => {
+              const name = (client.name && client.name !== 'Cliente') ? client.name : null
+              const initials = name
+                ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+                : '#'
+              const color = avatarColor(client.id)
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {client.name && client.name !== 'Cliente'
-                        ? client.name
-                        : formatPhone(client.phone)}
-                    </p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-white/30">{formatPhone(client.phone)}</span>
-                      {client.goal && (
-                        <span className="text-xs text-white/20 truncate max-w-[200px]">· {client.goal}</span>
-                      )}
+              return (
+                <li key={client.id}>
+                  <Link
+                    href={`/clientes/${client.id}`}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.025] transition-colors group"
+                  >
+                    {/* Avatar */}
+                    <div className={`w-9 h-9 rounded-full border flex items-center justify-center flex-shrink-0 ${color}`}>
+                      <span className="text-sm font-bold">{initials}</span>
                     </div>
-                  </div>
 
-                  {/* Stats */}
-                  <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-                    <div className="flex items-center gap-1.5 text-xs text-white/30">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{client.appointment_count} consulta{client.appointment_count !== 1 ? 's' : ''}</span>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-white/90 truncate leading-snug">
+                        {name ?? formatPhone(client.phone)}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {name && (
+                          <span className="text-[11px] text-white/30 font-mono">{formatPhone(client.phone)}</span>
+                        )}
+                        {client.goal && (
+                          <span className="text-[11px] text-white/20 truncate max-w-[180px]">
+                            {name ? '· ' : ''}{client.goal}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-white/30">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>
-                        {client.last_contact
-                          ? formatDistanceToNow(new Date(client.last_contact), { locale: ptBR, addSuffix: true })
-                          : 'sem contato'}
-                      </span>
-                    </div>
-                  </div>
 
-                  <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0 group-hover:text-white/40 transition-colors" />
-                </Link>
-              </li>
-            ))}
+                    {/* Stats */}
+                    <div className="hidden md:flex items-center gap-5 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 text-[12px] text-white/30">
+                        <Calendar className="w-3.5 h-3.5 text-white/20" />
+                        <span>
+                          {client.completed_count > 0
+                            ? `${client.completed_count} de ${client.appointment_count}`
+                            : `${client.appointment_count} consulta${client.appointment_count !== 1 ? 's' : ''}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[12px] text-white/30">
+                        <Clock className="w-3.5 h-3.5 text-white/20" />
+                        <span>
+                          {client.last_contact
+                            ? formatDistanceToNow(new Date(client.last_contact), { locale: ptBR, addSuffix: true })
+                            : 'sem contato'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="w-4 h-4 text-white/15 flex-shrink-0 group-hover:text-white/35 transition-colors" />
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
