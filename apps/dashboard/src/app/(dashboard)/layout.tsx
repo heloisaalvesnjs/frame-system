@@ -1,13 +1,21 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { TopBar } from '@/components/layout/TopBar'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Close drawer on route change
+  useEffect(() => {
+    setDrawerOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,8 +35,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-ui-bg">
-      <Sidebar />
-      <main className="flex-1 md:ml-60 min-h-screen pt-16 md:pt-0">{children}</main>
+      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+        <TopBar onMenuClick={() => setDrawerOpen(true)} />
+        <main className="flex-1 pt-14">{children}</main>
+      </div>
     </div>
   )
 }
