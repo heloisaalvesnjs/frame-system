@@ -25,7 +25,7 @@ interface Message {
   id: string
   content: string
   role: 'user' | 'assistant'
-  created_at: string
+  sent_at: string
 }
 
 // ─── Conversation List Item ───────────────────────────────────────
@@ -107,10 +107,9 @@ function MessageBubble({ message }: { message: Message }) {
       >
         <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
         <p className={cn('text-xs mt-1', isUser ? 'text-white/25' : 'text-white/60')}>
-          {new Date(message.created_at).toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {message.sent_at
+            ? new Date(message.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : ''}
         </p>
       </div>
     </div>
