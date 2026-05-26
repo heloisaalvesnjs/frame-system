@@ -2,15 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, TrendingUp, Droplets, ClipboardList } from 'lucide-react'
+import { Home, Calendar, CalendarPlus, TrendingUp, Droplets, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/p/home',     label: 'Início',      icon: Home },
-  { href: '/p/agenda',   label: 'Agenda',      icon: Calendar },
-  { href: '/p/tracking', label: 'Evolução',    icon: TrendingUp },
-  { href: '/p/habits',   label: 'Hábitos',     icon: Droplets },
-  { href: '/p/checkin',  label: 'Check-in',    icon: ClipboardList },
+  { href: '/p/home',     label: 'Início',    icon: Home },
+  { href: '/p/agenda',   label: 'Consultas', icon: Calendar },
+  { href: '/p/agendar',  label: 'Agendar',   icon: CalendarPlus },
+  { href: '/p/habits',   label: 'Hábitos',   icon: Droplets },
+  { href: '/p/checkin',  label: 'Check-in',  icon: ClipboardList },
 ]
 
 export function PatientNav({ checkinPending = false }: { checkinPending?: boolean }) {

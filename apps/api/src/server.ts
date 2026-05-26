@@ -16,6 +16,7 @@ import { internalRoutes } from './routes/internal.routes'
 import { metricsRoutes } from './routes/metrics.routes'
 import { clientRoutes } from './routes/client.routes'
 import { patientRoutes } from './routes/patient.routes'
+import { adminRoutes }   from './routes/admin.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 
@@ -80,6 +81,7 @@ app.register(internalRoutes, { prefix: '/api/internal' })
 app.register(metricsRoutes,  { prefix: '/api/metrics' })
 app.register(clientRoutes,   { prefix: '/api/clients' })
 app.register(patientRoutes,  { prefix: '/api/patient' })
+app.register(adminRoutes,    { prefix: '/api/admin' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))

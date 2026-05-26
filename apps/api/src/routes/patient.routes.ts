@@ -1,8 +1,17 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 import { query, queryOne } from '../db'
 import { sendMessage } from '../services/whatsapp.service'
+
+// ── Helper: gerar código de convite (6 chars alfanum maiúsculo) ───────────────
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // sem 0/O/1/I confusos
+  let code = ''
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  return code
+}
 
 // ── Patient JWT middleware ──────────────────────────────────────────────────
 async function authenticatePatient(request: any, reply: any) {
@@ -121,6 +130,227 @@ export async function patientRoutes(app: FastifyInstance) {
     }, { expiresIn: '30d' })
 
     return reply.send({ token: jwt, client })
+  })
+
+  // ── AUTH: REGISTRO COM CÓDIGO DE CONVITE ──────────────────────────────────
+
+  /**
+   * POST /api/patient/auth/register
+   * Público: paciente cria conta usando código de convite do nutri
+   */
+  app.post('/auth/register', async (request, reply) => {
+    const schema = z.object({
+      name:        z.string().min(2),
+      phone:       z.string().min(8),
+      email:       z.string().email().optional(),
+      password:    z.string().min(6),
+      invite_code: z.string().length(6),
+    })
+    const body = schema.parse(request.body)
+
+    const code = await queryOne<any>(
+      `SELECT * FROM patient_invite_codes WHERE code = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [body.invite_code.toUpperCase()]
+    )
+    if (!code) return reply.code(400).send({ error: 'Código de convite inválido ou expirado' })
+
+    const existing = await queryOne(
+      `SELECT id FROM patient_accounts WHERE nutritionist_id = $1 AND phone = $2`,
+      [code.nutritionist_id, body.phone]
+    )
+    if (existing) return reply.code(409).send({ error: 'Já existe uma conta com este telefone' })
+
+    const hash = await bcrypt.hash(body.password, 10)
+
+    // Get or create clients record
+    let clientId: string | null = code.client_id ?? null
+    if (!clientId) {
+      const phone = body.phone.replace(/\D/g, '')
+      const existingClient = await queryOne<{ id: string }>(
+        `SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2`,
+        [code.nutritionist_id, phone]
+      )
+      if (existingClient) {
+        clientId = existingClient.id
+      } else {
+        const [newClient] = await query<{ id: string }>(
+          `INSERT INTO clients (nutritionist_id, name, phone) VALUES ($1, $2, $3) RETURNING id`,
+          [code.nutritionist_id, body.name, phone]
+        )
+        clientId = newClient.id
+      }
+    }
+
+    if (clientId && body.name) {
+      await query(
+        `UPDATE clients SET name = $1 WHERE id = $2 AND (name IS NULL OR name = 'Cliente')`,
+        [body.name, clientId]
+      )
+    }
+
+    const [account] = await query<any>(
+      `INSERT INTO patient_accounts (nutritionist_id, client_id, name, phone, email, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, nutritionist_id, client_id, name, phone, email`,
+      [code.nutritionist_id, clientId, body.name, body.phone, body.email ?? null, hash]
+    )
+
+    await query(
+      `UPDATE patient_invite_codes SET used_at = NOW(), used_by = $1 WHERE id = $2`,
+      [account.id, code.id]
+    )
+
+    const token = app.jwt.sign(
+      { clientId: account.client_id, patientAccountId: account.id, nutritionistId: account.nutritionist_id, role: 'patient' },
+      { expiresIn: '30d' }
+    )
+    return reply.code(201).send({ token, account })
+  })
+
+  /**
+   * POST /api/patient/auth/login
+   * Público: paciente faz login com telefone/email + senha
+   */
+  app.post('/auth/login', async (request, reply) => {
+    const schema = z.object({ login: z.string(), password: z.string() })
+    const body = schema.parse(request.body)
+
+    const account = await queryOne<any>(
+      `SELECT * FROM patient_accounts WHERE (phone = $1 OR email = $1) AND is_active = true`,
+      [body.login]
+    )
+    if (!account) return reply.code(401).send({ error: 'Credenciais inválidas' })
+
+    const valid = await bcrypt.compare(body.password, account.password_hash)
+    if (!valid) return reply.code(401).send({ error: 'Credenciais inválidas' })
+
+    const token = app.jwt.sign(
+      { clientId: account.client_id, patientAccountId: account.id, nutritionistId: account.nutritionist_id, role: 'patient' },
+      { expiresIn: '30d' }
+    )
+    const { password_hash, ...safe } = account
+    return reply.send({ token, account: safe })
+  })
+
+  // ── INVITE CODES (nutricionista gera) ─────────────────────────────────────
+
+  app.post('/invite-codes', { onRequest: [(app as any).authenticate] }, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const schema = z.object({ clientId: z.string().uuid().optional() })
+    const { clientId } = schema.parse(request.body)
+
+    if (clientId) {
+      const c = await queryOne(`SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`, [clientId, nutritionistId])
+      if (!c) return reply.code(404).send({ error: 'Cliente não encontrado' })
+    }
+
+    let code = generateInviteCode()
+    for (let i = 0; i < 10; i++) {
+      const exists = await queryOne(`SELECT id FROM patient_invite_codes WHERE code = $1`, [code])
+      if (!exists) break
+      code = generateInviteCode()
+    }
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const [row] = await query<any>(
+      `INSERT INTO patient_invite_codes (nutritionist_id, code, client_id, expires_at)
+       VALUES ($1, $2, $3, $4) RETURNING id, code, client_id, expires_at, created_at`,
+      [nutritionistId, code, clientId ?? null, expiresAt]
+    )
+    return reply.code(201).send({ invite: row })
+  })
+
+  app.get('/invite-codes', { onRequest: [(app as any).authenticate] }, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const rows = await query<any>(
+      `SELECT pic.id, pic.code, pic.expires_at, pic.used_at, pic.created_at,
+              c.name AS client_name, c.phone AS client_phone
+       FROM patient_invite_codes pic
+       LEFT JOIN clients c ON c.id = pic.client_id
+       WHERE pic.nutritionist_id = $1 ORDER BY pic.created_at DESC LIMIT 20`,
+      [nutritionistId]
+    )
+    return reply.send({ codes: rows })
+  })
+
+  // ── DISPONIBILIDADE + AGENDAMENTO ─────────────────────────────────────────
+
+  app.get('/availability', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { nutritionistId } = (request as any).user
+    const slots = await query<any>(
+      `SELECT day_of_week, start_time, end_time, slot_duration FROM availability
+       WHERE nutritionist_id = $1 AND is_active = true`,
+      [nutritionistId]
+    )
+    if (slots.length === 0) return reply.send({ dates: [] })
+
+    const booked = await query<{ scheduled_at: string }>(
+      `SELECT scheduled_at FROM appointments
+       WHERE nutritionist_id = $1 AND status IN ('scheduled','confirmed')
+         AND scheduled_at >= NOW() AND scheduled_at < NOW() + INTERVAL '30 days'`,
+      [nutritionistId]
+    )
+    const bookedSet = new Set(booked.map(b => new Date(b.scheduled_at).toISOString().slice(0, 16)))
+
+    const now = new Date()
+    const result: { date: string; slots: string[] }[] = []
+
+    for (let d = 0; d < 30; d++) {
+      const day = new Date(now)
+      day.setDate(now.getDate() + d + 1)
+      day.setHours(0, 0, 0, 0)
+      const dow = day.getDay()
+      const avail = slots.find((s: any) => s.day_of_week === dow)
+      if (!avail) continue
+
+      const dateStr = day.toISOString().slice(0, 10)
+      const [sh, sm] = avail.start_time.split(':').map(Number)
+      const [eh, em] = avail.end_time.split(':').map(Number)
+      const startMin = sh * 60 + sm
+      const endMin   = eh * 60 + em
+      const dur      = avail.slot_duration || 60
+
+      const daySlots: string[] = []
+      for (let t = startMin; t + dur <= endMin; t += dur) {
+        const hh = String(Math.floor(t / 60)).padStart(2, '0')
+        const mm = String(t % 60).padStart(2, '0')
+        const iso = `${dateStr}T${hh}:${mm}`
+        if (!bookedSet.has(iso)) daySlots.push(`${hh}:${mm}`)
+      }
+      if (daySlots.length > 0) result.push({ date: dateStr, slots: daySlots })
+    }
+    return reply.send({ dates: result })
+  })
+
+  app.post('/appointments', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId, nutritionistId } = (request as any).user
+    const schema = z.object({
+      date:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      time:     z.string().regex(/^\d{2}:\d{2}$/),
+      modality: z.enum(['online', 'presencial']).default('online'),
+    })
+    const body = schema.parse(request.body)
+    const scheduledAt = `${body.date}T${body.time}:00`
+
+    const conflict = await queryOne(
+      `SELECT id FROM appointments WHERE nutritionist_id = $1 AND scheduled_at = $2 AND status IN ('scheduled','confirmed')`,
+      [nutritionistId, scheduledAt]
+    )
+    if (conflict) return reply.code(409).send({ error: 'Horário não disponível' })
+
+    const dow = new Date(scheduledAt).getDay()
+    const avail = await queryOne<{ slot_duration: number }>(
+      `SELECT slot_duration FROM availability WHERE nutritionist_id = $1 AND day_of_week = $2 AND is_active = true`,
+      [nutritionistId, dow]
+    )
+    const duration = avail?.slot_duration ?? 60
+
+    const [appt] = await query<any>(
+      `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'scheduled', 'patient') RETURNING id, scheduled_at, duration, modality, status`,
+      [nutritionistId, clientId, scheduledAt, duration, body.modality]
+    )
+    return reply.code(201).send({ appointment: appt })
   })
 
   // ── PROFILE ─────────────────────────────────────────────────────────────

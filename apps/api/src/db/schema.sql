@@ -204,6 +204,45 @@ CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(nutritioni
 CREATE INDEX IF NOT EXISTS idx_appointments_created  ON appointments(nutritionist_id, created_at);
 
 -- --------------------------------
+-- Auth completo: mestre, aprovação, convites
+-- --------------------------------
+
+-- Status e conta mestre para nutricionistas
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+  -- 'pending' | 'active' | 'suspended'
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS is_master BOOLEAN DEFAULT false;
+
+-- Contas próprias dos pacientes (email/phone + senha)
+CREATE TABLE IF NOT EXISTS patient_accounts (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  client_id       UUID REFERENCES clients(id) ON DELETE SET NULL,
+  name            TEXT NOT NULL,
+  phone           TEXT NOT NULL,
+  email           TEXT,
+  password_hash   TEXT NOT NULL,
+  is_active       BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(nutritionist_id, phone)
+);
+CREATE INDEX IF NOT EXISTS idx_patient_accounts_phone ON patient_accounts(phone);
+
+-- Códigos de convite (nutri gera, paciente usa para criar conta)
+CREATE TABLE IF NOT EXISTS patient_invite_codes (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  code            TEXT UNIQUE NOT NULL,       -- 6 chars alfanumérico maiúsculo
+  client_id       UUID REFERENCES clients(id) ON DELETE SET NULL,
+  used_by         UUID REFERENCES patient_accounts(id) ON DELETE SET NULL,
+  used_at         TIMESTAMPTZ,
+  expires_at      TIMESTAMPTZ NOT NULL,       -- 7 dias
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON patient_invite_codes(code);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_nutri ON patient_invite_codes(nutritionist_id);
+
+-- --------------------------------
 -- Epic 7: App do Paciente
 -- --------------------------------
 
