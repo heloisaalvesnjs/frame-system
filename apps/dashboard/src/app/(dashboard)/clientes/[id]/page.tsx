@@ -7,7 +7,7 @@ import api from '@/lib/api'
 import {
   ArrowLeft, Calendar, MessageSquare, Edit2, Save, X, Phone, Target,
   FileText, Clock, Send, TrendingUp, Droplets, Dumbbell, ClipboardList,
-  Scale, ChevronUp, ChevronDown, Minus
+  Scale, ChevronUp, ChevronDown, Minus, KeyRound, Copy, RefreshCw, CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format, parseISO } from 'date-fns'
@@ -35,6 +35,12 @@ interface Checkin { id: string; week_start: string; hunger_score: number; energy
 interface ActivityEntry { id: string; activity_type: string; duration_minutes: number | null; notes: string | null; logged_at: string }
 interface WaterStat { logged_at: string; total_ml: number }
 interface TrackingData { weightLogs: WeightEntry[]; checkins: Checkin[]; activityLogs: ActivityEntry[]; waterStats: WaterStat[] }
+
+interface InviteCode {
+  id: string; code: string; client_id: string | null
+  used_by: string | null; used_at: string | null
+  expires_at: string; created_at: string
+}
 
 const STATUS_LABEL: Record<string, string> = { scheduled: 'Agendada', confirmed: 'Confirmada', cancelled: 'Cancelada', completed: 'Realizada' }
 const STATUS_COLOR: Record<string, string> = {
@@ -64,7 +70,8 @@ export default function ClientProfilePage() {
   const router = useRouter()
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<'appointments' | 'conversations' | 'tracking'>('appointments')
+  const [tab, setTab] = useState<'appointments' | 'conversations' | 'tracking' | 'access'>('appointments')
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: '', goal: '', notes: '', birthdate: '' })
 
@@ -85,6 +92,28 @@ export default function ClientProfilePage() {
     enabled: tab === 'tracking',
     staleTime: 30_000,
   })
+
+  const { data: inviteCodes, refetch: refetchCodes } = useQuery<InviteCode[]>({
+    queryKey: ['invite-codes', id],
+    queryFn: async () => {
+      const { data: d } = await api.get('/api/patient/invite-codes')
+      return (d.codes as InviteCode[]).filter((c: InviteCode) => c.client_id === id)
+    },
+    enabled: tab === 'access',
+    staleTime: 30_000,
+  })
+
+  const generateCode = useMutation({
+    mutationFn: () => api.post('/api/patient/invite-codes', { client_id: id }),
+    onSuccess: () => { refetchCodes(); toast.success('Código gerado!') },
+    onError: () => toast.error('Erro ao gerar código'),
+  })
+
+  function copyCode(code: string) {
+    navigator.clipboard?.writeText(code).catch(() => {})
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
 
   useEffect(() => {
     if (data?.client) {
@@ -248,11 +277,12 @@ export default function ClientProfilePage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 bg-ui-card border border-white/[0.06] rounded-xl w-fit">
+      <div className="flex gap-1 mb-5 p-1 bg-ui-card border border-white/[0.06] rounded-xl w-fit flex-wrap">
         {([
           { key: 'appointments',  label: 'Consultas',       count: appointments.length },
           { key: 'conversations', label: 'Conversas',       count: conversations.length },
           { key: 'tracking',      label: 'Acompanhamento',  count: null },
+          { key: 'access',        label: 'Acesso',          count: null },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-brand-500/10 text-brand-400' : 'text-white/40 hover:text-white'}`}>
@@ -469,6 +499,111 @@ export default function ClientProfilePage() {
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {/* ── Tab: Acesso ── */}
+      {tab === 'access' && (
+        <div className="space-y-5">
+
+          {/* Info card */}
+          <div className="flex items-start gap-3 bg-brand-500/5 border border-brand-500/15 rounded-2xl p-4">
+            <KeyRound className="w-4 h-4 text-brand-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-brand-300/80 leading-relaxed">
+              Gere um <strong>código de acesso</strong> para este paciente criar a conta no portal. O código expira em 7 dias e só pode ser usado uma vez.
+              <br />
+              <span className="text-white/35 mt-1 block">O paciente acessa o portal pelo link do site e usa o código para se cadastrar.</span>
+            </div>
+          </div>
+
+          {/* Generate button */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white/80">Códigos de acesso</h3>
+            <button
+              onClick={() => generateCode.mutate()}
+              disabled={generateCode.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg shadow-brand-500/20"
+            >
+              {generateCode.isPending
+                ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                : <KeyRound className="w-3.5 h-3.5" />}
+              Gerar novo código
+            </button>
+          </div>
+
+          {/* Codes list */}
+          {!inviteCodes || inviteCodes.length === 0 ? (
+            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
+              <KeyRound className="w-8 h-8 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/25">Nenhum código gerado ainda</p>
+              <p className="text-xs text-white/15 mt-1">Clique em "Gerar novo código" para liberar o acesso</p>
+            </div>
+          ) : (
+            <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+              <ul className="divide-y divide-white/[0.04]">
+                {inviteCodes.map(ic => {
+                  const expired = new Date(ic.expires_at) < new Date()
+                  const used = !!ic.used_by
+                  return (
+                    <li key={ic.id} className="flex items-center gap-4 px-5 py-4">
+                      {/* Code badge */}
+                      <div className={`font-mono text-lg font-bold tracking-widest px-3 py-1.5 rounded-xl border flex-shrink-0 ${
+                        used
+                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                          : expired
+                            ? 'text-white/20 bg-white/5 border-white/10 line-through'
+                            : 'text-brand-400 bg-brand-500/10 border-brand-500/20'
+                      }`}>
+                        {ic.code}
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex-1 min-w-0">
+                        {used ? (
+                          <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Utilizado
+                          </p>
+                        ) : expired ? (
+                          <p className="text-xs text-white/25">Expirado</p>
+                        ) : (
+                          <p className="text-xs text-white/50">
+                            Expira {formatDistanceToNow(new Date(ic.expires_at), { locale: ptBR, addSuffix: true })}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-white/20 mt-0.5">
+                          Criado em {format(new Date(ic.created_at), "d 'de' MMM", { locale: ptBR })}
+                        </p>
+                      </div>
+
+                      {/* Copy button (only if unused & not expired) */}
+                      {!used && !expired && (
+                        <button
+                          onClick={() => copyCode(ic.code)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0 ${
+                            copiedCode === ic.code
+                              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                              : 'text-white/40 bg-white/5 border-white/10 hover:text-white/70 hover:border-white/20'
+                          }`}
+                          title="Copiar código"
+                        >
+                          {copiedCode === ic.code
+                            ? <><CheckCircle2 className="w-3.5 h-3.5" /> Copiado</>
+                            : <><Copy className="w-3.5 h-3.5" /> Copiar</>}
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Quick share hint */}
+          {inviteCodes && inviteCodes.some(c => !c.used_by && new Date(c.expires_at) > new Date()) && (
+            <p className="text-xs text-white/20 text-center">
+              Compartilhe o código com o paciente pelo WhatsApp. Ele acessa o site, clica em "Paciente → Criar conta" e insere o código.
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
-  Settings, LogOut
+  Settings, LogOut, Shield
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -57,7 +57,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   : 'text-white/35 hover:text-white/80 hover:bg-white/[0.04]'
               )}
             >
-              {/* Active accent bar */}
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-500 rounded-full" />
               )}
@@ -66,6 +65,29 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </Link>
           )
         })}
+
+        {/* Admin — only visible to master account */}
+        {(user as any)?.is_master && (
+          <>
+            <div className="my-2 border-t border-white/[0.05]" />
+            <Link
+              href="/admin"
+              onClick={onClose}
+              className={cn(
+                'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                pathname.startsWith('/admin')
+                  ? 'bg-amber-500/10 text-amber-400'
+                  : 'text-white/30 hover:text-amber-400/80 hover:bg-amber-500/[0.06]'
+              )}
+            >
+              {pathname.startsWith('/admin') && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber-500 rounded-full" />
+              )}
+              <Shield className={cn('w-4 h-4 flex-shrink-0 transition-colors', pathname.startsWith('/admin') ? 'text-amber-400' : 'text-white/20 group-hover:text-amber-400/70')} />
+              Admin
+            </Link>
+          </>
+        )}
       </nav>
 
       {/* User */}
