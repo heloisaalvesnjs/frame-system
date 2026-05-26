@@ -32,7 +32,7 @@ export default function LoginPage() {
     try {
       setError('')
       await login(data.email, data.password)
-      router.push('/conversas')
+      router.push('/dashboard')
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err

@@ -116,7 +116,6 @@ const KANBAN_STAGES: Lead['stage'][] = ['new', 'engaged', 'scheduled', 'converte
 function KanbanColumn({ stage, leads }: { stage: Lead['stage']; leads: Lead[] }) {
   return (
     <div className="flex-1 min-w-0">
-      {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <span className={`w-2 h-2 rounded-full ${STAGE_DOT[stage]}`} />
         <span className="text-xs font-semibold text-white/50 uppercase tracking-wide">
@@ -124,8 +123,6 @@ function KanbanColumn({ stage, leads }: { stage: Lead['stage']; leads: Lead[] })
         </span>
         <span className="ml-auto text-xs text-white/20 font-mono">{leads.length}</span>
       </div>
-
-      {/* Cards */}
       <div className="flex flex-col gap-2">
         {leads.length === 0 && (
           <div className="border border-dashed border-white/5 rounded-xl p-4 text-center text-xs text-white/20">
@@ -201,17 +198,14 @@ export default function DashboardPage() {
   const m = metricsData
   const leads = pipelineData ?? []
 
-  // Group leads by stage
   const byStage = Object.fromEntries(
     KANBAN_STAGES.map(s => [s, leads.filter(l => l.stage === s)])
   ) as Record<Lead['stage'], Lead[]>
 
-  // Greeting
   const hour = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getHours()
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
   const firstName = user?.name?.split(' ')[0] ?? ''
 
-  // Revenue estimate
   const priceNum = m?.consultation_price
     ? parseFloat(m.consultation_price.replace(/[^0-9,.]/g, '').replace(',', '.'))
     : null

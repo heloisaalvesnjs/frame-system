@@ -7,11 +7,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/',             label: 'Dashboard',     icon: LayoutDashboard, exact: true },
-  { href: '/conversas',    label: 'Conversas',     icon: MessageSquare },
-  { href: '/agenda',       label: 'Agenda',        icon: Calendar },
-  { href: '/clientes',     label: 'Clientes',      icon: Users },
-  { href: '/configuracoes',label: 'Configurações', icon: Settings },
+  { href: '/dashboard',    label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/conversas',     label: 'Conversas',     icon: MessageSquare },
+  { href: '/agenda',        label: 'Agenda',        icon: Calendar },
+  { href: '/clientes',      label: 'Clientes',      icon: Users },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -32,8 +32,8 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
-        {navItems.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href)
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname.startsWith(href)
           return (
             <Link
               key={href}
