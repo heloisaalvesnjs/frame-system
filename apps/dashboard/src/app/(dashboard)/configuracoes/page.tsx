@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon } from 'lucide-react'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -48,7 +49,6 @@ type ProfileData = z.infer<typeof profileSchema>
 
 function TabProfile() {
   const { user, refreshUser } = useAuth()
-  const [success, setSuccess] = useState(false)
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
@@ -67,10 +67,13 @@ function TabProfile() {
   }, [user, reset])
 
   async function onSubmit(data: ProfileData) {
-    await api.put('/api/nutritionists/profile', data)
-    await refreshUser()
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
+    try {
+      await api.put('/api/nutritionists/profile', data)
+      await refreshUser()
+      toast.success('Perfil salvo com sucesso!')
+    } catch {
+      toast.error('Erro ao salvar perfil. Tente novamente.')
+    }
   }
 
   return (
@@ -93,12 +96,6 @@ function TabProfile() {
         <Button type="submit" loading={isSubmitting}>
           Salvar alterações
         </Button>
-        {success && (
-          <span className="flex items-center gap-1.5 text-sm text-brand-400">
-            <CheckCircle className="w-4 h-4" />
-            Salvo com sucesso
-          </span>
-        )}
       </div>
     </form>
   )
@@ -132,7 +129,6 @@ const MODALITIES = [
 
 function TabAssistant() {
   const queryClient = useQueryClient()
-  const [success, setSuccess] = useState(false)
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -168,10 +164,13 @@ function TabAssistant() {
   }, [assistant, reset])
 
   async function onSubmit(data: AssistantFormData) {
-    await api.post('/api/assistants', data)
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
-    queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    try {
+      await api.post('/api/assistants', data)
+      toast.success('Assistente salva com sucesso!')
+      queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    } catch {
+      toast.error('Erro ao salvar. Tente novamente.')
+    }
   }
 
   async function handleUploadPdf() {
@@ -184,15 +183,23 @@ function TabAssistant() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setPdfFile(null)
+      toast.success('PDF enviado e processado!')
       queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    } catch {
+      toast.error('Erro ao enviar PDF. Verifique o arquivo.')
     } finally {
       setUploading(false)
     }
   }
 
   async function handleDeletePdf() {
-    await api.delete('/api/assistants/pdf')
-    queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    try {
+      await api.delete('/api/assistants/pdf')
+      toast.success('PDF removido.')
+      queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    } catch {
+      toast.error('Erro ao remover PDF.')
+    }
   }
 
   const currentModality = watch('consultation_modalities')
@@ -384,12 +391,6 @@ function TabAssistant() {
 
         <div className="flex items-center gap-3">
           <Button type="submit" loading={isSubmitting}>Salvar</Button>
-          {success && (
-            <span className="flex items-center gap-1.5 text-sm text-brand-400">
-              <CheckCircle className="w-4 h-4" />
-              Salvo
-            </span>
-          )}
         </div>
       </form>
 
@@ -466,7 +467,6 @@ const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: s
 function TabHorarios() {
   const [schedule, setSchedule] = useState(DEFAULT_SCHEDULE)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   const { data: availabilityData } = useQuery<any[]>({
@@ -524,8 +524,9 @@ function TabHorarios() {
         }))
 
       await api.put('/api/nutritionists/availability', entries)
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      toast.success('Horários salvos com sucesso!')
+    } catch {
+      toast.error('Erro ao salvar horários.')
     } finally {
       setSaving(false)
     }
@@ -604,12 +605,6 @@ function TabHorarios() {
 
       <div className="flex items-center gap-3 pt-1">
         <Button onClick={handleSave} loading={saving}>Salvar horários</Button>
-        {success && (
-          <span className="flex items-center gap-1.5 text-sm text-brand-400">
-            <CheckCircle className="w-4 h-4" />
-            Salvo
-          </span>
-        )}
       </div>
     </div>
   )
