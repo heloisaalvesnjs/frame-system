@@ -15,6 +15,7 @@ import { webhookRoutes } from './routes/webhook.routes'
 import { internalRoutes } from './routes/internal.routes'
 import { metricsRoutes } from './routes/metrics.routes'
 import { clientRoutes } from './routes/client.routes'
+import { patientRoutes } from './routes/patient.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 
@@ -76,8 +77,9 @@ app.register(conversationRoutes, { prefix: '/api/conversations' })
 app.register(whatsappRoutes, { prefix: '/api/whatsapp' })
 app.register(webhookRoutes, { prefix: '/webhook' })
 app.register(internalRoutes, { prefix: '/api/internal' })
-app.register(metricsRoutes, { prefix: '/api/metrics' })
-app.register(clientRoutes,  { prefix: '/api/clients' })
+app.register(metricsRoutes,  { prefix: '/api/metrics' })
+app.register(clientRoutes,   { prefix: '/api/clients' })
+app.register(patientRoutes,  { prefix: '/api/patient' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))

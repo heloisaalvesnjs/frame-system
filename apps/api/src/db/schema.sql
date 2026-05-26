@@ -202,3 +202,68 @@ ALTER TABLE assistants     ADD COLUMN IF NOT EXISTS followup_delay_hours INT DEF
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthdate DATE;
 CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(nutritionist_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_appointments_created  ON appointments(nutritionist_id, created_at);
+
+-- --------------------------------
+-- Epic 7: App do Paciente
+-- --------------------------------
+
+-- Magic-link tokens (one-time, 72h)
+CREATE TABLE IF NOT EXISTS patient_tokens (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id  UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_patient_tokens_token ON patient_tokens(token);
+
+-- Registro de peso e medidas
+CREATE TABLE IF NOT EXISTS weight_logs (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id  UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  weight_kg  NUMERIC(5,2),
+  waist_cm   NUMERIC(5,1),
+  hip_cm     NUMERIC(5,1),
+  notes      TEXT,
+  logged_at  DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_weight_logs_client ON weight_logs(client_id, logged_at DESC);
+
+-- Registro de consumo de água (por entrada, não agrupado)
+CREATE TABLE IF NOT EXISTS water_logs (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id  UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  amount_ml  INT NOT NULL DEFAULT 250,
+  logged_at  DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_water_logs_client ON water_logs(client_id, logged_at DESC);
+
+-- Registro de atividade física
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id        UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  activity_type    TEXT NOT NULL,
+  duration_minutes INT,
+  notes            TEXT,
+  logged_at        DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_client ON activity_logs(client_id, logged_at DESC);
+
+-- Check-in semanal (1 por semana por paciente)
+CREATE TABLE IF NOT EXISTS weekly_checkins (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id     UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  week_start    DATE NOT NULL,
+  hunger_score  INT CHECK (hunger_score BETWEEN 1 AND 5),
+  energy_score  INT CHECK (energy_score BETWEEN 1 AND 5),
+  sleep_score   INT CHECK (sleep_score BETWEEN 1 AND 5),
+  mood_score    INT CHECK (mood_score BETWEEN 1 AND 5),
+  notes         TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(client_id, week_start)
+);
+CREATE INDEX IF NOT EXISTS idx_checkins_client ON weekly_checkins(client_id, week_start DESC);

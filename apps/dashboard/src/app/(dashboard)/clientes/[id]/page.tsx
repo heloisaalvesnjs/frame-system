@@ -5,11 +5,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import {
-  ArrowLeft, Calendar, MessageSquare, Edit2, Save, X, Phone, Target, FileText, Clock
+  ArrowLeft, Calendar, MessageSquare, Edit2, Save, X, Phone, Target, FileText, Clock, Send
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,20 @@ export default function ClientProfilePage() {
       })
     }
   }, [data])
+
+  const sendPortalLink = useMutation({
+    mutationFn: () => api.post('/api/patient/auth/request', { clientId: id }),
+    onSuccess: (res) => {
+      const link = res.data?.link
+      if (link) {
+        navigator.clipboard?.writeText(link).catch(() => {})
+        toast.success('Link enviado via WhatsApp e copiado!', { duration: 5000 })
+      } else {
+        toast.success('Link enviado via WhatsApp!')
+      }
+    },
+    onError: () => toast.error('Erro ao gerar link. WhatsApp conectado?'),
+  })
 
   const saveMutation = useMutation({
     mutationFn: async (body: typeof form) => {
@@ -241,13 +256,24 @@ export default function ClientProfilePage() {
                 )}
               </div>
             </div>
-            <button
-              onClick={() => setEditing(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs rounded-lg transition-colors"
-            >
-              <Edit2 className="w-3 h-3" />
-              Editar
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => sendPortalLink.mutate()}
+                disabled={sendPortalLink.isPending}
+                title="Envia link de acesso ao portal do paciente via WhatsApp"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/20 text-brand-400 hover:text-brand-300 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Send className="w-3 h-3" />
+                {sendPortalLink.isPending ? 'Enviando…' : 'Portal do paciente'}
+              </button>
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs rounded-lg transition-colors"
+              >
+                <Edit2 className="w-3 h-3" />
+                Editar
+              </button>
+            </div>
           </div>
         )}
 
