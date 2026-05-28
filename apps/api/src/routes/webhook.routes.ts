@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
 import { processMessage } from '../services/ai.service'
-import { sendMessage } from '../services/whatsapp.service'
+import { sendMessage, sendWithHumanDelay } from '../services/whatsapp.service'
 import { isWithinWorkingHours } from '../services/appointment.service'
 
 export async function webhookRoutes(app: FastifyInstance) {
@@ -137,7 +137,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       }
       // ─────────────────────────────────────────────────────────
 
-      // Processa com a IA (busca assistente, histórico, chama Claude)
+      // Processa com a IA (busca assistente, historico, chama Claude)
       const response = await processMessage({
         nutritionist_id,
         client_phone: phone,
@@ -145,8 +145,9 @@ export async function webhookRoutes(app: FastifyInstance) {
         conversation_id: conversation?.id
       })
 
-      // Envia resposta via Z-API
-      await sendMessage(phone, response.text)
+      // Envia com delay humanizado (leitura + digitacao simulados)
+      const messageId = payload.messageId || payload.id || undefined
+      await sendWithHumanDelay(phone, response.text, messageId)
 
     } catch (err) {
       app.log.error(err, '[webhook] Erro ao processar mensagem')

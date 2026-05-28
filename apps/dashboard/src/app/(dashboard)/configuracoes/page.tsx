@@ -113,6 +113,7 @@ const assistantSchema = z.object({
   consultation_modalities: z.string().optional(),
   vacation_mode: z.boolean().optional(),
   vacation_message: z.string().optional(),
+  service_plans: z.string().optional(),
 })
 type AssistantFormData = z.infer<typeof assistantSchema>
 
@@ -160,6 +161,7 @@ function TabAssistant() {
         vacation_message: assistant.vacation_message || '',
         followup_enabled: assistant.followup_enabled ?? true,
         followup_delay_hours: assistant.followup_delay_hours ?? 4,
+        service_plans: (assistant as any).service_plans || '',
       })
     }
   }, [assistant, reset])
@@ -394,6 +396,19 @@ function TabAssistant() {
           <Button type="submit" loading={isSubmitting}>Salvar</Button>
         </div>
       </form>
+
+      {/* Serviços e planos */}
+      <div className="border-t border-ui-border pt-6">
+        <h3 className="text-sm font-semibold text-white/80 mb-1">Serviços e planos</h3>
+        <p className="text-xs text-white/30 mb-3">
+          Descreva seus pacotes, valores e o que está incluso. A assistente usará isso para responder perguntas sobre preço e planos.
+        </p>
+        <Textarea
+          placeholder={`Ex:\nConsulta avulsa: R$ 250 (90 min) — inclui anamnese, plano alimentar e 1 retorno\nPacote trimestral: R$ 600 — 3 consultas + suporte por WhatsApp\nRetorno: R$ 150 (45 min)\n\nForma de pagamento: Pix, cartão ou transferência.`}
+          rows={6}
+          {...register('service_plans')}
+        />
+      </div>
 
       {/* PDF */}
       <div className="border-t border-ui-border pt-6">

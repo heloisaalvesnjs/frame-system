@@ -358,3 +358,4 @@ CREATE INDEX IF NOT EXISTS idx_patient_messages_chat ON patient_messages(nutriti
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthdate DATE;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS is_master BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS service_plans TEXT;
