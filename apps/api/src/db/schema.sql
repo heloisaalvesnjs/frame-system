@@ -351,3 +351,10 @@ CREATE TABLE IF NOT EXISTS patient_messages (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_patient_messages_chat ON patient_messages(nutritionist_id, client_id, created_at);
+
+-- --------------------------------
+-- Migrations (additive columns)
+-- --------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthdate DATE;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS is_master BOOLEAN DEFAULT false;

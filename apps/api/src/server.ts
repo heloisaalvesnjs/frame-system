@@ -20,6 +20,8 @@ import { adminRoutes }   from './routes/admin.routes'
 import { featuresRoutes } from './routes/features.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
+import { readFileSync } from 'fs'
+import { db } from './db'
 
 const app = Fastify({
   logger: {
@@ -91,6 +93,15 @@ app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))
 // ── Start ──────────────────────────────────────────────────
 const start = async () => {
   try {
+    // Auto-migrate schema on startup
+    try {
+      const schema = readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf-8')
+      await db.query(schema)
+      console.log('🗄️  Schema sincronizado')
+    } catch (err) {
+      console.error('⚠️  Erro ao sincronizar schema (continuando):', err)
+    }
+
     const port = Number(process.env.API_PORT) || 3001
     await app.listen({ port, host: '0.0.0.0' })
     console.log(`\n🚀 Frame System API rodando na porta ${port}`)
