@@ -183,7 +183,8 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     : 'online'
 
   const aiName = assistant.name
-  const nutriName = nutritionist.name
+  // nutri_display_name tem prioridade — permite "Dr. David" independente do nome da conta
+  const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone = assistant.tone || 'acolhedor'
 
   const plansText = assistant.service_plans?.trim() || null

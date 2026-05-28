@@ -114,6 +114,7 @@ const assistantSchema = z.object({
   vacation_mode: z.boolean().optional(),
   vacation_message: z.string().optional(),
   service_plans: z.string().optional(),
+  nutri_display_name: z.string().optional(),
 })
 type AssistantFormData = z.infer<typeof assistantSchema>
 
@@ -162,6 +163,7 @@ function TabAssistant() {
         followup_enabled: assistant.followup_enabled ?? true,
         followup_delay_hours: assistant.followup_delay_hours ?? 4,
         service_plans: (assistant as any).service_plans || '',
+        nutri_display_name: (assistant as any).nutri_display_name || '',
       })
     }
   }, [assistant, reset])
@@ -212,12 +214,20 @@ function TabAssistant() {
     <div className="flex flex-col gap-7">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
 
-        {/* Nome */}
+        {/* Nome da assistente */}
         <Input
           label="Nome da assistente"
           placeholder="Ex: Sofia, Lara, Ana..."
           error={errors.name?.message}
           {...register('name')}
+        />
+
+        {/* Nome do nutricionista para o atendimento */}
+        <Input
+          label="Como o nutricionista deve ser chamado no atendimento"
+          placeholder="Ex: Dr. David, Dra. Ana, Dr. Carlos Silva..."
+          hint="A assistente usará esse nome com os clientes. Se vazio, usa o nome da sua conta."
+          {...register('nutri_display_name')}
         />
 
         {/* Tom */}

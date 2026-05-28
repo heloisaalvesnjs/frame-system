@@ -4,6 +4,15 @@ import { processMessage } from '../services/ai.service'
 import { sendMessage, sendWithHumanDelay } from '../services/whatsapp.service'
 import { isWithinWorkingHours } from '../services/appointment.service'
 
+// Deduplicacao: guarda messageIds processados nos ultimos 60s
+const recentlyProcessed = new Map<string, number>()
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, ts] of recentlyProcessed.entries()) {
+    if (now - ts > 60_000) recentlyProcessed.delete(key)
+  }
+}, 30_000)
+
 export async function webhookRoutes(app: FastifyInstance) {
 
   // POST /webhook/whatsapp — recebe mensagens do Z-API
@@ -19,6 +28,14 @@ export async function webhookRoutes(app: FastifyInstance) {
     if (!isReceived || fromMe || !phone || !messageText) {
       return reply.send({ ok: true })
     }
+
+    // Deduplicacao: ignora mensagem ja processada (Z-API retry)
+    const dedupeKey = payload.messageId || payload.id || `${phone}:${messageText}:${Date.now()}`
+    if (recentlyProcessed.has(dedupeKey)) {
+      app.log.warn(`[webhook] Duplicata ignorada: ${dedupeKey}`)
+      return reply.send({ ok: true })
+    }
+    recentlyProcessed.set(dedupeKey, Date.now())
 
     try {
       // Identifica a nutricionista pela conexão mais recente
@@ -137,23 +154,34 @@ export async function webhookRoutes(app: FastifyInstance) {
       }
       // ─────────────────────────────────────────────────────────
 
-      // Processa com a IA (busca assistente, historico, chama Claude)
-      const response = await processMessage({
-        nutritionist_id,
-        client_phone: phone,
-        message: messageText,
-        conversation_id: conversation?.id
-      })
+      // Retorna 200 IMEDIATAMENTE para a Z-API nao retentar
+      // O processamento acontece em background (fire-and-forget)
+      reply.send({ ok: true })
 
-      // Envia com delay humanizado (leitura + digitacao simulados)
-      const messageId = payload.messageId || payload.id || undefined
-      await sendWithHumanDelay(phone, response.text, messageId)
+      // Processa em background (sem await)
+      ;(async () => {
+        try {
+          const response = await processMessage({
+            nutritionist_id,
+            client_phone: phone,
+            message: messageText,
+            conversation_id: conversation?.id
+          })
+
+          const messageId = payload.messageId || payload.id || undefined
+          await sendWithHumanDelay(phone, response.text, messageId)
+        } catch (err) {
+          app.log.error(err, '[webhook] Erro ao processar mensagem em background')
+        }
+      })()
+
+      return // reply ja foi enviado acima
 
     } catch (err) {
-      app.log.error(err, '[webhook] Erro ao processar mensagem')
+      app.log.error(err, '[webhook] Erro antes do processamento')
     }
 
-    return reply.send({ ok: true }) // sempre 200 — Z-API não retenta em erro
+    return reply.send({ ok: true })
   })
 
   // POST /webhook/whatsapp-status — atualiza status de conexão
