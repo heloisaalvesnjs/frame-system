@@ -42,6 +42,39 @@ export async function clientRoutes(app: FastifyInstance) {
     return reply.send({ clients })
   })
 
+  // POST /api/clients — cadastrar cliente manualmente
+  app.post('/', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { name, phone, email, goal, notes, birthdate } = request.body as {
+      name?: string; phone: string; email?: string
+      goal?: string; notes?: string; birthdate?: string
+    }
+
+    if (!phone?.trim()) return reply.code(400).send({ error: 'Telefone é obrigatório' })
+
+    // Verifica duplicata por telefone
+    const existing = await queryOne<any>(
+      'SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2',
+      [nutritionistId, phone.trim()]
+    )
+    if (existing) return reply.code(409).send({ error: 'Já existe um cliente com esse telefone' })
+
+    const client = await queryOne<any>(
+      `INSERT INTO clients (nutritionist_id, name, phone, email, goal, notes, birthdate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [
+        nutritionistId,
+        name?.trim() || null,
+        phone.trim(),
+        email?.trim() || null,
+        goal?.trim() || null,
+        notes?.trim() || null,
+        birthdate || null,
+      ]
+    )
+    return reply.code(201).send({ client })
+  })
+
   // GET /api/clients/:clientId — perfil completo do cliente
   app.get('/:clientId', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user

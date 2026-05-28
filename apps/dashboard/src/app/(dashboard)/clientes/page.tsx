@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { Search, Users, Calendar, ChevronRight, Clock, UserPlus } from 'lucide-react'
+import { Search, Users, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 interface Client {
   id: string
@@ -39,8 +41,169 @@ function avatarColor(id: string) {
   return AVATAR_COLORS[n % AVATAR_COLORS.length]
 }
 
+// ── Modal de novo cliente ───────────────────────────────────────────────────
+
+function NovoClienteModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const router = useRouter()
+  const [form, setForm] = useState({ name: '', phone: '', email: '', goal: '', notes: '', birthdate: '' })
+  const [error, setError] = useState('')
+
+  const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
+
+  const create = useMutation({
+    mutationFn: () => api.post('/api/clients', {
+      name:      form.name.trim() || undefined,
+      phone:     form.phone.trim(),
+      email:     form.email.trim() || undefined,
+      goal:      form.goal.trim() || undefined,
+      notes:     form.notes.trim() || undefined,
+      birthdate: form.birthdate || undefined,
+    }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['clients'] })
+      toast.success('Cliente cadastrado!')
+      onClose()
+      router.push(`/clientes/${res.data.client.id}`)
+    },
+    onError: (err: any) => {
+      setError(err?.response?.data?.error ?? 'Erro ao cadastrar cliente')
+    },
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-ui-sidebar border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl shadow-black/50 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center">
+              <UserPlus className="w-4 h-4 text-brand-400" />
+            </div>
+            <div>
+              <h2 className="text-[15px] font-bold text-white">Novo cliente</h2>
+              <p className="text-xs text-white/30">Cadastro manual</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+
+          {/* Telefone — campo principal */}
+          <div>
+            <label className="text-xs font-semibold text-white/50 block mb-1.5">
+              Telefone / WhatsApp <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" />
+              <input
+                type="tel"
+                placeholder="(11) 99999-9999"
+                value={form.phone}
+                onChange={e => set('phone', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-white/50 block mb-1.5">Nome completo</label>
+            <input
+              type="text"
+              placeholder="Maria Silva"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-white/50 block mb-1.5">E-mail</label>
+              <input
+                type="email"
+                placeholder="email@exemplo.com"
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-white/50 block mb-1.5">Nascimento</label>
+              <input
+                type="date"
+                value={form.birthdate}
+                onChange={e => set('birthdate', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-white/50 block mb-1.5">Objetivo</label>
+            <input
+              type="text"
+              placeholder="Ex: perda de peso, ganho de massa, reeducação alimentar…"
+              value={form.goal}
+              onChange={e => set('goal', e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-white/50 block mb-1.5">Anotações clínicas</label>
+            <textarea
+              rows={3}
+              placeholder="Histórico, alergias, observações relevantes…"
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors resize-none"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.06]">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => { setError(''); create.mutate() }}
+            disabled={!form.phone.trim() || create.isPending}
+            className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-brand-500/20"
+          >
+            {create.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+              : 'Cadastrar cliente'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Página principal ────────────────────────────────────────────────────────
+
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
+  const [showModal, setShowModal] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients', search],
@@ -56,6 +219,8 @@ export default function ClientesPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl">
+      {showModal && <NovoClienteModal onClose={() => setShowModal(false)} />}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
@@ -64,6 +229,13 @@ export default function ClientesPage() {
             {isLoading ? '…' : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-brand-500/20 flex-shrink-0"
+        >
+          <UserPlus className="w-4 h-4" />
+          Novo cliente
+        </button>
       </div>
 
       {/* Search */}
@@ -91,18 +263,20 @@ export default function ClientesPage() {
       {!isLoading && clients.length === 0 && (
         <div className="text-center py-20">
           <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mx-auto mb-4">
-            {search ? (
-              <Search className="w-6 h-6 text-white/15" />
-            ) : (
-              <UserPlus className="w-6 h-6 text-white/15" />
-            )}
+            {search ? <Search className="w-6 h-6 text-white/15" /> : <UserPlus className="w-6 h-6 text-white/15" />}
           </div>
           <p className="text-sm font-medium text-white/30">
             {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}
           </p>
-          {search && (
-            <p className="text-xs text-white/20 mt-1">Tente outro nome ou número</p>
+          {!search && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="mt-4 flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium rounded-xl mx-auto hover:bg-brand-500/15 transition-colors"
+            >
+              <UserPlus className="w-4 h-4" /> Cadastrar primeiro cliente
+            </button>
           )}
+          {search && <p className="text-xs text-white/20 mt-1">Tente outro nome ou número</p>}
         </div>
       )}
 
@@ -123,12 +297,10 @@ export default function ClientesPage() {
                     href={`/clientes/${client.id}`}
                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.025] transition-colors group"
                   >
-                    {/* Avatar */}
                     <div className={`w-9 h-9 rounded-full border flex items-center justify-center flex-shrink-0 ${color}`}>
                       <span className="text-sm font-bold">{initials}</span>
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-white/90 truncate leading-snug">
                         {name ?? formatPhone(client.phone)}
@@ -145,7 +317,6 @@ export default function ClientesPage() {
                       </div>
                     </div>
 
-                    {/* Stats */}
                     <div className="hidden md:flex items-center gap-5 flex-shrink-0">
                       <div className="flex items-center gap-1.5 text-[12px] text-white/30">
                         <Calendar className="w-3.5 h-3.5 text-white/20" />
