@@ -396,10 +396,24 @@ function TabAssistant() {
 
       {/* PDF */}
       <div className="border-t border-ui-border pt-6">
-        <h3 className="text-sm font-semibold text-white/80 mb-1">Manual de instruções (PDF)</h3>
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <h3 className="text-sm font-semibold text-white/80">Manual de instruções (PDF)</h3>
+          <a
+            href="/template-instrucoes-sofia.md"
+            download="template-instrucoes-sofia.md"
+            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-brand-400 transition-colors flex-shrink-0"
+            title="Baixar template para preencher"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Baixar template
+          </a>
+        </div>
         <p className="text-xs text-white/30 mb-4">
           Envie um PDF com seu protocolo, perguntas frequentes e como você gosta de atender.
-          A assistente usará este documento como base de conhecimento.
+          A assistente usará este documento como base de conhecimento.{' '}
+          <span className="text-white/20">Baixe o template acima para se guiar.</span>
         </p>
 
         {assistant?.pdf_filename ? (
