@@ -7,7 +7,7 @@ import { usePatient, patientApi } from '@/contexts/PatientContext'
 import { PatientNav } from '@/components/patient/PatientNav'
 import {
   Droplets, TrendingUp, Calendar, ClipboardCheck,
-  Plus, ChevronRight, Loader2
+  Plus, ChevronRight, Loader2, UtensilsCrossed, FolderOpen, MessageCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
@@ -194,6 +194,24 @@ export default function PatientHomePage() {
           <ChevronRight className="w-4 h-4 text-amber-400/50 flex-shrink-0" />
         </Link>
       )}
+
+      {/* Atalhos rápidos */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {[
+          { href: '/p/plano', label: 'Plano alimentar', icon: UtensilsCrossed, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+          { href: '/p/documentos', label: 'Documentos', icon: FolderOpen, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
+          { href: '/p/agendar', label: 'Agendar', icon: Calendar, color: 'text-brand-400', bg: 'bg-brand-500/10 border-brand-500/20' },
+        ].map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`flex flex-col items-center gap-2 p-3 rounded-2xl border ${item.bg} hover:opacity-80 transition-opacity`}
+          >
+            <item.icon className={`w-5 h-5 ${item.color}`} />
+            <span className="text-[10px] font-medium text-white/50 text-center leading-tight">{item.label}</span>
+          </Link>
+        ))}
+      </div>
 
       <PatientNav checkinPending={summary.checkinPending} />
     </div>

@@ -7,8 +7,10 @@ import api from '@/lib/api'
 import {
   ArrowLeft, Calendar, MessageSquare, Edit2, Save, X, Phone, Target,
   FileText, Clock, Send, TrendingUp, Droplets, Dumbbell, ClipboardList,
-  Scale, ChevronUp, ChevronDown, Minus, KeyRound, Copy, RefreshCw, CheckCircle2
+  Scale, ChevronUp, ChevronDown, Minus, KeyRound, Copy, RefreshCw, CheckCircle2,
+  UtensilsCrossed, FolderOpen, MessageCircle, Plus, Trash2, Download, Paperclip
 } from 'lucide-react'
+import { useRef } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow, format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -41,6 +43,10 @@ interface InviteCode {
   used_by: string | null; used_at: string | null
   expires_at: string; created_at: string
 }
+interface MealItem { id: string; name: string; time: string; items: string[]; notes?: string }
+interface MealPlan { id: string; title: string; meals: MealItem[]; notes: string | null; updated_at: string }
+interface PatientDoc { id: string; original_name: string; description: string | null; mimetype: string; size_bytes: number; created_at: string }
+interface ChatMessage { id: string; from_role: 'patient' | 'nutritionist'; content: string; read_at: string | null; created_at: string }
 
 const STATUS_LABEL: Record<string, string> = { scheduled: 'Agendada', confirmed: 'Confirmada', cancelled: 'Cancelada', completed: 'Realizada' }
 const STATUS_COLOR: Record<string, string> = {
@@ -70,8 +76,19 @@ export default function ClientProfilePage() {
   const router = useRouter()
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<'appointments' | 'conversations' | 'tracking' | 'access'>('appointments')
+  const [tab, setTab] = useState<'appointments' | 'conversations' | 'tracking' | 'access' | 'plan' | 'docs' | 'chat'>('appointments')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  // Plano alimentar
+  const [planTitle, setPlanTitle] = useState('Plano Alimentar')
+  const [planMeals, setPlanMeals] = useState<MealItem[]>([])
+  const [planNotes, setPlanNotes] = useState('')
+  const [planEditing, setPlanEditing] = useState(false)
+  // Chat
+  const [chatText, setChatText] = useState('')
+  const chatBottomRef = useRef<HTMLDivElement>(null)
+  // Docs
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [docDesc, setDocDesc] = useState('')
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: '', goal: '', notes: '', birthdate: '' })
 
@@ -107,6 +124,93 @@ export default function ClientProfilePage() {
     mutationFn: () => api.post('/api/patient/invite-codes', { client_id: id }),
     onSuccess: () => { refetchCodes(); toast.success('Código gerado!') },
     onError: () => toast.error('Erro ao gerar código'),
+  })
+
+  // ── Plano alimentar ─────────────────────────────────────────────────────────
+  const { data: mealPlan, refetch: refetchPlan } = useQuery<MealPlan | null>({
+    queryKey: ['meal-plan', id],
+    queryFn: async () => {
+      const { data: d } = await api.get(`/api/features/clients/${id}/meal-plan`)
+      return d.plan
+    },
+    enabled: tab === 'plan',
+    staleTime: 30_000,
+  })
+
+  useEffect(() => {
+    if (mealPlan) {
+      setPlanTitle(mealPlan.title)
+      setPlanMeals(mealPlan.meals)
+      setPlanNotes(mealPlan.notes ?? '')
+    }
+  }, [mealPlan])
+
+  const savePlan = useMutation({
+    mutationFn: () => api.put(`/api/features/clients/${id}/meal-plan`, { title: planTitle, meals: planMeals, notes: planNotes }),
+    onSuccess: () => { refetchPlan(); setPlanEditing(false); toast.success('Plano salvo!') },
+    onError: () => toast.error('Erro ao salvar plano'),
+  })
+
+  function addMeal() {
+    setPlanMeals(prev => [...prev, { id: crypto.randomUUID(), name: 'Nova refeição', time: '', items: [], notes: '' }])
+    setPlanEditing(true)
+  }
+  function removeMeal(mealId: string) { setPlanMeals(prev => prev.filter(m => m.id !== mealId)) }
+  function updateMeal(mealId: string, field: keyof MealItem, value: string | string[]) {
+    setPlanMeals(prev => prev.map(m => m.id === mealId ? { ...m, [field]: value } : m))
+  }
+
+  // ── Documentos ───────────────────────────────────────────────────────────────
+  const { data: docs, refetch: refetchDocs } = useQuery<PatientDoc[]>({
+    queryKey: ['client-docs', id],
+    queryFn: async () => {
+      const { data: d } = await api.get(`/api/features/clients/${id}/documents`)
+      return d.documents
+    },
+    enabled: tab === 'docs',
+    staleTime: 30_000,
+  })
+
+  const uploadDoc = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData()
+      form.append('file', file)
+      await api.post(`/api/features/clients/${id}/documents?description=${encodeURIComponent(docDesc)}`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
+    onSuccess: () => { refetchDocs(); setDocDesc(''); toast.success('Arquivo enviado!') },
+    onError: () => toast.error('Erro ao enviar arquivo'),
+  })
+
+  const deleteDoc = useMutation({
+    mutationFn: (docId: string) => api.delete(`/api/features/documents/${docId}`),
+    onSuccess: () => { refetchDocs(); toast.success('Documento removido') },
+    onError: () => toast.error('Erro ao remover'),
+  })
+
+  // ── Chat ─────────────────────────────────────────────────────────────────────
+  const { data: chatMessages, refetch: refetchChat } = useQuery<ChatMessage[]>({
+    queryKey: ['client-chat', id],
+    queryFn: async () => {
+      const { data: d } = await api.get(`/api/features/clients/${id}/chat`)
+      return d.messages
+    },
+    enabled: tab === 'chat',
+    refetchInterval: tab === 'chat' ? 10_000 : false,
+    staleTime: 5_000,
+  })
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
+  }, [chatMessages, tab])
+
+  const sendChatMsg = useMutation({
+    mutationFn: (content: string) => api.post(`/api/features/clients/${id}/chat`, { content }),
+    onSuccess: () => { refetchChat(); setChatText('') },
+    onError: () => toast.error('Erro ao enviar mensagem'),
   })
 
   function copyCode(code: string) {
@@ -277,15 +381,19 @@ export default function ClientProfilePage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 bg-ui-card border border-white/[0.06] rounded-xl w-fit flex-wrap">
+      <div className="flex gap-1 mb-5 p-1 bg-ui-card border border-white/[0.06] rounded-xl flex-wrap">
         {([
-          { key: 'appointments',  label: 'Consultas',       count: appointments.length },
-          { key: 'conversations', label: 'Conversas',       count: conversations.length },
-          { key: 'tracking',      label: 'Acompanhamento',  count: null },
-          { key: 'access',        label: 'Acesso',          count: null },
+          { key: 'appointments',  label: 'Consultas',      icon: Calendar,         count: appointments.length },
+          { key: 'conversations', label: 'Conversas',      icon: MessageSquare,    count: conversations.length },
+          { key: 'plan',          label: 'Plano',          icon: UtensilsCrossed,  count: null },
+          { key: 'docs',          label: 'Documentos',     icon: FolderOpen,       count: null },
+          { key: 'chat',          label: 'Chat',           icon: MessageCircle,    count: null },
+          { key: 'tracking',      label: 'Evolução',       icon: TrendingUp,       count: null },
+          { key: 'access',        label: 'Acesso',         icon: KeyRound,         count: null },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-brand-500/10 text-brand-400' : 'text-white/40 hover:text-white'}`}>
+            <t.icon className="w-3.5 h-3.5" />
             {t.label}
             {t.count !== null && <span className="text-xs opacity-60">({t.count})</span>}
           </button>
@@ -499,6 +607,241 @@ export default function ClientProfilePage() {
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {/* ── Tab: Plano Alimentar ── */}
+      {tab === 'plan' && (
+        <div className="space-y-4">
+          {/* Header + edit toggle */}
+          <div className="flex items-center gap-3">
+            {planEditing ? (
+              <input
+                value={planTitle}
+                onChange={e => setPlanTitle(e.target.value)}
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-500/40"
+              />
+            ) : (
+              <h3 className="flex-1 text-sm font-semibold text-white/80">{planTitle || 'Plano Alimentar'}</h3>
+            )}
+            <div className="flex gap-2">
+              {planEditing ? (
+                <>
+                  <button onClick={() => savePlan.mutate()} disabled={savePlan.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+                    <Save className="w-3.5 h-3.5" />{savePlan.isPending ? 'Salvando…' : 'Salvar'}
+                  </button>
+                  <button onClick={() => { setPlanEditing(false); if (mealPlan) { setPlanMeals(mealPlan.meals); setPlanNotes(mealPlan.notes ?? '') } }}
+                    className="px-3 py-1.5 text-white/40 hover:text-white text-xs rounded-lg transition-colors">
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setPlanEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-medium rounded-lg transition-colors">
+                  <Edit2 className="w-3 h-3" />Editar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Meals list */}
+          {planMeals.length === 0 && !planEditing ? (
+            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
+              <UtensilsCrossed className="w-8 h-8 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/25">Nenhuma refeição no plano ainda</p>
+              <button onClick={() => { addMeal() }}
+                className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white text-xs font-semibold rounded-lg mx-auto transition-colors hover:bg-brand-400">
+                <Plus className="w-3.5 h-3.5" />Adicionar refeição
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {planMeals.map(meal => (
+                <div key={meal.id} className="bg-ui-card border border-white/[0.06] rounded-2xl p-4">
+                  {planEditing ? (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <input value={meal.name} onChange={e => updateMeal(meal.id, 'name', e.target.value)}
+                          placeholder="Nome (ex: Café da manhã)" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40" />
+                        <input value={meal.time} onChange={e => updateMeal(meal.id, 'time', e.target.value)}
+                          placeholder="07:00" className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40" />
+                        <button onClick={() => removeMeal(meal.id)} className="text-red-400/50 hover:text-red-400 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        value={meal.items.join('\n')}
+                        onChange={e => updateMeal(meal.id, 'items', e.target.value.split('\n').filter(Boolean))}
+                        placeholder="Um alimento por linha:&#10;1 fatia de pão integral&#10;1 ovo mexido&#10;200ml de leite"
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 resize-none"
+                      />
+                      <input value={meal.notes ?? ''} onChange={e => updateMeal(meal.id, 'notes', e.target.value)}
+                        placeholder="Observação (opcional)" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500/40" />
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <UtensilsCrossed className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
+                        <span className="text-sm font-semibold text-white/85">{meal.name}</span>
+                        {meal.time && <span className="text-xs text-white/30 flex items-center gap-0.5"><Clock className="w-3 h-3" />{meal.time}</span>}
+                      </div>
+                      <ul className="space-y-0.5 ml-5">
+                        {meal.items.map((item, i) => (
+                          <li key={i} className="text-sm text-white/60 flex items-start gap-1.5">
+                            <span className="text-brand-400/50 flex-shrink-0">·</span>{item}
+                          </li>
+                        ))}
+                      </ul>
+                      {meal.notes && <p className="text-xs text-white/30 italic mt-2 ml-5">{meal.notes}</p>}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {planEditing && (
+                <button onClick={addMeal}
+                  className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-white/10 rounded-2xl text-sm text-white/30 hover:text-white/50 hover:border-white/20 transition-colors">
+                  <Plus className="w-4 h-4" />Adicionar refeição
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Notas gerais */}
+          {(planEditing || planNotes) && (
+            <div>
+              <p className="text-xs text-white/35 mb-2">Observações gerais</p>
+              {planEditing ? (
+                <textarea value={planNotes} onChange={e => setPlanNotes(e.target.value)}
+                  placeholder="Ex: Beber 2L de água por dia, evitar processados..." rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 resize-none" />
+              ) : (
+                <div className="bg-ui-card border border-white/[0.06] rounded-xl p-3">
+                  <p className="text-sm text-white/50 whitespace-pre-wrap">{planNotes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Documentos ── */}
+      {tab === 'docs' && (
+        <div className="space-y-4">
+          {/* Upload area */}
+          <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-white/70">Enviar arquivo</p>
+            <input
+              value={docDesc}
+              onChange={e => setDocDesc(e.target.value)}
+              placeholder="Descrição (ex: Exame de sangue, Cardápio semana 1...)"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40"
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) { uploadDoc.mutate(file); e.target.value = '' }
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadDoc.isPending}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-brand-500/30 rounded-xl text-sm text-brand-400 hover:bg-brand-500/5 transition-colors disabled:opacity-50"
+            >
+              {uploadDoc.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              {uploadDoc.isPending ? 'Enviando…' : 'Selecionar arquivo (PDF, imagem, Word)'}
+            </button>
+          </div>
+
+          {/* Doc list */}
+          {!docs || docs.length === 0 ? (
+            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
+              <FolderOpen className="w-8 h-8 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/25">Nenhum documento enviado ainda</p>
+            </div>
+          ) : (
+            <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+              <ul className="divide-y divide-white/[0.04]">
+                {docs.map(doc => (
+                  <li key={doc.id} className="flex items-center gap-3 px-4 py-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 text-base">
+                      {doc.mimetype.includes('pdf') ? '📄' : doc.mimetype.includes('image') ? '🖼️' : '📎'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white/85 truncate">{doc.original_name}</p>
+                      {doc.description && <p className="text-xs text-white/35 truncate">{doc.description}</p>}
+                      <p className="text-[10px] text-white/20 mt-0.5">
+                        {format(new Date(doc.created_at), "d MMM yyyy", { locale: ptBR })} · {(doc.size_bytes / 1024).toFixed(0)} KB
+                      </p>
+                    </div>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} disabled={deleteDoc.isPending}
+                      className="text-red-400/30 hover:text-red-400 transition-colors flex-shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Chat ── */}
+      {tab === 'chat' && (
+        <div className="flex flex-col" style={{ height: '500px' }}>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3">
+            {!chatMessages || chatMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <MessageCircle className="w-8 h-8 text-white/10 mb-3" />
+                <p className="text-sm text-white/25">Sem mensagens ainda</p>
+                <p className="text-xs text-white/15 mt-1">O paciente pode te enviar mensagens pelo app</p>
+              </div>
+            ) : (
+              chatMessages.map(msg => {
+                const isMe = msg.from_role === 'nutritionist'
+                return (
+                  <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div className="max-w-[75%]">
+                      {!isMe && <p className="text-[10px] text-white/25 mb-1 ml-1">Paciente</p>}
+                      <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? 'bg-brand-500 text-white rounded-br-md' : 'bg-white/[0.08] text-white/80 rounded-bl-md'}`}>
+                        {msg.content}
+                      </div>
+                      <p className={`text-[10px] text-white/20 mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
+                        {format(new Date(msg.created_at), 'HH:mm')}
+                        {isMe && msg.read_at && ' · Lida'}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Input */}
+          <div className="flex gap-2 border-t border-white/[0.05] pt-3 flex-shrink-0">
+            <input
+              value={chatText}
+              onChange={e => setChatText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && chatText.trim()) { e.preventDefault(); sendChatMsg.mutate(chatText.trim()) } }}
+              placeholder="Mensagem para o paciente..."
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-500/40"
+            />
+            <button
+              onClick={() => { if (chatText.trim()) sendChatMsg.mutate(chatText.trim()) }}
+              disabled={!chatText.trim() || sendChatMsg.isPending}
+              className="w-10 h-10 rounded-xl bg-brand-500 hover:bg-brand-400 flex items-center justify-center transition-all disabled:opacity-40"
+            >
+              {sendChatMsg.isPending ? <RefreshCw className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
+            </button>
+          </div>
         </div>
       )}
 

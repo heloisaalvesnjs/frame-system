@@ -4,6 +4,8 @@ import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { query, queryOne } from '../db'
 import { sendMessage } from '../services/whatsapp.service'
+import path from 'path'
+import { createReadStream } from 'fs'
 
 // ── Helper: gerar código de convite (6 chars alfanum maiúsculo) ───────────────
 function generateInviteCode(): string {
@@ -614,5 +616,97 @@ export async function patientRoutes(app: FastifyInstance) {
       [nutritionistId]
     )
     return reply.send({ checkins: rows })
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PATIENT: Plano Alimentar, Documentos, Chat
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** GET /api/patient/meal-plan — paciente vê seu plano ativo */
+  app.get('/meal-plan', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId } = (request as any).user
+
+    const plan = await queryOne<any>(
+      'SELECT * FROM meal_plans WHERE client_id = $1 AND is_active = true ORDER BY updated_at DESC LIMIT 1',
+      [clientId]
+    )
+    return reply.send({ plan: plan ?? null })
+  })
+
+  /** GET /api/patient/documents — paciente lista seus documentos */
+  app.get('/documents', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId } = (request as any).user
+
+    const docs = await query(
+      'SELECT * FROM patient_documents WHERE client_id = $1 ORDER BY created_at DESC',
+      [clientId]
+    )
+    return reply.send({ documents: docs })
+  })
+
+  /** GET /api/patient/documents/:id/file — download do documento */
+  app.get('/documents/:id/file', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId } = (request as any).user
+    const { id } = request.params as { id: string }
+
+    const doc = await queryOne<any>(
+      'SELECT * FROM patient_documents WHERE id = $1 AND client_id = $2',
+      [id, clientId]
+    )
+    if (!doc) return reply.code(404).send({ error: 'Documento não encontrado' })
+
+    const filepath = path.join(process.cwd(), 'uploads', 'docs', doc.filename)
+    const stream   = createReadStream(filepath)
+
+    reply.header('Content-Type', doc.mimetype)
+    reply.header('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.original_name)}"`)
+    return reply.send(stream)
+  })
+
+  /** GET /api/patient/chat — paciente vê histórico de mensagens */
+  app.get('/chat', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId, nutritionistId } = (request as any).user
+
+    // Marcar mensagens da nutri como lidas
+    await query(
+      `UPDATE patient_messages SET read_at = NOW()
+       WHERE nutritionist_id = $1 AND client_id = $2 AND from_role = 'nutritionist' AND read_at IS NULL`,
+      [nutritionistId, clientId]
+    )
+
+    const messages = await query(
+      `SELECT * FROM patient_messages
+       WHERE nutritionist_id = $1 AND client_id = $2
+       ORDER BY created_at ASC LIMIT 200`,
+      [nutritionistId, clientId]
+    )
+    return reply.send({ messages })
+  })
+
+  /** POST /api/patient/chat — paciente envia mensagem */
+  app.post('/chat', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId, nutritionistId } = (request as any).user
+    const { content } = request.body as { content: string }
+
+    if (!content?.trim()) return reply.code(400).send({ error: 'Mensagem vazia' })
+
+    const msg = await queryOne<any>(`
+      INSERT INTO patient_messages (nutritionist_id, client_id, from_role, content)
+      VALUES ($1, $2, 'patient', $3) RETURNING *
+    `, [nutritionistId, clientId, content.trim()])
+
+    return reply.send({ message: msg })
+  })
+
+  /** GET /api/patient/chat/unread — qtd mensagens não lidas da nutri */
+  app.get('/chat/unread', { onRequest: [authenticatePatient] }, async (request, reply) => {
+    const { clientId, nutritionistId } = (request as any).user
+
+    const result = await queryOne<any>(
+      `SELECT COUNT(*) AS count FROM patient_messages
+       WHERE nutritionist_id = $1 AND client_id = $2 AND from_role = 'nutritionist' AND read_at IS NULL`,
+      [nutritionistId, clientId]
+    )
+    return reply.send({ count: parseInt(result?.count ?? '0') })
   })
 }

@@ -306,3 +306,48 @@ CREATE TABLE IF NOT EXISTS weekly_checkins (
   UNIQUE(client_id, week_start)
 );
 CREATE INDEX IF NOT EXISTS idx_checkins_client ON weekly_checkins(client_id, week_start DESC);
+
+-- --------------------------------
+-- Epic 9: Plano Alimentar, Documentos, Chat direto
+-- --------------------------------
+
+-- Plano alimentar (nutri cria, paciente visualiza)
+CREATE TABLE IF NOT EXISTS meal_plans (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  title           TEXT NOT NULL DEFAULT 'Plano Alimentar',
+  meals           JSONB NOT NULL DEFAULT '[]',  -- [{id,name,time,items[],notes}]
+  notes           TEXT,
+  is_active       BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(nutritionist_id, client_id)
+);
+CREATE INDEX IF NOT EXISTS idx_meal_plans_client ON meal_plans(nutritionist_id, client_id);
+
+-- Documentos enviados pela nutricionista ao paciente
+CREATE TABLE IF NOT EXISTS patient_documents (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  filename        TEXT NOT NULL,
+  original_name   TEXT NOT NULL,
+  mimetype        TEXT NOT NULL DEFAULT 'application/octet-stream',
+  size_bytes      INTEGER DEFAULT 0,
+  description     TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_patient_docs_client ON patient_documents(nutritionist_id, client_id);
+
+-- Chat direto nutricionista ↔ paciente (sem IA)
+CREATE TABLE IF NOT EXISTS patient_messages (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  from_role       TEXT NOT NULL CHECK (from_role IN ('patient', 'nutritionist')),
+  content         TEXT NOT NULL,
+  read_at         TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_patient_messages_chat ON patient_messages(nutritionist_id, client_id, created_at);

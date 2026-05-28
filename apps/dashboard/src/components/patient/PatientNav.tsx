@@ -2,18 +2,23 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, CalendarPlus, TrendingUp, Droplets, ClipboardList } from 'lucide-react'
+import { Home, Calendar, UtensilsCrossed, MessageCircle, Droplets } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/p/home',     label: 'Início',    icon: Home },
-  { href: '/p/agenda',   label: 'Consultas', icon: Calendar },
-  { href: '/p/agendar',  label: 'Agendar',   icon: CalendarPlus },
-  { href: '/p/habits',   label: 'Hábitos',   icon: Droplets },
-  { href: '/p/checkin',  label: 'Check-in',  icon: ClipboardList },
+  { href: '/p/home',   label: 'Início',    icon: Home },
+  { href: '/p/plano',  label: 'Plano',     icon: UtensilsCrossed },
+  { href: '/p/habits', label: 'Hábitos',   icon: Droplets },
+  { href: '/p/agenda', label: 'Consultas', icon: Calendar },
+  { href: '/p/chat',   label: 'Chat',      icon: MessageCircle },
 ]
 
-export function PatientNav({ checkinPending = false }: { checkinPending?: boolean }) {
+export function PatientNav({
+  chatUnread = 0,
+}: {
+  checkinPending?: boolean  // mantido por compatibilidade
+  chatUnread?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -21,7 +26,7 @@ export function PatientNav({ checkinPending = false }: { checkinPending?: boolea
       <div className="flex items-stretch max-w-md mx-auto">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
-          const isCheckin = href === '/p/checkin'
+          const isChat = href === '/p/chat'
           return (
             <Link
               key={href}
@@ -33,8 +38,10 @@ export function PatientNav({ checkinPending = false }: { checkinPending?: boolea
             >
               <div className="relative">
                 <Icon className={cn('w-5 h-5', active ? 'text-brand-400' : 'text-white/30')} />
-                {isCheckin && checkinPending && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full border border-ui-sidebar" />
+                {isChat && chatUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-brand-500 rounded-full border border-ui-sidebar flex items-center justify-center text-[9px] font-bold text-white px-0.5">
+                    {chatUnread > 9 ? '9+' : chatUnread}
+                  </span>
                 )}
               </div>
               <span>{label}</span>
