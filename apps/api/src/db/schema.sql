@@ -353,6 +353,20 @@ CREATE TABLE IF NOT EXISTS patient_messages (
 CREATE INDEX IF NOT EXISTS idx_patient_messages_chat ON patient_messages(nutritionist_id, client_id, created_at);
 
 -- --------------------------------
+-- Epic 10: Treinamento Universal da IA
+-- --------------------------------
+
+-- Notas de treinamento globais (aplicadas a todos os consultórios)
+CREATE TABLE IF NOT EXISTS ai_training_notes (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  category   TEXT NOT NULL DEFAULT 'geral',  -- geral | abertura | objecoes | agendamento | tom
+  content    TEXT NOT NULL,
+  is_active  BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_training_notes_active ON ai_training_notes(is_active, created_at);
+
+-- --------------------------------
 -- Migrations (additive columns)
 -- --------------------------------
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthdate DATE;

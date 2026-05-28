@@ -875,8 +875,14 @@ function TabWhatsApp() {
   )
 }
 
-// ─── Tab: Testar Sofia ────────────────────────────────────────────
-interface TestMsg { role: 'user' | 'assistant'; content: string }
+// ─── Tab: Testar IA ───────────────────────────────────────────────
+interface TestMsg {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  variant?: 'info' | 'success' | 'error'
+}
+
+const TRAINING_CATEGORIES = ['abertura', 'objecoes', 'agendamento', 'tom'] as const
 
 function TabTestar() {
   const [messages, setMessages] = useState<TestMsg[]>([])
@@ -894,10 +900,60 @@ function TabTestar() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  async function doReset(silent = false) {
+    setResetting(true)
+    try {
+      await api.post('/api/assistants/test', { message: '__reset__', reset: true })
+    } catch {}
+    setMessages(silent ? [] : [{ role: 'system', content: 'Conversa reiniciada', variant: 'info' }])
+    setResetting(false)
+  }
+
   async function send() {
     const text = input.trim()
     if (!text || loading) return
     setInput('')
+
+    // ── Comando /new ─────────────────────────────────────────
+    if (text === '/new') {
+      await doReset()
+      return
+    }
+
+    // ── Comando /treinar ou /ajustar ─────────────────────────
+    if (text.startsWith('/treinar ') || text.startsWith('/ajustar ')) {
+      const raw = text.replace(/^\/(treinar|ajustar)\s+/, '').trim()
+      const firstWord = raw.split(' ')[0].toLowerCase() as any
+      const hasCategory = (TRAINING_CATEGORIES as readonly string[]).includes(firstWord)
+      const category = hasCategory ? firstWord : 'geral'
+      const content = hasCategory ? raw.slice(firstWord.length + 1).trim() : raw
+
+      if (!content) {
+        setMessages(prev => [...prev,
+          { role: 'system', content: 'Uso: /treinar [categoria?] [observação]. Categorias: abertura objecoes agendamento tom', variant: 'error' }
+        ])
+        return
+      }
+
+      setMessages(prev => [...prev, { role: 'user', content: text }])
+      setLoading(true)
+      try {
+        await api.post('/api/assistants/training', { content, category })
+        const preview = content.length > 60 ? content.slice(0, 60) + '…' : content
+        setMessages(prev => [...prev, {
+          role: 'system',
+          content: `✓ Treinamento salvo [${category}]: "${preview}"`,
+          variant: 'success'
+        }])
+      } catch {
+        setMessages(prev => [...prev, { role: 'system', content: 'Erro ao salvar treinamento.', variant: 'error' }])
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    // ── Mensagem normal ──────────────────────────────────────
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setLoading(true)
     try {
@@ -910,19 +966,10 @@ function TabTestar() {
     }
   }
 
-  async function reset() {
-    setResetting(true)
-    try {
-      await api.post('/api/assistants/test', { message: '__reset__', reset: true })
-    } catch {}
-    setMessages([])
-    setResetting(false)
-  }
-
   const assistantName = assistant?.name || 'Assistente'
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-[640px]">
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-4">
         <div>
@@ -934,12 +981,12 @@ function TabTestar() {
           <p className="text-xs text-white/30 mt-0.5">Simule uma conversa de cliente para testar o atendimento</p>
         </div>
         <button
-          onClick={reset}
+          onClick={() => doReset()}
           disabled={resetting || messages.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-white/40 hover:text-white/70 hover:border-white/20 transition-colors disabled:opacity-30"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          Reiniciar conversa
+          Reiniciar
         </button>
       </div>
 
@@ -950,32 +997,47 @@ function TabTestar() {
             <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mb-3">
               <FlaskConical className="w-5 h-5 text-brand-400" />
             </div>
-            <p className="text-sm font-medium text-white/30">Digite uma mensagem como se fosse um cliente</p>
-            <p className="text-xs text-white/15 mt-1">Ex: "Oi, quero emagrecer" ou "Quanto custa a consulta?"</p>
+            <p className="text-sm font-medium text-white/30">Digite como se fosse um cliente</p>
+            <p className="text-xs text-white/15 mt-1">"Oi, quero emagrecer" ou "Quanto custa a consulta?"</p>
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {m.role === 'assistant' && (
-              <div className="w-6 h-6 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mr-2 flex-shrink-0 mt-1">
-                <Bot className="w-3 h-3 text-brand-400" />
+        {messages.map((m, i) => {
+          // Mensagem de sistema (comando feedback)
+          if (m.role === 'system') {
+            return (
+              <div key={i} className="flex justify-center py-0.5">
+                <span className={`text-[11px] px-3 py-1 rounded-full border ${
+                  m.variant === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  : m.variant === 'error'   ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                  : 'bg-white/5 border-white/10 text-white/30'
+                }`}>{m.content}</span>
               </div>
-            )}
-            <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-              m.role === 'user'
-                ? 'bg-brand-500 text-white rounded-br-sm'
-                : 'bg-white/[0.07] text-white/85 rounded-bl-sm'
-            }`}>
-              {m.content}
+            )
+          }
+
+          return (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {m.role === 'assistant' && (
+                <div className="w-6 h-6 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mr-2 flex-shrink-0 mt-1">
+                  <Bot className="w-3 h-3 text-brand-400" />
+                </div>
+              )}
+              <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                m.role === 'user'
+                  ? 'bg-brand-500 text-white rounded-br-sm'
+                  : 'bg-white/[0.07] text-white/85 rounded-bl-sm'
+              }`}>
+                {m.content}
+              </div>
+              {m.role === 'user' && (
+                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center ml-2 flex-shrink-0 mt-1">
+                  <User className="w-3 h-3 text-white/40" />
+                </div>
+              )}
             </div>
-            {m.role === 'user' && (
-              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center ml-2 flex-shrink-0 mt-1">
-                <User className="w-3 h-3 text-white/40" />
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
 
         {loading && (
           <div className="flex justify-start">
@@ -993,24 +1055,32 @@ function TabTestar() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="flex gap-2 pt-4 border-t border-white/[0.06] mt-4">
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder="Digite como se fosse um cliente..."
-          disabled={loading}
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 transition-colors disabled:opacity-50"
-        />
-        <button
-          onClick={send}
-          disabled={!input.trim() || loading}
-          className="w-10 h-10 rounded-xl bg-brand-500 hover:bg-brand-400 flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40"
-        >
-          <Send className="w-4 h-4 text-white" />
-        </button>
+      {/* Input + hint */}
+      <div className="pt-4 border-t border-white/[0.06] mt-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder="Escreva como cliente, /new para reiniciar, /treinar para ajustar..."
+            disabled={loading}
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 transition-colors disabled:opacity-50"
+          />
+          <button
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className="w-10 h-10 rounded-xl bg-brand-500 hover:bg-brand-400 flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40"
+          >
+            <Send className="w-4 h-4 text-white" />
+          </button>
+        </div>
+        <p className="text-[10px] text-white/15 mt-2 px-1">
+          Comandos:{' '}
+          <code className="text-white/25 font-mono">/new</code> reinicia conversa{' · '}
+          <code className="text-white/25 font-mono">/treinar [obs]</code> salva ajuste geral{' · '}
+          <code className="text-white/25 font-mono">/treinar objecoes|abertura|agendamento|tom [obs]</code> por categoria
+        </p>
       </div>
     </div>
   )

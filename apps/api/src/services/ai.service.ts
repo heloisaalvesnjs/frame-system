@@ -131,8 +131,14 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     [convId, 'user', message]
   )
 
-  // 5. Busca próximos horários disponíveis (varre até 7 dias, pula feriados)
+  // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
   const availableSlots = await getNextAvailableSlots(nutritionist_id)
+
+  // 5b. Busca notas de treinamento globais (cérebro universal)
+  const trainingNotes = await query<any>(
+    `SELECT category, content FROM ai_training_notes WHERE is_active = true ORDER BY created_at ASC`,
+    []
+  )
 
   // 6. Monta o system prompt personalizado
   const systemPrompt = buildSystemPrompt({
@@ -141,7 +147,8 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     availableSlots,
     clientPhone: client_phone,
     contextData,
-    isFirstMessage
+    isFirstMessage,
+    trainingNotes
   })
 
   // 7. Chama a IA (Claude ou Gemini conforme AI_PROVIDER)
@@ -172,7 +179,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 }
 
 // ── Monta o system prompt da assistente ───────────────────
-function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage }: any): string {
+function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes }: any): string {
   const aiName = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone = assistant.tone || 'acolhedor'
@@ -200,6 +207,13 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
   const afternoonSlotsText = afternoonSlots.slice(0, 5).map((s: any) => `• ${s.label}`).join('\n')
   const hasSlotsConfigured = morningSlots.length > 0 || afternoonSlots.length > 0
 
+  // Seção de treinamento (notas globais do cérebro universal)
+  const trainingSection = (trainingNotes && trainingNotes.length > 0)
+    ? `\n==============================\nAPRENDIZADOS DE TREINAMENTO\n==============================\nCom base em revisões anteriores, aplique sempre estas correções:\n\n${
+        trainingNotes.map((n: any) => `[${n.category.toUpperCase()}] ${n.content}`).join('\n')
+      }\n`
+    : ''
+
   return `Você é ${aiName}, assistente de atendimento do consultório de ${nutriName} no WhatsApp.
 ${specialtiesText ? `Especialidade: ${specialtiesText}` : ''}
 Modalidade: ${modalityLabel}
@@ -209,7 +223,7 @@ IDENTIDADE
 ==============================
 Você é a recepcionista virtual de ${nutriName}. Fala e age como uma profissional humana experiente, nunca como chatbot.
 Tom: ${toneDesc}.
-
+${trainingSection}
 ==============================
 ${isFirstMessage ? 'AGORA: PRIMEIRA MENSAGEM — EXECUTE JÁ' : 'ABERTURA (quando não há histórico anterior)'}
 ==============================

@@ -153,6 +153,67 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   })
 
+  // ─────────────────────────────────────────────────────────
+  // TREINAMENTO UNIVERSAL DA IA
+  // ─────────────────────────────────────────────────────────
+
+  // POST /api/assistants/training — salva nota de treinamento global
+  app.post('/training', auth, async (request, reply) => {
+    const schema = z.object({
+      content: z.string().min(5).max(1000),
+      category: z.enum(['geral', 'abertura', 'objecoes', 'agendamento', 'tom']).default('geral')
+    })
+    const body = schema.parse(request.body)
+
+    const [note] = await query(
+      `INSERT INTO ai_training_notes (category, content)
+       VALUES ($1, $2)
+       RETURNING id, category, content, created_at`,
+      [body.category, body.content]
+    )
+
+    // ── Obsidian integration (opcional) ──────────────────────
+    const vaultPath = process.env.OBSIDIAN_VAULT_PATH
+    if (vaultPath) {
+      try {
+        const date = new Date().toISOString().slice(0, 10)
+        const slug = body.content
+          .slice(0, 40)
+          .toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')  // remove acentos
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '')
+        const dir = path.join(vaultPath, 'NutriApp', 'Treinamentos')
+        mkdirSync(dir, { recursive: true })
+        const filename = path.join(dir, `${date}-${body.category}-${slug}.md`)
+        const md = `---\ntags: [nutriapp, treinamento, ${body.category}]\ndate: ${date}\ncategory: ${body.category}\n---\n\n${body.content}\n`
+        writeFileSync(filename, md, 'utf-8')
+        app.log.info(`[training] Nota salva no Obsidian: ${filename}`)
+      } catch (obsErr) {
+        app.log.warn('[training] Obsidian write falhou (continuando):', obsErr)
+      }
+    }
+
+    return reply.code(201).send({ ok: true, note })
+  })
+
+  // GET /api/assistants/training — lista notas de treinamento
+  app.get('/training', auth, async (request, reply) => {
+    const notes = await query(
+      `SELECT id, category, content, is_active, created_at
+       FROM ai_training_notes ORDER BY created_at DESC`,
+      []
+    )
+    return reply.send({ notes })
+  })
+
+  // DELETE /api/assistants/training/:noteId — desativa nota
+  app.delete('/training/:noteId', auth, async (request, reply) => {
+    const { noteId } = request.params as any
+    await query('UPDATE ai_training_notes SET is_active = false WHERE id = $1', [noteId])
+    return reply.send({ ok: true })
+  })
+
   // POST /api/assistants/test — simula uma mensagem de cliente para testar a Sofia
   app.post('/test', auth, async (request, reply) => {
     const { id: nutritionist_id } = (request as any).user
