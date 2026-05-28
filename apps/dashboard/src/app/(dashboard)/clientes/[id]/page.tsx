@@ -321,7 +321,12 @@ export default function ClientProfilePage() {
                   <Phone className="w-3.5 h-3.5" />{formatPhone(client.phone)}
                 </div>
                 {client.birthdate && (
-                  <p className="text-xs text-white/30 mt-1">Nascimento: {format(new Date(client.birthdate + 'T12:00:00'), 'dd/MM/yyyy')}</p>
+                  <p className="text-xs text-white/30 mt-1">Nascimento: {(() => {
+                    try {
+                      const s = String(client.birthdate).slice(0, 10)
+                      return format(parseISO(s), 'dd/MM/yyyy')
+                    } catch { return String(client.birthdate).slice(0, 10) }
+                  })()}</p>
                 )}
                 {client.goal && (
                   <div className="flex items-center gap-1.5 mt-2 text-xs text-white/50">

@@ -81,7 +81,7 @@ export async function clientRoutes(app: FastifyInstance) {
     const { clientId } = request.params as { clientId: string }
 
     const client = await queryOne<any>(
-      `SELECT * FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      `SELECT *, birthdate::text AS birthdate FROM clients WHERE id = $1 AND nutritionist_id = $2`,
       [clientId, nutritionistId]
     )
     if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
