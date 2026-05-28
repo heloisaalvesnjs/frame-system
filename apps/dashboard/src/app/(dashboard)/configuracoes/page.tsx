@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon } from 'lucide-react'
+import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical } from 'lucide-react'
+import { useRef } from 'react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -254,7 +255,7 @@ function TabAssistant() {
         {/* Especialidades */}
         <Textarea
           label="Especialidades"
-          hint="A Sofia usará isso para apresentar seu trabalho"
+          hint="A assistente usará isso para apresentar seu trabalho"
           placeholder="Ex: Emagrecimento, nutrição esportiva, saúde feminina, nutrição clínica..."
           rows={2}
           {...register('specialties')}
@@ -294,7 +295,7 @@ function TabAssistant() {
                 <p className={cn('text-sm font-medium', vacationMode ? 'text-amber-300' : 'text-white/70')}>
                   Modo férias
                 </p>
-                <p className="text-xs text-white/30">Sofia pausa o atendimento automático</p>
+                <p className="text-xs text-white/30">A assistente pausa o atendimento automático</p>
               </div>
             </div>
             <button
@@ -315,7 +316,7 @@ function TabAssistant() {
           {vacationMode && (
             <Textarea
               label="Mensagem de ausência"
-              hint="Enviada quando clientes tentam falar com a Sofia"
+              hint="Enviada quando clientes tentam falar com a assistente"
               placeholder="Ex: Estamos em férias! Retornamos no dia 10/02. Até breve! 🌴"
               rows={2}
               {...register('vacation_message')}
@@ -337,7 +338,7 @@ function TabAssistant() {
                     Follow-up automático
                   </p>
                   <p className="text-xs text-white/30">
-                    Sofia reengaja leads que param de responder
+                    A assistente reengaja leads que param de responder
                   </p>
                 </div>
                 <button
@@ -550,7 +551,7 @@ function TabHorarios() {
     <div className="flex flex-col gap-5">
       <div>
         <p className="text-sm text-white/40">
-          Defina quando a Sofia pode agendar consultas. Fora deste horário ela não responderá automaticamente.
+          Defina quando a assistente pode agendar consultas. Fora deste horário ela não responderá automaticamente.
         </p>
       </div>
 
@@ -849,12 +850,154 @@ function TabWhatsApp() {
   )
 }
 
+// ─── Tab: Testar Sofia ────────────────────────────────────────────
+interface TestMsg { role: 'user' | 'assistant'; content: string }
+
+function TabTestar() {
+  const [messages, setMessages] = useState<TestMsg[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const { data: assistant } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant },
+  })
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function send() {
+    const text = input.trim()
+    if (!text || loading) return
+    setInput('')
+    setMessages(prev => [...prev, { role: 'user', content: text }])
+    setLoading(true)
+    try {
+      const { data } = await api.post('/api/assistants/test', { message: text })
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Erro ao processar. Verifique se a assistente está configurada.' }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function reset() {
+    setResetting(true)
+    try {
+      await api.post('/api/assistants/test', { message: '__reset__', reset: true })
+    } catch {}
+    setMessages([])
+    setResetting(false)
+  }
+
+  const assistantName = assistant?.name || 'Assistente'
+
+  return (
+    <div className="flex flex-col h-[600px]">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-sm font-semibold text-white">{assistantName}</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/20 text-amber-400 font-medium">MODO TESTE</span>
+          </div>
+          <p className="text-xs text-white/30 mt-0.5">Simule uma conversa de cliente para testar o atendimento</p>
+        </div>
+        <button
+          onClick={reset}
+          disabled={resetting || messages.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-white/40 hover:text-white/70 hover:border-white/20 transition-colors disabled:opacity-30"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reiniciar conversa
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mb-3">
+              <FlaskConical className="w-5 h-5 text-brand-400" />
+            </div>
+            <p className="text-sm font-medium text-white/30">Digite uma mensagem como se fosse um cliente</p>
+            <p className="text-xs text-white/15 mt-1">Ex: "Oi, quero emagrecer" ou "Quanto custa a consulta?"</p>
+          </div>
+        )}
+
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {m.role === 'assistant' && (
+              <div className="w-6 h-6 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mr-2 flex-shrink-0 mt-1">
+                <Bot className="w-3 h-3 text-brand-400" />
+              </div>
+            )}
+            <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+              m.role === 'user'
+                ? 'bg-brand-500 text-white rounded-br-sm'
+                : 'bg-white/[0.07] text-white/85 rounded-bl-sm'
+            }`}>
+              {m.content}
+            </div>
+            {m.role === 'user' && (
+              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center ml-2 flex-shrink-0 mt-1">
+                <User className="w-3 h-3 text-white/40" />
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="w-6 h-6 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mr-2 flex-shrink-0">
+              <Bot className="w-3 h-3 text-brand-400" />
+            </div>
+            <div className="bg-white/[0.07] px-3.5 py-2.5 rounded-2xl rounded-bl-sm flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2 pt-4 border-t border-white/[0.06] mt-4">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+          placeholder="Digite como se fosse um cliente..."
+          disabled={loading}
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 transition-colors disabled:opacity-50"
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || loading}
+          className="w-10 h-10 rounded-xl bg-brand-500 hover:bg-brand-400 flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40"
+        >
+          <Send className="w-4 h-4 text-white" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────
 const tabs = [
   { id: 'profile',    label: 'Perfil',     icon: User },
   { id: 'assistant',  label: 'Assistente', icon: Bot },
   { id: 'horarios',   label: 'Horários',   icon: Clock },
   { id: 'whatsapp',   label: 'WhatsApp',   icon: Smartphone },
+  { id: 'testar',     label: 'Testar IA', icon: FlaskConical },
 ]
 
 export default function ConfiguracoesPage() {
@@ -894,6 +1037,7 @@ export default function ConfiguracoesPage() {
           {activeTab === 'assistant' && <TabAssistant />}
           {activeTab === 'horarios'  && <TabHorarios />}
           {activeTab === 'whatsapp'  && <TabWhatsApp />}
+          {activeTab === 'testar'    && <TabTestar />}
         </CardContent>
       </Card>
     </div>

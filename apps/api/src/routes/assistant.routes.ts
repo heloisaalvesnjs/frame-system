@@ -4,6 +4,7 @@ import { query, queryOne } from '../db'
 import { writeFileSync, mkdirSync } from 'fs'
 import path from 'path'
 import pdf from 'pdf-parse'
+import { processMessage } from '../services/ai.service'
 
 export async function assistantRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
@@ -143,5 +144,43 @@ export async function assistantRoutes(app: FastifyInstance) {
       [id]
     )
     return reply.send({ ok: true })
+  })
+
+  // POST /api/assistants/test — simula uma mensagem de cliente para testar a Sofia
+  app.post('/test', auth, async (request, reply) => {
+    const { id: nutritionist_id } = (request as any).user
+    const schema = z.object({
+      message: z.string().min(1).max(500),
+      history: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string()
+      })).optional().default([]),
+      reset: z.boolean().optional().default(false)
+    })
+
+    const body = schema.parse(request.body)
+
+    // Usa um "telefone" fictício para o modo teste — nunca cria agendamento real
+    const testPhone = `test_${nutritionist_id}`
+
+    // Se reset, apaga conversa de teste anterior
+    if (body.reset) {
+      await query(
+        `DELETE FROM conversations WHERE nutritionist_id = $1 AND client_phone = $2`,
+        [nutritionist_id, testPhone]
+      )
+    }
+
+    try {
+      const result = await processMessage({
+        nutritionist_id,
+        client_phone: testPhone,
+        message: body.message,
+      })
+
+      return reply.send({ response: result.text, action: result.action })
+    } catch (err: any) {
+      return reply.code(500).send({ error: err?.message ?? 'Erro ao processar mensagem' })
+    }
   })
 }
