@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { usePatient, patientApi } from '@/contexts/PatientContext'
 import { PatientNav } from '@/components/patient/PatientNav'
-import { Calendar, Clock, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, CalendarPlus } from 'lucide-react'
+import Link from 'next/link'
 import { format, parseISO, isPast } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -55,7 +56,15 @@ export default function PatientAgendaPage() {
 
   return (
     <div className="max-w-md mx-auto px-4 pt-6 pb-28">
-      <h1 className="text-[22px] font-bold text-white mb-6 tracking-tight">Agenda</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-[22px] font-bold text-white tracking-tight">Consultas</h1>
+        <Link
+          href="/p/agendar"
+          className="flex items-center gap-1.5 px-3 py-2 bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold rounded-xl transition-all active:scale-95 shadow-lg shadow-brand-500/20"
+        >
+          <CalendarPlus className="w-3.5 h-3.5" /> Agendar
+        </Link>
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
