@@ -103,7 +103,7 @@ export async function getAvailableSlots(nutritionist_id: string, date: string): 
 
       if (!bookedTimes.has(timeStr)) {
         const datetime = new Date(year, month - 1, day, Number(h), Number(m)).toISOString()
-        const label = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')} às ${timeStr}`
+        const label = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year} às ${timeStr}`
         slots.push({ datetime, label })
       }
 
@@ -119,8 +119,8 @@ export async function getAvailableSlots(nutritionist_id: string, date: string): 
 // Pula fins de semana sem config, feriados e dias sem disponibilidade.
 export async function getNextAvailableSlots(
   nutritionist_id: string,
-  maxDays = 7,
-  maxSlots = 6
+  maxDays = 14,
+  maxSlots = 10
 ): Promise<TimeSlot[]> {
   const allSlots: TimeSlot[] = []
 
