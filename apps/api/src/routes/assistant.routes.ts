@@ -171,23 +171,54 @@ export async function assistantRoutes(app: FastifyInstance) {
   app.post('/training-form', auth, async (request, reply) => {
     const { id } = (request as any).user
     const schema = z.object({
-      identidade:         z.string().default(''),
-      publico_resultados: z.string().default(''),
-      faq:                z.string().default(''),
-      instrucoes:         z.string().default(''),
+      // Identidade
+      nome_titulo:    z.string().default(''),
+      especialidades: z.array(z.string()).default([]),
+      modalidade:     z.string().default(''),
+      experiencia:    z.string().default(''),
+      diferencial:    z.string().default(''),
+      // Público e resultados
+      faixa_etaria:   z.array(z.string()).default([]),
+      objetivos:      z.array(z.string()).default([]),
+      resultados:     z.string().default(''),
+      // FAQ
+      faq:            z.string().default(''),
+      // Instruções
+      sempre:         z.array(z.string()).default([]),
+      nunca:          z.array(z.string()).default([]),
+      instrucoes_extras: z.string().default(''),
     })
     const body = schema.parse(request.body)
 
     // Monta o conteúdo estruturado que a IA vai consumir
     const parts: string[] = []
-    if (body.identidade.trim())
-      parts.push(`IDENTIDADE DO CONSULTÓRIO:\n${body.identidade.trim()}`)
-    if (body.publico_resultados.trim())
-      parts.push(`PÚBLICO ATENDIDO E RESULTADOS:\n${body.publico_resultados.trim()}`)
+
+    // Identidade
+    const idLines: string[] = []
+    if (body.nome_titulo)         idLines.push(body.nome_titulo)
+    if (body.especialidades.length) idLines.push(`Especialidades: ${body.especialidades.join(', ')}`)
+    if (body.modalidade)           idLines.push(`Modalidade: ${body.modalidade}`)
+    if (body.experiencia)          idLines.push(`Experiência: ${body.experiencia}`)
+    if (body.diferencial)          idLines.push(`Diferencial: ${body.diferencial}`)
+    if (idLines.length) parts.push(`IDENTIDADE DO CONSULTÓRIO:\n${idLines.join('\n')}`)
+
+    // Público
+    const pubLines: string[] = []
+    if (body.faixa_etaria.length) pubLines.push(`Faixa etária predominante: ${body.faixa_etaria.join(', ')}`)
+    if (body.objetivos.length)    pubLines.push(`Objetivos mais atendidos: ${body.objetivos.join(', ')}`)
+    if (body.resultados)          pubLines.push(body.resultados)
+    if (pubLines.length) parts.push(`PÚBLICO ATENDIDO E RESULTADOS:\n${pubLines.join('\n')}`)
+
+    // FAQ
     if (body.faq.trim())
       parts.push(`PERGUNTAS FREQUENTES — USE ESTAS RESPOSTAS EXATAS:\n${body.faq.trim()}`)
-    if (body.instrucoes.trim())
-      parts.push(`INSTRUÇÕES ESPECIAIS:\n${body.instrucoes.trim()}`)
+
+    // Instruções
+    const instrLines: string[] = []
+    if (body.sempre.length) instrLines.push(`SEMPRE MENCIONAR:\n${body.sempre.map(s => `- ${s}`).join('\n')}`)
+    if (body.nunca.length)  instrLines.push(`NUNCA DIZER OU PROMETER:\n${body.nunca.map(s => `- ${s}`).join('\n')}`)
+    if (body.instrucoes_extras.trim()) instrLines.push(body.instrucoes_extras.trim())
+    if (instrLines.length) parts.push(`INSTRUÇÕES ESPECIAIS:\n${instrLines.join('\n\n')}`)
 
     const assembled = parts.join('\n\n') || null
 

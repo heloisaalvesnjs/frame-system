@@ -875,84 +875,59 @@ function TabWhatsApp() {
   )
 }
 
-// ─── Tab: Treinamento ────────────────────────────────────────────
-const trainingFormSchema = z.object({
-  identidade:         z.string().default(''),
-  publico_resultados: z.string().default(''),
-  faq:                z.string().default(''),
-  instrucoes:         z.string().default(''),
-})
-type TrainingFormData = z.infer<typeof trainingFormSchema>
-
-interface TrainingSection {
-  field: keyof TrainingFormData
-  title: string
-  description: string
-  placeholder: string
-  rows: number
+// ─── Chip selector helper ─────────────────────────────────────────
+function ChipSelector({ options, selected, onChange, single = false }: {
+  options: string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+  single?: boolean
+}) {
+  const toggle = (opt: string) => {
+    if (single) {
+      onChange(selected[0] === opt ? [] : [opt])
+    } else {
+      onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt])
+    }
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button key={opt} type="button" onClick={() => toggle(opt)}
+          className={cn(
+            'px-3 py-1 rounded-full text-xs border transition-colors',
+            selected.includes(opt)
+              ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+              : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+          )}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  )
 }
 
-const TRAINING_SECTIONS: TrainingSection[] = [
-  {
-    field: 'identidade',
-    title: 'Identidade do consultório',
-    description: 'Quem é o nutricionista, formação, especialidade, onde atende.',
-    placeholder: `Ex: Dr. David Effgen, nutricionista funcional e esportivo com 8 anos de experiência. Especialista em emagrecimento resistente, performance esportiva e nutrição clínica funcional. Atende online para todo o Brasil e presencialmente em Curitiba e Ponta Grossa (PR).
-
-Seu diferencial: não usa dietas padrão. Cada plano é construído para a rotina real do paciente, investigando causas metabólicas, hormonais e comportamentais.`,
-    rows: 5,
-  },
-  {
-    field: 'publico_resultados',
-    title: 'Público atendido e resultados',
-    description: 'Quem são seus pacientes e que resultados costumam alcançar.',
-    placeholder: `Ex: Atendo principalmente pessoas entre 25-45 anos que já tentaram dietas sem sucesso e buscam uma abordagem mais personalizada. Também atendo atletas amadores que querem melhorar performance e composição corporal.
-
-Resultados comuns nos primeiros 60 dias: perda de 4 a 8 kg, melhora de energia, redução de compulsão alimentar e melhora em exames laboratoriais.`,
-    rows: 5,
-  },
-  {
-    field: 'faq',
-    title: 'Perguntas frequentes',
-    description: 'As dúvidas mais comuns dos pacientes com as respostas exatas que a assistente deve usar.',
-    placeholder: `Use o formato P: / R:
-
-P: Você atende pelo plano de saúde?
-R: Não, o atendimento é particular. Os valores estão nos planos acima.
-
-P: Quantas consultas são necessárias?
-R: A frequência ideal definimos juntos na primeira consulta. A maioria dos meus pacientes vê resultados nas primeiras 4 semanas.
-
-P: A consulta online funciona bem?
-R: Sim, é tão completa quanto o presencial. Usamos videochamada e eu consigo avaliar tudo que preciso remotamente.`,
-    rows: 10,
-  },
-  {
-    field: 'instrucoes',
-    title: 'Instruções especiais',
-    description: 'O que a assistente deve sempre destacar e o que nunca deve dizer.',
-    placeholder: `SEMPRE mencionar:
-- Que o atendimento é totalmente personalizado, sem dietas padrão
-- Que temos pacientes com resultados reais e comprovados
-- Que a primeira consulta já inclui a montagem do plano alimentar
-
-NUNCA dizer:
-- Que o paciente vai emagrecer X quilos em Y dias
-- Nada sobre dietas da moda (keto, detox, etc.) sem contexto
-- Que vai "resolver o problema" — a linguagem correta é "trabalhar juntos"`,
-    rows: 8,
-  },
-]
-
+// ─── Tab: Treinamento ────────────────────────────────────────────
 function TabTreinamento() {
   const [openSection, setOpenSection] = useState<string | null>('identidade')
   const [saving, setSaving] = useState(false)
   const [activeSource, setActiveSource] = useState<'form' | 'pdf' | null>(null)
+  const [dirty, setDirty] = useState(false)
 
-  const { register, handleSubmit, reset, formState: { isDirty } } = useForm<TrainingFormData>({
-    resolver: zodResolver(trainingFormSchema),
-    defaultValues: { identidade: '', publico_resultados: '', faq: '', instrucoes: '' },
-  })
+  // Array fields (chips / checkboxes)
+  const [especialidades, setEspecialidades] = useState<string[]>([])
+  const [modalidade,     setModalidade]     = useState<string[]>([])
+  const [experiencia,    setExperiencia]    = useState<string[]>([])
+  const [faixaEtaria,    setFaixaEtaria]    = useState<string[]>([])
+  const [objetivos,      setObjetivos]      = useState<string[]>([])
+  const [sempre,         setSempre]         = useState<string[]>([])
+  const [nunca,          setNunca]          = useState<string[]>([])
+
+  // Text fields
+  const [nomeTitulo,    setNomeTitulo]    = useState('')
+  const [diferencial,   setDiferencial]   = useState('')
+  const [resultados,    setResultados]    = useState('')
+  const [faq,           setFaq]           = useState('')
+  const [instrExtras,   setInstrExtras]   = useState('')
 
   const { data: assistant } = useQuery<any>({
     queryKey: ['assistant'],
@@ -965,19 +940,50 @@ function TabTreinamento() {
   })
 
   useEffect(() => {
-    if (formData) {
-      reset(formData)
-      setActiveSource('form')
-    } else if (assistant?.pdf_filename) {
-      setActiveSource('pdf')
+    if (!formData) {
+      if (assistant?.pdf_filename) setActiveSource('pdf')
+      return
     }
-  }, [formData, assistant, reset])
+    // Carrega dados salvos (novo formato)
+    if (formData.nome_titulo !== undefined) {
+      setNomeTitulo(formData.nome_titulo    || '')
+      setEspecialidades(formData.especialidades || [])
+      setModalidade(formData.modalidade ? [formData.modalidade] : [])
+      setExperiencia(formData.experiencia  ? [formData.experiencia] : [])
+      setDiferencial(formData.diferencial  || '')
+      setFaixaEtaria(formData.faixa_etaria || [])
+      setObjetivos(formData.objetivos      || [])
+      setResultados(formData.resultados    || '')
+      setFaq(formData.faq                  || '')
+      setSempre(formData.sempre            || [])
+      setNunca(formData.nunca              || [])
+      setInstrExtras(formData.instrucoes_extras || '')
+    }
+    setActiveSource('form')
+  }, [formData, assistant])
 
-  async function onSubmit(data: TrainingFormData) {
+  function markDirty() { setDirty(true) }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/api/assistants/training-form', data)
+      await api.post('/api/assistants/training-form', {
+        nome_titulo:    nomeTitulo,
+        especialidades,
+        modalidade:     modalidade[0] || '',
+        experiencia:    experiencia[0] || '',
+        diferencial,
+        faixa_etaria:   faixaEtaria,
+        objetivos,
+        resultados,
+        faq,
+        sempre,
+        nunca,
+        instrucoes_extras: instrExtras,
+      })
       setActiveSource('form')
+      setDirty(false)
       toast.success('Treinamento salvo! A assistente já usa as novas informações.')
     } catch {
       toast.error('Erro ao salvar. Tente novamente.')
@@ -986,69 +992,194 @@ function TabTreinamento() {
     }
   }
 
+  const field = (label: string, children: React.ReactNode, hint?: string) => (
+    <div className="space-y-2">
+      <label className="text-xs font-medium text-white/60">{label}</label>
+      {hint && <p className="text-[11px] text-white/25 -mt-1">{hint}</p>}
+      {children}
+    </div>
+  )
+
+  const ta = (value: string, onChange: (v: string) => void, placeholder: string, rows = 3) => (
+    <textarea value={value} onChange={e => { onChange(e.target.value); markDirty() }} rows={rows}
+      placeholder={placeholder}
+      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-3 text-sm text-white placeholder:text-white/15 focus:outline-none focus:border-brand-500/40 transition-colors resize-none leading-relaxed" />
+  )
+
+  const chips = (opts: string[], val: string[], set: (v: string[]) => void, single = false) => (
+    <ChipSelector options={opts} selected={val} single={single}
+      onChange={v => { set(v); markDirty() }} />
+  )
+
+  const checkList = (items: string[], selected: string[], setSelected: (v: string[]) => void) => (
+    <div className="space-y-2">
+      {items.map(item => (
+        <label key={item} className="flex items-start gap-2.5 cursor-pointer group">
+          <div
+            onClick={() => { setSelected(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]); markDirty() }}
+            className={cn(
+              'w-4 h-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors cursor-pointer',
+              selected.includes(item)
+                ? 'bg-brand-500 border-brand-500'
+                : 'border-white/20 bg-white/5 group-hover:border-white/30'
+            )}
+          >
+            {selected.includes(item) && <CheckCircle className="w-2.5 h-2.5 text-white" />}
+          </div>
+          <span className="text-xs text-white/50 group-hover:text-white/70 transition-colors leading-relaxed">{item}</span>
+        </label>
+      ))}
+    </div>
+  )
+
+  const sections = [
+    {
+      id: 'identidade',
+      title: 'Identidade do consultório',
+      description: 'Quem é o nutricionista e seus diferenciais',
+      content: (
+        <div className="space-y-5">
+          {field('Nome e título', (
+            <input value={nomeTitulo} onChange={e => { setNomeTitulo(e.target.value); markDirty() }}
+              placeholder="Ex: Dr. David Effgen, nutricionista funcional e esportivo"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 transition-colors" />
+          ))}
+          {field('Especialidades', chips(
+            ['Emagrecimento', 'Ganho de massa', 'Performance esportiva', 'Nutrição clínica', 'Gestação', 'Nutrição infantil', 'Doenças crônicas', 'Vegetariano/vegano'],
+            especialidades, setEspecialidades
+          ))}
+          {field('Modalidade de atendimento', chips(
+            ['Online', 'Presencial', 'Online e presencial'],
+            modalidade, setModalidade, true
+          ))}
+          {field('Tempo de experiência', chips(
+            ['Menos de 2 anos', '2 a 5 anos', '5 a 10 anos', 'Mais de 10 anos'],
+            experiencia, setExperiencia, true
+          ))}
+          {field('Diferencial do método', ta(diferencial, setDiferencial,
+            'O que torna seu trabalho único. Ex: não uso dietas padrão, investigo causas metabólicas e hormonais, crio um plano para a rotina real do paciente.'))}
+        </div>
+      )
+    },
+    {
+      id: 'publico',
+      title: 'Público atendido e resultados',
+      description: 'Quem são seus pacientes e o que costumam alcançar',
+      content: (
+        <div className="space-y-5">
+          {field('Faixa etária predominante', chips(
+            ['18-25 anos', '25-35 anos', '35-45 anos', '45-60 anos', 'Todas as idades'],
+            faixaEtaria, setFaixaEtaria
+          ))}
+          {field('Objetivos mais atendidos', chips(
+            ['Emagrecer', 'Ganhar massa', 'Qualidade de vida', 'Performance atlética', 'Doenças crônicas', 'Pós-operatório', 'Gestação'],
+            objetivos, setObjetivos
+          ))}
+          {field('Resultados típicos', ta(resultados, setResultados,
+            'Ex: meus pacientes costumam perder entre 4-8kg no primeiro mês, com melhora de energia e redução de compulsão alimentar.'))}
+        </div>
+      )
+    },
+    {
+      id: 'faq',
+      title: 'Perguntas frequentes',
+      description: 'Dúvidas comuns com as respostas exatas que a assistente deve usar',
+      content: (
+        <div className="space-y-3">
+          <p className="text-[11px] text-white/30 leading-relaxed">
+            Use o formato <code className="text-white/50 font-mono">P: pergunta</code> / <code className="text-white/50 font-mono">R: resposta</code>. A assistente vai usar estas respostas palavra por palavra.
+          </p>
+          {ta(faq, setFaq,
+`P: Você atende pelo plano de saúde?
+R: Não, o atendimento é particular. Os valores estão nos planos acima.
+
+P: Quantas consultas são necessárias?
+R: A frequência ideal definimos juntos na primeira consulta.
+
+P: A consulta online funciona igual ao presencial?
+R: Sim, é tão completa. Usamos videochamada e avalio tudo que preciso.`, 10)}
+        </div>
+      )
+    },
+    {
+      id: 'instrucoes',
+      title: 'Instruções especiais',
+      description: 'O que a assistente deve sempre dizer e nunca prometer',
+      content: (
+        <div className="space-y-6">
+          {field('Sempre mencionar', checkList(
+            [
+              'Que o atendimento é totalmente personalizado, sem dietas padrão',
+              'Que temos pacientes com resultados reais e comprovados',
+              'Que a primeira consulta já inclui a montagem do plano alimentar',
+              'Os diferenciais do método do nutricionista',
+              'Que fazemos acompanhamento próximo entre consultas',
+            ],
+            sempre, setSempre
+          ))}
+          {field('Nunca dizer ou prometer', checkList(
+            [
+              'Prometer emagrecer X kg em Y dias',
+              'Recomendar dietas da moda (keto, detox, jejum sem contexto)',
+              'Dizer que vai "resolver" o problema',
+              'Comparar com outros profissionais ou métodos',
+              'Dar orientações nutricionais pelo chat antes da consulta',
+            ],
+            nunca, setNunca
+          ))}
+          {field('Observações extras', ta(instrExtras, setInstrExtras,
+            'Qualquer instrução adicional específica do seu consultório...', 3))}
+        </div>
+      )
+    },
+  ]
+
   if (isLoading) return <div className="py-8 text-center text-white/30 text-sm">Carregando...</div>
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-5">
       <div>
         <h2 className="text-sm font-semibold text-white mb-1">Treinamento da assistente</h2>
-        <p className="text-xs text-white/40 leading-relaxed">
-          Preencha as seções abaixo para que a assistente conheça o consultório em detalhe.
-          Estas informações são usadas em todas as conversas com clientes.
-        </p>
+        <p className="text-xs text-white/40">Preencha para que a assistente conheça o consultório em detalhe. Aplicado em todas as conversas.</p>
       </div>
 
-      {/* Source indicator */}
       {activeSource && (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+        <div className={cn('flex items-center gap-2 px-3 py-2 rounded-lg border text-xs',
           activeSource === 'form'
             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
             : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-        }`}>
+        )}>
           <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
           {activeSource === 'form'
             ? 'Usando informações do formulário abaixo'
-            : `Usando PDF enviado (${assistant?.pdf_filename}). Preencher e salvar o formulário substituirá o PDF.`}
+            : `Usando PDF enviado (${assistant?.pdf_filename}). Salvar o formulário vai substituir o PDF.`}
         </div>
       )}
 
-      {/* Accordion sections */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
-        {TRAINING_SECTIONS.map((section) => (
-          <div key={section.field} className="border border-white/[0.08] rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setOpenSection(openSection === section.field ? null : section.field)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
-            >
-              <div className="text-left">
-                <p className="text-sm font-medium text-white">{section.title}</p>
-                <p className="text-xs text-white/30 mt-0.5">{section.description}</p>
+      <form onSubmit={handleSave} className="space-y-2">
+        {sections.map(s => (
+          <div key={s.id} className="border border-white/[0.08] rounded-xl overflow-hidden">
+            <button type="button" onClick={() => setOpenSection(openSection === s.id ? null : s.id)}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-white/[0.02] transition-colors text-left">
+              <div>
+                <p className="text-sm font-medium text-white">{s.title}</p>
+                <p className="text-xs text-white/30 mt-0.5">{s.description}</p>
               </div>
-              {openSection === section.field
+              {openSection === s.id
                 ? <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0 ml-3" />
                 : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0 ml-3" />}
             </button>
-
-            {openSection === section.field && (
-              <div className="px-4 pb-4 border-t border-white/[0.06]">
-                <textarea
-                  {...register(section.field)}
-                  rows={section.rows}
-                  placeholder={section.placeholder}
-                  className="w-full mt-3 bg-white/5 border border-white/10 rounded-lg px-3.5 py-3 text-sm text-white placeholder:text-white/15 focus:outline-none focus:border-brand-500/40 transition-colors resize-none leading-relaxed"
-                />
+            {openSection === s.id && (
+              <div className="px-4 pb-5 pt-4 border-t border-white/[0.06] space-y-4">
+                {s.content}
               </div>
             )}
           </div>
         ))}
 
         <div className="pt-2 flex items-center justify-between">
-          <p className="text-xs text-white/20">
-            As informações são aplicadas imediatamente após salvar.
-          </p>
-          <Button type="submit" disabled={saving || !isDirty} size="sm">
+          <p className="text-xs text-white/20">As informações são aplicadas imediatamente após salvar.</p>
+          <Button type="submit" disabled={saving || !dirty} size="sm">
             {saving ? 'Salvando...' : 'Salvar treinamento'}
           </Button>
         </div>
