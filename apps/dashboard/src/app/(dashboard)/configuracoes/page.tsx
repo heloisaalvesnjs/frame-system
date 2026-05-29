@@ -1402,47 +1402,33 @@ function TabTestar() {
 
 // ─── Main Page ────────────────────────────────────────────────────
 const TABS = [
-  { id: 'profile',     label: 'Perfil',       icon: User,         hidden: false },
-  { id: 'assistant',   label: 'Assistente',   icon: Bot,          hidden: false },
-  { id: 'treinamento', label: 'Treinamento',  icon: BookOpen,     hidden: false },
-  { id: 'horarios',    label: 'Horários',     icon: Clock,        hidden: false },
-  { id: 'whatsapp',    label: 'WhatsApp',     icon: Smartphone,   hidden: false },
-  { id: 'testar',      label: 'Testar IA',    icon: FlaskConical, hidden: false },
+  { id: 'assistant',   label: 'Assistente',  icon: Bot          },
+  { id: 'treinamento', label: 'Treinamento', icon: BookOpen     },
+  { id: 'horarios',    label: 'Horários',    icon: Clock        },
+  { id: 'whatsapp',    label: 'WhatsApp',    icon: Smartphone   },
+  { id: 'testar',      label: 'Testar IA',   icon: FlaskConical },
 ]
 
 const VALID_TABS = TABS.map(t => t.id)
 
 export default function ConfiguracoesPage() {
   const searchParams = useSearchParams()
-  const initialTab = (() => {
+  const [activeTab, setActiveTab] = useState(() => {
     const t = searchParams.get('tab')
     return t && VALID_TABS.includes(t) ? t : 'assistant'
-  })()
-  const [activeTab, setActiveTab] = useState(initialTab)
-
-  // Atualiza aba se o parâmetro mudar (ex: clicando "Meu Perfil" novamente)
-  useEffect(() => {
-    const t = searchParams.get('tab')
-    if (t && VALID_TABS.includes(t)) setActiveTab(t)
-  }, [searchParams])
-
-  const pageTitle = activeTab === 'profile' ? 'Meu Perfil' : 'Configurações'
-  const pageDesc  = activeTab === 'profile'
-    ? 'Gerencie seu nome, contato e informações públicas'
-    : 'Gerencie a assistente, treinamento, horários e WhatsApp'
+  })
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">{pageTitle}</h1>
-        <p className="text-sm text-t2 mt-0.5">{pageDesc}</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Configurações</h1>
+        <p className="text-sm text-t2 mt-0.5">Assistente, treinamento, horários e WhatsApp</p>
       </div>
 
       <Card>
-        {/* Tabs */}
         <div className="px-6" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex gap-0.5 overflow-x-auto">
-            {TABS.filter(t => !(t.id === 'profile' && activeTab !== 'profile')).map(({ id, label, icon: Icon }) => (
+            {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
@@ -1461,7 +1447,6 @@ export default function ConfiguracoesPage() {
         </div>
 
         <CardContent className="py-6">
-          {activeTab === 'profile'     && <TabProfile />}
           {activeTab === 'assistant'   && <TabAssistant />}
           {activeTab === 'treinamento' && <TabTreinamento />}
           {activeTab === 'horarios'    && <TabHorarios />}

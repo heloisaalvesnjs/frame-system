@@ -113,7 +113,7 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
           {/* Ações */}
           <div className="p-1.5">
             <button
-              onClick={() => go('/configuracoes?tab=profile')}
+              onClick={() => go('/perfil')}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
             >
               <User className="w-[14px] h-[14px] flex-shrink-0" />
