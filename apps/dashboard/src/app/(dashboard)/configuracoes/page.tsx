@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical } from 'lucide-react'
+import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -875,6 +875,188 @@ function TabWhatsApp() {
   )
 }
 
+// ─── Tab: Treinamento ────────────────────────────────────────────
+const trainingFormSchema = z.object({
+  identidade:         z.string().default(''),
+  publico_resultados: z.string().default(''),
+  faq:                z.string().default(''),
+  instrucoes:         z.string().default(''),
+})
+type TrainingFormData = z.infer<typeof trainingFormSchema>
+
+interface TrainingSection {
+  field: keyof TrainingFormData
+  title: string
+  description: string
+  placeholder: string
+  rows: number
+}
+
+const TRAINING_SECTIONS: TrainingSection[] = [
+  {
+    field: 'identidade',
+    title: 'Identidade do consultório',
+    description: 'Quem é o nutricionista, formação, especialidade, onde atende.',
+    placeholder: `Ex: Dr. David Effgen, nutricionista funcional e esportivo com 8 anos de experiência. Especialista em emagrecimento resistente, performance esportiva e nutrição clínica funcional. Atende online para todo o Brasil e presencialmente em Curitiba e Ponta Grossa (PR).
+
+Seu diferencial: não usa dietas padrão. Cada plano é construído para a rotina real do paciente, investigando causas metabólicas, hormonais e comportamentais.`,
+    rows: 5,
+  },
+  {
+    field: 'publico_resultados',
+    title: 'Público atendido e resultados',
+    description: 'Quem são seus pacientes e que resultados costumam alcançar.',
+    placeholder: `Ex: Atendo principalmente pessoas entre 25-45 anos que já tentaram dietas sem sucesso e buscam uma abordagem mais personalizada. Também atendo atletas amadores que querem melhorar performance e composição corporal.
+
+Resultados comuns nos primeiros 60 dias: perda de 4 a 8 kg, melhora de energia, redução de compulsão alimentar e melhora em exames laboratoriais.`,
+    rows: 5,
+  },
+  {
+    field: 'faq',
+    title: 'Perguntas frequentes',
+    description: 'As dúvidas mais comuns dos pacientes com as respostas exatas que a assistente deve usar.',
+    placeholder: `Use o formato P: / R:
+
+P: Você atende pelo plano de saúde?
+R: Não, o atendimento é particular. Os valores estão nos planos acima.
+
+P: Quantas consultas são necessárias?
+R: A frequência ideal definimos juntos na primeira consulta. A maioria dos meus pacientes vê resultados nas primeiras 4 semanas.
+
+P: A consulta online funciona bem?
+R: Sim, é tão completa quanto o presencial. Usamos videochamada e eu consigo avaliar tudo que preciso remotamente.`,
+    rows: 10,
+  },
+  {
+    field: 'instrucoes',
+    title: 'Instruções especiais',
+    description: 'O que a assistente deve sempre destacar e o que nunca deve dizer.',
+    placeholder: `SEMPRE mencionar:
+- Que o atendimento é totalmente personalizado, sem dietas padrão
+- Que temos pacientes com resultados reais e comprovados
+- Que a primeira consulta já inclui a montagem do plano alimentar
+
+NUNCA dizer:
+- Que o paciente vai emagrecer X quilos em Y dias
+- Nada sobre dietas da moda (keto, detox, etc.) sem contexto
+- Que vai "resolver o problema" — a linguagem correta é "trabalhar juntos"`,
+    rows: 8,
+  },
+]
+
+function TabTreinamento() {
+  const [openSection, setOpenSection] = useState<string | null>('identidade')
+  const [saving, setSaving] = useState(false)
+  const [activeSource, setActiveSource] = useState<'form' | 'pdf' | null>(null)
+
+  const { register, handleSubmit, reset, formState: { isDirty } } = useForm<TrainingFormData>({
+    resolver: zodResolver(trainingFormSchema),
+    defaultValues: { identidade: '', publico_resultados: '', faq: '', instrucoes: '' },
+  })
+
+  const { data: assistant } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant },
+  })
+
+  const { data: formData, isLoading } = useQuery<any>({
+    queryKey: ['training-form'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants/training-form'); return data.form },
+  })
+
+  useEffect(() => {
+    if (formData) {
+      reset(formData)
+      setActiveSource('form')
+    } else if (assistant?.pdf_filename) {
+      setActiveSource('pdf')
+    }
+  }, [formData, assistant, reset])
+
+  async function onSubmit(data: TrainingFormData) {
+    setSaving(true)
+    try {
+      await api.post('/api/assistants/training-form', data)
+      setActiveSource('form')
+      toast.success('Treinamento salvo! A assistente já usa as novas informações.')
+    } catch {
+      toast.error('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (isLoading) return <div className="py-8 text-center text-white/30 text-sm">Carregando...</div>
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-sm font-semibold text-white mb-1">Treinamento da assistente</h2>
+        <p className="text-xs text-white/40 leading-relaxed">
+          Preencha as seções abaixo para que a assistente conheça o consultório em detalhe.
+          Estas informações são usadas em todas as conversas com clientes.
+        </p>
+      </div>
+
+      {/* Source indicator */}
+      {activeSource && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+          activeSource === 'form'
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+        }`}>
+          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          {activeSource === 'form'
+            ? 'Usando informações do formulário abaixo'
+            : `Usando PDF enviado (${assistant?.pdf_filename}). Preencher e salvar o formulário substituirá o PDF.`}
+        </div>
+      )}
+
+      {/* Accordion sections */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+        {TRAINING_SECTIONS.map((section) => (
+          <div key={section.field} className="border border-white/[0.08] rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOpenSection(openSection === section.field ? null : section.field)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="text-left">
+                <p className="text-sm font-medium text-white">{section.title}</p>
+                <p className="text-xs text-white/30 mt-0.5">{section.description}</p>
+              </div>
+              {openSection === section.field
+                ? <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0 ml-3" />
+                : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0 ml-3" />}
+            </button>
+
+            {openSection === section.field && (
+              <div className="px-4 pb-4 border-t border-white/[0.06]">
+                <textarea
+                  {...register(section.field)}
+                  rows={section.rows}
+                  placeholder={section.placeholder}
+                  className="w-full mt-3 bg-white/5 border border-white/10 rounded-lg px-3.5 py-3 text-sm text-white placeholder:text-white/15 focus:outline-none focus:border-brand-500/40 transition-colors resize-none leading-relaxed"
+                />
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div className="pt-2 flex items-center justify-between">
+          <p className="text-xs text-white/20">
+            As informações são aplicadas imediatamente após salvar.
+          </p>
+          <Button type="submit" disabled={saving || !isDirty} size="sm">
+            {saving ? 'Salvando...' : 'Salvar treinamento'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ─── Tab: Testar IA ───────────────────────────────────────────────
 interface TestMsg {
   role: 'user' | 'assistant' | 'system'
@@ -1088,11 +1270,12 @@ function TabTestar() {
 
 // ─── Main Page ────────────────────────────────────────────────────
 const tabs = [
-  { id: 'profile',    label: 'Perfil',     icon: User },
-  { id: 'assistant',  label: 'Assistente', icon: Bot },
-  { id: 'horarios',   label: 'Horários',   icon: Clock },
-  { id: 'whatsapp',   label: 'WhatsApp',   icon: Smartphone },
-  { id: 'testar',     label: 'Testar IA', icon: FlaskConical },
+  { id: 'profile',     label: 'Perfil',       icon: User },
+  { id: 'assistant',   label: 'Assistente',   icon: Bot },
+  { id: 'treinamento', label: 'Treinamento',  icon: BookOpen },
+  { id: 'horarios',    label: 'Horários',     icon: Clock },
+  { id: 'whatsapp',    label: 'WhatsApp',     icon: Smartphone },
+  { id: 'testar',      label: 'Testar IA',    icon: FlaskConical },
 ]
 
 export default function ConfiguracoesPage() {
@@ -1128,11 +1311,12 @@ export default function ConfiguracoesPage() {
         </div>
 
         <CardContent className="py-6">
-          {activeTab === 'profile'   && <TabProfile />}
-          {activeTab === 'assistant' && <TabAssistant />}
-          {activeTab === 'horarios'  && <TabHorarios />}
-          {activeTab === 'whatsapp'  && <TabWhatsApp />}
-          {activeTab === 'testar'    && <TabTestar />}
+          {activeTab === 'profile'     && <TabProfile />}
+          {activeTab === 'assistant'   && <TabAssistant />}
+          {activeTab === 'treinamento' && <TabTreinamento />}
+          {activeTab === 'horarios'    && <TabHorarios />}
+          {activeTab === 'whatsapp'    && <TabWhatsApp />}
+          {activeTab === 'testar'      && <TabTestar />}
         </CardContent>
       </Card>
     </div>

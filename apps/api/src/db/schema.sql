@@ -374,3 +374,4 @@ ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS is_master BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS service_plans TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS nutri_display_name TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS training_form JSONB;

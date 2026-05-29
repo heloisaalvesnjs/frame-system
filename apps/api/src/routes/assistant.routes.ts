@@ -154,6 +154,57 @@ export async function assistantRoutes(app: FastifyInstance) {
   })
 
   // ─────────────────────────────────────────────────────────
+  // FORMULÁRIO DE TREINAMENTO DO CONSULTÓRIO
+  // ─────────────────────────────────────────────────────────
+
+  // GET /api/assistants/training-form — busca formulário salvo
+  app.get('/training-form', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const assistant = await queryOne<any>(
+      'SELECT training_form FROM assistants WHERE nutritionist_id = $1',
+      [id]
+    )
+    return reply.send({ form: assistant?.training_form ?? null })
+  })
+
+  // POST /api/assistants/training-form — salva formulário e monta pdf_content
+  app.post('/training-form', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.object({
+      identidade:         z.string().default(''),
+      publico_resultados: z.string().default(''),
+      faq:                z.string().default(''),
+      instrucoes:         z.string().default(''),
+    })
+    const body = schema.parse(request.body)
+
+    // Monta o conteúdo estruturado que a IA vai consumir
+    const parts: string[] = []
+    if (body.identidade.trim())
+      parts.push(`IDENTIDADE DO CONSULTÓRIO:\n${body.identidade.trim()}`)
+    if (body.publico_resultados.trim())
+      parts.push(`PÚBLICO ATENDIDO E RESULTADOS:\n${body.publico_resultados.trim()}`)
+    if (body.faq.trim())
+      parts.push(`PERGUNTAS FREQUENTES — USE ESTAS RESPOSTAS EXATAS:\n${body.faq.trim()}`)
+    if (body.instrucoes.trim())
+      parts.push(`INSTRUÇÕES ESPECIAIS:\n${body.instrucoes.trim()}`)
+
+    const assembled = parts.join('\n\n') || null
+
+    await query(
+      `UPDATE assistants
+         SET training_form = $2,
+             pdf_content   = $3,
+             pdf_path      = NULL,
+             updated_at    = NOW()
+       WHERE nutritionist_id = $1`,
+      [id, JSON.stringify(body), assembled]
+    )
+
+    return reply.send({ ok: true })
+  })
+
+  // ─────────────────────────────────────────────────────────
   // TREINAMENTO UNIVERSAL DA IA
   // ─────────────────────────────────────────────────────────
 
