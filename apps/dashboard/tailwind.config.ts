@@ -9,28 +9,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Semantic tokens (CSS vars, theme-aware) ──────────────
+        bg:      'var(--bg)',
+        surface: 'var(--surface)',
+        raised:  'var(--raised)',
+        border:  'var(--border)',
+        t1:      'var(--t1)',
+        t2:      'var(--t2)',
+        t3:      'var(--t3)',
+
+        // ── Brand (hex — suporta Tailwind opacity modifiers) ─────
         brand: {
-          50:  '#edfdf5',
-          100: '#d3f9e7',
-          200: '#aaf0d1',
-          300: '#6ee4b7',
-          400: '#32cf93',
-          500: '#10c97a',
-          600: '#0aad68',
-          700: '#098a54',
-          800: '#0a6d44',
-          900: '#0d4a32',
+          DEFAULT: '#00C27C',
+          50:      '#E8FBF4',
+          100:     '#C6F6E4',
+          400:     '#00E892',
+          500:     '#00C27C',
+          600:     '#009A62',
+          700:     '#007A4E',
+          subtle:  '#0B2E1E',
         },
+
+        // ── Legacy aliases (backward compat) ─────────────────────
         ui: {
-          bg:       '#111318',
-          card:     '#181c27',
-          elevated: '#1e2233',
-          border:   '#252d3c',
-          sidebar:  '#0d2118',
+          bg:       'var(--bg)',
+          card:     'var(--surface)',
+          elevated: 'var(--raised)',
+          border:   'var(--border)',
+          sidebar:  'var(--bg)',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans:    ['Inter', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', 'sans-serif'],
+        mono:    ['"DM Mono"', 'monospace'],
+      },
+      boxShadow: {
+        card:    '0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05)',
+        'card-md': '0 4px 8px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06)',
       },
     },
   },

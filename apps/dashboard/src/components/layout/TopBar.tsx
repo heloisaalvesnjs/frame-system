@@ -1,25 +1,22 @@
 'use client'
 
-import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
+import { Menu, Sun, Moon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':     'Dashboard',
+  '/dashboard':     'Painel',
   '/conversas':     'Conversas',
   '/agenda':        'Agenda',
   '/clientes':      'Clientes',
   '/configuracoes': 'Configurações',
   '/onboarding':    'Configuração inicial',
+  '/admin':         'Admin',
 }
 
 function getTitle(pathname: string): string {
-  // exact match first
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
-  // prefix match (e.g. /clientes/abc)
   const prefix = Object.keys(PAGE_TITLES).find(k => pathname.startsWith(k) && k !== '/')
   return prefix ? PAGE_TITLES[prefix] : 'Frame'
 }
@@ -27,28 +24,60 @@ function getTitle(pathname: string): string {
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname()
   const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const title = getTitle(pathname)
+
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
 
   return (
-    <header className="fixed top-0 left-0 right-0 md:left-60 h-14 bg-ui-bg/80 backdrop-blur-sm border-b border-white/5 flex items-center px-4 md:px-6 gap-4 z-10">
-      {/* Hamburger (mobile only) */}
+    <header
+      className="fixed top-0 left-0 right-0 md:left-[220px] h-[60px] flex items-center px-5 gap-4 z-10 backdrop-blur-md"
+      style={{
+        background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      {/* Hamburger (mobile) */}
       <button
         onClick={onMenuClick}
-        className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-        aria-label="Abrir menu"
+        className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-t2 hover:text-t1 hover:bg-raised"
+        aria-label="Menu"
       >
         <Menu className="w-4 h-4" />
       </button>
 
-      {/* Page title */}
-      <h1 className="text-sm font-semibold text-white/80 flex-1">{title}</h1>
+      {/* Title */}
+      <h1 className="font-display font-bold text-[18px] tracking-tight text-t1 flex-1 leading-none">
+        {title}
+      </h1>
 
-      {/* User avatar */}
-      <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center flex-shrink-0">
-        <span className="text-[10px] font-bold text-brand-400">{initials}</span>
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Mudar para claro' : 'Mudar para escuro'}
+          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-t2 hover:text-t1 hover:bg-raised"
+          style={{ border: '1px solid var(--border)' }}
+        >
+          {theme === 'dark'
+            ? <Sun className="w-[15px] h-[15px]" />
+            : <Moon className="w-[15px] h-[15px]" />}
+        </button>
+
+        {/* Avatar */}
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-brand-500 flex-shrink-0"
+          style={{
+            background: 'var(--brand-s-solid)',
+            border: '1.5px solid rgba(0,194,124,.25)',
+          }}
+        >
+          {initials}
+        </div>
       </div>
     </header>
   )

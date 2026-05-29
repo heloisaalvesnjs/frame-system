@@ -2,42 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
 
-* {
-  box-sizing: border-box;
+/* ── Design Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Dark (default) */
+  --bg:      #0B0C0E;
+  --surface: #141618;
+  --raised:  #1A1D21;
+  --border:  #1E2124;
+  --t1:      #F4F5F0;
+  --t2:      #6B7280;
+  --t3:      #374151;
+  --brand:   #00C27C;
+  --brand-h: #00E892;
+  --brand-s: rgba(0, 194, 124, 0.10);
+  --brand-s-solid: #0B2E1E;
+  --shadow:  0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.20);
 }
+
+[data-theme="light"] {
+  --bg:      #F0F2EF;
+  --surface: #FFFFFF;
+  --raised:  #F7F8F6;
+  --border:  #E5E7EB;
+  --t1:      #0B0C0E;
+  --t2:      #6B7280;
+  --t3:      #9CA3AF;
+  --brand:   #00C27C;
+  --brand-h: #009A62;
+  --brand-s: rgba(0, 194, 124, 0.08);
+  --brand-s-solid: #E8FBF4;
+  --shadow:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 body {
+  background-color: var(--bg);
+  color: var(--t1);
   font-family: 'Inter', sans-serif;
-  background-color: #111318;
-  color: #f1f5f9;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--t3); }
 
-::-webkit-scrollbar-track {
-  background: #181c27;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #252d3c;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #374151;
-}
-
-/* Fix browser autocomplete background */
+/* ── Autofill ──────────────────────────────────────────────────── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #1e2233 inset !important;
-  -webkit-text-fill-color: #f1f5f9 !important;
-  caret-color: #f1f5f9;
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--raised) inset !important;
+  -webkit-text-fill-color: var(--t1) !important;
+  caret-color: var(--t1);
+}
+
+/* ── Utilities ─────────────────────────────────────────────────── */
+@layer utilities {
+  .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+  .font-label   { font-family: 'DM Mono', monospace; }
+
+  .text-t1 { color: var(--t1); }
+  .text-t2 { color: var(--t2); }
+  .text-t3 { color: var(--t3); }
+  .text-brand-frame { color: var(--brand); }
+
+  .bg-base    { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-raised  { background-color: var(--raised); }
+  .bg-brand-s { background-color: var(--brand-s); }
+  .bg-brand-s-solid { background-color: var(--brand-s-solid); }
+
+  .border-theme { border-color: var(--border); }
+
+  .shadow-frame { box-shadow: var(--shadow); }
 }

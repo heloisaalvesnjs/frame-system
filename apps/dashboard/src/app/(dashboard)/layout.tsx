@@ -12,21 +12,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // Close drawer on route change
-  useEffect(() => {
-    setDrawerOpen(false)
-  }, [pathname])
+  useEffect(() => { setDrawerOpen(false) }, [pathname])
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    }
+    if (!loading && !user) router.push('/login')
   }, [user, loading, router])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ui-bg">
-        <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-base">
+        <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -34,11 +29,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null
 
   return (
-    <div className="flex min-h-screen bg-ui-bg">
+    <div className="flex min-h-screen bg-base">
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-[220px] flex flex-col min-h-screen">
         <TopBar onMenuClick={() => setDrawerOpen(true)} />
-        <main className="flex-1 pt-14">{children}</main>
+        <main className="flex-1 pt-[60px]">{children}</main>
       </div>
     </div>
   )

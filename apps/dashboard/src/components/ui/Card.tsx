@@ -7,7 +7,13 @@ interface CardProps {
 
 export function Card({ children, className }: CardProps) {
   return (
-    <div className={cn('rounded-xl border border-ui-border bg-ui-card shadow-sm', className)}>
+    <div
+      className={cn('rounded-2xl shadow-frame', className)}
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+      }}
+    >
       {children}
     </div>
   )
@@ -15,7 +21,10 @@ export function Card({ children, className }: CardProps) {
 
 export function CardHeader({ children, className }: CardProps) {
   return (
-    <div className={cn('px-6 py-4 border-b border-ui-border', className)}>
+    <div
+      className={cn('px-6 py-4', className)}
+      style={{ borderBottom: '1px solid var(--border)' }}
+    >
       {children}
     </div>
   )
@@ -27,7 +36,10 @@ export function CardContent({ children, className }: CardProps) {
 
 export function CardFooter({ children, className }: CardProps) {
   return (
-    <div className={cn('px-6 py-4 border-t border-ui-border', className)}>
+    <div
+      className={cn('px-6 py-4', className)}
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
       {children}
     </div>
   )

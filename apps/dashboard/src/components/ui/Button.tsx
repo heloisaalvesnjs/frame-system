@@ -10,25 +10,30 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
     const base =
-      'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-ui-card disabled:opacity-40 disabled:cursor-not-allowed'
+      'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed font-mono tracking-[0.04em]'
 
-    const variants = {
-      primary:   'bg-brand-500 text-white hover:bg-brand-600 focus:ring-brand-500/40 shadow-sm shadow-brand-500/20',
-      secondary: 'bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 focus:ring-brand-500/30',
-      outline:   'border border-ui-border bg-transparent text-white/60 hover:bg-white/5 hover:text-white focus:ring-white/20',
-      ghost:     'text-white/50 hover:bg-white/5 hover:text-white focus:ring-white/20',
-      danger:    'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 focus:ring-red-500/30',
+    const variants: Record<string, string> = {
+      primary:   'bg-brand-500 text-white hover:bg-brand-600 shadow-sm',
+      secondary: 'bg-brand-500/10 text-brand-500 hover:bg-brand-500/15',
+      outline:   'border text-t2 hover:text-t1 hover:bg-raised',
+      ghost:     'text-t2 hover:text-t1 hover:bg-raised',
+      danger:    'bg-red-500/10 text-red-400 hover:bg-red-500/15 border border-red-500/20',
     }
 
+    const outlineStyle = variant === 'outline'
+      ? { borderColor: 'var(--border)' }
+      : {}
+
     const sizes = {
-      sm: 'h-8 px-3 text-xs gap-1.5',
-      md: 'h-9 px-4 text-sm gap-2',
-      lg: 'h-11 px-6 text-sm gap-2',
+      sm: 'h-8 px-3 text-[11px] gap-1.5',
+      md: 'h-9 px-4 text-[12px] gap-2',
+      lg: 'h-10 px-5 text-[12px] gap-2',
     }
 
     return (
       <button
         ref={ref}
+        style={outlineStyle}
         className={cn(base, variants[variant], sizes[size], className)}
         disabled={disabled || loading}
         {...props}
