@@ -286,7 +286,7 @@ export async function assistantRoutes(app: FastifyInstance) {
         writeFileSync(filename, md, 'utf-8')
         app.log.info(`[training] Nota salva no Obsidian: ${filename}`)
       } catch (obsErr) {
-        app.log.warn('[training] Obsidian write falhou (continuando):', obsErr)
+        app.log.warn({ err: obsErr }, '[training] Obsidian write falhou (continuando)')
       }
     }
 

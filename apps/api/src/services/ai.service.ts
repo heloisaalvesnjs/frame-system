@@ -194,6 +194,8 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     : tone === 'descontraido' ? 'leve e próximo, como uma amiga'
     : 'acolhedor e próximo'
 
+  const greetingMsg = assistant.greeting_message?.trim() || null
+
   // Agrupa slots por turno (manhã < 12h / tarde >= 12h)
   const morningSlots = availableSlots.filter((s: any) => {
     const m = s.label.match(/(\d{2}):(\d{2})$/)
@@ -228,14 +230,21 @@ ${trainingSection}
 ${isFirstMessage ? 'AGORA: PRIMEIRA MENSAGEM — EXECUTE JÁ' : 'ABERTURA (quando não há histórico anterior)'}
 ==============================
 ${isFirstMessage
-  ? `Esta é a PRIMEIRA mensagem do cliente. Apresente-se AGORA com esta estrutura:
+  ? greetingMsg
+    ? `PRIMEIRA MENSAGEM CONFIGURADA — ENVIE EXATAMENTE ESTE TEXTO, SEM ALTERAR:
+"${greetingMsg}"
+
+Após enviar, aguarde a resposta do cliente e continue o atendimento normalmente.`
+    : `Esta é a PRIMEIRA mensagem do cliente. Apresente-se AGORA com esta estrutura:
 
 "[saudação]! Me chamo ${aiName}, faço parte da equipe de ${nutriName} e será uma honra ter você no time de pacientes 😊 Para começarmos, qual o seu objetivo: [opção A] ou [opção B]?"
 
 Saudação: "Bom dia" (6h-12h) / "Boa tarde" (12h-18h) / "Boa noite" (18h+).
 Opções: adapte à especialidade do consultório. Exemplos: "emagrecimento" ou "ganho de massa muscular".
 Use 1 emoji. Sem asterisco, negrito ou markdown.`
-  : `Na primeira troca: apresente-se + "será uma honra ter você no time de pacientes" + pergunta de objetivo com 2 opções.`}
+  : greetingMsg
+    ? `Se for a primeira troca, use esta mensagem de boas-vindas: "${greetingMsg}"`
+    : `Na primeira troca: apresente-se + "será uma honra ter você no time de pacientes" + pergunta de objetivo com 2 opções.`}
 
 ==============================
 APÓS O CLIENTE INFORMAR O OBJETIVO
