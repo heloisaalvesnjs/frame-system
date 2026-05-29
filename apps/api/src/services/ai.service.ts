@@ -5,23 +5,12 @@ import { query, queryOne } from '../db'
 import { getNextAvailableSlots } from './appointment.service'
 import { sendMessage } from './whatsapp.service'
 
-// ── Provedor de IA (claude | gemini | groq) ───────────────────
-const AI_PROVIDER = process.env.AI_PROVIDER || 'claude'
+// ── Providers ────────────────────────────────────────────────
+// Ordem de tentativa: Groq (grátis/rápido) → Gemini Flash (grátis) → Claude (pago, último recurso)
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
-const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
-
-
-async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 350,
-    system: systemPrompt,
-    messages: [...messages, { role: 'user', content: userMessage }]
-  })
-  return response.content[0].type === 'text' ? response.content[0].text : ''
-}
+const genai     = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const groq      = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
 async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
   const response = await groq.chat.completions.create({
@@ -36,27 +25,49 @@ async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assist
   return response.choices[0]?.message?.content || ''
 }
 
+async function callGemini(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  const model = genai.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: systemPrompt,
+    generationConfig: { maxOutputTokens: 350 }
+  })
+  const history = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }))
+  const chat   = model.startChat({ history })
+  const result = await chat.sendMessage(userMessage)
+  return result.response.text()
+}
+
+async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 350,
+    system: systemPrompt,
+    messages: [...messages, { role: 'user', content: userMessage }]
+  })
+  return response.content[0].type === 'text' ? response.content[0].text : ''
+}
+
 async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  // Define ordem dos providers: primary → fallback
-  const providers = AI_PROVIDER === 'claude'
-    ? [
-        { name: 'claude', fn: callClaude },
-        { name: 'groq',   fn: callGroq   }
-      ]
-    : [
-        { name: 'groq',   fn: callGroq   },
-        { name: 'claude', fn: callClaude }
-      ]
+  // Groq → Gemini → Claude (pago apenas se os gratuitos falharem)
+  const hasGemini = !!process.env.GEMINI_API_KEY
+  const providers = [
+    { name: 'groq',   fn: callGroq   },
+    ...(hasGemini ? [{ name: 'gemini', fn: callGemini }] : []),
+    { name: 'claude', fn: callClaude },
+  ]
 
   for (let i = 0; i < providers.length; i++) {
     const { name, fn } = providers[i]
     try {
       const result = await fn(systemPrompt, messages, userMessage)
-      if (i > 0) console.log(`[AI] Fallback para ${name} funcionou`)
+      if (i > 0) console.log(`[AI] Usando ${name}`)
       return result
     } catch (err: any) {
       const isLast = i === providers.length - 1
-      console.error(`[AI] ${name} falhou (${err?.status || err?.message}). ${isLast ? 'Sem mais fallbacks.' : 'Tentando próximo...'}`)
+      console.error(`[AI] ${name} falhou (${err?.status ?? err?.message}). ${isLast ? 'Sem mais fallbacks.' : 'Tentando próximo...'}`)
       if (isLast) throw err
     }
   }
