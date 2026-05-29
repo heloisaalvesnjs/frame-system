@@ -116,8 +116,22 @@ const assistantSchema = z.object({
   vacation_message: z.string().optional(),
   service_plans: z.string().optional(),
   nutri_display_name: z.string().optional(),
+  emoji_level: z.number().min(1).max(5).default(3),
+  func_prospeccao: z.boolean().default(true),
+  func_triagem: z.boolean().default(true),
+  func_agendamento: z.boolean().default(true),
 })
 type AssistantFormData = z.infer<typeof assistantSchema>
+
+const EMOJI_LABELS: Record<number, string> = {
+  1: 'Nenhum', 2: 'Raramente', 3: 'Moderado', 4: 'Frequente', 5: 'Muito'
+}
+
+const FUNCOES = [
+  { key: 'func_prospeccao'  as const, label: 'Prospecção',  desc: 'Reengaja leads que param de responder' },
+  { key: 'func_triagem'     as const, label: 'Triagem',     desc: 'Qualifica pacientes com perguntas de objetivo' },
+  { key: 'func_agendamento' as const, label: 'Agendamento', desc: 'Oferece e confirma consultas automaticamente' },
+]
 
 const TONES = [
   { value: 'acolhedor',   label: 'Acolhedor',    desc: 'Empático e próximo' },
@@ -165,6 +179,10 @@ function TabAssistant() {
         followup_delay_hours: assistant.followup_delay_hours ?? 4,
         service_plans: (assistant as any).service_plans || '',
         nutri_display_name: (assistant as any).nutri_display_name || '',
+        emoji_level: (assistant as any).emoji_level ?? 3,
+        func_prospeccao:  (assistant as any).func_prospeccao  ?? true,
+        func_triagem:     (assistant as any).func_triagem     ?? true,
+        func_agendamento: (assistant as any).func_agendamento ?? true,
       })
     }
   }, [assistant, reset])
@@ -402,6 +420,66 @@ function TabAssistant() {
             </div>
           )
         })()}
+
+        {/* Slider de emoji */}
+        {(() => {
+          const level = watch('emoji_level') ?? 3
+          return (
+            <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-t1">Uso de emojis</p>
+                  <p className="text-xs text-t3">Define a frequência de emojis nas respostas da assistente</p>
+                </div>
+                <span className="font-mono text-[11px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">
+                  {EMOJI_LABELS[level]}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] text-t3 w-14">Nenhum</span>
+                <input
+                  type="range" min={1} max={5} step={1}
+                  value={level}
+                  onChange={e => setValue('emoji_level', Number(e.target.value))}
+                  className="flex-1 accent-brand-500 h-1.5 cursor-pointer"
+                />
+                <span className="font-mono text-[10px] text-t3 w-8">Muito</span>
+              </div>
+              <div className="flex justify-between px-[56px]">
+                {[1,2,3,4,5].map(n => (
+                  <span key={n} className={cn('font-mono text-[9px]', level === n ? 'text-brand-500' : 'text-t3')}>{n}</span>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Funções habilitadas */}
+        <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-sm font-medium text-t1">Funções habilitadas</p>
+            <p className="text-xs text-t3">Controle o que a assistente pode fazer</p>
+          </div>
+          {FUNCOES.map(({ key, label, desc }) => {
+            const enabled = watch(key) ?? true
+            return (
+              <div key={key} className="flex items-center justify-between">
+                <div>
+                  <p className={cn('text-sm font-medium', enabled ? 'text-t1' : 'text-t2')}>{label}</p>
+                  <p className="text-xs text-t3">{desc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue(key, !enabled)}
+                  className={cn('relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0', enabled ? 'bg-brand-500' : 'bg-raised')}
+                  style={enabled ? {} : { border: '1px solid var(--border)' }}
+                >
+                  <span className={cn('absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform', enabled ? 'left-[20px]' : 'left-[2px]')} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
 
         <div className="flex items-center gap-3">
           <Button type="submit" loading={isSubmitting}>Salvar</Button>

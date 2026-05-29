@@ -18,6 +18,7 @@ export async function assistantRoutes(app: FastifyInstance) {
               vacation_mode, vacation_message,
               followup_enabled, followup_delay_hours,
               service_plans, nutri_display_name,
+              emoji_level, func_prospeccao, func_triagem, func_agendamento,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -40,7 +41,11 @@ export async function assistantRoutes(app: FastifyInstance) {
       followup_enabled: z.boolean().optional(),
       followup_delay_hours: z.number().int().min(1).max(48).optional(),
       service_plans: z.string().optional(),
-      nutri_display_name: z.string().optional()
+      nutri_display_name: z.string().optional(),
+      emoji_level: z.number().int().min(1).max(5).default(3),
+      func_prospeccao: z.boolean().default(true),
+      func_triagem: z.boolean().default(true),
+      func_agendamento: z.boolean().default(true),
     })
 
     const body = schema.parse(request.body)
@@ -56,19 +61,22 @@ export async function assistantRoutes(app: FastifyInstance) {
            vacation_mode = COALESCE($8, vacation_mode), vacation_message = $9,
            followup_enabled = COALESCE($10, followup_enabled),
            followup_delay_hours = COALESCE($11, followup_delay_hours),
-           service_plans = $12,
-           nutri_display_name = $13,
+           service_plans = $12, nutri_display_name = $13,
+           emoji_level = $14,
+           func_prospeccao = $15, func_triagem = $16, func_agendamento = $17,
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
                    consultation_price, consultation_modalities, specialties,
                    vacation_mode, vacation_message,
-                   followup_enabled, followup_delay_hours, service_plans, nutri_display_name`,
+                   followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
+                   emoji_level, func_prospeccao, func_triagem, func_agendamento`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
          body.vacation_mode, body.vacation_message,
          body.followup_enabled, body.followup_delay_hours,
-         body.service_plans ?? null, body.nutri_display_name?.trim() || null]
+         body.service_plans ?? null, body.nutri_display_name?.trim() || null,
+         body.emoji_level, body.func_prospeccao, body.func_triagem, body.func_agendamento]
       )
     } else {
       ;[assistant] = await query(
@@ -76,17 +84,20 @@ export async function assistantRoutes(app: FastifyInstance) {
            (nutritionist_id, name, tone, greeting_message,
             consultation_price, consultation_modalities, specialties,
             vacation_mode, vacation_message,
-            followup_enabled, followup_delay_hours, service_plans, nutri_display_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
+            emoji_level, func_prospeccao, func_triagem, func_agendamento)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
          RETURNING id, name, tone, greeting_message, is_active,
                    consultation_price, consultation_modalities, specialties,
                    vacation_mode, vacation_message,
-                   followup_enabled, followup_delay_hours, service_plans, nutri_display_name`,
+                   followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
+                   emoji_level, func_prospeccao, func_triagem, func_agendamento`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
          body.vacation_mode ?? false, body.vacation_message,
          body.followup_enabled ?? true, body.followup_delay_hours ?? 4,
-         body.service_plans ?? null, body.nutri_display_name?.trim() || null]
+         body.service_plans ?? null, body.nutri_display_name?.trim() || null,
+         body.emoji_level ?? 3, body.func_prospeccao ?? true, body.func_triagem ?? true, body.func_agendamento ?? true]
       )
     }
 

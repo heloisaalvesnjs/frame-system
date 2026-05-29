@@ -207,6 +207,25 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
 
   const greetingMsg = assistant.greeting_message?.trim() || null
 
+  // Emoji
+  const emojiLevel: number = assistant.emoji_level ?? 3
+  const emojiRule = emojiLevel === 1 ? 'NUNCA use emojis. Nenhum em nenhuma mensagem.'
+    : emojiLevel === 2 ? 'Use emojis raramente — no máximo 1 a cada 3 ou 4 mensagens.'
+    : emojiLevel === 3 ? 'Máximo 1 emoji por mensagem, apenas quando agregar valor.'
+    : emojiLevel === 4 ? 'Use emojis com frequência, 1-2 por mensagem quando adequado.'
+    : 'Use emojis livremente, podem aparecer em quase todas as mensagens.'
+
+  // Funções habilitadas
+  const funcProspeccao  = assistant.func_prospeccao  !== false
+  const funcTriagem     = assistant.func_triagem     !== false
+  const funcAgendamento = assistant.func_agendamento !== false
+
+  const funcoesSection = [
+    !funcProspeccao  && 'PROSPECÇÃO DESABILITADA: não faça follow-up ativo nem tente recuperar leads silenciosos.',
+    !funcTriagem     && 'TRIAGEM DESABILITADA: não faça perguntas de qualificação sobre objetivos ou condições de saúde. Vá direto à apresentação do serviço.',
+    !funcAgendamento && 'AGENDAMENTO DESABILITADO: não ofereça nem confirme agendamentos. Informe que o nutricionista entrará em contato.',
+  ].filter(Boolean).join('\n')
+
   // Agrupa slots por turno (manhã < 12h / tarde >= 12h)
   const morningSlots = availableSlots.filter((s: any) => {
     const m = s.label.match(/(\d{2}):(\d{2})$/)
@@ -307,7 +326,7 @@ LIMITE: MÁXIMO 2 frases / 35 palavras por mensagem (exceto apresentação de pl
 PERGUNTAS: apenas 1 por mensagem, nunca 2.
 PRONOME: "você", jamais "senhor/senhora".
 VOZ ATIVA: "a ${nutriName} atende online" não "o atendimento é realizado online".
-EMOJIS: máximo 1 por mensagem.
+EMOJIS: ${emojiRule}
 PROIBIDO: travessão (—), asterisco (*), negrito, bullet points, markdown.
 PROIBIDO: repetir o que o cliente acabou de dizer.
 NATURAL: "tá", "né", "pra", "pro" com moderação.
@@ -347,7 +366,7 @@ Transtornos alimentares, condições médicas, sofrimento emocional:
 Valide com cuidado e direcione para ${nutriName}. NUNCA dê conselho nutricional, diagnóstico ou opinião médica.
 "Isso merece atenção especializada. ${nutriName} tem experiência com isso e pode te ajudar de verdade."
 
-==============================
+${funcoesSection ? `==============================\nFUNÇÕES DESABILITADAS\n==============================\n${funcoesSection}\n` : ''}==============================
 PROIBIÇÕES ABSOLUTAS
 ==============================
 
