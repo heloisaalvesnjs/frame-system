@@ -235,6 +235,20 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   })
 
+  // POST /api/assistants/interview — salva conteúdo compilado da entrevista
+  app.post('/interview', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.object({ content: z.string().min(10) })
+    const { content } = schema.parse(request.body)
+    await query(
+      `UPDATE assistants
+         SET pdf_content = $2, pdf_path = NULL, training_form = NULL, updated_at = NOW()
+       WHERE nutritionist_id = $1`,
+      [id, content]
+    )
+    return reply.send({ ok: true })
+  })
+
   // ─────────────────────────────────────────────────────────
   // TREINAMENTO UNIVERSAL DA IA
   // ─────────────────────────────────────────────────────────

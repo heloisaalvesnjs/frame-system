@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical, BookOpen, ChevronDown, ChevronUp, MessageSquare, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -876,6 +876,265 @@ function TabWhatsApp() {
   )
 }
 
+// ─── Interview Mode ───────────────────────────────────────────────
+
+const IQ = [
+  {
+    id: 0, type: 'textarea' as const,
+    question: 'Como funciona a primeira consulta e o que ela inclui?',
+    hint: 'Descreva o que o paciente vai receber e vivenciar',
+    placeholder: 'Ex: Na primeira consulta faço anamnese completa, avalio composição corporal e entrego o plano alimentar no mesmo dia. Dura cerca de 1h...',
+  },
+  {
+    id: 1, type: 'textarea' as const,
+    question: 'Quais as 3 situações mais comuns no WhatsApp e como você responderia cada uma?',
+    hint: 'Escreva como você mesmo responderia — no seu estilo natural',
+    placeholder: '1. "Quanto custa?" →\n\n2. "Como funciona?" →\n\n3. "Já tentei antes e não funcionou" →',
+  },
+  {
+    id: 2, type: 'chips_text' as const,
+    question: 'Como você costuma se comunicar com os pacientes?',
+    hint: 'Selecione seu estilo e, se quiser, exemplifique com uma frase',
+    chips: ['Informal, como conversa de amigos', 'Acolhedor mas profissional', 'Direto e objetivo', 'Formal'],
+    placeholder: 'Opcional: escreva uma frase como você falaria com um paciente novo...',
+  },
+  {
+    id: 3, type: 'chips_single' as const,
+    question: 'O que você quer que a assistente faça?',
+    hint: 'Define a missão principal dela',
+    chips: [
+      { value: 'qualify',    label: 'Qualifica e nutre o lead',    desc: 'Entende o objetivo, apresenta o serviço e mantém o interesse aquecido' },
+      { value: 'close',      label: 'Conduz ao fechamento',         desc: 'Foca em converter o contato em consulta agendada o mais rápido possível' },
+      { value: 'reactivate', label: 'Reativa e não perde venda',    desc: 'Acompanha quem não respondeu e faz follow-up estratégico' },
+    ],
+  },
+  {
+    id: 4, type: 'textarea' as const,
+    question: 'O que ela nunca pode dizer ou prometer, em hipótese alguma?',
+    hint: 'Protege sua reputação e credibilidade',
+    placeholder: 'Ex: Nunca prometer emagrecer X kg em Y dias. Nunca dar orientações nutricionais pelo chat antes da consulta...',
+  },
+]
+
+const MISSION: Record<string, string> = {
+  qualify:    'Qualifica e nutre o lead — entenda o objetivo do paciente antes de oferecer agendamento. Mantenha o interesse aquecido. Não pressione.',
+  close:      'Conduz ao fechamento — converta o contato em consulta agendada rapidamente. Crie urgência suave mencionando horários disponíveis.',
+  reactivate: 'Reativa e não perde venda — faça follow-up com leads que pararam de responder. Seja persistente mas respeitosa.',
+}
+
+function compileInterview(answers: Record<number, any>): string {
+  const parts: string[] = []
+  if (answers[0]?.trim())
+    parts.push(`PRIMEIRA CONSULTA:\n${answers[0].trim()}`)
+  if (answers[1]?.trim())
+    parts.push(`SITUAÇÕES COMUNS NO WHATSAPP — USE ESTAS RESPOSTAS EXATAS:\n${answers[1].trim()}`)
+  if (answers[2]) {
+    const { chips = [], text = '' } = answers[2]
+    let s = `TOM DE COMUNICAÇÃO: ${chips.join(', ')}`
+    if (text?.trim()) s += `\nExemplo real: "${text.trim()}"`
+    parts.push(s)
+  }
+  if (answers[3])
+    parts.push(`MISSÃO PRINCIPAL DA ASSISTENTE:\n${MISSION[answers[3]] || answers[3]}`)
+  if (answers[4]?.trim())
+    parts.push(`NUNCA DIZER OU PROMETER:\n${answers[4].trim()}`)
+  return parts.join('\n\n')
+}
+
+function InterviewMode({ onSaved }: { onSaved: () => void }) {
+  type Stage = 'intro' | 'q' | 'review'
+  const [stage, setStage]   = useState<Stage>('intro')
+  const [qi,    setQi]      = useState(0)
+  const [ans,   setAns]     = useState<Record<number, any>>({})
+  const [saving, setSaving] = useState(false)
+
+  const q       = IQ[qi]
+  const total   = IQ.length
+  const pct     = Math.round(((qi + 1) / total) * 100)
+  const compiled = compileInterview(ans)
+
+  function canNext() {
+    const a = ans[qi]
+    if (q.type === 'textarea')    return !!a?.trim()
+    if (q.type === 'chips_text')  return (a?.chips?.length ?? 0) > 0
+    if (q.type === 'chips_single') return !!a
+    return false
+  }
+
+  function next() {
+    qi < total - 1 ? setQi(n => n + 1) : setStage('review')
+  }
+
+  function back() {
+    if (stage === 'review')      { setStage('q'); return }
+    if (qi > 0)                  { setQi(n => n - 1); return }
+    setStage('intro')
+  }
+
+  function setChipsText(chips?: string[], text?: string) {
+    setAns(a => ({ ...a, [qi]: { chips: chips ?? a[qi]?.chips ?? [], text: text ?? a[qi]?.text ?? '' } }))
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await api.post('/api/assistants/interview', { content: compiled })
+      toast.success('Treinamento salvo! A assistente já conhece o seu consultório.')
+      onSaved()
+    } catch {
+      toast.error('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /* ── Intro ──────────────────────────────────────────────────── */
+  if (stage === 'intro') return (
+    <div className="flex flex-col items-center text-center py-8 gap-5">
+      <div className="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
+        <MessageSquare className="w-6 h-6 text-brand-500" />
+      </div>
+      <div>
+        <h3 className="font-display font-bold text-[17px] tracking-tight text-t1 mb-2">Entrevista de treinamento</h3>
+        <p className="text-sm text-t2 max-w-xs leading-relaxed mx-auto">
+          5 perguntas para a assistente entender como você trabalha. Responda como você mesmo falaria.
+        </p>
+      </div>
+      <Button onClick={() => setStage('q')}>
+        Começar <ArrowRight className="w-3.5 h-3.5" />
+      </Button>
+    </div>
+  )
+
+  /* ── Review ─────────────────────────────────────────────────── */
+  if (stage === 'review') return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        <div>
+          <p className="text-[12px] font-semibold text-emerald-400">Entrevista concluída</p>
+          <p className="text-[11px] text-t2 mt-0.5">Revise o conteúdo antes de salvar</p>
+        </div>
+      </div>
+      <textarea
+        value={compiled} readOnly rows={13}
+        className="w-full rounded-xl px-4 py-3 text-[12px] text-t2 resize-none leading-relaxed font-mono"
+        style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+      />
+      <div className="flex items-center gap-3">
+        <Button onClick={save} loading={saving}>Salvar treinamento</Button>
+        <Button variant="ghost" onClick={back}><ArrowLeft className="w-3.5 h-3.5" /> Ajustar</Button>
+        <Button variant="ghost" onClick={() => { setStage('intro'); setQi(0); setAns({}) }}>Refazer</Button>
+      </div>
+    </div>
+  )
+
+  /* ── Question ───────────────────────────────────────────────── */
+  return (
+    <div className="space-y-6">
+
+      {/* Progress */}
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <span className="font-mono text-[10px] text-t3 tracking-wider">PERGUNTA {qi + 1} DE {total}</span>
+          <span className="font-mono text-[10px] text-t3">{pct}%</span>
+        </div>
+        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--raised)' }}>
+          <div className="h-full rounded-full bg-brand-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {/* Question text */}
+      <div>
+        <h3 className="font-display font-bold text-[17px] tracking-tight text-t1 leading-snug">{q.question}</h3>
+        {q.hint && <p className="text-xs text-t3 mt-1">{q.hint}</p>}
+      </div>
+
+      {/* Textarea */}
+      {q.type === 'textarea' && (
+        <textarea
+          value={ans[qi] || ''} rows={6} autoFocus
+          onChange={e => setAns(a => ({ ...a, [qi]: e.target.value }))}
+          placeholder={(q as any).placeholder}
+          className="w-full rounded-xl px-4 py-3 text-sm text-t1 resize-none leading-relaxed"
+          style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+        />
+      )}
+
+      {/* Chips + optional text */}
+      {q.type === 'chips_text' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {(q as any).chips.map((chip: string) => {
+              const sel = (ans[qi]?.chips || []).includes(chip)
+              return (
+                <button key={chip} type="button"
+                  onClick={() => {
+                    const prev = ans[qi]?.chips || []
+                    setChipsText(sel ? prev.filter((c: string) => c !== chip) : [...prev, chip])
+                  }}
+                  className={cn(
+                    'px-3.5 py-2 rounded-xl text-sm border transition-all',
+                    sel ? 'bg-brand-500/15 border-brand-500/40 text-brand-500' : 'border-theme text-t2 hover:text-t1 hover:bg-raised'
+                  )}
+                >
+                  {chip}
+                </button>
+              )
+            })}
+          </div>
+          <textarea
+            value={ans[qi]?.text || ''} rows={3}
+            onChange={e => setChipsText(undefined, e.target.value)}
+            placeholder={(q as any).placeholder}
+            className="w-full rounded-xl px-4 py-3 text-sm text-t1 resize-none leading-relaxed"
+            style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+          />
+        </div>
+      )}
+
+      {/* Single chips (radio cards) */}
+      {q.type === 'chips_single' && (
+        <div className="space-y-2">
+          {(q as any).chips.map((chip: { value: string; label: string; desc: string }) => {
+            const sel = ans[qi] === chip.value
+            return (
+              <button key={chip.value} type="button"
+                onClick={() => setAns(a => ({ ...a, [qi]: chip.value }))}
+                className={cn(
+                  'w-full flex items-start gap-4 px-4 py-3.5 rounded-xl border text-left transition-all',
+                  sel ? 'bg-brand-500/10 border-brand-500/40' : 'border-theme hover:bg-raised'
+                )}
+              >
+                <div className={cn(
+                  'w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all',
+                  sel ? 'border-brand-500' : 'border-t3'
+                )}>
+                  {sel && <div className="w-2 h-2 rounded-full bg-brand-500" />}
+                </div>
+                <div>
+                  <p className={cn('text-sm font-semibold', sel ? 'text-brand-500' : 'text-t1')}>{chip.label}</p>
+                  <p className="text-xs text-t2 mt-0.5">{chip.desc}</p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between pt-1">
+        <Button variant="ghost" size="sm" onClick={back}>
+          <ArrowLeft className="w-3.5 h-3.5" /> Anterior
+        </Button>
+        <Button size="sm" onClick={next} disabled={!canNext()}>
+          {qi === total - 1 ? 'Ver resultado' : 'Próxima'} <ArrowRight className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Chip selector helper ─────────────────────────────────────────
 function ChipSelector({ options, selected, onChange, single = false }: {
   options: string[]
@@ -909,6 +1168,7 @@ function ChipSelector({ options, selected, onChange, single = false }: {
 
 // ─── Tab: Treinamento ────────────────────────────────────────────
 function TabTreinamento() {
+  const [mode, setMode] = useState<'interview' | 'form'>('interview')
   const [openSection, setOpenSection] = useState<string | null>('identidade')
   const [saving, setSaving] = useState(false)
   const [activeSource, setActiveSource] = useState<'form' | 'pdf' | null>(null)
@@ -1135,13 +1395,32 @@ R: Sim, é tão completa. Usamos videochamada e avalio tudo que preciso.`, 10)}
     },
   ]
 
-  if (isLoading) return <div className="py-8 text-center text-white/30 text-sm">Carregando...</div>
+  if (isLoading) return <div className="py-8 text-center text-t2 text-sm">Carregando...</div>
 
   return (
     <div className="space-y-5">
+
+      {/* Toggle */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--raised)' }}>
+        {(['interview', 'form'] as const).map(m => (
+          <button key={m} onClick={() => setMode(m)}
+            className={cn(
+              'flex-1 py-2 rounded-lg font-mono text-[11px] tracking-wide transition-all',
+              mode === m ? 'bg-surface text-t1 shadow-frame' : 'text-t2 hover:text-t1'
+            )}
+          >
+            {m === 'interview' ? 'Entrevista' : 'Formulário'}
+          </button>
+        ))}
+      </div>
+
+      {/* Interview mode */}
+      {mode === 'interview' && <InterviewMode onSaved={() => setMode('form')} />}
+
+      {/* Form mode */}
+      {mode === 'form' && <div className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-white mb-1">Treinamento da assistente</h2>
-        <p className="text-xs text-white/40">Preencha para que a assistente conheça o consultório em detalhe. Aplicado em todas as conversas.</p>
+        <p className="text-xs text-t2">Preencha para que a assistente conheça o consultório em detalhe.</p>
       </div>
 
       {activeSource && (
@@ -1179,12 +1458,14 @@ R: Sim, é tão completa. Usamos videochamada e avalio tudo que preciso.`, 10)}
         ))}
 
         <div className="pt-2 flex items-center justify-between">
-          <p className="text-xs text-white/20">As informações são aplicadas imediatamente após salvar.</p>
+          <p className="text-xs text-t3">As informações são aplicadas imediatamente após salvar.</p>
           <Button type="submit" disabled={saving || !dirty} size="sm">
             {saving ? 'Salvando...' : 'Salvar treinamento'}
           </Button>
         </div>
       </form>
+      </div>}
+
     </div>
   )
 }
