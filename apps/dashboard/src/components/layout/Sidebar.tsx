@@ -1,20 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
-  Settings, LogOut, Shield,
+  LogOut, Shield, User, Settings, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/dashboard',     label: 'Painel',         icon: LayoutDashboard },
-  { href: '/conversas',     label: 'Conversas',      icon: MessageSquare },
-  { href: '/agenda',        label: 'Agenda',         icon: Calendar },
-  { href: '/clientes',      label: 'Clientes',       icon: Users },
-  { href: '/configuracoes', label: 'Configurações',  icon: Settings },
+  { href: '/dashboard', label: 'Painel',     icon: LayoutDashboard },
+  { href: '/conversas', label: 'Conversas',  icon: MessageSquare },
+  { href: '/agenda',    label: 'Agenda',     icon: Calendar },
+  { href: '/clientes',  label: 'Clientes',   icon: Users },
 ]
 
 // ── Frame mark (bracket-style F, sem arquivo de logo) ────────────
@@ -62,13 +62,114 @@ function NavItem({ href, label, icon: Icon, onClick }: {
   )
 }
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function UserMenu({ onClose }: { onClose?: () => void }) {
   const { user, logout } = useAuth()
-  const pathname = usePathname()
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  function go(href: string) {
+    setOpen(false)
+    onClose?.()
+    router.push(href)
+  }
+
+  return (
+    <div ref={ref} className="relative px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+
+      {/* ── Dropdown (abre para cima) ────────────────────── */}
+      {open && (
+        <div
+          className="absolute left-3 right-3 bottom-full mb-2 rounded-xl overflow-hidden z-50 shadow-card-md"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        >
+          {/* Cabeçalho do menu */}
+          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div
+              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-brand-500"
+              style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
+            >
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-t1 truncate leading-tight">{user?.name}</p>
+              <p className="font-mono text-[10px] text-t3 truncate mt-0.5">{user?.email}</p>
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="p-1.5">
+            <button
+              onClick={() => go('/configuracoes?tab=profile')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
+            >
+              <User className="w-[14px] h-[14px] flex-shrink-0" />
+              <span className="font-mono text-[11px] tracking-[0.05em]">Meu Perfil</span>
+            </button>
+            <button
+              onClick={() => go('/configuracoes')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
+            >
+              <Settings className="w-[14px] h-[14px] flex-shrink-0" />
+              <span className="font-mono text-[11px] tracking-[0.05em]">Configurações</span>
+            </button>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border)' }} className="p-1.5">
+            <button
+              onClick={() => { setOpen(false); logout() }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/[0.07] transition-all text-left"
+            >
+              <LogOut className="w-[14px] h-[14px] flex-shrink-0" />
+              <span className="font-mono text-[11px] tracking-[0.05em]">Sair</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Trigger ──────────────────────────────────────── */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group',
+          open ? 'bg-raised' : 'hover:bg-raised'
+        )}
+      >
+        <div
+          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-brand-500"
+          style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1 text-left">
+          <p className="text-[12px] font-medium text-t1 truncate leading-tight">{user?.name}</p>
+          <p className="font-mono text-[10px] text-t3 truncate mt-0.5">{user?.email}</p>
+        </div>
+        <ChevronUp className={cn(
+          'w-3.5 h-3.5 text-t3 flex-shrink-0 transition-transform duration-200',
+          open ? 'rotate-0' : 'rotate-180'
+        )} />
+      </button>
+    </div>
+  )
+}
+
+function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const { user } = useAuth()
+  const pathname = usePathname()
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
@@ -116,28 +217,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         )}
       </nav>
 
-      {/* ── User ─────────────────────────────────────────────── */}
-      <div className="px-3 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-brand-500"
-            style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
-          >
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[12px] font-medium text-t1 truncate leading-tight">{user?.name}</p>
-            <p className="font-mono text-[10px] text-t3 truncate mt-0.5">{user?.email}</p>
-          </div>
-        </div>
-        <button
-          onClick={logout}
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-t3 hover:text-red-400 hover:bg-red-500/[0.07]"
-        >
-          <LogOut className="w-[14px] h-[14px] flex-shrink-0" />
-          <span className="font-mono text-[11px] tracking-[0.06em]">Sair</span>
-        </button>
-      </div>
+      {/* ── User menu ────────────────────────────────────────── */}
+      <UserMenu onClose={onClose} />
     </div>
   )
 }

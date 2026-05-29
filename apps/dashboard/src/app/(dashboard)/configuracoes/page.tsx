@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -1400,41 +1401,59 @@ function TabTestar() {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────
-const tabs = [
-  { id: 'profile',     label: 'Perfil',       icon: User },
-  { id: 'assistant',   label: 'Assistente',   icon: Bot },
-  { id: 'treinamento', label: 'Treinamento',  icon: BookOpen },
-  { id: 'horarios',    label: 'Horários',     icon: Clock },
-  { id: 'whatsapp',    label: 'WhatsApp',     icon: Smartphone },
-  { id: 'testar',      label: 'Testar IA',    icon: FlaskConical },
+const TABS = [
+  { id: 'profile',     label: 'Perfil',       icon: User,         hidden: false },
+  { id: 'assistant',   label: 'Assistente',   icon: Bot,          hidden: false },
+  { id: 'treinamento', label: 'Treinamento',  icon: BookOpen,     hidden: false },
+  { id: 'horarios',    label: 'Horários',     icon: Clock,        hidden: false },
+  { id: 'whatsapp',    label: 'WhatsApp',     icon: Smartphone,   hidden: false },
+  { id: 'testar',      label: 'Testar IA',    icon: FlaskConical, hidden: false },
 ]
 
+const VALID_TABS = TABS.map(t => t.id)
+
 export default function ConfiguracoesPage() {
-  const [activeTab, setActiveTab] = useState('profile')
+  const searchParams = useSearchParams()
+  const initialTab = (() => {
+    const t = searchParams.get('tab')
+    return t && VALID_TABS.includes(t) ? t : 'assistant'
+  })()
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  // Atualiza aba se o parâmetro mudar (ex: clicando "Meu Perfil" novamente)
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t && VALID_TABS.includes(t)) setActiveTab(t)
+  }, [searchParams])
+
+  const pageTitle = activeTab === 'profile' ? 'Meu Perfil' : 'Configurações'
+  const pageDesc  = activeTab === 'profile'
+    ? 'Gerencie seu nome, contato e informações públicas'
+    : 'Gerencie a assistente, treinamento, horários e WhatsApp'
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Configurações</h1>
-        <p className="text-sm text-white/30 mt-0.5">Gerencie seu perfil e as configurações da assistente</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">{pageTitle}</h1>
+        <p className="text-sm text-t2 mt-0.5">{pageDesc}</p>
       </div>
 
       <Card>
         {/* Tabs */}
-        <div className="border-b border-ui-border px-6">
-          <div className="flex gap-1">
-            {tabs.map(({ id, label, icon: Icon }) => (
+        <div className="px-6" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex gap-0.5 overflow-x-auto">
+            {TABS.filter(t => !(t.id === 'profile' && activeTab !== 'profile')).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-all duration-150 -mb-px',
+                  'flex items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-mono border-b-2 transition-all duration-150 -mb-px whitespace-nowrap tracking-wide',
                   activeTab === id
-                    ? 'border-brand-500 text-brand-400'
-                    : 'border-transparent text-white/30 hover:text-white/60'
+                    ? 'border-brand-500 text-brand-500'
+                    : 'border-transparent text-t3 hover:text-t2'
                 )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 {label}
               </button>
             ))}
