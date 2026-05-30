@@ -143,6 +143,13 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   const historyReversed = history.reverse()
   const isFirstMessage = historyReversed.length === 0
 
+  // Remove a greeting do histórico passado à IA — ela foi enviada pelo bypass,
+  // não precisa aparecer para o modelo (evita que ele a copie como padrão de resposta)
+  const greetingText = assistant.greeting_message?.trim() || null
+  const historyForAI = greetingText
+    ? historyReversed.filter((m: any) => !(m.role === 'assistant' && m.content.trim() === greetingText))
+    : historyReversed
+
   // 4. Salva a mensagem do usuário
   await query(
     'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
@@ -191,7 +198,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   // 7. Chama a IA (Claude ou Gemini conforme AI_PROVIDER)
   const responseText = await callAI(
     systemPrompt,
-    historyReversed.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    historyForAI.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     message
   )
 
