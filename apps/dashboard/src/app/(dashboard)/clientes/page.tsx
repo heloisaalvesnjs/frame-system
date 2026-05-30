@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { Search, Users, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone } from 'lucide-react'
+import { Search, Users, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone, Upload, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
@@ -46,7 +46,7 @@ function avatarColor(id: string) {
 function NovoClienteModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', phone: '', email: '', goal: '', notes: '', birthdate: '' })
+  const [form, setForm] = useState({ name: '', phone: '', email: '', goal: '', notes: '', birthdate: '', gender: '', height_cm: '' })
   const [error, setError] = useState('')
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
@@ -57,8 +57,10 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
       phone:     form.phone.trim(),
       email:     form.email.trim() || undefined,
       goal:      form.goal.trim() || undefined,
-      notes:     form.notes.trim() || undefined,
-      birthdate: form.birthdate || undefined,
+      notes:     form.notes.trim()    || undefined,
+      birthdate: form.birthdate        || undefined,
+      gender:    form.gender.trim()    || undefined,
+      height_cm: form.height_cm.trim() ? Number(form.height_cm) : undefined,
     }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['clients'] })
@@ -128,22 +130,31 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-white/50 block mb-1.5">E-mail</label>
-              <input
-                type="email"
-                placeholder="email@exemplo.com"
-                value={form.email}
+              <input type="email" placeholder="email@exemplo.com" value={form.email}
                 onChange={e => set('email', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
-              />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors" />
             </div>
             <div>
               <label className="text-xs font-semibold text-white/50 block mb-1.5">Nascimento</label>
-              <input
-                type="date"
-                value={form.birthdate}
+              <input type="date" value={form.birthdate}
                 onChange={e => set('birthdate', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors"
-              />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-white/50 block mb-1.5">Sexo</label>
+              <select value={form.gender} onChange={e => set('gender', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors">
+                <option value="">—</option>
+                <option value="F">Feminino</option>
+                <option value="M">Masculino</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-white/50 block mb-1.5">Altura (cm)</label>
+              <input type="number" placeholder="Ex: 165" value={form.height_cm}
+                onChange={e => set('height_cm', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors" />
             </div>
           </div>
 
@@ -199,11 +210,117 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Modal de importação CSV ──────────────────────────────────────────────────
+
+function ImportarModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [csv, setCsv] = useState('')
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleImport() {
+    if (!csv.trim()) return
+    setLoading(true)
+    try {
+      const { data } = await api.post('/api/clients/import', { csv })
+      setResult(data)
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Erro ao importar')
+    } finally { setLoading(false) }
+  }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setCsv(ev.target?.result as string)
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl shadow-black/50" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center">
+              <Upload className="w-4 h-4 text-brand-500" />
+            </div>
+            <div>
+              <h2 className="text-[15px] font-bold text-t1">Importar pacientes</h2>
+              <p className="text-xs text-t3">CSV com colunas: nome, telefone, email, objetivo, sexo, altura</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-t3 hover:text-t1 transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {!result ? (
+            <>
+              <label className="flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer hover:bg-raised transition-colors" style={{ borderColor: 'var(--border)' }}>
+                <Upload className="w-6 h-6 text-t3" />
+                <span className="text-sm text-t2">Clique para selecionar o arquivo CSV</span>
+                <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
+              </label>
+              {csv && (
+                <p className="text-xs text-brand-500 font-mono">{csv.split('\n').length - 1} linhas detectadas</p>
+              )}
+              <div>
+                <p className="text-xs text-t3 mb-1.5 font-mono">OU cole o CSV abaixo:</p>
+                <textarea value={csv} onChange={e => setCsv(e.target.value)} rows={5}
+                  placeholder="nome,telefone,email,objetivo&#10;Maria Silva,11999999999,maria@email.com,emagrecer"
+                  className="w-full rounded-lg px-3 py-2.5 text-xs text-t1 font-mono resize-none"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400 font-medium">
+                <CheckCircle className="w-5 h-5" />
+                <span>Importação concluída</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl p-4 text-center" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                  <p className="text-2xl font-bold text-brand-500">{result.imported}</p>
+                  <p className="text-xs text-t3 mt-1">importados</p>
+                </div>
+                <div className="rounded-xl p-4 text-center" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                  <p className="text-2xl font-bold text-t2">{result.skipped}</p>
+                  <p className="text-xs text-t3 mt-1">ignorados (duplicatas)</p>
+                </div>
+              </div>
+              {result.errors.length > 0 && (
+                <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)' }}>
+                  <p className="text-xs text-red-400 font-mono">{result.errors.join('\n')}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>
+            {result ? 'Fechar' : 'Cancelar'}
+          </button>
+          {!result && (
+            <button onClick={handleImport} disabled={!csv.trim() || loading}
+              className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all disabled:opacity-50">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Importar'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Página principal ────────────────────────────────────────────────────────
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients', search],
@@ -219,23 +336,34 @@ export default function ClientesPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl">
-      {showModal && <NovoClienteModal onClose={() => setShowModal(false)} />}
+      {showModal  && <NovoClienteModal onClose={() => setShowModal(false)} />}
+      {showImport && <ImportarModal    onClose={() => setShowImport(false)} />}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-white tracking-tight">Clientes</h1>
-          <p className="text-sm text-white/35 mt-0.5">
+          <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Clientes</h1>
+          <p className="text-sm text-t2 mt-0.5">
             {isLoading ? '…' : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-brand-500/20 flex-shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-          Novo cliente
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-brand-500/20"
+          >
+            <UserPlus className="w-4 h-4" />
+            Novo cliente
+          </button>
+        </div>
       </div>
 
       {/* Search */}

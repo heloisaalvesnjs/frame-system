@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frame System — O sistema que estrutura o cuidado.</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Favicon — F mark -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B2E1E'/%3E%3Cpath d='M9 7v18M9 7h13M9 16h10' stroke='%2300C27C' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B2E1E'/%3E%3Cpath d='M9 7v18M9 7h13M9 16h10' stroke='%2300C27C' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="description" content="Frame System — IA de atendimento, gestão e agenda integrados para nutricionistas. Atende enquanto você consulta.">
+  <meta property="og:title" content="Frame System — O sistema que estrutura o cuidado.">
+  <meta property="og:description" content="IA que atende com a sua identidade, 24h. Agenda, protocolos e gestão em um só lugar.">
+  <meta name="theme-color" content="#0B0C0E">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --carbon:  #0B0C0E;
+      --grafite: #141618;
+      --borda:   #1E2124;
+      --frame:   #00C27C;
+      --menta:   #00E892;
+      --nevoa:   #0B2E1E;
+      --branco:  #F4F5F0;
+      --cinza:   #6B7280;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--carbon);
+      color: var(--branco);
+      font-family: 'Lora', serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      /* dot-grid — estilo Proade / Linear */
+      background-image: radial-gradient(circle, rgba(244,245,240,0.022) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* grain overlay — topo da stack, não bloqueia cliques */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.025;
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── NAVBAR ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(11,12,14,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--borda);
+      height: 64px; display: flex; align-items: center;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-text {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-weight: 800; font-size: 20px;
+      color: var(--branco); letter-spacing: -0.03em; line-height: 1;
+    }
+    .logo-text .dot { color: var(--frame); }
+    .logo-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--cinza); letter-spacing: 0.1em; margin-top: 2px; }
+    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .nav-links a {
+      font-family: 'DM Mono', monospace; font-size: 11px; color: var(--cinza);
+      text-decoration: none; padding: 6px 14px; border-radius: 6px;
+      letter-spacing: 0.04em; transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover { color: var(--branco); background: var(--borda); }
+    .nav-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+      padding: 10px 20px; border-radius: 8px; cursor: pointer;
+      letter-spacing: 0.04em; text-decoration: none; border: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--frame); color: var(--carbon); }
+    .btn-primary:hover { background: var(--menta); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--cinza); border: 1px solid var(--borda); }
+    .btn-ghost:hover { border-color: var(--cinza); color: var(--branco); }
+    .btn-lg { font-size: 13px; padding: 14px 28px; border-radius: 10px; }
+
+    /* ── HERO ── */
+    .hero { padding: 96px 0 80px; position: relative; overflow: hidden; }
+    .hero::before {
+      content: ''; position: absolute; top: -280px; left: 50%; transform: translateX(-50%);
+      width: 1100px; height: 1000px;
+      background:
+        radial-gradient(ellipse at 50% 28%, rgba(0,194,124,0.15) 0%, rgba(11,46,30,0.06) 45%, transparent 70%),
+        radial-gradient(ellipse at 30% 60%, rgba(0,232,146,0.04) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    /* bottom vignette — ancora a página no fundo */
+    .hero::after {
+      content: ''; position: absolute; bottom: -80px; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to bottom, transparent, var(--carbon));
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,194,124,0.1); border: 1px solid rgba(0,194,124,0.25);
+      border-radius: 100px; padding: 5px 14px; margin-bottom: 32px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--frame);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+    .badge-text { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--frame); letter-spacing: 0.1em; }
+    .hero-headline {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-weight: 800; font-size: clamp(52px, 7.5vw, 96px);
+      line-height: 0.92; letter-spacing: -0.04em; margin-bottom: 28px;
+    }
+    .hero-headline .outline { color: transparent; -webkit-text-stroke: 1.5px var(--borda); }
+    .hero-headline .green { color: var(--frame); }
+    .hero-sub { font-family: 'Lora', serif; font-size: 18px; color: var(--cinza); max-width: 520px; line-height: 1.7; margin-bottom: 40px; }
+    .hero-ctas { display: flex; gap: 12px; align-items: center; margin-bottom: 64px; flex-wrap: wrap; }
+
+    /* Dashboard mockup */
+    .dashboard-mockup {
+      background: var(--grafite); border: 1px solid var(--borda); border-radius: 20px;
+      overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,194,124,0.04);
+    }
+    .mockup-bar { padding: 12px 16px; border-bottom: 1px solid var(--borda); display: flex; align-items: center; gap: 12px; }
+    .mockup-dots { display: flex; gap: 6px; }
+    .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-url { flex: 1; background: var(--carbon); border-radius: 6px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); }
+    .mockup-body { display: flex; height: 300px; }
+    .mockup-sidebar { width: 180px; border-right: 1px solid var(--borda); padding: 16px 0; flex-shrink: 0; }
+    .sidebar-logo { padding: 0 16px 14px; border-bottom: 1px solid var(--borda); margin-bottom: 8px; }
+    .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--cinza); }
+    .sidebar-item.active { color: var(--frame); background: rgba(0,194,124,0.07); border-right: 2px solid var(--frame); }
+    .sidebar-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .mockup-content { flex: 1; padding: 20px; overflow: hidden; }
+    .mockup-greeting { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--cinza); letter-spacing: 0.1em; margin-bottom: 14px; }
+    .mockup-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-card { background: var(--carbon); border: 1px solid var(--borda); border-radius: 10px; padding: 12px; }
+    .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; color: var(--frame); letter-spacing: -0.02em; }
+    .stat-lbl { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--cinza); letter-spacing: 0.06em; margin-top: 2px; }
+    .appts { background: var(--carbon); border: 1px solid var(--borda); border-radius: 10px; padding: 12px; }
+    .appts-hdr { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .appts-ttl { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--cinza); letter-spacing: 0.08em; }
+    .appts-lnk { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--frame); }
+    .appt-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--borda); font-size: 11px; color: var(--branco); }
+    .appt-row:last-child { border-bottom: none; }
+    .appt-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--frame); flex-shrink: 0; }
+
+    /* ── STATS BAR ── */
+    .stats-bar { border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); padding: 32px 0; }
+    .stats-inner { display: grid; grid-template-columns: repeat(4,1fr); }
+    .stat-item { text-align: center; padding: 0 32px; border-right: 1px solid var(--borda); }
+    .stat-item:last-child { border-right: none; }
+    .stat-value { font-family: 'Bricolage Grotesque', sans-serif; font-size: 36px; font-weight: 800; color: var(--frame); letter-spacing: -0.03em; }
+    .stat-desc { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.08em; margin-top: 4px; }
+
+    /* ── SECTION UTILS ── */
+    .section-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--frame); letter-spacing: 0.16em; margin-bottom: 12px; display: block; }
+    .section-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 48px); letter-spacing: -0.03em; line-height: 1.05; }
+    .section-sub { font-family: 'Lora', serif; font-size: 17px; color: var(--cinza); line-height: 1.7; max-width: 520px; margin-top: 16px; }
+
+    /* ── PROBLEM ── */
+    .problem { padding: 96px 0; }
+    .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 48px; }
+    .problem-card { background: var(--grafite); border: 1px solid var(--borda); border-radius: 16px; padding: 28px; }
+    .problem-icon { font-size: 24px; margin-bottom: 14px; }
+    .problem-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .problem-desc { font-size: 13px; color: var(--cinza); line-height: 1.65; }
+
+    /* ── PRODUCTS ── */
+    .products { padding: 96px 0; }
+    .products-stack { display: flex; flex-direction: column; gap: 8px; margin-top: 48px; }
+    .product-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .product-card { background: var(--grafite); border: 1px solid var(--borda); border-radius: 20px; padding: 32px; transition: border-color 0.2s; }
+    .product-card:hover { border-color: rgba(0,194,124,0.3); }
+    .product-card.featured { background: var(--nevoa); border-color: rgba(0,194,124,0.25); display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+    .product-tag { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--frame); letter-spacing: 0.14em; background: rgba(0,194,124,0.1); padding: 4px 10px; border-radius: 100px; display: inline-block; margin-bottom: 16px; }
+    .product-icon { width: 48px; height: 48px; background: rgba(0,194,124,0.1); border: 1px solid rgba(0,194,124,0.2); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; color: var(--frame); font-family: monospace; }
+    .product-name { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .product-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.08em; margin-bottom: 14px; }
+    .product-desc { font-size: 14px; color: var(--cinza); line-height: 1.65; }
+    .product-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .product-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--cinza); }
+    .product-features li::before { content: '◉'; color: var(--frame); font-size: 10px; margin-top: 3px; flex-shrink: 0; }
+
+    /* ── HOW IT WORKS ── */
+    .how { padding: 96px 0; }
+    .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 48px; }
+    .step { background: var(--grafite); border: 1px solid var(--borda); border-radius: 20px; padding: 32px; }
+    .step-num { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--frame); letter-spacing: 0.1em; margin-bottom: 20px; }
+    .step-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+    .step-desc { font-size: 14px; color: var(--cinza); line-height: 1.65; }
+
+    /* ── CALLOUT ── */
+    .callout { padding: 96px 0; }
+    .callout-box { background: var(--nevoa); border: 1px solid rgba(0,194,124,0.2); border-radius: 24px; padding: 80px; text-align: center; position: relative; overflow: hidden; }
+    .callout-box::before { content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 500px; height: 500px; background: radial-gradient(ellipse, rgba(0,194,124,0.1) 0%, transparent 70%); }
+    .callout-quote { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(28px, 4vw, 48px); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 24px; position: relative; }
+    .callout-quote .green { color: var(--frame); }
+    .callout-sub { font-family: 'Lora', serif; font-size: 16px; color: var(--cinza); margin-bottom: 36px; position: relative; }
+
+    /* ── TESTIMONIALS ── */
+    .testimonials { padding: 96px 0; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 48px; }
+    .testimonial-card { background: var(--grafite); border: 1px solid var(--borda); border-radius: 20px; padding: 28px; }
+    .stars { color: var(--frame); font-size: 12px; margin-bottom: 16px; letter-spacing: 2px; }
+    .testimonial-text { font-size: 14px; color: var(--branco); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 10px; }
+    .author-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(0,194,124,0.12); border: 1px solid rgba(0,194,124,0.25); display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 13px; color: var(--frame); flex-shrink: 0; }
+    .author-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+    .author-role { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--cinza); letter-spacing: 0.06em; margin-top: 1px; }
+
+    /* ── PRICING ── */
+    .pricing { padding: 96px 0; }
+    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto; }
+    .plan-card { background: var(--grafite); border: 1px solid var(--borda); border-radius: 20px; padding: 36px; position: relative; }
+    .plan-card.featured { background: var(--nevoa); border-color: rgba(0,194,124,0.35); }
+    .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--frame); color: var(--carbon); font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; padding: 4px 14px; border-radius: 100px; white-space: nowrap; }
+    .plan-name { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.12em; margin-bottom: 12px; }
+    .plan-price { font-family: 'Bricolage Grotesque', sans-serif; font-size: 52px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 4px; }
+    .plan-price .currency { font-size: 24px; vertical-align: super; font-weight: 700; }
+    .plan-period { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.06em; margin-bottom: 24px; }
+    .plan-divider { height: 1px; background: var(--borda); margin-bottom: 24px; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--cinza); }
+    .plan-features li .check { color: var(--frame); font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── FINAL CTA ── */
+    .final-cta { padding: 120px 0; }
+    .cta-box { text-align: center; max-width: 600px; margin: 0 auto; }
+    .cta-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(40px, 6vw, 72px); letter-spacing: -0.04em; line-height: 0.95; margin-bottom: 24px; }
+    .cta-title .outline { color: transparent; -webkit-text-stroke: 1.5px var(--borda); }
+    .cta-title .green { color: var(--frame); }
+    .cta-sub { font-family: 'Lora', serif; font-size: 17px; color: var(--cinza); line-height: 1.7; margin-bottom: 40px; }
+    .cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ── */
+    footer { border-top: 1px solid var(--borda); padding: 56px 0 32px; }
+    .footer-inner { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+    .footer-brand p { font-size: 13px; color: var(--cinza); line-height: 1.7; margin-top: 16px; max-width: 240px; }
+    .footer-col-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.12em; margin-bottom: 16px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { font-size: 13px; color: var(--cinza); text-decoration: none; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--branco); }
+    .footer-bottom { border-top: 1px solid var(--borda); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .footer-copy { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); letter-spacing: 0.04em; }
+    .footer-legal { display: flex; gap: 24px; }
+    .footer-legal a { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--cinza); text-decoration: none; transition: color 0.15s; }
+    .footer-legal a:hover { color: var(--branco); }
+  </style>
+</head>
+<body>
+
+  <!-- ══ NAVBAR ══ -->
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="#" class="logo">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+            <rect width="34" height="34" rx="9" fill="#0B2E1E"/>
+            <!-- F mark — traço vertical -->
+            <path d="M10 8v18" stroke="#00C27C" stroke-width="2.8" stroke-linecap="round"/>
+            <!-- F mark — barra superior -->
+            <path d="M10 8h14" stroke="#00C27C" stroke-width="2.8" stroke-linecap="round"/>
+            <!-- F mark — barra do meio -->
+            <path d="M10 17h10" stroke="#00C27C" stroke-width="2.8" stroke-linecap="round"/>
+            <!-- cantos estilo bracket — detalhe sutil -->
+            <path d="M24 8v3" stroke="#00C27C" stroke-width="1.4" stroke-linecap="round" opacity="0.35"/>
+            <path d="M24 26v-3" stroke="#00C27C" stroke-width="1.4" stroke-linecap="round" opacity="0.35"/>
+          </svg>
+          <div>
+            <div class="logo-text">Frame<span class="dot">.</span></div>
+            <div class="logo-sub">SYSTEM</div>
+          </div>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="#produtos">Produtos</a></li>
+          <li><a href="#como-funciona">Como funciona</a></li>
+          <li><a href="#precos">Preços</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <a href="#" class="btn btn-ghost">Entrar</a>
+          <a href="#precos" class="btn btn-primary">Começar grátis</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══ HERO ══ -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span class="badge-text">PLATAFORMA PARA NUTRICIONISTAS</span>
+      </div>
+
+      <h1 class="hero-headline">
+        O sistema<br>
+        que estrutura<br>
+        <span class="outline">o cuidado</span><span class="green">.</span>
+      </h1>
+
+      <p class="hero-sub">
+        Você cuida do paciente. A Frame cuida do resto — agenda, protocolos, IA de atendimento e gestão completa em um só lugar.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="#precos" class="btn btn-primary btn-lg">Começar grátis — 14 dias</a>
+        <a href="#como-funciona" class="btn btn-ghost btn-lg">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5.5 4.5L9 7L5.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Ver demo
+        </a>
+      </div>
+
+      <!-- Dashboard mockup -->
+      <div class="dashboard-mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dots">
+            <div class="mockup-dot" style="background:#ef4444"></div>
+            <div class="mockup-dot" style="background:#f59e0b"></div>
+            <div class="mockup-dot" style="background:#22c55e"></div>
+          </div>
+          <div class="mockup-url">app.framesystem.com.br</div>
+        </div>
+        <div class="mockup-body">
+          <div class="mockup-sidebar">
+            <div class="sidebar-logo">
+              <svg width="24" height="24" viewBox="0 0 34 34" fill="none">
+                <rect width="34" height="34" rx="9" fill="#0B2E1E"/>
+                <path d="M10 8v18M10 8h14M10 17h10" stroke="#00C27C" stroke-width="2.8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="sidebar-item active"><span class="sidebar-dot"></span>Painel</div>
+            <div class="sidebar-item"><span class="sidebar-dot"></span>Pacientes</div>
+            <div class="sidebar-item"><span class="sidebar-dot"></span>Protocolos</div>
+            <div class="sidebar-item"><span class="sidebar-dot"></span>Agenda</div>
+            <div class="sidebar-item"><span class="sidebar-dot"></span>Nara IA</div>
+          </div>
+          <div class="mockup-content">
+            <div class="mockup-greeting">BOM DIA, DRA. HELOÍSA — 09:41</div>
+            <div class="mockup-stats">
+              <div class="stat-card">
+                <div class="stat-num">12</div>
+                <div class="stat-lbl">PACIENTES HOJE</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">3</div>
+                <div class="stat-lbl">MENSAGENS</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num" style="font-size:16px">R$4.8k</div>
+                <div class="stat-lbl">FATURAMENTO MÊS</div>
+              </div>
+            </div>
+            <div class="appts">
+              <div class="appts-hdr">
+                <span class="appts-ttl">PRÓXIMAS CONSULTAS</span>
+                <span class="appts-lnk">VER TUDO →</span>
+              </div>
+              <div class="appt-row"><span class="appt-dot"></span>Ana Silva — 10:00</div>
+              <div class="appt-row"><span class="appt-dot"></span>Carlos Mendes — 11:30</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ STATS BAR ══ -->
+  <div class="stats-bar">
+    <div class="container">
+      <div class="stats-inner">
+        <div class="stat-item">
+          <div class="stat-value">+1.200</div>
+          <div class="stat-desc">NUTRICIONISTAS ATIVOS</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">98%</div>
+          <div class="stat-desc">SATISFAÇÃO GERAL</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">4h</div>
+          <div class="stat-desc">ECONOMIZADAS POR SEMANA</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">24/7</div>
+          <div class="stat-desc">NARA IA EM ATENDIMENTO</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PROBLEM ══ -->
+  <section class="problem" id="como-funciona">
+    <div class="container">
+      <span class="section-tag">O PROBLEMA</span>
+      <h2 class="section-title">Você é ótimo nutricionista.<br>E péssimo sistema.</h2>
+      <p class="section-sub">Não é culpa sua. É que ninguém te entregou as ferramentas certas — até agora.</p>
+
+      <div class="problem-grid">
+        <div class="problem-card">
+          <div class="problem-icon">📱</div>
+          <div class="problem-title">WhatsApp acumulando</div>
+          <p class="problem-desc">Pacientes perguntando sobre plano, remarcação e dúvidas fora de hora. Você respondendo no jantar.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-icon">📋</div>
+          <div class="problem-title">Planilhas sem fim</div>
+          <p class="problem-desc">Evolução do paciente em uma, agenda em outra, financeiro em outra. Tudo separado, nada integrado.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-icon">⏰</div>
+          <div class="problem-title">Tempo que não volta</div>
+          <p class="problem-desc">Horas por semana em tarefas administrativas que não geram valor clínico nem financeiro.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-icon">📉</div>
+          <div class="problem-title">Escalabilidade zero</div>
+          <p class="problem-desc">Quer atender mais? Trabalha mais. Não existe crescimento sem sacrificar qualidade ou saúde.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PRODUCTS ══ -->
+  <section class="products" id="produtos">
+    <div class="container">
+      <span class="section-tag">O ECOSSISTEMA FRAME</span>
+      <h2 class="section-title">Quatro produtos.<br>Um sistema completo.</h2>
+      <p class="section-sub">Cada produto resolve uma parte. Juntos, estruturam seu negócio inteiro.</p>
+
+      <div class="products-stack">
+        <!-- Frame System — featured -->
+        <div class="product-card featured">
+          <div>
+            <div class="product-tag">PRODUTO-MÃE · ATIVO</div>
+            <div class="product-icon">◈</div>
+            <div class="product-name">Frame System</div>
+            <div class="product-sub">A PLATAFORMA PRINCIPAL</div>
+            <p class="product-desc">App + IA + gestão integrados. O hub que conecta você, seu time, seus pacientes e toda a operação.</p>
+          </div>
+          <ul class="product-features">
+            <li>Gestão completa de pacientes e protocolos nutricionais</li>
+            <li>Agenda inteligente com lembretes automáticos</li>
+            <li>Dashboard financeiro em tempo real</li>
+            <li>Integração nativa com Nara, Dash e Care</li>
+            <li>IA treinada para o contexto da nutrição</li>
+          </ul>
+        </div>
+
+        <!-- Nara + Dash -->
+        <div class="product-row">
+          <div class="product-card">
+            <div class="product-tag">IA DE ATENDIMENTO</div>
+            <div class="product-icon">◎</div>
+            <div class="product-name">Frame Nara</div>
+            <div class="product-sub">WHATSAPP HUMANIZADO 24H</div>
+            <p class="product-desc">Assistente de IA que atende seus pacientes no WhatsApp com a sua voz — agenda consultas, responde dúvidas e envia lembretes. Sem você ter que estar online.</p>
+          </div>
+          <div class="product-card">
+            <div class="product-tag">PAINEL DO NUTRICIONISTA</div>
+            <div class="product-icon">▦</div>
+            <div class="product-name">Frame Dash</div>
+            <div class="product-sub">GESTÃO INTELIGENTE</div>
+            <p class="product-desc">Painel completo com pacientes, protocolos, evolução clínica e agenda. Tudo que você precisa visível em uma única tela, sem abrir dez abas.</p>
+          </div>
+        </div>
+
+        <!-- Frame Care -->
+        <div class="product-card">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;">
+            <div>
+              <div class="product-tag">PORTAL DO PACIENTE</div>
+              <div class="product-icon">◻</div>
+              <div class="product-name">Frame Care</div>
+              <div class="product-sub">EXPERIÊNCIA DO PACIENTE</div>
+              <p class="product-desc">O paciente acompanha o próprio plano alimentar, registra evolução e se comunica com você — tudo dentro do sistema, sem WhatsApp avulso.</p>
+            </div>
+            <div style="background:var(--borda);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px;">
+              <div style="background:var(--grafite);border:1px solid var(--borda);border-radius:10px;padding:14px;">
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--frame);letter-spacing:0.1em;margin-bottom:6px;">SEU PLANO HOJE</div>
+                <div style="font-size:12px;color:var(--branco);">Café: omelete + frutas vermelhas</div>
+                <div style="font-size:12px;color:var(--cinza);margin-top:2px;">Almoço: arroz integral + frango</div>
+              </div>
+              <div style="background:var(--grafite);border:1px solid var(--borda);border-radius:10px;padding:14px;">
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cinza);letter-spacing:0.1em;margin-bottom:8px;">EVOLUÇÃO — SEMANA 4</div>
+                <div style="height:4px;background:var(--borda);border-radius:2px;overflow:hidden;">
+                  <div style="height:100%;width:72%;background:var(--frame);border-radius:2px;"></div>
+                </div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--frame);margin-top:6px;">72% META ATINGIDA</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section class="how">
+    <div class="container">
+      <span class="section-tag">COMO FUNCIONA</span>
+      <h2 class="section-title">De zero ao sistema<br>em três passos.</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01 — CONFIGURE</div>
+          <h3 class="step-title">Crie sua conta em minutos</h3>
+          <p class="step-desc">Importe seus pacientes, configure seus protocolos e personalize a Nara com a sua identidade. Setup completo em menos de 30 minutos.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02 — CONECTE</div>
+          <h3 class="step-title">Integre seu WhatsApp</h3>
+          <p class="step-desc">A Nara começa a atender seus pacientes automaticamente. Você vê tudo no Dash e só intervém quando quiser — ou quando precisar.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03 — ESCALE</div>
+          <h3 class="step-title">Cresça sem trabalhar mais</h3>
+          <p class="step-desc">Com a operação no piloto automático, você foca no que gera valor: a clínica. A Frame cuida do resto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CALLOUT ══ -->
+  <section class="callout">
+    <div class="container">
+      <div class="callout-box">
+        <h2 class="callout-quote">
+          "Você cuida do paciente.<br>
+          <span class="green">A Frame cuida do resto.</span>"
+        </h2>
+        <p class="callout-sub">Humano por fora. Tech por dentro.</p>
+        <a href="#precos" class="btn btn-primary btn-lg">Começar agora — grátis por 14 dias</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ TESTIMONIALS ══ -->
+  <section class="testimonials">
+    <div class="container">
+      <span class="section-tag">QUEM USA</span>
+      <h2 class="section-title">Nutricionistas que<br>estruturaram o cuidado.</h2>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p class="testimonial-text">"A Nara responde meus pacientes no WhatsApp enquanto estou em consulta. Parece que sou eu escrevendo. Meus pacientes nem percebem que é IA."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">MF</div>
+            <div>
+              <div class="author-name">Marina Fonseca</div>
+              <div class="author-role">NUTRICIONISTA FUNCIONAL · SP</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p class="testimonial-text">"Economizo 5 horas por semana só com agendamento automático. Esse tempo virou mais 3 consultas mensais. Se pagou em duas semanas."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">RC</div>
+            <div>
+              <div class="author-name">Rafael Costa</div>
+              <div class="author-role">NUTRICIONISTA ESPORTIVO · RJ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p class="testimonial-text">"Finalmente saí das planilhas. Evolução, protocolos, financeiro — tudo em um lugar. Parece que o sistema foi feito especificamente para a gente."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">AL</div>
+            <div>
+              <div class="author-name">Ana Leal</div>
+              <div class="author-role">NUTRICIONISTA CLÍNICA · MG</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PRICING ══ -->
+  <section class="pricing" id="precos">
+    <div class="container">
+      <span class="section-tag" style="text-align:center;display:block;">PLANOS</span>
+      <h2 class="section-title" style="text-align:center;">Simples. Justo.<br>Sem surpresa.</h2>
+      <p class="section-sub" style="text-align:center;margin:16px auto 0;">14 dias grátis. Sem cartão de crédito. Cancele quando quiser.</p>
+
+      <div class="pricing-grid">
+        <div class="plan-card">
+          <div class="plan-name">STARTER</div>
+          <div class="plan-price"><span class="currency">R$</span>197</div>
+          <div class="plan-period">/MÊS · COBRADO MENSALMENTE</div>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Até 50 pacientes ativos</li>
+            <li><span class="check">✓</span> Frame Dash completo</li>
+            <li><span class="check">✓</span> Agenda + lembretes automáticos</li>
+            <li><span class="check">✓</span> Nara IA (500 mensagens/mês)</li>
+            <li><span class="check">✓</span> Suporte por email</li>
+          </ul>
+          <a href="#" class="btn btn-ghost btn-lg" style="width:100%;box-sizing:border-box;">Começar grátis</a>
+        </div>
+
+        <div class="plan-card featured">
+          <div class="plan-badge">MAIS ESCOLHIDO</div>
+          <div class="plan-name">PRO</div>
+          <div class="plan-price"><span class="currency">R$</span>397</div>
+          <div class="plan-period">/MÊS · COBRADO MENSALMENTE</div>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Pacientes ilimitados</li>
+            <li><span class="check">✓</span> Frame Dash + Care + Nara IA</li>
+            <li><span class="check">✓</span> Nara ilimitada + personalizada</li>
+            <li><span class="check">✓</span> Relatórios e analytics avançados</li>
+            <li><span class="check">✓</span> Até 3 usuários no mesmo painel</li>
+            <li><span class="check">✓</span> Suporte prioritário via WhatsApp</li>
+          </ul>
+          <a href="#" class="btn btn-primary btn-lg" style="width:100%;box-sizing:border-box;">Começar grátis</a>
+        </div>
+      </div>
+
+      <p style="text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--cinza);margin-top:24px;letter-spacing:0.06em;">
+        CLÍNICAS E AGÊNCIAS?
+        <a href="#" style="color:var(--frame);text-decoration:none;">FALE COM A GENTE →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ FINAL CTA ══ -->
+  <section class="final-cta">
+    <div class="container">
+      <div class="cta-box">
+        <h2 class="cta-title">
+          Estruture<br>
+          <span class="outline">o cuidado</span><br>
+          <span class="green">agora.</span>
+        </h2>
+        <p class="cta-sub">14 dias grátis. Sem cartão. Sem burocracia. Com todo o suporte para você começar hoje.</p>
+        <div class="cta-buttons">
+          <a href="#" class="btn btn-primary btn-lg">Criar conta grátis</a>
+          <a href="#" class="btn btn-ghost btn-lg">Falar com a equipe</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FOOTER ══ -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <svg width="28" height="28" viewBox="0 0 34 34" fill="none">
+              <rect width="34" height="34" rx="9" fill="#0B2E1E"/>
+              <path d="M10 8v18M10 8h14M10 17h10" stroke="#00C27C" stroke-width="2.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <div class="logo-text" style="font-size:18px">Frame<span class="dot">.</span></div>
+              <div class="logo-sub">SYSTEM</div>
+            </div>
+          </a>
+          <p>O sistema que estrutura o cuidado em nutrição — humano por fora, tech por dentro.</p>
+        </div>
+
+        <div>
+          <div class="footer-col-title">PRODUTO</div>
+          <ul class="footer-links">
+            <li><a href="#">Frame Dash</a></li>
+            <li><a href="#">Frame Nara</a></li>
+            <li><a href="#">Frame Care</a></li>
+            <li><a href="#">Preços</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="footer-col-title">EMPRESA</div>
+          <ul class="footer-links">
+            <li><a href="#">Sobre</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Carreiras</a></li>
+            <li><a href="#">Contato</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="footer-col-title">SUPORTE</div>
+          <ul class="footer-links">
+            <li><a href="#">Central de ajuda</a></li>
+            <li><a href="#">Documentação</a></li>
+            <li><a href="#">Status do sistema</a></li>
+            <li><a href="#">WhatsApp</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span class="footer-copy">© 2026 FRAME SYSTEM · TODOS OS DIREITOS RESERVADOS</span>
+        <div class="footer-legal">
+          <a href="#">PRIVACIDADE</a>
+          <a href="#">TERMOS</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

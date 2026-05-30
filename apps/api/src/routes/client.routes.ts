@@ -17,7 +17,9 @@ export async function clientRoutes(app: FastifyInstance) {
         cl.phone,
         cl.goal,
         cl.notes,
-        cl.birthdate,
+        cl.birthdate::text AS birthdate,
+        cl.gender,
+        cl.height_cm::text AS height_cm,
         cl.created_at,
         COUNT(DISTINCT a.id) FILTER (WHERE a.status != 'cancelled')::INT  AS appointment_count,
         COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'completed')::INT   AS completed_count,
@@ -45,14 +47,11 @@ export async function clientRoutes(app: FastifyInstance) {
   // POST /api/clients — cadastrar cliente manualmente
   app.post('/', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user
-    const { name, phone, email, goal, notes, birthdate } = request.body as {
-      name?: string; phone: string; email?: string
-      goal?: string; notes?: string; birthdate?: string
-    }
+    const body = request.body as any
+    const { name, phone, email, goal, notes, birthdate, gender, height_cm } = body
 
     if (!phone?.trim()) return reply.code(400).send({ error: 'Telefone é obrigatório' })
 
-    // Verifica duplicata por telefone
     const existing = await queryOne<any>(
       'SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2',
       [nutritionistId, phone.trim()]
@@ -60,19 +59,120 @@ export async function clientRoutes(app: FastifyInstance) {
     if (existing) return reply.code(409).send({ error: 'Já existe um cliente com esse telefone' })
 
     const client = await queryOne<any>(
-      `INSERT INTO clients (nutritionist_id, name, phone, email, goal, notes, birthdate)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      `INSERT INTO clients (nutritionist_id, name, phone, email, goal, notes, birthdate, gender, height_cm)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [
         nutritionistId,
-        name?.trim() || null,
+        name?.trim()    || null,
         phone.trim(),
-        email?.trim() || null,
-        goal?.trim() || null,
-        notes?.trim() || null,
-        birthdate || null,
+        email?.trim()   || null,
+        goal?.trim()    || null,
+        notes?.trim()   || null,
+        birthdate       || null,
+        gender?.trim()  || null,
+        height_cm       ? Number(height_cm) : null,
       ]
     )
     return reply.code(201).send({ client })
+  })
+
+  // PUT /api/clients/:clientId — atualiza dados do cliente
+  app.put('/:clientId', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as any
+    const schema = z.object({
+      name:      z.string().optional(),
+      email:     z.string().email().optional().or(z.literal('')),
+      goal:      z.string().optional(),
+      notes:     z.string().optional(),
+      birthdate: z.string().optional(),
+      gender:    z.string().optional(),
+      height_cm: z.number().optional(),
+    })
+    const body = schema.parse(request.body)
+
+    const [client] = await query(
+      `UPDATE clients SET
+         name      = COALESCE($3, name),
+         email     = COALESCE(NULLIF($4,''), email),
+         goal      = COALESCE($5, goal),
+         notes     = COALESCE($6, notes),
+         birthdate = COALESCE($7, birthdate),
+         gender    = COALESCE($8, gender),
+         height_cm = COALESCE($9, height_cm),
+         updated_at = NOW()
+       WHERE id = $1 AND nutritionist_id = $2
+       RETURNING *, birthdate::text AS birthdate, height_cm::text AS height_cm`,
+      [clientId, nutritionistId, body.name, body.email, body.goal,
+       body.notes, body.birthdate, body.gender, body.height_cm]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+    return reply.send({ client })
+  })
+
+  // POST /api/clients/import — importação em massa via CSV
+  app.post('/import', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const body = request.body as { csv: string }
+    if (!body.csv?.trim()) return reply.code(400).send({ error: 'CSV vazio' })
+
+    const lines = body.csv.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length < 2) return reply.code(400).send({ error: 'CSV precisa de cabeçalho + ao menos 1 linha' })
+
+    // Detecta separador (vírgula ou ponto-e-vírgula)
+    const sep = lines[0].includes(';') ? ';' : ','
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+
+    const colIndex = (names: string[]) => names.map(n => headers.indexOf(n)).find(i => i >= 0) ?? -1
+
+    const iName      = colIndex(['nome', 'name'])
+    const iPhone     = colIndex(['telefone', 'phone', 'fone', 'celular', 'whatsapp'])
+    const iEmail     = colIndex(['email', 'e-mail'])
+    const iGoal      = colIndex(['objetivo', 'goal'])
+    const iGender    = colIndex(['sexo', 'genero', 'gênero', 'gender'])
+    const iHeight    = colIndex(['altura', 'height', 'height_cm'])
+    const iBirthdate = colIndex(['nascimento', 'data_nascimento', 'birthdate'])
+
+    if (iPhone < 0) return reply.code(400).send({ error: 'Coluna de telefone não encontrada (use: telefone, phone, celular ou whatsapp)' })
+
+    let imported = 0
+    let skipped  = 0
+    const errors: string[] = []
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''))
+      const phone = cols[iPhone]?.trim()
+      if (!phone) { skipped++; continue }
+
+      try {
+        const existing = await queryOne<any>(
+          'SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2',
+          [nutritionistId, phone]
+        )
+        if (existing) { skipped++; continue }
+
+        await query(
+          `INSERT INTO clients (nutritionist_id, name, phone, email, goal, gender, height_cm, birthdate)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (nutritionist_id, phone) DO NOTHING`,
+          [
+            nutritionistId,
+            iName  >= 0 ? cols[iName]  || null : null,
+            phone,
+            iEmail >= 0 ? cols[iEmail] || null : null,
+            iGoal  >= 0 ? cols[iGoal]  || null : null,
+            iGender    >= 0 ? cols[iGender]    || null : null,
+            iHeight    >= 0 && cols[iHeight] ? Number(cols[iHeight].replace(',', '.')) : null,
+            iBirthdate >= 0 ? cols[iBirthdate] || null : null,
+          ]
+        )
+        imported++
+      } catch (err: any) {
+        errors.push(`Linha ${i + 1}: ${err.message}`)
+      }
+    }
+
+    return reply.send({ ok: true, imported, skipped, errors: errors.slice(0, 10) })
   })
 
   // GET /api/clients/:clientId — perfil completo do cliente

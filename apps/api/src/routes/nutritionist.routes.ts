@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
+import bcrypt from 'bcryptjs'
 
 export async function nutritionistRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
@@ -39,6 +40,29 @@ export async function nutritionistRoutes(app: FastifyInstance) {
       [id, body.name, body.phone, body.specialty, body.bio]
     )
     return reply.send(updated)
+  })
+
+  // POST /api/nutritionists/change-password
+  app.post('/change-password', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.object({
+      current_password: z.string().min(1),
+      new_password:     z.string().min(8, 'Mínimo 8 caracteres'),
+    })
+    const body = schema.parse(request.body)
+
+    const nutri = await queryOne<any>(
+      'SELECT password_hash FROM nutritionists WHERE id = $1', [id]
+    )
+    if (!nutri) return reply.code(404).send({ error: 'Usuário não encontrado' })
+
+    const valid = await bcrypt.compare(body.current_password, nutri.password_hash)
+    if (!valid) return reply.code(400).send({ error: 'Senha atual incorreta' })
+
+    const hash = await bcrypt.hash(body.new_password, 10)
+    await query('UPDATE nutritionists SET password_hash = $2, updated_at = NOW() WHERE id = $1', [id, hash])
+
+    return reply.send({ ok: true })
   })
 
   // GET /api/nutritionists/availability

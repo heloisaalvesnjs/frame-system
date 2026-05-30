@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
-  LogOut, Shield, User, Settings, ChevronUp,
+  LogOut, Shield, User, Settings, ChevronUp, Lock,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -125,6 +125,13 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
             >
               <Settings className="w-[14px] h-[14px] flex-shrink-0" />
               <span className="font-mono text-[11px] tracking-[0.05em]">Configurações</span>
+            </button>
+            <button
+              onClick={() => go('/seguranca')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
+            >
+              <Lock className="w-[14px] h-[14px] flex-shrink-0" />
+              <span className="font-mono text-[11px] tracking-[0.05em]">Segurança</span>
             </button>
           </div>
 
