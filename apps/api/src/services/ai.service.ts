@@ -142,6 +142,17 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     [convId, 'user', message]
   )
 
+  // ── Atalho: greeting_message configurada na primeira mensagem ──
+  // Envia o texto EXATAMENTE como escrito, sem passar pela IA
+  if (isFirstMessage && assistant.greeting_message?.trim()) {
+    const greeting = assistant.greeting_message.trim()
+    await query(
+      'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+      [convId, 'assistant', greeting]
+    )
+    return { text: greeting, action: null }
+  }
+
   // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
   const availableSlots = await getNextAvailableSlots(nutritionist_id)
 
@@ -288,8 +299,9 @@ Após enviar, aguarde a resposta do cliente e continue o atendimento normalmente
 "[saudação]! Me chamo ${aiName}, faço parte da equipe de ${nutriName} e será uma honra ter você no time de pacientes 😊 Para começarmos, qual o seu objetivo: [opção A] ou [opção B]?"
 
 Saudação: "Bom dia" (6h-12h) / "Boa tarde" (12h-18h) / "Boa noite" (18h+).
-Opções: adapte à especialidade do consultório. Exemplos: "emagrecimento" ou "ganho de massa muscular".
-Use 1 emoji. Sem asterisco, negrito ou markdown.`
+Opções: EXATAMENTE 2, separadas por "ou". Ex: "emagrecimento ou ganho de massa muscular".
+NUNCA liste mais de 2 opções. NUNCA use • nem - nem * antes das opções.
+Use 1 emoji. Sem asterisco, negrito, lista ou markdown.`
   : greetingMsg
     ? `Se for a primeira troca, use esta mensagem de boas-vindas: "${greetingMsg}"`
     : `Na primeira troca: apresente-se + "será uma honra ter você no time de pacientes" + pergunta de objetivo com 2 opções.`}
@@ -345,8 +357,10 @@ PERGUNTAS: apenas 1 por mensagem, nunca 2.
 PRONOME: "você", jamais "senhor/senhora".
 VOZ ATIVA: "a ${nutriName} atende online" não "o atendimento é realizado online".
 EMOJIS: ${emojiRule}
-PROIBIDO: travessão (—), asterisco (*), negrito, bullet points, markdown.
+PROIBIDO: travessão (—), asterisco (*), negrito, markdown de qualquer tipo.
+PROIBIDO ESPECIALMENTE: • · - * como marcadores de lista. NUNCA use listas. Sempre prosa corrida.
 PROIBIDO: repetir o que o cliente acabou de dizer.
+PROIBIDO: fazer mais de 1 pergunta por mensagem. Se quiser perguntar 2 coisas, escolha 1.
 NATURAL: "tá", "né", "pra", "pro" com moderação.
 
 PALAVRAS PROIBIDAS:

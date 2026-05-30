@@ -486,19 +486,6 @@ function TabAssistant() {
         </div>
       </form>
 
-      {/* Serviços e planos */}
-      <div className="border-t border-ui-border pt-6">
-        <h3 className="text-sm font-semibold text-white/80 mb-1">Serviços e planos</h3>
-        <p className="text-xs text-white/30 mb-3">
-          Descreva seus pacotes, valores e o que está incluso. A assistente usará isso para responder perguntas sobre preço e planos.
-        </p>
-        <Textarea
-          placeholder={`Ex:\nConsulta avulsa: R$ 250 (90 min) — inclui anamnese, plano alimentar e 1 retorno\nPacote trimestral: R$ 600 — 3 consultas + suporte por WhatsApp\nRetorno: R$ 150 (45 min)\n\nForma de pagamento: Pix, cartão ou transferência.`}
-          rows={6}
-          {...register('service_plans')}
-        />
-      </div>
-
       {/* PDF */}
       <div className="border-t border-ui-border pt-6">
         <div className="flex items-start justify-between gap-4 mb-1">
