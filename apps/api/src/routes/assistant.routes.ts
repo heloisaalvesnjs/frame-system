@@ -356,6 +356,8 @@ export async function assistantRoutes(app: FastifyInstance) {
         [nutritionist_id, testPhone]
       )
 
+      app.log.info({ msg: '[test] mensagem recebida', message: body.message, existingConvId: existingConv?.id ?? null })
+
       const result = await processMessage({
         nutritionist_id,
         client_phone: testPhone,
@@ -363,8 +365,11 @@ export async function assistantRoutes(app: FastifyInstance) {
         conversation_id: existingConv?.id,
       })
 
+      app.log.info({ msg: '[test] resposta gerada', responseStart: result.text.slice(0, 60) })
+
       return reply.send({ response: result.text, action: result.action })
     } catch (err: any) {
+      app.log.error({ msg: '[test] erro', error: err?.message })
       return reply.code(500).send({ error: err?.message ?? 'Erro ao processar mensagem' })
     }
   })
