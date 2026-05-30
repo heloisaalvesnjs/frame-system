@@ -6,23 +6,27 @@ import { getNextAvailableSlots } from './appointment.service'
 import { sendMessage } from './whatsapp.service'
 
 // ── Providers ────────────────────────────────────────────────
-// Ordem de tentativa: Groq (grátis/rápido) → Gemini Flash (grátis) → Claude (pago, último recurso)
+// Ordem: Claude Haiku (primário + cache) → Gemini Flash (fallback grátis) → Groq (emergência)
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 const genai     = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 const groq      = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
-async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  // Prompt Cache: system prompt cacheado por 5 min → reduz custo de input em ~90%
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5',
     max_tokens: 350,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...messages.map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: userMessage }
-    ]
+    system: [
+      {
+        type:          'text',
+        text:          systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      } as any,
+    ],
+    messages: [...messages, { role: 'user', content: userMessage }],
   })
-  return response.choices[0]?.message?.content || ''
+  return response.content[0].type === 'text' ? response.content[0].text : ''
 }
 
 async function callGemini(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
@@ -40,23 +44,26 @@ async function callGemini(systemPrompt: string, messages: { role: 'user' | 'assi
   return result.response.text()
 }
 
-async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
+async function callGroq(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 350,
-    system: systemPrompt,
-    messages: [...messages, { role: 'user', content: userMessage }]
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: userMessage }
+    ]
   })
-  return response.content[0].type === 'text' ? response.content[0].text : ''
+  return response.choices[0]?.message?.content || ''
 }
 
 async function callAI(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  // Groq → Gemini → Claude (pago apenas se os gratuitos falharem)
+  // Claude (primário) → Gemini (fallback grátis) → Groq (emergência)
   const hasGemini = !!process.env.GEMINI_API_KEY
   const providers = [
-    { name: 'groq',   fn: callGroq   },
-    ...(hasGemini ? [{ name: 'gemini', fn: callGemini }] : []),
     { name: 'claude', fn: callClaude },
+    ...(hasGemini ? [{ name: 'gemini', fn: callGemini }] : []),
+    { name: 'groq',   fn: callGroq   },
   ]
 
   for (let i = 0; i < providers.length; i++) {
