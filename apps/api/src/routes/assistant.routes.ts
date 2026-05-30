@@ -338,12 +338,14 @@ export async function assistantRoutes(app: FastifyInstance) {
     // Usa um "telefone" fictício para o modo teste — nunca cria agendamento real
     const testPhone = `test_${nutritionist_id}`
 
-    // Se reset, apaga conversa de teste anterior
+    // Se reset, apaga conversa de teste e retorna imediatamente
+    // (não chama processMessage — evita criar conversa com '__reset__' no histórico)
     if (body.reset) {
       await query(
         `DELETE FROM conversations WHERE nutritionist_id = $1 AND client_phone = $2`,
         [nutritionist_id, testPhone]
       )
+      return reply.send({ response: '', action: null })
     }
 
     try {
