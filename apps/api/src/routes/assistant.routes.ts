@@ -347,10 +347,18 @@ export async function assistantRoutes(app: FastifyInstance) {
     }
 
     try {
+      // Busca conversa de teste existente para manter o histórico entre mensagens
+      const existingConv = await queryOne<any>(
+        `SELECT id FROM conversations WHERE nutritionist_id = $1 AND client_phone = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [nutritionist_id, testPhone]
+      )
+
       const result = await processMessage({
         nutritionist_id,
         client_phone: testPhone,
         message: body.message,
+        conversation_id: existingConv?.id,
       })
 
       return reply.send({ response: result.text, action: result.action })
