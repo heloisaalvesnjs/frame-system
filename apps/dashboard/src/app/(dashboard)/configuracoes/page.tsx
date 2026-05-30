@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical, BookOpen, ChevronDown, ChevronUp, MessageSquare, ArrowRight, ArrowLeft } from 'lucide-react'
+import { User, Bot, Smartphone, Clock, CheckCircle, Trash2, Upload, Wifi, WifiOff, Moon, Send, RotateCcw, FlaskConical, BookOpen, ChevronDown, ChevronUp, MessageSquare, ArrowRight, ArrowLeft, Plus, Pencil, ShoppingBag } from 'lucide-react'
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -954,6 +954,152 @@ function TabWhatsApp() {
   )
 }
 
+// ─── Tab: Serviços ────────────────────────────────────────────────
+const CATEGORIES = ['Consulta', 'Pacote', 'Retorno', 'Avaliação', 'Outro']
+
+interface Service { id: string; name: string; category: string; price: string; description: string }
+
+function TabServicos() {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState<Partial<Service> | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const { data: services = [], isLoading } = useQuery<Service[]>({
+    queryKey: ['services'],
+    queryFn: async () => { const { data } = await api.get('/api/services'); return data.services }
+  })
+
+  function openNew() { setEditing({ name: '', category: 'Consulta', price: '', description: '' }) }
+  function openEdit(s: Service) { setEditing({ ...s }) }
+  function closeEdit() { setEditing(null) }
+
+  async function save() {
+    if (!editing || !editing.name?.trim()) return
+    setSaving(true)
+    try {
+      if (editing.id) {
+        await api.put(`/api/services/${editing.id}`, editing)
+      } else {
+        await api.post('/api/services', editing)
+      }
+      toast.success(editing.id ? 'Serviço atualizado!' : 'Serviço adicionado!')
+      queryClient.invalidateQueries({ queryKey: ['services'] })
+      closeEdit()
+    } catch { toast.error('Erro ao salvar.') }
+    finally { setSaving(false) }
+  }
+
+  async function remove(id: string) {
+    try {
+      await api.delete(`/api/services/${id}`)
+      toast.success('Serviço removido.')
+      queryClient.invalidateQueries({ queryKey: ['services'] })
+    } catch { toast.error('Erro ao remover.') }
+  }
+
+  if (isLoading) return <div className="py-8 text-center text-t2 text-sm">Carregando...</div>
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-t1 mb-0.5">Serviços oferecidos</h2>
+          <p className="text-xs text-t2">A assistente usa esses valores para responder perguntas sobre preço e planos.</p>
+        </div>
+        <Button size="sm" onClick={openNew}>
+          <Plus className="w-3.5 h-3.5" /> Novo serviço
+        </Button>
+      </div>
+
+      {/* Formulário inline */}
+      {editing && (
+        <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+          <p className="font-mono text-[11px] text-t2 tracking-wider">{editing.id ? 'EDITAR SERVIÇO' : 'NOVO SERVIÇO'}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Nome do serviço"
+              placeholder="Ex: Consulta inicial"
+              value={editing.name || ''}
+              onChange={e => setEditing(v => ({ ...v, name: e.target.value }))}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-t2 font-mono tracking-wide">Categoria</label>
+              <select
+                value={editing.category || 'Consulta'}
+                onChange={e => setEditing(v => ({ ...v, category: e.target.value }))}
+                className="h-9 w-full rounded-lg px-3 text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+              >
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <Input
+              label="Valor"
+              placeholder="Ex: R$ 250 ou A partir de R$ 200"
+              value={editing.price || ''}
+              onChange={e => setEditing(v => ({ ...v, price: e.target.value }))}
+            />
+            <Input
+              label="Descrição (opcional)"
+              placeholder="Ex: 90 min + plano alimentar incluso"
+              value={editing.description || ''}
+              onChange={e => setEditing(v => ({ ...v, description: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={save} loading={saving} disabled={!editing.name?.trim()}>Salvar</Button>
+            <Button size="sm" variant="ghost" onClick={closeEdit}>Cancelar</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Lista */}
+      {services.length === 0 && !editing ? (
+        <div className="flex flex-col items-center py-10 gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
+            <ShoppingBag className="w-5 h-5 text-brand-500" />
+          </div>
+          <p className="text-sm text-t2">Nenhum serviço cadastrado ainda.</p>
+          <p className="text-xs text-t3">Adicione seus planos e valores para a assistente apresentar aos clientes.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--raised)' }}>
+                <th className="px-4 py-2.5 text-left font-mono text-[10px] text-t3 tracking-wider">NOME</th>
+                <th className="px-4 py-2.5 text-left font-mono text-[10px] text-t3 tracking-wider">CATEGORIA</th>
+                <th className="px-4 py-2.5 text-left font-mono text-[10px] text-t3 tracking-wider">VALOR</th>
+                <th className="px-4 py-2.5 text-right font-mono text-[10px] text-t3 tracking-wider">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((s, i) => (
+                <tr key={s.id} style={{ borderBottom: i < services.length - 1 ? '1px solid var(--border)' : undefined }}>
+                  <td className="px-4 py-3">
+                    <p className="text-sm font-medium text-t1">{s.name}</p>
+                    {s.description && <p className="text-xs text-t3 mt-0.5">{s.description}</p>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-[10px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">{s.category}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-t1 font-medium">{s.price || '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => remove(s.id)} className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Interview Mode ───────────────────────────────────────────────
 
 const IQ = [
@@ -1762,6 +1908,7 @@ function TabTestar() {
 // ─── Main Page ────────────────────────────────────────────────────
 const TABS = [
   { id: 'assistant',   label: 'Assistente',  icon: Bot          },
+  { id: 'servicos',    label: 'Serviços',    icon: ShoppingBag  },
   { id: 'treinamento', label: 'Treinamento', icon: BookOpen     },
   { id: 'horarios',    label: 'Horários',    icon: Clock        },
   { id: 'whatsapp',    label: 'WhatsApp',    icon: Smartphone   },
@@ -1807,6 +1954,7 @@ export default function ConfiguracoesPage() {
 
         <CardContent className="py-6">
           {activeTab === 'assistant'   && <TabAssistant />}
+          {activeTab === 'servicos'    && <TabServicos />}
           {activeTab === 'treinamento' && <TabTreinamento />}
           {activeTab === 'horarios'    && <TabHorarios />}
           {activeTab === 'whatsapp'    && <TabWhatsApp />}

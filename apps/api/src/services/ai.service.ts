@@ -145,7 +145,14 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
   const availableSlots = await getNextAvailableSlots(nutritionist_id)
 
-  // 5b. Busca notas de treinamento globais (cérebro universal)
+  // 5b. Busca serviços estruturados do consultório
+  const services = await query<any>(
+    `SELECT name, category, price, description FROM services
+     WHERE nutritionist_id = $1 AND is_active = true ORDER BY sort_order, created_at`,
+    [nutritionist_id]
+  )
+
+  // 5c. Busca notas de treinamento globais (cérebro universal)
   const trainingNotes = await query<any>(
     `SELECT category, content FROM ai_training_notes WHERE is_active = true ORDER BY created_at ASC`,
     []
@@ -159,7 +166,8 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     clientPhone: client_phone,
     contextData,
     isFirstMessage,
-    trainingNotes
+    trainingNotes,
+    services
   })
 
   // 7. Chama a IA (Claude ou Gemini conforme AI_PROVIDER)
@@ -190,11 +198,21 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 }
 
 // ── Monta o system prompt da assistente ───────────────────
-function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes }: any): string {
+function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services }: any): string {
   const aiName = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone = assistant.tone || 'acolhedor'
-  const plansText = assistant.service_plans?.trim() || null
+  // Serviços estruturados têm prioridade sobre service_plans (texto livre)
+  const structuredServices = (services && services.length > 0)
+    ? services.map((s: any) => {
+        let line = `- ${s.name}`
+        if (s.category) line += ` [${s.category}]`
+        if (s.price)    line += `: ${s.price}`
+        if (s.description) line += ` — ${s.description}`
+        return line
+      }).join('\n')
+    : null
+  const plansText = structuredServices || assistant.service_plans?.trim() || null
   const specialtiesText = assistant.specialties || nutritionist.specialty || null
   const modalities = assistant.consultation_modalities || 'online'
   const modalityLabel = modalities === 'presencial' ? 'presencial'

@@ -375,6 +375,20 @@ ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS is_master BOOLEAN DEFAULT fal
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS service_plans TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS nutri_display_name TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS training_form JSONB;
+-- Serviços estruturados do consultório
+CREATE TABLE IF NOT EXISTS services (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  category        TEXT DEFAULT 'Consulta',
+  price           TEXT,
+  description     TEXT,
+  is_active       BOOLEAN DEFAULT true,
+  sort_order      INT DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_services_nutri ON services(nutritionist_id, is_active);
+
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS emoji_level INT DEFAULT 3;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_prospeccao BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT true;
