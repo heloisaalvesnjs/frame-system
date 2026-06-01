@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
 import { processMessage } from '../services/ai.service'
-import { sendMessage, sendWithHumanDelay } from '../services/whatsapp.service'
+import { sendMessage, sendWithHumanDelay, sendConfiguredMessage } from '../services/whatsapp.service'
 import { isWithinWorkingHours } from '../services/appointment.service'
 
 // Deduplicacao: guarda messageIds processados nos ultimos 60s
@@ -169,7 +169,13 @@ export async function webhookRoutes(app: FastifyInstance) {
           })
 
           const messageId = payload.messageId || payload.id || undefined
-          await sendWithHumanDelay(phone, response.text, messageId)
+          // Mensagens configuradas (greeting) → por parágrafo, sem split de frases
+          // Respostas da IA → split humanizado por frases
+          if (response.raw) {
+            await sendConfiguredMessage(phone, response.text, messageId)
+          } else {
+            await sendWithHumanDelay(phone, response.text, messageId)
+          }
         } catch (err) {
           app.log.error(err, '[webhook] Erro ao processar mensagem em background')
         }

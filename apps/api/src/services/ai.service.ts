@@ -93,6 +93,7 @@ interface ProcessMessageInput {
 interface ProcessMessageOutput {
   text: string
   action?: 'appointment_created' | 'slots_shown' | null
+  raw?: boolean  // true = mensagem configurada pelo nutri, enviar sem split de sentenças
 }
 
 // ── Serviço principal ──────────────────────────────────────
@@ -158,13 +159,14 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 
   // ── Atalho: greeting_message configurada na primeira mensagem ──
   // Envia o texto EXATAMENTE como escrito, sem passar pela IA
+  // raw: true → webhook envia por parágrafo, sem split de sentenças
   if (isFirstMessage && assistant.greeting_message?.trim()) {
     const greeting = assistant.greeting_message.trim()
     await query(
       'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
       [convId, 'assistant', greeting]
     )
-    return { text: greeting, action: null }
+    return { text: greeting, action: null, raw: true }
   }
 
   // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
