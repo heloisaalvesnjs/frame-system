@@ -19,6 +19,7 @@ export async function assistantRoutes(app: FastifyInstance) {
               followup_enabled, followup_delay_hours,
               service_plans, nutri_display_name,
               emoji_level, func_prospeccao, func_triagem, func_agendamento,
+              followup_message_1, followup_message_2,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -46,6 +47,8 @@ export async function assistantRoutes(app: FastifyInstance) {
       func_prospeccao: z.boolean().default(true),
       func_triagem: z.boolean().default(true),
       func_agendamento: z.boolean().default(true),
+      followup_message_1: z.string().optional(),
+      followup_message_2: z.string().optional(),
     })
 
     const body = schema.parse(request.body)
@@ -64,19 +67,22 @@ export async function assistantRoutes(app: FastifyInstance) {
            service_plans = $12, nutri_display_name = $13,
            emoji_level = $14,
            func_prospeccao = $15, func_triagem = $16, func_agendamento = $17,
+           followup_message_1 = $18, followup_message_2 = $19,
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
                    consultation_price, consultation_modalities, specialties,
                    vacation_mode, vacation_message,
                    followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
-                   emoji_level, func_prospeccao, func_triagem, func_agendamento`,
+                   emoji_level, func_prospeccao, func_triagem, func_agendamento,
+                   followup_message_1, followup_message_2`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
          body.vacation_mode, body.vacation_message,
          body.followup_enabled, body.followup_delay_hours,
          body.service_plans ?? null, body.nutri_display_name?.trim() || null,
-         body.emoji_level, body.func_prospeccao, body.func_triagem, body.func_agendamento]
+         body.emoji_level, body.func_prospeccao, body.func_triagem, body.func_agendamento,
+         body.followup_message_1 ?? null, body.followup_message_2 ?? null]
       )
     } else {
       ;[assistant] = await query(

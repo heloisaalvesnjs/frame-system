@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
-  LogOut, Shield, User, Settings, ChevronUp, Lock,
+  LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/conversas', label: 'Conversas',  icon: MessageSquare },
   { href: '/agenda',    label: 'Agenda',     icon: Calendar },
   { href: '/clientes',  label: 'Clientes',   icon: Users },
+  { href: '/followup',  label: 'Follow-up',  icon: RefreshCw },
 ]
 
 // ── Frame mark (bracket-style F, sem arquivo de logo) ────────────

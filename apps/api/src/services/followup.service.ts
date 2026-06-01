@@ -23,6 +23,8 @@ export async function runColdLeadFollowup(): Promise<void> {
       ass.name          AS assistant_name,
       COALESCE(ass.nutri_display_name, n.name) AS nutri_name,
       ass.followup_delay_hours,
+      ass.followup_message_1,
+      ass.followup_message_2,
       w.phone_number    AS whatsapp_connected
     FROM conversations c
     JOIN last_msg lm
@@ -58,17 +60,25 @@ export async function runColdLeadFollowup(): Promise<void> {
     const firstName = lead.client_name
       ? lead.client_name.split(' ')[0]
       : ''
-    const greating = firstName ? `Oi, ${firstName}!` : 'Oi!'
-    const aiName   = lead.assistant_name || 'Assistente'
-    const nutriName = lead.nutri_name || 'a nutricionista'
+    const aiName    = lead.assistant_name || 'Assistente'
+    const nutriName = lead.nutri_name     || 'a nutricionista'
 
-    // 1º follow-up: reativação leve
-    // 2º follow-up (se já enviou antes): urgência + horário
     const isSecondTouch = lead.last_followup_at !== null
 
+    // Substitui variáveis nas mensagens customizadas
+    const applyVars = (template: string) =>
+      template
+        .replace(/\{nome\}/gi,       firstName || '')
+        .replace(/\{assistente\}/gi, aiName)
+        .replace(/\{nutri\}/gi,      nutriName)
+        .trim()
+
+    const DEFAULT_MSG_1 = `Oi${firstName ? `, ${firstName}` : ''}! Aqui é ${aiName}, da equipe de ${nutriName}. Ainda consigo garantir um horário pra você — prefere manhã ou tarde?`
+    const DEFAULT_MSG_2 = `Oi${firstName ? `, ${firstName}` : ''}! ${aiName} aqui 😊 Ainda tenho horários disponíveis com ${nutriName} essa semana. É só me dizer manhã ou tarde que reservo pra você!`
+
     const msg = isSecondTouch
-      ? `${greating} ${aiName} aqui 😊 Ainda tenho horários disponíveis com ${nutriName} essa semana. É só me dizer manhã ou tarde que reservo pra você!`
-      : `${greating} Aqui é ${aiName}, da equipe de ${nutriName}. Ainda consigo garantir um horário pra você — prefere manhã ou tarde?`
+      ? (lead.followup_message_2 ? applyVars(lead.followup_message_2) : DEFAULT_MSG_2)
+      : (lead.followup_message_1 ? applyVars(lead.followup_message_1) : DEFAULT_MSG_1)
 
     try {
       await sendMessage(lead.client_phone, msg)

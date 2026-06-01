@@ -392,6 +392,8 @@ CREATE INDEX IF NOT EXISTS idx_services_nutri ON services(nutritionist_id, is_ac
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS gender TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS height_cm NUMERIC(5,1);
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS emoji_level INT DEFAULT 3;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS followup_message_1 TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS followup_message_2 TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_prospeccao BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_agendamento BOOLEAN DEFAULT true;
