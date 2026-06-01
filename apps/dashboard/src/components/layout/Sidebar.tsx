@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
-  LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw,
+  LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/conversas', label: 'Conversas',  icon: MessageSquare },
   { href: '/agenda',    label: 'Agenda',     icon: Calendar },
   { href: '/clientes',  label: 'Clientes',   icon: Users },
+  { href: '/servicos',  label: 'Serviços',   icon: ShoppingBag },
   { href: '/followup',  label: 'Follow-up',  icon: RefreshCw },
 ]
 

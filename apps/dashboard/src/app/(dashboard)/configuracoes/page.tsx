@@ -1895,8 +1895,7 @@ function TabTestar() {
 // ─── Main Page ────────────────────────────────────────────────────
 const TABS = [
   { id: 'assistant',   label: 'Assistente',  icon: Bot          },
-  { id: 'servicos',    label: 'Serviços',    icon: ShoppingBag  },
-  { id: 'treinamento', label: 'Treinamento', icon: BookOpen     },
+{ id: 'treinamento', label: 'Treinamento', icon: BookOpen     },
   { id: 'horarios',    label: 'Horários',    icon: Clock        },
   { id: 'whatsapp',    label: 'WhatsApp',    icon: Smartphone   },
   { id: 'testar',      label: 'Testar IA',   icon: FlaskConical },
@@ -1941,8 +1940,7 @@ export default function ConfiguracoesPage() {
 
         <CardContent className="py-6">
           {activeTab === 'assistant'   && <TabAssistant />}
-          {activeTab === 'servicos'    && <TabServicos />}
-          {activeTab === 'treinamento' && <TabTreinamento />}
+{activeTab === 'treinamento' && <TabTreinamento />}
           {activeTab === 'horarios'    && <TabHorarios />}
           {activeTab === 'whatsapp'    && <TabWhatsApp />}
           {activeTab === 'testar'      && <TabTestar />}
