@@ -3,7 +3,7 @@ import { sendMessage } from './whatsapp.service'
 
 // ── 4.1 — Lead frio ───────────────────────────────────────────────
 // Envia follow-up para clientes que pararam de responder há X horas
-// sem ter agendado consulta.
+// sem ter agendado consulta. Dois toques distintos: 1° reativa, 2° urgência.
 export async function runColdLeadFollowup(): Promise<void> {
   console.log('[followup] Verificando leads frios...')
 
@@ -15,13 +15,15 @@ export async function runColdLeadFollowup(): Promise<void> {
       ORDER BY conversation_id, sent_at DESC
     )
     SELECT
-      c.id            AS conversation_id,
+      c.id              AS conversation_id,
       c.client_phone,
       c.nutritionist_id,
-      cl.name         AS client_name,
-      n.name          AS nutritionist_name,
+      c.last_followup_at,
+      cl.name           AS client_name,
+      ass.name          AS assistant_name,
+      COALESCE(ass.nutri_display_name, n.name) AS nutri_name,
       ass.followup_delay_hours,
-      w.phone_number  AS whatsapp_connected
+      w.phone_number    AS whatsapp_connected
     FROM conversations c
     JOIN last_msg lm
       ON lm.conversation_id = c.id AND lm.role = 'user'
@@ -37,14 +39,10 @@ export async function runColdLeadFollowup(): Promise<void> {
     JOIN whatsapp_connections w
       ON w.nutritionist_id = c.nutritionist_id AND w.status = 'connected'
     WHERE c.status = 'active'
-      -- Inativo há X horas (configurável, padrão 4h)
       AND c.last_message_at < NOW() - (COALESCE(ass.followup_delay_hours, 4) || ' hours')::INTERVAL
-      -- Mas não mais antigo que 48h (evita ressuscitar conversas mortas)
-      AND c.last_message_at > NOW() - INTERVAL '48 hours'
-      -- Não enviou follow-up nas últimas 24h
+      AND c.last_message_at > NOW() - INTERVAL '72 hours'
       AND (c.last_followup_at IS NULL
-           OR c.last_followup_at < NOW() - INTERVAL '24 hours')
-      -- Sem agendamento ativo
+           OR c.last_followup_at < NOW() - INTERVAL '20 hours')
       AND NOT EXISTS (
         SELECT 1 FROM appointments ap
         JOIN clients cl2 ON cl2.id = ap.client_id
@@ -58,23 +56,28 @@ export async function runColdLeadFollowup(): Promise<void> {
 
   for (const lead of coldLeads) {
     const firstName = lead.client_name
-      ? `, ${lead.client_name.split(' ')[0]}`
+      ? lead.client_name.split(' ')[0]
       : ''
+    const greating = firstName ? `Oi, ${firstName}!` : 'Oi!'
+    const aiName   = lead.assistant_name || 'Assistente'
+    const nutriName = lead.nutri_name || 'a nutricionista'
 
-    const msg =
-      `Oi${firstName}! Ainda pensando em cuidar da sua saúde? ` +
-      `Posso verificar um horário disponível com a ${lead.nutritionist_name} pra você 😊`
+    // 1º follow-up: reativação leve
+    // 2º follow-up (se já enviou antes): urgência + horário
+    const isSecondTouch = lead.last_followup_at !== null
+
+    const msg = isSecondTouch
+      ? `${greating} ${aiName} aqui 😊 Ainda tenho horários disponíveis com ${nutriName} essa semana. É só me dizer manhã ou tarde que reservo pra você!`
+      : `${greating} Aqui é ${aiName}, da equipe de ${nutriName}. Ainda consigo garantir um horário pra você — prefere manhã ou tarde?`
 
     try {
       await sendMessage(lead.client_phone, msg)
 
-      // Salva na conversa para aparecer no dashboard
       await query(
         'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
         [lead.conversation_id, 'assistant', msg]
       )
 
-      // Registra o envio do follow-up
       await query(
         `UPDATE conversations
          SET last_followup_at = NOW(), last_message_at = NOW()
@@ -82,7 +85,7 @@ export async function runColdLeadFollowup(): Promise<void> {
         [lead.conversation_id]
       )
 
-      console.log(`[followup] ✓ Enviado para ${lead.client_phone}`)
+      console.log(`[followup] ✓ ${isSecondTouch ? '2º toque' : '1º toque'} → ${lead.client_phone}`)
     } catch (err) {
       console.error(`[followup] ✗ Erro ao enviar para ${lead.client_phone}:`, err)
     }
