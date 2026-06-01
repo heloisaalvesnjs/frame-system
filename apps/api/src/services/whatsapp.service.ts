@@ -154,8 +154,8 @@ export async function sendWithHumanDelay(
 }
 
 /**
- * Envia mensagem configurada pelo nutri (greeting, avisos fixos) com comportamento humanizado.
- * Divide por parágrafos (linhas em branco) em vez de frases — preserva listas e formatação.
+ * Envia mensagem configurada pelo nutri (greeting) como UMA ÚNICA mensagem.
+ * Sem split — preserva todo o conteúdo exatamente como configurado.
  */
 export async function sendConfiguredMessage(
   phone: string,
@@ -165,24 +165,11 @@ export async function sendConfiguredMessage(
   const clean = sanitizeText(text)
   if (!clean) return
 
-  // Divide por parágrafos (blocos separados por linha vazia)
-  const paragraphs = clean
-    .split(/\n{2,}/)
-    .map(p => p.trim())
-    .filter(Boolean)
-
   await markAsRead(phone, messageId)
   await sleep(800 + Math.random() * 800)
-
-  for (let i = 0; i < paragraphs.length; i++) {
-    const para = paragraphs[i]
-    const typingMs = Math.min(Math.max(para.length * 25, 800), 3500)
-    await sleep(typingMs)
-    await sendMessage(phone, para)
-    if (i < paragraphs.length - 1) {
-      await sleep(500 + Math.random() * 500)
-    }
-  }
+  const typingMs = Math.min(Math.max(clean.length * 20, 1000), 4000)
+  await sleep(typingMs)
+  await sendMessage(phone, clean)
 }
 
 // Desconectar
