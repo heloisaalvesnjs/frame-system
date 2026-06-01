@@ -302,7 +302,7 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
 ${plansText ? `\nSERVIÇOS:\n${plansText}\n` : ''}${assistant.pdf_content ? `\nINSTRUÇÕES DO CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}
 OBJETIVO DO CLIENTE: responda com (1) "Parabéns pela iniciativa! Estamos juntos nessa jornada 💪 Nossos pacientes têm ótimos resultados." (2) ${plansText ? 'apresente SERVIÇOS acima (única mensagem longa permitida)' : `informe que ${nutriName} apresenta os detalhes pessoalmente`} (3) "Prefere manhã ou tarde?"
 
-AGENDAMENTO: pergunte turno → mostre horários do turno escolhido → "Nome completo?" → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM"
+AGENDAMENTO: pergunte turno → mostre horários do turno escolhido → "Nome completo?" → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" e nada mais. Nenhuma frase extra após a confirmação.
 ${hasSlotsConfigured
   ? `Manhã: ${morningSlotsText || '(indisponível)'} | Tarde: ${afternoonSlotsText || '(indisponível)'}
 NUNCA invente horários fora desta lista.`
@@ -332,7 +332,11 @@ async function detectAndCreateAppointment({
     // Converte para ISO datetime
     const [day, month, year] = dateStr.split('/').map(Number)
     const [hour, min] = timeStr.split(':').map(Number)
-    const scheduledAt = new Date(year, month - 1, day, hour, min).toISOString()
+    // Cria o horário em BRT (UTC-3) — slots são sempre no fuso de Brasília
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const scheduledAt = new Date(
+      `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(min)}:00-03:00`
+    ).toISOString()
 
     // Busca ou cria cliente
     let client = await queryOne<any>(
