@@ -24,11 +24,11 @@
 [data-theme="light"] {
   --bg:      #F0F2EF;
   --surface: #FFFFFF;
-  --raised:  #F7F8F6;
-  --border:  #E5E7EB;
+  --raised:  #F4F6F3;
+  --border:  #D1D5DB;
   --t1:      #0B0C0E;
-  --t2:      #6B7280;
-  --t3:      #9CA3AF;
+  --t2:      #374151;
+  --t3:      #6B7280;
   --brand:   #00C27C;
   --brand-h: #009A62;
   --brand-s: rgba(0, 194, 124, 0.08);
@@ -66,40 +66,100 @@ input:-webkit-autofill:focus {
 }
 
 /* ── Light mode: adapta cores hardcoded do tema dark ───────────── */
-/* Texto */
+
+/* Texto — text-white/* → escuras em light mode */
 [data-theme="light"] .text-white     { color: var(--t1) !important; }
+[data-theme="light"] .text-white\/95 { color: var(--t1) !important; }
+[data-theme="light"] .text-white\/90 { color: var(--t1) !important; }
 [data-theme="light"] .text-white\/85 { color: var(--t1) !important; }
 [data-theme="light"] .text-white\/80 { color: var(--t1) !important; }
+[data-theme="light"] .text-white\/75 { color: var(--t1) !important; }
 [data-theme="light"] .text-white\/70 { color: var(--t1) !important; }
+[data-theme="light"] .text-white\/65 { color: var(--t2) !important; }
 [data-theme="light"] .text-white\/60 { color: var(--t2) !important; }
+[data-theme="light"] .text-white\/55 { color: var(--t2) !important; }
 [data-theme="light"] .text-white\/50 { color: var(--t2) !important; }
+[data-theme="light"] .text-white\/45 { color: var(--t2) !important; }
 [data-theme="light"] .text-white\/40 { color: var(--t2) !important; }
-[data-theme="light"] .text-white\/35 { color: var(--t2) !important; }
+[data-theme="light"] .text-white\/35 { color: var(--t3) !important; }
 [data-theme="light"] .text-white\/30 { color: var(--t3) !important; }
 [data-theme="light"] .text-white\/25 { color: var(--t3) !important; }
 [data-theme="light"] .text-white\/20 { color: var(--t3) !important; }
 [data-theme="light"] .text-white\/15 { color: var(--t3) !important; }
 [data-theme="light"] .text-white\/10 { color: var(--t3) !important; }
 
-/* Fundos */
-[data-theme="light"] .bg-white\/\[0\.07\] { background-color: var(--raised)  !important; }
-[data-theme="light"] .bg-white\/\[0\.06\] { background-color: var(--raised)  !important; }
-[data-theme="light"] .bg-white\/\[0\.05\] { background-color: var(--raised)  !important; }
-[data-theme="light"] .bg-white\/\[0\.04\] { background-color: var(--raised)  !important; }
-[data-theme="light"] .bg-white\/5         { background-color: var(--raised)  !important; }
-[data-theme="light"] .bg-white\/10        { background-color: var(--border)  !important; }
+/* Exceção: mesmo elemento com fundo colorido E texto branco → mantém branco */
+[data-theme="light"] .bg-brand-500.text-white,
+[data-theme="light"] .bg-brand-400.text-white,
+[data-theme="light"] .bg-brand-600.text-white,
+[data-theme="light"] .bg-red-500.text-white,
+[data-theme="light"] .bg-amber-500.text-white,
+[data-theme="light"] .bg-red-400.text-white { color: #ffffff !important; }
+
+/* Fundos escuros → superfície do tema */
+[data-theme="light"] .bg-white\/\[0\.08\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.07\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.06\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.05\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.04\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.03\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.025\] { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/\[0\.02\]  { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/2          { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/3          { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/5          { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/8          { background-color: var(--raised)  !important; }
+[data-theme="light"] .bg-white\/10         { background-color: var(--border)  !important; }
+[data-theme="light"] .bg-white\/15         { background-color: var(--border)  !important; }
+[data-theme="light"] .bg-white\/20         { background-color: var(--border)  !important; }
+[data-theme="light"] .bg-white\/30         { background-color: rgba(0,0,0,.06) !important; }
 
 /* Bordas */
 [data-theme="light"] .border-white\/\[0\.06\] { border-color: var(--border) !important; }
+[data-theme="light"] .border-white\/\[0\.07\] { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/\[0\.08\] { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/\[0\.10\] { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/5          { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/10         { border-color: var(--border) !important; }
+[data-theme="light"] .border-white\/15         { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/20         { border-color: var(--border) !important; }
+[data-theme="light"] .border-white\/30         { border-color: rgba(0,0,0,.12) !important; }
+
+/* Hover states — bg-white/* no hover fica invisível em light mode */
+[data-theme="light"] .hover\:bg-white\/\[0\.025\]:hover { background-color: rgba(0,0,0,.03) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover  { background-color: rgba(0,0,0,.02) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover  { background-color: rgba(0,0,0,.03) !important; }
+[data-theme="light"] .hover\:bg-white\/3:hover  { background-color: rgba(0,0,0,.03) !important; }
+[data-theme="light"] .hover\:bg-white\/5:hover  { background-color: rgba(0,0,0,.04) !important; }
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,.06) !important; }
+[data-theme="light"] .hover\:bg-white\/15:hover { background-color: rgba(0,0,0,.08) !important; }
+[data-theme="light"] .hover\:bg-white\/20:hover { background-color: rgba(0,0,0,.10) !important; }
+
+/* Hover text */
+[data-theme="light"] .hover\:text-white:hover     { color: var(--t1) !important; }
+[data-theme="light"] .hover\:text-white\/80:hover  { color: var(--t1) !important; }
+[data-theme="light"] .hover\:text-white\/70:hover  { color: var(--t1) !important; }
+[data-theme="light"] .hover\:text-white\/60:hover  { color: var(--t2) !important; }
 
 /* Placeholder */
 [data-theme="light"] .placeholder\:text-white\/20::placeholder { color: var(--t3) !important; }
 [data-theme="light"] .placeholder\:text-white\/15::placeholder { color: var(--t3) !important; }
+
+/* Inputs e formulários — garante visibilidade em light mode */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: var(--t1);
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: var(--t3);
+}
+
+/* Divisores e separadores */
+[data-theme="light"] .divide-white\/\[0\.06\] > * + * { border-color: var(--border) !important; }
 
 /* ── Utilities ─────────────────────────────────────────────────── */
 @layer utilities {
