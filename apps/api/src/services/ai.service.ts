@@ -260,6 +260,13 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     : emojiLevel === 4 ? 'Use emojis com frequência, 1-2 por mensagem quando adequado.'
     : 'Use emojis livremente, podem aparecer em quase todas as mensagens.'
 
+  // Mensagem personalizada de apresentação dos serviços
+  const customServicesMsg = (assistant.services_message_enabled && assistant.services_message?.trim())
+    ? assistant.services_message.trim()
+        .replace(/\{planos\}/gi, plansText || '(sem planos cadastrados)')
+        .replace(/\{nutri\}/gi, nutriName)
+    : null
+
   // Funções habilitadas
   const funcProspeccao  = assistant.func_prospeccao  !== false
   const funcTriagem     = assistant.func_triagem     !== false
@@ -316,8 +323,12 @@ ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
 
 ETAPA 3 — PLANOS:
 Após definida a modalidade (ou se só tiver uma):
-Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito, SEM seções como *PRESENCIAL:* ou *ONLINE:*.
-${plansText ? `Use apenas os planos da modalidade escolhida. Termine com: "Prefere manhã ou tarde?"` : `Informe que ${nutriName} apresenta os detalhes pessoalmente e pergunte: "Prefere manhã ou tarde?"`}
+${customServicesMsg
+  ? `Use EXATAMENTE esta mensagem (sem acrescentar nem remover nada, apenas adapte o turno ao final):
+${customServicesMsg}`
+  : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito, SEM seções como *PRESENCIAL:* ou *ONLINE:*.
+${plansText ? `Use apenas os planos da modalidade escolhida. Termine com: "Prefere manhã ou tarde?"` : `Informe que ${nutriName} apresenta os detalhes pessoalmente e pergunte: "Prefere manhã ou tarde?"`}`
+}
 
 AGENDAMENTO: mostre horários do turno escolhido → "Nome completo?" → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" e nada mais.
 ${hasSlotsConfigured

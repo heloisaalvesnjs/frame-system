@@ -397,3 +397,5 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS followup_message_2 TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_prospeccao BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_agendamento BOOLEAN DEFAULT true;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_enabled BOOLEAN DEFAULT false;

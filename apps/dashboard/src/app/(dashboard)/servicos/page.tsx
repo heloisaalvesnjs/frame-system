@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, ShoppingBag, Sparkles } from 'lucide-react'
+import { Plus, Pencil, Trash2, ShoppingBag, Sparkles, MessageSquare, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -16,7 +16,6 @@ interface Service { id: string; name: string; category: string; price: string; d
 
 // ── Templates pré-definidos ───────────────────────────────────────
 const TEMPLATES: Omit<Service, 'id'>[] = [
-  // Consultoria Online
   {
     name: 'Consultoria Online – Trimestral',
     category: 'Pacote',
@@ -35,7 +34,6 @@ const TEMPLATES: Omit<Service, 'id'>[] = [
     price: '12x de R$156,27',
     description: 'Maior transformação · tudo incluso · plataforma completa + suporte · plano alimentar para sua realidade · acompanhamento de verdade, não genérico'
   },
-  // Consultoria Premium Presencial
   {
     name: 'Consultoria Premium – Mensal',
     category: 'Consulta',
@@ -55,6 +53,13 @@ const TEMPLATES: Omit<Service, 'id'>[] = [
     description: 'Máxima transformação · 6 consultas · 6 monitoramentos · treino individual · ficha de treino · Dossiê Evolutivo semestral · planejamento dos próximos passos'
   },
 ]
+
+const DEFAULT_SERVICES_MSG =
+`Tenho algumas opções para você 😊
+
+{planos}
+
+Qual dessas faz mais sentido pra você agora? Se tiver dúvida, me conta e te ajudo a escolher a melhor!`
 
 function ServiceForm({ initial, onSave, onCancel }: {
   initial?: Partial<Service>
@@ -103,16 +108,55 @@ function ServiceForm({ initial, onSave, onCancel }: {
   )
 }
 
+// ── Toggle component ──────────────────────────────────────────────
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
+        checked ? 'bg-brand-500' : 'bg-t3/30'
+      )}
+    >
+      <span className={cn(
+        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200',
+        checked ? 'translate-x-4' : 'translate-x-0'
+      )} />
+    </button>
+  )
+}
+
 export default function ServicosPage() {
   const qc = useQueryClient()
   const [editing, setEditing] = useState<Partial<Service> | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [addingTemplates, setAddingTemplates] = useState<Set<number>>(new Set())
 
+  // Mensagem personalizada
+  const [msgEnabled, setMsgEnabled] = useState(false)
+  const [msgText, setMsgText] = useState(DEFAULT_SERVICES_MSG)
+  const [savingMsg, setSavingMsg] = useState(false)
+  const [msgDirty, setMsgDirty] = useState(false)
+
   const { data: services = [], isLoading } = useQuery<Service[]>({
     queryKey: ['services'],
     queryFn: async () => { const { data } = await api.get('/api/services'); return data.services }
   })
+
+  const { data: assistantData } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant }
+  })
+
+  // Sincroniza estado com dados do assistente
+  useEffect(() => {
+    if (assistantData) {
+      setMsgEnabled(assistantData.services_message_enabled ?? false)
+      setMsgText(assistantData.services_message || DEFAULT_SERVICES_MSG)
+      setMsgDirty(false)
+    }
+  }, [assistantData])
 
   async function saveService(data: Omit<Service, 'id'>) {
     if ((editing as Service)?.id) {
@@ -140,6 +184,42 @@ export default function ServicosPage() {
       toast.success(`"${t.name}" adicionado!`)
     } catch { toast.error('Erro ao adicionar.') }
     finally { setAddingTemplates(s => { const n = new Set(s); n.delete(idx); return n }) }
+  }
+
+  async function saveMsgConfig() {
+    if (!assistantData) { toast.error('Configure a assistente primeiro.'); return }
+    setSavingMsg(true)
+    try {
+      await api.post('/api/assistants', {
+        ...assistantData,
+        services_message: msgText,
+        services_message_enabled: msgEnabled,
+      })
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+      setMsgDirty(false)
+      toast.success('Mensagem salva!')
+    } catch {
+      toast.error('Erro ao salvar.')
+    } finally {
+      setSavingMsg(false)
+    }
+  }
+
+  async function toggleMsg(val: boolean) {
+    setMsgEnabled(val)
+    if (!assistantData) return
+    // Salva imediatamente ao mudar o toggle
+    try {
+      await api.post('/api/assistants', {
+        ...assistantData,
+        services_message: msgText,
+        services_message_enabled: val,
+      })
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+      toast.success(val ? 'Mensagem personalizada ativada!' : 'Mensagem personalizada desativada.')
+    } catch {
+      toast.error('Erro ao salvar.')
+    }
   }
 
   if (isLoading) return <div className="p-6 text-t2 text-sm">Carregando...</div>
@@ -177,8 +257,6 @@ export default function ServicosPage() {
               <p className="text-sm font-semibold text-t1">Templates — Consultoria David Effgen</p>
               <span className="font-mono text-[10px] text-t3 ml-auto">Clique para adicionar</span>
             </div>
-
-            {/* Online */}
             <p className="font-mono text-[10px] text-t3 tracking-wider mb-2">ONLINE — PERFORMANCE REAL</p>
             <div className="space-y-2 mb-5">
               {TEMPLATES.slice(0, 3).map((t, i) => (
@@ -187,15 +265,12 @@ export default function ServicosPage() {
                     <p className="text-sm font-medium text-t1">{t.name}</p>
                     <p className="text-xs text-t2">{t.price}</p>
                   </div>
-                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i)}
-                    onClick={() => addTemplate(t, i)}>
+                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i)} onClick={() => addTemplate(t, i)}>
                     Adicionar
                   </Button>
                 </div>
               ))}
             </div>
-
-            {/* Presencial */}
             <p className="font-mono text-[10px] text-t3 tracking-wider mb-2">PRESENCIAL — PREMIUM</p>
             <div className="space-y-2">
               {TEMPLATES.slice(3).map((t, i) => (
@@ -204,8 +279,7 @@ export default function ServicosPage() {
                     <p className="text-sm font-medium text-t1">{t.name}</p>
                     <p className="text-xs text-t2">{t.price}</p>
                   </div>
-                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i+3)}
-                    onClick={() => addTemplate(t, i+3)}>
+                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i+3)} onClick={() => addTemplate(t, i+3)}>
                     Adicionar
                   </Button>
                 </div>
@@ -220,7 +294,7 @@ export default function ServicosPage() {
         <ServiceForm initial={editing} onSave={saveService} onCancel={() => setEditing(null)} />
       )}
 
-      {/* Lista */}
+      {/* Lista de serviços */}
       {services.length === 0 && !editing ? (
         <div className="flex flex-col items-center py-12 gap-3 text-center">
           <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
@@ -273,6 +347,95 @@ export default function ServicosPage() {
           </div>
         </Card>
       ) : null}
+
+      {/* ── Mensagem de Apresentação dos Planos ─────────────────── */}
+      <Card>
+        <CardContent className="py-5 space-y-4">
+          {/* Header com toggle */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <MessageSquare className="w-4 h-4 text-brand-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-t1">Mensagem de apresentação dos planos</p>
+                <p className="text-xs text-t2 mt-0.5 leading-relaxed">
+                  Controle exatamente o que a assistente diz quando apresentar os planos ao cliente
+                </p>
+              </div>
+            </div>
+            <Toggle checked={msgEnabled} onChange={toggleMsg} />
+          </div>
+
+          {/* Área de configuração — só aparece quando ativo */}
+          {msgEnabled && (
+            <div className="space-y-3 pt-1">
+              {/* Info sobre variáveis */}
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,.15)' }}>
+                <Info className="w-3.5 h-3.5 text-brand-500 flex-shrink-0 mt-0.5" />
+                <div className="text-t2 leading-relaxed">
+                  Use <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded">{'{planos}'}</code> para inserir automaticamente os planos cadastrados acima.
+                  A assistente vai usar essa mensagem <strong className="text-t1">exatamente como você escreveu</strong>.
+                </div>
+              </div>
+
+              {/* Textarea */}
+              <div className="relative">
+                <textarea
+                  value={msgText}
+                  onChange={e => { setMsgText(e.target.value); setMsgDirty(true) }}
+                  rows={8}
+                  placeholder={DEFAULT_SERVICES_MSG}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-t1 resize-none focus:outline-none transition-colors leading-relaxed"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+                />
+                <span className="absolute bottom-2.5 right-3 font-mono text-[10px] text-t3">
+                  {msgText.length} chars
+                </span>
+              </div>
+
+              {/* Chips de variáveis */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] text-t3 font-mono">Variáveis disponíveis:</span>
+                {['{planos}', '{nutri}'].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      setMsgText(t => t + v)
+                      setMsgDirty(true)
+                    }}
+                    className="font-mono text-[11px] text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 px-2 py-0.5 rounded-full transition-colors"
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+
+              {/* Botões */}
+              <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" onClick={saveMsgConfig} loading={savingMsg} disabled={!msgDirty}>
+                  Salvar mensagem
+                </Button>
+                <button
+                  onClick={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
+                  className="text-xs text-t3 hover:text-t2 transition-colors px-2 py-1.5"
+                >
+                  Restaurar padrão
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Estado inativo */}
+          {!msgEnabled && (
+            <div className="text-xs text-t3 leading-relaxed px-1">
+              Quando desativado, a assistente lista os planos automaticamente no estilo padrão do sistema.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   )
 }
