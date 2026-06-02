@@ -104,7 +104,7 @@ export async function internalRoutes(app: FastifyInstance) {
     const body = schema.parse(request.body)
 
     try {
-      await sendMessage(body.phone, body.text)
+      await sendMessage(body.phone, body.text, body.instance_name)
       return reply.send({ ok: true })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao enviar mensagem'

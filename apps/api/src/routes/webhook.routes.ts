@@ -4,7 +4,7 @@ import { processMessage } from '../services/ai.service'
 import { sendMessage, sendWithHumanDelay, sendConfiguredMessage } from '../services/whatsapp.service'
 import { isWithinWorkingHours } from '../services/appointment.service'
 
-// Deduplicacao: guarda messageIds processados nos ultimos 60s
+// Deduplicação: guarda messageIds processados nos últimos 60s
 const recentlyProcessed = new Map<string, number>()
 setInterval(() => {
   const now = Date.now()
@@ -13,23 +13,113 @@ setInterval(() => {
   }
 }, 30_000)
 
+/**
+ * Extrai os campos relevantes do payload da Evolution API v2.
+ *
+ * Formato esperado:
+ * {
+ *   event: "messages.upsert",
+ *   instance: "instanceName",
+ *   data: {
+ *     key: { remoteJid: "5511...@s.whatsapp.net", fromMe: false, id: "BAE..." },
+ *     message: { conversation: "texto" },
+ *     messageType: "conversation",
+ *     ...
+ *   }
+ * }
+ */
+function parseEvolutionPayload(payload: any): {
+  isMessage: boolean
+  isConnectionUpdate: boolean
+  fromMe: boolean
+  phone: string
+  messageText: string
+  messageId: string
+  instanceName: string
+  connected: boolean
+} {
+  const event = payload?.event ?? ''
+  const instanceName = payload?.instance ?? ''
+  const data = payload?.data ?? {}
+
+  // ── Mensagem recebida ──────────────────────────────────────
+  const isMessage = event === 'messages.upsert'
+
+  const remoteJid: string = data?.key?.remoteJid ?? ''
+  const fromMe: boolean = data?.key?.fromMe === true
+  // Ignora grupos (@g.us) — só mensagens diretas (@s.whatsapp.net)
+  const isDirectMessage = remoteJid.endsWith('@s.whatsapp.net')
+
+  // Normaliza o número: remove @s.whatsapp.net e caracteres não numéricos
+  const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+
+  // Texto pode estar em conversation (mensagem simples) ou extendedTextMessage (com preview/link)
+  const msg = data?.message ?? {}
+  const messageText: string =
+    msg.conversation ||
+    msg.extendedTextMessage?.text ||
+    msg.imageMessage?.caption ||
+    msg.videoMessage?.caption ||
+    ''
+
+  const messageId: string = data?.key?.id ?? ''
+
+  // ── Atualização de conexão ─────────────────────────────────
+  const isConnectionUpdate = event === 'connection.update'
+  const connectionState = data?.state ?? data?.instance?.state ?? ''
+  const connected = connectionState === 'open'
+
+  return {
+    isMessage: isMessage && isDirectMessage,
+    isConnectionUpdate,
+    fromMe,
+    phone,
+    messageText,
+    messageId,
+    instanceName,
+    connected
+  }
+}
+
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // Função auxiliar que processa uma mensagem recebida do Z-API
-  // instanceName opcional: se fornecido, roteia para o nutri correto (multi-tenant)
-  async function handleIncoming(request: any, reply: any, instanceName?: string) {
+  // Função auxiliar que processa uma mensagem recebida da Evolution API
+  // instanceName opcional: se fornecido na URL tem precedência; senão usa o payload
+  async function handleIncoming(request: any, reply: any, instanceNameFromUrl?: string) {
     const payload = request.body as any
 
-    const isReceived = payload.type === 'ReceivedCallback'
-    const fromMe     = payload.fromMe === true
-    const phone      = payload.phone
-    const messageText = payload.text?.message
+    const parsed = parseEvolutionPayload(payload)
 
-    if (!isReceived || fromMe || !phone || !messageText) {
+    // Usa o instanceName da URL (mais confiável) ou do payload
+    const instanceName = instanceNameFromUrl || parsed.instanceName
+
+    // ── Atualização de status de conexão ──────────────────────
+    if (parsed.isConnectionUpdate && instanceName) {
+      if (parsed.connected) {
+        await query(
+          `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
+           WHERE instance_name = $1`,
+          [instanceName]
+        )
+      } else {
+        await query(
+          `UPDATE whatsapp_connections SET status = 'disconnected'
+           WHERE instance_name = $1`,
+          [instanceName]
+        )
+      }
       return reply.send({ ok: true })
     }
 
-    const dedupeKey = payload.messageId || payload.id || `${phone}:${messageText}:${Date.now()}`
+    // ── Filtra eventos que não são mensagens recebidas ─────────
+    if (!parsed.isMessage || parsed.fromMe || !parsed.phone || !parsed.messageText) {
+      return reply.send({ ok: true })
+    }
+
+    const { phone, messageText, messageId } = parsed
+
+    // Deduplicação
+    const dedupeKey = messageId || `${phone}:${messageText}:${Date.now()}`
     if (recentlyProcessed.has(dedupeKey)) {
       app.log.warn(`[webhook] Duplicata ignorada: ${dedupeKey}`)
       return reply.send({ ok: true })
@@ -37,16 +127,16 @@ export async function webhookRoutes(app: FastifyInstance) {
     recentlyProcessed.set(dedupeKey, Date.now())
 
     try {
-      // Multi-tenant: identifica o nutri pela instância Z-API
-      // Se instanceName fornecido na URL → busca pela instância exata
-      // Fallback: conexão mais recente (compatibilidade com setup antigo)
+      // Multi-tenant: identifica o nutri pela instância Evolution API
+      // Se instanceName fornecido → busca pela instância exata
+      // Fallback: conexão mais recente (compatibilidade)
       const connection = instanceName
         ? await queryOne<any>(
-            `SELECT nutritionist_id FROM whatsapp_connections WHERE instance_name = $1`,
+            `SELECT nutritionist_id, instance_name FROM whatsapp_connections WHERE instance_name = $1`,
             [instanceName]
           )
         : await queryOne<any>(
-            `SELECT nutritionist_id FROM whatsapp_connections ORDER BY updated_at DESC LIMIT 1`
+            `SELECT nutritionist_id, instance_name FROM whatsapp_connections ORDER BY updated_at DESC LIMIT 1`
           )
 
       if (!connection) {
@@ -55,6 +145,8 @@ export async function webhookRoutes(app: FastifyInstance) {
       }
 
       const { nutritionist_id } = connection
+      // Usa o instance_name do banco como fonte de verdade para envio
+      const activeInstance = connection.instance_name || instanceName
 
       // Verifica se a conversa está em modo humano (takeover)
       const conversation = await queryOne<any>(
@@ -67,16 +159,10 @@ export async function webhookRoutes(app: FastifyInstance) {
       // Comando /new — reinicia a conversa
       if (messageText.trim().toLowerCase() === '/new') {
         if (conversation) {
-          await query(
-            `DELETE FROM messages WHERE conversation_id = $1`,
-            [conversation.id]
-          )
-          await query(
-            `DELETE FROM conversations WHERE id = $1`,
-            [conversation.id]
-          )
+          await query(`DELETE FROM messages WHERE conversation_id = $1`, [conversation.id])
+          await query(`DELETE FROM conversations WHERE id = $1`, [conversation.id])
         }
-        await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.')
+        await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.', activeInstance)
         return reply.send({ ok: true })
       }
 
@@ -114,7 +200,6 @@ export async function webhookRoutes(app: FastifyInstance) {
         }
 
         if (blocked) {
-          // Garante que a conversa existe para salvar a mensagem
           let convId = conversation?.id
           if (!convId) {
             const [newConv] = await query(
@@ -127,13 +212,11 @@ export async function webhookRoutes(app: FastifyInstance) {
             await query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [convId])
           }
 
-          // Salva mensagem do usuário
           await query(
             'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
             [convId, 'user', messageText]
           )
 
-          // Só envia aviso uma vez por conversa (evita spam)
           const lastAssistantMsg = await queryOne<any>(
             `SELECT content FROM messages
              WHERE conversation_id = $1 AND role = 'assistant'
@@ -147,7 +230,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           )
 
           if (!alreadyWarned) {
-            await sendMessage(phone, outOfHoursMsg)
+            await sendMessage(phone, outOfHoursMsg, activeInstance)
             await query(
               'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
               [convId, 'assistant', outOfHoursMsg]
@@ -157,13 +240,12 @@ export async function webhookRoutes(app: FastifyInstance) {
           return reply.send({ ok: true })
         }
       }
-      // ─────────────────────────────────────────────────────────
+      // ──────────────────────────────────────────────────────────
 
-      // Retorna 200 IMEDIATAMENTE para a Z-API nao retentar
-      // O processamento acontece em background (fire-and-forget)
+      // Retorna 200 IMEDIATAMENTE para a Evolution API não retentar
       reply.send({ ok: true })
 
-      // Processa em background (sem await)
+      // Processa em background (fire-and-forget)
       ;(async () => {
         try {
           const response = await processMessage({
@@ -173,20 +255,17 @@ export async function webhookRoutes(app: FastifyInstance) {
             conversation_id: conversation?.id
           })
 
-          const messageId = payload.messageId || payload.id || undefined
-          // Mensagens configuradas (greeting) → por parágrafo, sem split de frases
-          // Respostas da IA → split humanizado por frases
           if (response.raw) {
-            await sendConfiguredMessage(phone, response.text, messageId)
+            await sendConfiguredMessage(phone, response.text, activeInstance, messageId)
           } else {
-            await sendWithHumanDelay(phone, response.text, messageId)
+            await sendWithHumanDelay(phone, response.text, activeInstance, messageId)
           }
         } catch (err) {
           app.log.error(err, '[webhook] Erro ao processar mensagem em background')
         }
       })()
 
-      return // reply ja foi enviado acima
+      return
 
     } catch (err) {
       app.log.error(err, '[webhook] Erro antes do processamento')
@@ -195,43 +274,15 @@ export async function webhookRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   }
 
-  // Rota genérica (compatibilidade com setup legado de 1 nutri)
+  // Rota genérica — instância identificada pelo campo `instance` do payload
   app.post('/whatsapp', async (request, reply) => {
     return handleIncoming(request, reply)
   })
 
   // Rota por instância (multi-tenant): /webhook/whatsapp/{instance_name}
-  // Cada nutri configura a URL do seu Z-API com o nome da sua instância
+  // Cada nutri configura o webhook da Evolution API com o nome da sua instância
   app.post('/whatsapp/:instanceName', async (request, reply) => {
     const { instanceName } = request.params as any
     return handleIncoming(request, reply, instanceName)
-  })
-
-  // Status: rota legada (zapi hardcoded) + rota por instância
-  async function handleStatus(payload: any, instanceName = 'zapi') {
-    if (payload.connected === true) {
-      await query(
-        `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
-         WHERE instance_name = $1`,
-        [instanceName]
-      )
-    } else if (payload.connected === false) {
-      await query(
-        `UPDATE whatsapp_connections SET status = 'disconnected'
-         WHERE instance_name = $1`,
-        [instanceName]
-      )
-    }
-  }
-
-  app.post('/whatsapp-status', async (request, reply) => {
-    await handleStatus(request.body)
-    return reply.send({ ok: true })
-  })
-
-  app.post('/whatsapp-status/:instanceName', async (request, reply) => {
-    const { instanceName } = request.params as any
-    await handleStatus(request.body, instanceName)
-    return reply.send({ ok: true })
   })
 }

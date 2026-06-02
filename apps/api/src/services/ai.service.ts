@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import Groq from 'groq-sdk'
 import { query, queryOne } from '../db'
 import { getNextAvailableSlots } from './appointment.service'
-import { sendMessage } from './whatsapp.service'
+import { sendMessageForNutri } from './whatsapp.service'
 
 // ── Providers ────────────────────────────────────────────────
 // Ordem: Claude Haiku (primário + cache) → Gemini Flash (fallback grátis) → Groq (emergência)
@@ -412,7 +412,7 @@ async function detectAndCreateAppointment({
           `📅 ${formatted}\n\n` +
           `Veja os detalhes na sua agenda 👆`
 
-        await sendMessage(nutritionistData.phone, notifMsg)
+        await sendMessageForNutri(nutritionist_id, nutritionistData.phone, notifMsg)
       }
     } catch (notifErr) {
       // Falha na notificação não deve cancelar o agendamento

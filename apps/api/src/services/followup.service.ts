@@ -25,7 +25,7 @@ export async function runColdLeadFollowup(): Promise<void> {
       ass.followup_delay_hours,
       ass.followup_message_1,
       ass.followup_message_2,
-      w.phone_number    AS whatsapp_connected
+      w.instance_name   AS instance_name
     FROM conversations c
     JOIN last_msg lm
       ON lm.conversation_id = c.id AND lm.role = 'user'
@@ -81,7 +81,7 @@ export async function runColdLeadFollowup(): Promise<void> {
       : (lead.followup_message_1 ? applyVars(lead.followup_message_1) : DEFAULT_MSG_1)
 
     try {
-      await sendMessage(lead.client_phone, msg)
+      await sendMessage(lead.client_phone, msg, lead.instance_name)
 
       await query(
         'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
@@ -115,7 +115,7 @@ export async function runAppointmentReminders(): Promise<void> {
       c.name  AS client_name,
       c.phone AS client_phone,
       n.name  AS nutritionist_name,
-      w.phone_number AS whatsapp_connected
+      w.instance_name AS instance_name
     FROM appointments a
     JOIN clients c        ON c.id = a.client_id
     JOIN nutritionists n  ON n.id = a.nutritionist_id AND n.is_active = true
@@ -156,7 +156,7 @@ export async function runAppointmentReminders(): Promise<void> {
       `Confirme sua presença respondendo *sim*, ou avise se precisar reagendar 🙏`
 
     try {
-      await sendMessage(appt.client_phone, msg)
+      await sendMessage(appt.client_phone, msg, appt.instance_name)
 
       await query(
         'UPDATE appointments SET reminder_sent = true WHERE id = $1',

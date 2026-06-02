@@ -82,7 +82,13 @@ export async function patientRoutes(app: FastifyInstance) {
 
     // Send via WhatsApp (best-effort — don't fail if WA is disconnected)
     try {
-      await sendMessage(client.phone, message)
+      const conn = await queryOne<any>(
+        `SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1 AND status = 'connected' LIMIT 1`,
+        [nutritionistId]
+      )
+      if (conn?.instance_name) {
+        await sendMessage(client.phone, message, conn.instance_name)
+      }
     } catch (err) {
       console.error('[patient/auth/request] Erro ao enviar WhatsApp:', err)
     }

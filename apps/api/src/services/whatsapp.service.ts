@@ -1,31 +1,29 @@
-// Z-API -- Servico WhatsApp
+// Evolution API — Serviço WhatsApp
 
-const ZAPI_INSTANCE_ID  = process.env.ZAPI_INSTANCE_ID  || ''
-const ZAPI_TOKEN        = process.env.ZAPI_TOKEN        || ''
-const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || ''
+import { queryOne } from '../db'
 
-const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`
+const EVOLUTION_API_URL = (process.env.EVOLUTION_API_URL || 'http://localhost:8080').replace(/\/$/, '')
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || ''
 
-const headers = {
+const evoHeaders = {
   'Content-Type': 'application/json',
-  'Client-Token': ZAPI_CLIENT_TOKEN
+  'apikey': EVOLUTION_API_KEY
 }
 
-// helpers
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /** Remove caracteres fora do alfabeto latino/portugues (evita glitches de encoding da IA) */
 export function sanitizeText(text: string): string {
   return text
-    .replace(/[⺀-￿]/g, '')  // CJK e blocos asiaticos
-    .replace(/[ɐ-ʯ]/g, '')  // IPA exotico
-    .replace(/—|–/g, ',')   // travessao longo / en-dash -> virgula
+    .replace(/[⺀-￿]/g, '')  // CJK e blocos asiáticos
+    .replace(/[ɐ-ʯ]/g, '')  // IPA exótico
+    .replace(/—|–/g, ',')   // travessão longo / en-dash → vírgula
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
-/** Divide a resposta em blocos de ~2 frases para envio multiplo */
+/** Divide a resposta em blocos de ~2 frases para envio múltiplo */
 function splitIntoChunks(text: string): string[] {
   if (text.length < 100) return [text]
 
@@ -36,11 +34,9 @@ function splitIntoChunks(text: string): string[] {
   let sentenceCount = 0
 
   for (const sentence of sentences) {
-    if (sentence.length === 0) continue
+    if (!sentence.length) continue
     current = current ? `${current} ${sentence}` : sentence
     sentenceCount++
-
-    // Novo chunk a cada 2 frases ou se ficou muito longo
     if (sentenceCount >= 2 || current.length > 140) {
       chunks.push(current.trim())
       current = ''
@@ -52,80 +48,71 @@ function splitIntoChunks(text: string): string[] {
   return chunks.filter(c => c.length > 0)
 }
 
-// Status da instancia
-export async function getInstanceStatus(): Promise<'connected' | 'connecting' | 'disconnected'> {
-  try {
-    const res = await fetch(`${ZAPI_BASE}/status`, { headers })
-    if (!res.ok) return 'disconnected'
-    const data = await res.json() as any
-    console.log('[Z-API getStatus]', JSON.stringify(data))
-    if (data.connected === true) return 'connected'
-    return 'connecting'
-  } catch {
-    return 'disconnected'
-  }
+/** Busca o instance_name ativo de um nutricionista */
+async function getInstanceForNutri(nutritionist_id: string): Promise<string | null> {
+  const conn = await queryOne<any>(
+    `SELECT instance_name FROM whatsapp_connections
+     WHERE nutritionist_id = $1 AND status = 'connected'
+     LIMIT 1`,
+    [nutritionist_id]
+  )
+  return conn?.instance_name ?? null
 }
 
-// QR Code
-export async function getQRCode(): Promise<string> {
-  const res = await fetch(`${ZAPI_BASE}/qr-code`, { headers })
-  if (!res.ok) return ''
-  const data = await res.json() as any
-  console.log('[Z-API getQRCode]', data?.value ? 'QR recebido' : JSON.stringify(data))
-  return data.value || ''
-}
+// ── Envio ─────────────────────────────────────────────────────────────────────
 
-// Pairing Code
-export async function getPairingCode(phoneNumber: string): Promise<string> {
-  const phone = phoneNumber.replace(/\D/g, '')
-  const res = await fetch(`${ZAPI_BASE}/paring-code`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ phone })
-  })
-  const data = await res.json() as any
-  console.log('[Z-API getPairingCode]', JSON.stringify(data))
-  if (!res.ok) {
-    throw new Error(data?.message || data?.error || JSON.stringify(data))
-  }
-  return data.pairingCode || data.value || ''
-}
-
-// Enviar mensagem simples (uso interno e notificacoes)
-export async function sendMessage(phone: string, text: string): Promise<void> {
+/** Envia mensagem de texto via Evolution API */
+export async function sendMessage(phone: string, text: string, instanceName: string): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-  const res = await fetch(`${ZAPI_BASE}/send-text`, {
+  const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ phone: number, message: text })
+    headers: evoHeaders,
+    body: JSON.stringify({ number, text })
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Erro ao enviar mensagem: ${body}`)
+    throw new Error(`[Evolution] Erro ao enviar: ${body}`)
   }
 }
 
-// Marcar como lida (silencioso se falhar)
-async function markAsRead(phone: string, messageId?: string): Promise<void> {
+/** Envia mensagem buscando automaticamente a instância do nutricionista */
+export async function sendMessageForNutri(
+  nutritionist_id: string,
+  phone: string,
+  text: string
+): Promise<void> {
+  const instanceName = await getInstanceForNutri(nutritionist_id)
+  if (!instanceName) {
+    console.warn(`[Evolution] Sem instância conectada para nutri ${nutritionist_id}`)
+    return
+  }
+  await sendMessage(phone, text, instanceName)
+}
+
+/** Marca mensagem como lida (silencioso se falhar) */
+async function markAsRead(phone: string, messageId: string | undefined, instanceName: string): Promise<void> {
   try {
     const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-    await fetch(`${ZAPI_BASE}/read-message`, {
+    await fetch(`${EVOLUTION_API_URL}/chat/markMessageAsRead/${instanceName}`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ phone: number, messageId: messageId ?? '' })
+      headers: evoHeaders,
+      body: JSON.stringify({
+        readMessages: [{ id: messageId ?? '', remoteJid: `${number}@s.whatsapp.net`, fromMe: false }]
+      })
     })
-  } catch { /* nao critico */ }
+  } catch { /* não crítico */ }
 }
 
 /**
  * Envia resposta da IA com comportamento humanizado:
- * - Sanitiza o texto (remove glitches de encoding)
- * - Divide em blocos de 2 frases
- * - Simula tempo de leitura + digitacao antes de cada bloco
+ * – Sanitiza o texto
+ * – Divide em blocos de ~2 frases
+ * – Simula leitura + digitação antes de cada bloco
  */
 export async function sendWithHumanDelay(
   phone: string,
   text: string,
+  instanceName: string,
   messageId?: string
 ): Promise<void> {
   const clean = sanitizeText(text)
@@ -133,20 +120,14 @@ export async function sendWithHumanDelay(
 
   const chunks = splitIntoChunks(clean)
 
-  // Simula "visualizou a mensagem" (800-1600ms)
-  await markAsRead(phone, messageId)
+  await markAsRead(phone, messageId, instanceName)
   await sleep(800 + Math.random() * 800)
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i]
-
-    // Simula digitacao: ~35ms/char, min 700ms, max 3500ms
     const typingMs = Math.min(Math.max(chunk.length * 35, 700), 3500)
     await sleep(typingMs)
-
-    await sendMessage(phone, chunk)
-
-    // Pausa entre chunks (600-1200ms)
+    await sendMessage(phone, chunk, instanceName)
     if (i < chunks.length - 1) {
       await sleep(600 + Math.random() * 600)
     }
@@ -155,28 +136,140 @@ export async function sendWithHumanDelay(
 
 /**
  * Envia mensagem configurada pelo nutri (greeting) como UMA ÚNICA mensagem.
- * Sem split — preserva todo o conteúdo exatamente como configurado.
+ * Sem split — preserva o conteúdo exatamente como configurado.
  */
 export async function sendConfiguredMessage(
   phone: string,
   text: string,
+  instanceName: string,
   messageId?: string
 ): Promise<void> {
   const clean = sanitizeText(text)
   if (!clean) return
 
-  await markAsRead(phone, messageId)
+  await markAsRead(phone, messageId, instanceName)
   await sleep(800 + Math.random() * 800)
   const typingMs = Math.min(Math.max(clean.length * 20, 1000), 4000)
   await sleep(typingMs)
-  await sendMessage(phone, clean)
+  await sendMessage(phone, clean, instanceName)
 }
 
-// Desconectar
-export async function disconnectInstance(): Promise<void> {
-  await fetch(`${ZAPI_BASE}/disconnect`, { method: 'GET', headers })
+// ── Instância ─────────────────────────────────────────────────────────────────
+
+/** Status da conexão de uma instância */
+export async function getInstanceStatus(instanceName: string): Promise<'connected' | 'connecting' | 'disconnected'> {
+  try {
+    const res = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
+      headers: evoHeaders
+    })
+    if (!res.ok) return 'disconnected'
+    const data = await res.json() as any
+    const state = data.instance?.state ?? data.state
+    if (state === 'open') return 'connected'
+    if (state === 'connecting') return 'connecting'
+    return 'disconnected'
+  } catch {
+    return 'disconnected'
+  }
 }
 
-// Compatibilidade
-export async function createInstance(_name: string): Promise<string> { return '' }
-export async function deleteInstance(_name: string): Promise<void> {}
+/** QR Code para conectar (retorna base64) */
+export async function getQRCode(instanceName: string): Promise<string> {
+  try {
+    const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+      headers: evoHeaders
+    })
+    if (!res.ok) return ''
+    const data = await res.json() as any
+    return data.base64 || ''
+  } catch {
+    return ''
+  }
+}
+
+/** Pairing code — login pelo número de telefone */
+export async function getPairingCode(phoneNumber: string, instanceName: string): Promise<string> {
+  const phone = phoneNumber.replace(/\D/g, '')
+  const res = await fetch(`${EVOLUTION_API_URL}/instance/pairingCode/${instanceName}`, {
+    method: 'POST',
+    headers: evoHeaders,
+    body: JSON.stringify({ number: phone })
+  })
+  const data = await res.json() as any
+  if (!res.ok) throw new Error(data?.message || JSON.stringify(data))
+  return data.code || ''
+}
+
+/**
+ * Cria uma instância na Evolution API e configura o webhook automaticamente.
+ * Chamado quando o nutricionista conecta o WhatsApp pela primeira vez.
+ */
+export async function createInstance(instanceName: string, webhookUrl?: string): Promise<string> {
+  try {
+    const body: any = {
+      instanceName,
+      qrcode: true,
+      integration: 'WHATSAPP-BAILEYS',
+    }
+
+    if (webhookUrl) {
+      body.webhook = {
+        url: webhookUrl,
+        byEvents: false,
+        base64: true,
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
+      }
+    }
+
+    const res = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+      method: 'POST',
+      headers: evoHeaders,
+      body: JSON.stringify(body)
+    })
+    if (!res.ok) throw new Error(await res.text())
+    const data = await res.json() as any
+    return data.instance?.instanceName || instanceName
+  } catch (e) {
+    console.error('[Evolution] createInstance error:', e)
+    return ''
+  }
+}
+
+/** Desconecta (logout) uma instância */
+export async function disconnectInstance(instanceName: string): Promise<void> {
+  try {
+    await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
+      method: 'DELETE',
+      headers: evoHeaders
+    })
+  } catch { /* não crítico */ }
+}
+
+/** Deleta completamente uma instância */
+export async function deleteInstance(instanceName: string): Promise<void> {
+  try {
+    await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+      method: 'DELETE',
+      headers: evoHeaders
+    })
+  } catch { /* não crítico */ }
+}
+
+/** Configura o webhook de uma instância */
+export async function setInstanceWebhook(instanceName: string, webhookUrl: string): Promise<void> {
+  try {
+    await fetch(`${EVOLUTION_API_URL}/webhook/set/${instanceName}`, {
+      method: 'POST',
+      headers: evoHeaders,
+      body: JSON.stringify({
+        url: webhookUrl,
+        byEvents: false,
+        base64: true,
+        enabled: true,
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
+      })
+    })
+  } catch (e) {
+    console.error('[Evolution] setInstanceWebhook error:', e)
+  }
+}
