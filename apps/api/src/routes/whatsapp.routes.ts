@@ -37,7 +37,10 @@ export async function whatsappRoutes(app: FastifyInstance) {
         [id, instanceName]
       )
     } else {
-      // Garante que o webhook está configurado e atualiza status
+      // Cria instância se não existir ainda na Evolution API (migração de Z-API)
+      // createInstance retorna string vazia se já existir, sem erro
+      await createInstance(instanceName, webhookUrl)
+      // Garante que o webhook está sempre atualizado
       await setInstanceWebhook(instanceName, webhookUrl)
 
       await query(
