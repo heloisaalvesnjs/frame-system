@@ -15,21 +15,20 @@ setInterval(() => {
 
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // POST /webhook/whatsapp — recebe mensagens do Z-API
-  app.post('/whatsapp', async (request, reply) => {
+  // Função auxiliar que processa uma mensagem recebida do Z-API
+  // instanceName opcional: se fornecido, roteia para o nutri correto (multi-tenant)
+  async function handleIncoming(request: any, reply: any, instanceName?: string) {
     const payload = request.body as any
 
-    // Z-API: filtra só mensagens recebidas de pacientes
     const isReceived = payload.type === 'ReceivedCallback'
     const fromMe     = payload.fromMe === true
-    const phone      = payload.phone        // número do paciente (ex: 5511999999999)
+    const phone      = payload.phone
     const messageText = payload.text?.message
 
     if (!isReceived || fromMe || !phone || !messageText) {
       return reply.send({ ok: true })
     }
 
-    // Deduplicacao: ignora mensagem ja processada (Z-API retry)
     const dedupeKey = payload.messageId || payload.id || `${phone}:${messageText}:${Date.now()}`
     if (recentlyProcessed.has(dedupeKey)) {
       app.log.warn(`[webhook] Duplicata ignorada: ${dedupeKey}`)
@@ -38,14 +37,20 @@ export async function webhookRoutes(app: FastifyInstance) {
     recentlyProcessed.set(dedupeKey, Date.now())
 
     try {
-      // Identifica a nutricionista pela conexão mais recente
-      const connection = await queryOne<any>(
-        `SELECT nutritionist_id FROM whatsapp_connections
-         ORDER BY updated_at DESC LIMIT 1`
-      )
+      // Multi-tenant: identifica o nutri pela instância Z-API
+      // Se instanceName fornecido na URL → busca pela instância exata
+      // Fallback: conexão mais recente (compatibilidade com setup antigo)
+      const connection = instanceName
+        ? await queryOne<any>(
+            `SELECT nutritionist_id FROM whatsapp_connections WHERE instance_name = $1`,
+            [instanceName]
+          )
+        : await queryOne<any>(
+            `SELECT nutritionist_id FROM whatsapp_connections ORDER BY updated_at DESC LIMIT 1`
+          )
 
       if (!connection) {
-        app.log.warn('[webhook] Nenhuma conexão Z-API encontrada')
+        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceName ? ` para instância: ${instanceName}` : ''}`)
         return reply.send({ ok: true })
       }
 
@@ -188,25 +193,45 @@ export async function webhookRoutes(app: FastifyInstance) {
     }
 
     return reply.send({ ok: true })
+  }
+
+  // Rota genérica (compatibilidade com setup legado de 1 nutri)
+  app.post('/whatsapp', async (request, reply) => {
+    return handleIncoming(request, reply)
   })
 
-  // POST /webhook/whatsapp-status — atualiza status de conexão
-  app.post('/whatsapp-status', async (request, reply) => {
-    const payload = request.body as any
-    app.log.info({ payload }, '[webhook/status]')
+  // Rota por instância (multi-tenant): /webhook/whatsapp/{instance_name}
+  // Cada nutri configura a URL do seu Z-API com o nome da sua instância
+  app.post('/whatsapp/:instanceName', async (request, reply) => {
+    const { instanceName } = request.params as any
+    return handleIncoming(request, reply, instanceName)
+  })
 
+  // Status: rota legada (zapi hardcoded) + rota por instância
+  async function handleStatus(payload: any, instanceName = 'zapi') {
     if (payload.connected === true) {
       await query(
         `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
-         WHERE instance_name = 'zapi'`
+         WHERE instance_name = $1`,
+        [instanceName]
       )
     } else if (payload.connected === false) {
       await query(
         `UPDATE whatsapp_connections SET status = 'disconnected'
-         WHERE instance_name = 'zapi'`
+         WHERE instance_name = $1`,
+        [instanceName]
       )
     }
+  }
 
+  app.post('/whatsapp-status', async (request, reply) => {
+    await handleStatus(request.body)
+    return reply.send({ ok: true })
+  })
+
+  app.post('/whatsapp-status/:instanceName', async (request, reply) => {
+    const { instanceName } = request.params as any
+    await handleStatus(request.body, instanceName)
     return reply.send({ ok: true })
   })
 }
