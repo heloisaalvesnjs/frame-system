@@ -133,16 +133,26 @@ export async function clientRoutes(app: FastifyInstance) {
       .split(sep)
       .map(h => h.trim().toLowerCase().replace(/['"]/g, '').replace(/﻿/g, ''))
 
-    const colIndex = (names: string[]) =>
-      names.map(n => headers.indexOf(n)).find(i => i >= 0) ?? -1
+    // Correspondência exata OU se o header CONTÉM um dos termos
+    const colIndex = (terms: string[]) => {
+      // 1ª prioridade: match exato
+      const exact = terms.map(n => headers.indexOf(n)).find(i => i >= 0)
+      if (exact !== undefined) return exact
+      // 2ª prioridade: header contém o termo
+      for (const term of terms) {
+        const idx = headers.findIndex(h => h.includes(term))
+        if (idx >= 0) return idx
+      }
+      return -1
+    }
 
-    const iName      = colIndex(['nome', 'name', 'paciente'])
-    const iPhone     = colIndex(['telefone', 'phone', 'fone', 'celular', 'whatsapp', 'tel'])
+    const iName      = colIndex(['nome do paciente', 'nome', 'paciente', 'name', 'cliente'])
+    const iPhone     = colIndex(['telefone', 'celular', 'whatsapp', 'phone', 'fone', 'tel'])
     const iEmail     = colIndex(['email', 'e-mail', 'e_mail'])
     const iGoal      = colIndex(['objetivo', 'goal', 'meta'])
     const iGender    = colIndex(['sexo', 'genero', 'gênero', 'gender'])
     const iHeight    = colIndex(['altura', 'height', 'height_cm'])
-    const iBirthdate = colIndex(['nascimento', 'data_nascimento', 'birthdate', 'data de nascimento', 'dt_nascimento'])
+    const iBirthdate = colIndex(['data de nascimento', 'nascimento', 'data_nascimento', 'birthdate', 'dt_nascimento'])
 
     if (iPhone < 0) {
       return reply.code(400).send({
