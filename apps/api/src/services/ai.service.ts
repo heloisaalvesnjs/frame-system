@@ -281,17 +281,14 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   })
 
   // 10. Verifica se deve enviar mídia dos planos
-  // Detecta ETAPA 3 pela resposta atual
-  const isEtapa3 =
-    responseText.toLowerCase().includes('manhã ou tarde') ||
-    responseText.toLowerCase().includes('manha ou tarde')
+  // Detecta ETAPA 3: IA acabou de apresentar os planos
+  // Gatilho: resposta contém a frase de fechamento configurada
+  const ETAPA3_MARKER = 'chamou mais atenção'
+  const isEtapa3 = responseText.toLowerCase().includes(ETAPA3_MARKER)
 
-  // Evita reenvio: não envia se planos já foram apresentados no histórico
+  // Evita reenvio: verifica se planos já foram apresentados no histórico
   const alreadyPresentedPlans = historyForAI.some((m: any) =>
-    m.role === 'assistant' && (
-      m.content.toLowerCase().includes('manhã ou tarde') ||
-      m.content.toLowerCase().includes('manha ou tarde')
-    )
+    m.role === 'assistant' && m.content.toLowerCase().includes(ETAPA3_MARKER)
   )
 
   let planMediaUrl: string | undefined
@@ -448,12 +445,12 @@ IMPORTANTE: use EXATAMENTE a mensagem de texto configurada abaixo (ela será seg
 }${
   customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
 }
-Após a mensagem, pergunte: "Prefere manhã ou tarde?"
+Após a mensagem dos planos, use EXATAMENTE: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
 ` : hasAnyMedia ? `
 Uma imagem com todos os detalhes dos planos será enviada automaticamente após sua mensagem.
 Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇").
 NÃO liste planos, preços ou detalhes em texto — a imagem mostrará tudo.
-Pergunte: "Prefere manhã ou tarde?"
+Após a frase, use: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
 ` : hasAnyCustomMsg ? `
 IMPORTANTE: use EXATAMENTE a mensagem abaixo. Não acrescente nem remova nada.${
   customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
@@ -464,19 +461,26 @@ IMPORTANTE: use EXATAMENTE a mensagem abaixo. Não acrescente nem remova nada.${
 }${
   customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
 }
-Após a mensagem, pergunte: "Prefere manhã ou tarde?"
+Após a mensagem, use: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
 ` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito.
-${plansText ? `Use apenas os planos da modalidade escolhida. Termine com: "Prefere manhã ou tarde?"` : `Informe que ${nutriName} apresenta os detalhes pessoalmente e pergunte: "Prefere manhã ou tarde?"`}`
-}
+${plansText
+  ? `Use apenas os planos da modalidade escolhida. Termine com: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."`
+  : `Informe que ${nutriName} apresenta os detalhes pessoalmente. Termine com: "Se faz sentido pra você, posso verificar um horário com ${nutriName} agora."`}
+`}
 
-AGENDAMENTO: mostre horários do turno escolhido → "Nome completo?" → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" e nada mais.
+SEQUÊNCIA DE AGENDAMENTO — siga ESTA ORDEM sem pular etapas:
+1. Cliente indica o plano ou interesse → pergunte: "Me conta: para qual cidade deseja o atendimento?"
+2. Cliente informa a cidade → pergunte: "Preferência pela manhã ou à tarde?"
+3. Cliente informa o turno → mostre os horários disponíveis do turno escolhido
+4. Cliente escolhe horário → pergunte: "Qual seu nome completo?"
+5. Cliente informa nome → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" e nada mais.
 ${hasSlotsConfigured
   ? `Manhã: ${morningSlotsText || '(indisponível)'} | Tarde: ${afternoonSlotsText || '(indisponível)'}
 NUNCA invente horários fora desta lista.`
   : `Horários não configurados — diga: "Vou confirmar com ${nutriName} e te retorno."`}
 
 REGRAS: máx 2 frases/35 palavras por msg. 1 pergunta por msg. Sem listas (•-*). Sem markdown/negrito/—. ${emojiRule} "você" não "senhor/a". Proibido: "Claro!""Com certeza!""certamente""definitivamente".
-OBJEÇÕES → preço: ${plansText ? 'mostre SERVIÇOS + pergunte turno' : `"${nutriName} apresenta os valores pessoalmente. Posso ver um horário?"`} | pensando/hesitando: "Posso reservar um horário pra você confirmar depois — assim a vaga fica garantida. Manhã ou tarde?" | caro: "Entendo. Quer que eu te avise se abrir alguma condição especial?" | não funcionou antes: "Cada método é diferente. Uma consulta já resolve a dúvida. Manhã ou tarde?" | sumiu sem responder: "Oi! Ainda consigo ver um horário pra você com ${nutriName}. Prefere manhã ou tarde?" | ignorou horário oferecido: reofereça com urgência leve "Ainda tem ${hasSlotsConfigured ? 'horários disponíveis' : 'espaço na agenda'}. Posso reservar agora?"
+OBJEÇÕES → preço: mostre a imagem/planos e pergunte qual chamou atenção | pensando/hesitando: "Posso reservar um horário pra você confirmar depois — assim a vaga fica garantida. Qual plano faz mais sentido?" | caro: "Entendo. Quer que eu te avise se abrir alguma condição especial?" | não funcionou antes: "Cada método é diferente. Uma consulta já resolve a dúvida. Qual plano chamou mais atenção?" | sumiu sem responder: "Oi! Ainda consigo ver um horário com ${nutriName}. Qual plano fazia mais sentido pra você?" | ignorou horário oferecido: reofereça com urgência leve "Ainda tem ${hasSlotsConfigured ? 'horários disponíveis' : 'espaço na agenda'}. Posso reservar agora?"
 SENSÍVEL (transtornos/doenças): valide com cuidado, direcione para ${nutriName}, nunca dê conselho médico.${funcoesSection ? `\n${funcoesSection}` : ''}
 NUNCA: inventar horários | ✅ sem data real | pedir telefone | usar listas | 2 perguntas | conselho nutricional | prometer resultado | repetir saudação.${contextData.client_name ? ` | Cliente: ${contextData.client_name}` : ''}${contextData.goal ? ` | Objetivo: ${contextData.goal}` : ''}`
 }
