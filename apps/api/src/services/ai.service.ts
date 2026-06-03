@@ -4,6 +4,7 @@ import Groq from 'groq-sdk'
 import { query, queryOne } from '../db'
 import { getNextAvailableSlots } from './appointment.service'
 import { sendMessageForNutri } from './whatsapp.service'
+import { createCalendarEvent } from './google-calendar.service'
 
 // ── Providers ────────────────────────────────────────────────
 // Ordem: Claude Haiku (primário + cache) → Gemini Flash (fallback grátis) → Groq (emergência)
@@ -392,6 +393,15 @@ async function detectAndCreateAppointment({
       `UPDATE conversations SET status = 'resolved' WHERE id = $1`,
       [convId]
     )
+
+    // ── Cria evento no Google Calendar (se conectado) ──────────
+    createCalendarEvent(nutritionist_id, {
+      client_name:   client.name || 'Cliente',
+      client_phone,
+      scheduled_at:  scheduledAt,
+      duration:      50,
+      modality:      'online',
+    }).catch(err => console.error('[GCal] Falha silenciosa:', err))
 
     // ── Notifica a nutricionista via WhatsApp pessoal ──────────
     try {

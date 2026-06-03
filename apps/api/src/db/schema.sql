@@ -399,3 +399,15 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT tru
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_agendamento BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_enabled BOOLEAN DEFAULT false;
+
+-- Google Calendar integration
+CREATE TABLE IF NOT EXISTS google_calendar_connections (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nutritionist_id   UUID UNIQUE REFERENCES nutritionists(id) ON DELETE CASCADE,
+  access_token      TEXT NOT NULL,
+  refresh_token     TEXT NOT NULL,
+  token_expiry      TIMESTAMP,
+  calendar_id       TEXT DEFAULT 'primary',
+  created_at        TIMESTAMP DEFAULT NOW(),
+  updated_at        TIMESTAMP DEFAULT NOW()
+);
