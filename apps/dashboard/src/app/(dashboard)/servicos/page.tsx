@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, ShoppingBag, Sparkles, MessageSquare, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, ShoppingBag, Sparkles, MessageSquare, Info, Upload, FileImage, FileText, X as XIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -254,6 +254,12 @@ export default function ServicosPage() {
   const [showTemplates, setShowTemplates] = useState(false)
   const [addingTemplates, setAddingTemplates] = useState<Set<number>>(new Set())
 
+  // Mídia dos planos
+  const [mediaEnabled, setMediaEnabled] = useState(false)
+  const [mediaInfo, setMediaInfo] = useState<{ type: string; name: string } | null>(null)
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const mediaFileRef = useRef<HTMLInputElement>(null)
+
   // Mensagens personalizadas
   const [msgEnabled, setMsgEnabled] = useState(false)
   const [msgText, setMsgText] = useState(DEFAULT_SERVICES_MSG)
@@ -277,6 +283,11 @@ export default function ServicosPage() {
   // Sincroniza estado com dados do assistente
   useEffect(() => {
     if (assistantData) {
+      setMediaEnabled(assistantData.plans_media_enabled ?? false)
+      setMediaInfo(assistantData.has_plans_media ? {
+        type: assistantData.plans_media_type ?? 'image',
+        name: assistantData.plans_media_original_name ?? 'arquivo',
+      } : null)
       setMsgEnabled(assistantData.services_message_enabled ?? false)
       setMsgText(assistantData.services_message || DEFAULT_SERVICES_MSG)
       setMsgOnlineEnabled(assistantData.services_message_online_enabled ?? false)
@@ -331,6 +342,41 @@ export default function ServicosPage() {
       services_message_presencial_enabled: msgPresencialEnabled,
       ...overrides,
     }
+  }
+
+  async function uploadMedia(file: File) {
+    setUploadingMedia(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const { data } = await api.post('/api/assistants/plans-media', form, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setMediaInfo({ type: data.type, name: data.original_name || file.name })
+      setMediaEnabled(true)
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+      toast.success('Arquivo enviado com sucesso!')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Erro ao enviar arquivo')
+    } finally { setUploadingMedia(false) }
+  }
+
+  async function deleteMedia() {
+    try {
+      await api.delete('/api/assistants/plans-media')
+      setMediaInfo(null)
+      setMediaEnabled(false)
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+      toast.success('Arquivo removido.')
+    } catch { toast.error('Erro ao remover arquivo') }
+  }
+
+  async function toggleMedia(val: boolean) {
+    setMediaEnabled(val)
+    try {
+      await api.patch('/api/assistants/plans-media/toggle', { enabled: val })
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+    } catch { toast.error('Erro ao salvar') }
   }
 
   async function saveMsgConfig() {
@@ -511,6 +557,76 @@ export default function ServicosPage() {
           })}
         </div>
       ) : null}
+
+      {/* ── Mídia dos Planos ──────────────────────────────────────── */}
+      <Card>
+        <CardContent className="py-5 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                {mediaInfo?.type === 'pdf' ? <FileText className="w-4 h-4 text-brand-500" /> : <FileImage className="w-4 h-4 text-brand-500" />}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-t1">Imagem ou PDF dos planos</p>
+                <p className="text-xs text-t3 mt-0.5">
+                  A IA envia automaticamente quando apresentar os planos ao cliente
+                </p>
+              </div>
+            </div>
+            {mediaInfo && <Toggle checked={mediaEnabled} onChange={toggleMedia} />}
+          </div>
+
+          {!mediaInfo ? (
+            <label className={cn(
+              'flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
+              uploadingMedia ? 'opacity-50 pointer-events-none' : 'hover:bg-raised'
+            )} style={{ borderColor: 'var(--border)' }}>
+              <Upload className="w-6 h-6 text-t3" />
+              <span className="text-sm text-t2">
+                {uploadingMedia ? 'Enviando...' : 'Clique para enviar imagem ou PDF dos planos'}
+              </span>
+              <span className="text-xs text-t3">JPG, PNG ou PDF · máx. 10MB</span>
+              <input
+                ref={mediaFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/jpg,application/pdf"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = '' }}
+              />
+            </label>
+          ) : (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+              <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center flex-shrink-0">
+                {mediaInfo.type === 'pdf'
+                  ? <FileText className="w-5 h-5 text-brand-500" />
+                  : <FileImage className="w-5 h-5 text-brand-500" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-t1 truncate">{mediaInfo.name}</p>
+                <p className="text-xs text-t3 mt-0.5">
+                  {mediaInfo.type === 'pdf' ? 'PDF' : 'Imagem'} · {mediaEnabled ? '✅ Ativa — será enviada automaticamente' : '⏸ Desativada'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <label className="cursor-pointer text-xs text-brand-500 hover:text-brand-400 transition-colors">
+                  Trocar
+                  <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = '' }} />
+                </label>
+                <button onClick={deleteMedia} className="p-1.5 text-t3 hover:text-red-500 transition-colors">
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!mediaInfo && (
+            <p className="text-xs text-t3 text-center">
+              Exemplo: tabela de planos em imagem, cardápio de exemplo, apresentação em PDF
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Mensagens de Apresentação dos Planos ─────────────────── */}
       <div className="space-y-4">

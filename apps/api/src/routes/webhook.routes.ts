@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
 import { processMessage } from '../services/ai.service'
-import { sendMessage, sendWithHumanDelay, sendConfiguredMessage } from '../services/whatsapp.service'
+import { sendMessage, sendWithHumanDelay, sendConfiguredMessage, sendMediaMessage } from '../services/whatsapp.service'
 import { isWithinWorkingHours } from '../services/appointment.service'
 
 // Deduplicação: guarda messageIds processados nos últimos 60s
@@ -264,6 +264,18 @@ export async function webhookRoutes(app: FastifyInstance) {
             await sendConfiguredMessage(phone, response.text, activeInstance, messageId)
           } else {
             await sendWithHumanDelay(phone, response.text, activeInstance, messageId)
+          }
+
+          // Envia mídia dos planos se configurada e ETAPA 3 detectada
+          if (response.planMediaUrl && response.planMediaType) {
+            await new Promise(r => setTimeout(r, 1200))
+            await sendMediaMessage(
+              phone,
+              response.planMediaUrl,
+              response.planMediaType,
+              response.planMediaName || 'planos.pdf',
+              activeInstance
+            ).catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mídia dos planos (não crítico)'))
           }
         } catch (err: any) {
           app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')

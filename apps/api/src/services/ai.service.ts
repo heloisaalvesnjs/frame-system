@@ -106,7 +106,10 @@ interface ProcessMessageInput {
 interface ProcessMessageOutput {
   text: string
   action?: 'appointment_created' | 'slots_shown' | null
-  raw?: boolean  // true = mensagem configurada pelo nutri, enviar sem split de sentenças
+  raw?: boolean       // true = mensagem configurada pelo nutri, enviar sem split
+  planMediaUrl?: string   // URL da mídia dos planos (imagem ou PDF) para envio automático
+  planMediaType?: 'image' | 'pdf'
+  planMediaName?: string
 }
 
 // ── Serviço principal ──────────────────────────────────────
@@ -265,7 +268,31 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     assistantName: assistant?.name || 'assistente'
   })
 
-  return { text: responseText, action }
+  // 10. Verifica se deve enviar mídia dos planos
+  // Detecta ETAPA 3: resposta contém "manhã ou tarde" (instrução de agendamento)
+  // ou contém R$ com texto longo (apresentação de planos)
+  let planMediaUrl: string | undefined
+  let planMediaType: 'image' | 'pdf' | undefined
+  let planMediaName: string | undefined
+
+  if (
+    assistant.plans_media_enabled &&
+    assistant.plans_media_path &&
+    assistant.plans_media_type &&
+    (
+      responseText.toLowerCase().includes('manhã ou tarde') ||
+      responseText.toLowerCase().includes('manha ou tarde') ||
+      (responseText.includes('R$') && responseText.length > 80)
+    )
+  ) {
+    const apiBase = process.env.API_PUBLIC_URL || ''
+    const parts   = assistant.plans_media_path.replace(/\\/g, '/').split('uploads/')
+    planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
+    planMediaType = assistant.plans_media_type as 'image' | 'pdf'
+    planMediaName = assistant.plans_media_original_name || 'planos.pdf'
+  }
+
+  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName }
 }
 
 // ── Monta o system prompt da assistente ───────────────────

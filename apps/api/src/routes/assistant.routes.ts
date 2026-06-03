@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync, unlinkSync } from 'fs'
 import path from 'path'
 import pdf from 'pdf-parse'
 import { processMessage } from '../services/ai.service'
@@ -23,6 +23,8 @@ export async function assistantRoutes(app: FastifyInstance) {
               services_message, services_message_enabled,
               services_message_online, services_message_online_enabled,
               services_message_presencial, services_message_presencial_enabled,
+              plans_media_enabled, plans_media_type, plans_media_original_name,
+              CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -330,6 +332,73 @@ export async function assistantRoutes(app: FastifyInstance) {
     }
 
     return reply.code(201).send({ ok: true, note })
+  })
+
+  // ── Mídia dos Planos ──────────────────────────────────────────────
+
+  /** POST /api/assistants/plans-media — upload imagem ou PDF dos planos */
+  app.post('/plans-media', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const assistant = await queryOne<any>('SELECT id, plans_media_path FROM assistants WHERE nutritionist_id = $1', [id])
+    if (!assistant) return reply.code(404).send({ error: 'Configure a assistente primeiro' })
+
+    const data = await request.file()
+    if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
+
+    const isImage = data.mimetype.startsWith('image/')
+    const isPdf   = data.mimetype === 'application/pdf'
+    if (!isImage && !isPdf) return reply.code(400).send({ error: 'Apenas imagens (JPG, PNG) ou PDF são aceitos' })
+
+    const ext = isPdf ? 'pdf' : (data.mimetype.includes('png') ? 'png' : 'jpg')
+    const uploadDir = path.join(process.cwd(), 'uploads', 'plans', id)
+    mkdirSync(uploadDir, { recursive: true })
+
+    // Remove arquivo anterior
+    if (assistant.plans_media_path) {
+      try { unlinkSync(assistant.plans_media_path) } catch {}
+    }
+
+    const filename = `plans_media.${ext}`
+    const filePath = path.join(uploadDir, filename)
+    writeFileSync(filePath, await data.toBuffer())
+
+    await query(
+      `UPDATE assistants SET
+         plans_media_path = $2,
+         plans_media_type = $3,
+         plans_media_original_name = $4,
+         plans_media_enabled = true
+       WHERE nutritionist_id = $1`,
+      [id, filePath, isPdf ? 'pdf' : 'image', data.filename]
+    )
+
+    const publicUrl = `${process.env.API_PUBLIC_URL || ''}/uploads/plans/${id}/${filename}`
+    return reply.send({ ok: true, url: publicUrl, type: isPdf ? 'pdf' : 'image', original_name: data.filename })
+  })
+
+  /** DELETE /api/assistants/plans-media — remove arquivo */
+  app.delete('/plans-media', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const assistant = await queryOne<any>('SELECT plans_media_path FROM assistants WHERE nutritionist_id = $1', [id])
+    if (assistant?.plans_media_path) {
+      try { unlinkSync(assistant.plans_media_path) } catch {}
+    }
+    await query(
+      `UPDATE assistants SET plans_media_path = NULL, plans_media_type = NULL,
+       plans_media_original_name = NULL, plans_media_enabled = false
+       WHERE nutritionist_id = $1`,
+      [id]
+    )
+    return reply.send({ ok: true })
+  })
+
+  /** PATCH /api/assistants/plans-media/toggle — ativa/desativa envio */
+  app.patch('/plans-media/toggle', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const { enabled } = request.body as { enabled: boolean }
+    await query('UPDATE assistants SET plans_media_enabled = $2 WHERE nutritionist_id = $1', [id, enabled])
+    return reply.send({ ok: true })
   })
 
   // GET /api/assistants/diagnose — testa se a IA está respondendo

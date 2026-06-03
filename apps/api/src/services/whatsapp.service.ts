@@ -154,6 +154,33 @@ export async function sendConfiguredMessage(
   await sendMessage(phone, clean, instanceName)
 }
 
+/**
+ * Envia imagem ou PDF via Evolution API.
+ * Usado quando o nutri configura mídia dos planos para envio automático.
+ */
+export async function sendMediaMessage(
+  phone: string,
+  mediaUrl: string,
+  mediaType: 'image' | 'pdf',
+  fileName: string,
+  instanceName: string
+): Promise<void> {
+  const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
+  const body = mediaType === 'pdf'
+    ? { number, mediatype: 'document', mimetype: 'application/pdf', media: mediaUrl, fileName: fileName || 'planos.pdf' }
+    : { number, mediatype: 'image',    mimetype: 'image/jpeg',      media: mediaUrl }
+
+  const res = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
+    method: 'POST',
+    headers: evoHeaders,
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`[Evolution] Erro ao enviar mídia: ${err}`)
+  }
+}
+
 // ── Instância ─────────────────────────────────────────────────────────────────
 
 /** Status da conexão de uma instância */
