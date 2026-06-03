@@ -116,59 +116,110 @@ export async function clientRoutes(app: FastifyInstance) {
     const body = request.body as { csv: string }
     if (!body.csv?.trim()) return reply.code(400).send({ error: 'CSV vazio' })
 
-    const lines = body.csv.trim().split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length < 2) return reply.code(400).send({ error: 'CSV precisa de cabeçalho + ao menos 1 linha' })
+    // Remove BOM (Excel UTF-8 com BOM: ﻿) e normaliza quebras de linha
+    const rawCsv = body.csv
+      .replace(/^﻿/, '')        // BOM UTF-8
+      .replace(/\r\n/g, '\n')        // Windows CRLF
+      .replace(/\r/g, '\n')          // Mac CR antigo
 
-    // Detecta separador (vírgula ou ponto-e-vírgula)
+    const lines = rawCsv.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length < 2) return reply.code(400).send({ error: 'CSV precisa de cabeçalho + ao menos 1 linha de dados' })
+
+    // Detecta separador (ponto-e-vírgula tem precedência — padrão Excel BR)
     const sep = lines[0].includes(';') ? ';' : ','
-    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
 
-    const colIndex = (names: string[]) => names.map(n => headers.indexOf(n)).find(i => i >= 0) ?? -1
+    // Limpa headers: lowercase, sem aspas, sem BOM residual
+    const headers = lines[0]
+      .split(sep)
+      .map(h => h.trim().toLowerCase().replace(/['"]/g, '').replace(/﻿/g, ''))
 
-    const iName      = colIndex(['nome', 'name'])
-    const iPhone     = colIndex(['telefone', 'phone', 'fone', 'celular', 'whatsapp'])
-    const iEmail     = colIndex(['email', 'e-mail'])
-    const iGoal      = colIndex(['objetivo', 'goal'])
+    const colIndex = (names: string[]) =>
+      names.map(n => headers.indexOf(n)).find(i => i >= 0) ?? -1
+
+    const iName      = colIndex(['nome', 'name', 'paciente'])
+    const iPhone     = colIndex(['telefone', 'phone', 'fone', 'celular', 'whatsapp', 'tel'])
+    const iEmail     = colIndex(['email', 'e-mail', 'e_mail'])
+    const iGoal      = colIndex(['objetivo', 'goal', 'meta'])
     const iGender    = colIndex(['sexo', 'genero', 'gênero', 'gender'])
     const iHeight    = colIndex(['altura', 'height', 'height_cm'])
-    const iBirthdate = colIndex(['nascimento', 'data_nascimento', 'birthdate'])
+    const iBirthdate = colIndex(['nascimento', 'data_nascimento', 'birthdate', 'data de nascimento', 'dt_nascimento'])
 
-    if (iPhone < 0) return reply.code(400).send({ error: 'Coluna de telefone não encontrada (use: telefone, phone, celular ou whatsapp)' })
+    if (iPhone < 0) {
+      return reply.code(400).send({
+        error: `Coluna de telefone não encontrada. Cabeçalhos detectados: [${headers.join(', ')}]. Use: telefone, celular, whatsapp ou phone.`
+      })
+    }
+
+    // Converte data de DD/MM/YYYY ou DD-MM-YYYY → YYYY-MM-DD
+    function parseDate(raw: string): string | null {
+      if (!raw?.trim()) return null
+      const s = raw.trim()
+      // já está em YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+      // DD/MM/YYYY ou DD-MM-YYYY
+      const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+      if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`
+      return null
+    }
+
+    // Normaliza telefone: mantém só dígitos (para consistência)
+    function parsePhone(raw: string): string {
+      return raw.replace(/\D/g, '')
+    }
+
+    // Parser simples de linha CSV que respeita campos entre aspas
+    function parseLine(line: string, separator: string): string[] {
+      const cols: string[] = []
+      let cur = ''
+      let inQuotes = false
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]
+        if (ch === '"' || ch === "'") {
+          inQuotes = !inQuotes
+        } else if (ch === separator && !inQuotes) {
+          cols.push(cur.trim())
+          cur = ''
+        } else {
+          cur += ch
+        }
+      }
+      cols.push(cur.trim())
+      return cols
+    }
 
     let imported = 0
     let skipped  = 0
     const errors: string[] = []
 
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''))
-      const phone = cols[iPhone]?.trim()
-      if (!phone) { skipped++; continue }
+      const cols = parseLine(lines[i], sep)
+      const rawPhone = cols[iPhone]?.trim()
+      if (!rawPhone) { skipped++; continue }
+
+      const phone = parsePhone(rawPhone)
+      if (phone.length < 8) { skipped++; continue }
 
       try {
-        const existing = await queryOne<any>(
-          'SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2',
-          [nutritionistId, phone]
-        )
-        if (existing) { skipped++; continue }
-
         await query(
           `INSERT INTO clients (nutritionist_id, name, phone, email, goal, gender, height_cm, birthdate)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
            ON CONFLICT (nutritionist_id, phone) DO NOTHING`,
           [
             nutritionistId,
-            iName  >= 0 ? cols[iName]  || null : null,
+            iName      >= 0 ? cols[iName]?.trim()  || null : null,
             phone,
-            iEmail >= 0 ? cols[iEmail] || null : null,
-            iGoal  >= 0 ? cols[iGoal]  || null : null,
-            iGender    >= 0 ? cols[iGender]    || null : null,
-            iHeight    >= 0 && cols[iHeight] ? Number(cols[iHeight].replace(',', '.')) : null,
-            iBirthdate >= 0 ? cols[iBirthdate] || null : null,
+            iEmail     >= 0 ? cols[iEmail]?.trim() || null : null,
+            iGoal      >= 0 ? cols[iGoal]?.trim()  || null : null,
+            iGender    >= 0 ? cols[iGender]?.trim()|| null : null,
+            iHeight    >= 0 && cols[iHeight]?.trim()
+              ? Number(cols[iHeight].trim().replace(',', '.')) || null
+              : null,
+            iBirthdate >= 0 ? parseDate(cols[iBirthdate]) : null,
           ]
         )
         imported++
       } catch (err: any) {
-        errors.push(`Linha ${i + 1}: ${err.message}`)
+        errors.push(`Linha ${i + 1} (${rawPhone}): ${err.message?.slice(0, 80)}`)
       }
     }
 
