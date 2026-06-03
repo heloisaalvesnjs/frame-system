@@ -137,13 +137,13 @@ export default function PatientRegisterPage() {
 
           <p className="text-center text-xs text-white/30 mt-5">
             Já tem conta?{' '}
-            <Link href="/login" className="text-brand-400 font-medium hover:text-brand-300">
+            <Link href="/p/login" className="text-brand-400 font-medium hover:text-brand-300">
               Entrar
             </Link>
           </p>
         </div>
 
-        <Link href="/login" className="flex items-center justify-center gap-1.5 mt-4 text-xs text-white/25 hover:text-white/50 transition-colors">
+        <Link href="/p/login" className="flex items-center justify-center gap-1.5 mt-4 text-xs text-white/25 hover:text-white/50 transition-colors">
           <ArrowLeft className="w-3 h-3" /> Voltar para o login
         </Link>
       </div>

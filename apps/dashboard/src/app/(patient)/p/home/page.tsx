@@ -7,7 +7,7 @@ import { usePatient, patientApi } from '@/contexts/PatientContext'
 import { PatientNav } from '@/components/patient/PatientNav'
 import {
   Droplets, TrendingUp, Calendar, ClipboardCheck,
-  Plus, ChevronRight, Loader2, UtensilsCrossed, FolderOpen, MessageCircle
+  Plus, ChevronRight, Loader2, UtensilsCrossed, FolderOpen, MessageCircle, Activity
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
@@ -93,15 +93,24 @@ export default function PatientHomePage() {
   return (
     <div className="max-w-md mx-auto px-4 pt-6 pb-28">
       {/* Header */}
-      <div className="mb-6">
-        <p className="text-white/40 text-sm">{greeting} 👋</p>
-        <h1 className="text-2xl font-bold text-white mt-0.5">{firstName}</h1>
-        {data.client.goal && (
-          <p className="text-sm text-white/30 mt-1 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />
-            {data.client.goal}
-          </p>
-        )}
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-white/40 text-sm">{greeting} 👋</p>
+          <h1 className="text-2xl font-bold text-white mt-0.5">{firstName}</h1>
+          {data.client.goal && (
+            <p className="text-xs text-white/30 mt-1.5 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0 opacity-70" />
+              {data.client.goal}
+            </p>
+          )}
+        </div>
+        <Link
+          href="/p/documentos"
+          className="flex-shrink-0 w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center hover:bg-white/10 transition-colors"
+          title="Documentos"
+        >
+          <FolderOpen className="w-4 h-4 text-white/30" />
+        </Link>
       </div>
 
       {/* Water card */}
@@ -156,26 +165,27 @@ export default function PatientHomePage() {
         </div>
 
         {/* Next appointment */}
-        <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-4 relative overflow-hidden">
+        <Link href="/p/agenda" className="bg-ui-card border border-white/[0.06] rounded-2xl p-4 relative overflow-hidden block hover:border-white/[0.10] transition-colors">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-violet-500" />
           <Calendar className="w-4 h-4 text-violet-400 mb-2" />
           <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Próxima consulta</p>
           {summary.nextAppointment ? (
             <>
-              <p className="text-base font-bold text-white mt-1">
-                {format(parseISO(summary.nextAppointment.scheduled_at), "d MMM", { locale: ptBR })}
+              <p className="text-base font-bold text-white mt-1 leading-tight">
+                {format(parseISO(summary.nextAppointment.scheduled_at), "d 'de' MMM", { locale: ptBR })}
               </p>
-              <p className="text-[10px] text-white/40 mt-0.5">
+              <p className="text-[11px] text-violet-400/70 mt-0.5 font-medium">
                 {format(parseISO(summary.nextAppointment.scheduled_at), 'HH:mm')}
               </p>
             </>
           ) : (
-            <p className="text-sm text-white/25 mt-1">Nenhuma</p>
+            <>
+              <p className="text-sm text-white/20 mt-1">—</p>
+              <p className="text-[10px] text-brand-400/60 mt-0.5">Agendar</p>
+            </>
           )}
-          <Link href="/p/agenda" className="absolute bottom-3 right-3">
-            <ChevronRight className="w-4 h-4 text-white/20 hover:text-white/50 transition-colors" />
-          </Link>
-        </div>
+          <ChevronRight className="w-3.5 h-3.5 text-white/15 absolute bottom-3 right-3" />
+        </Link>
       </div>
 
       {/* Check-in banner */}
@@ -196,11 +206,12 @@ export default function PatientHomePage() {
       )}
 
       {/* Atalhos rápidos */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-4 gap-2 mb-4">
         {[
-          { href: '/p/plano', label: 'Plano alimentar', icon: UtensilsCrossed, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-          { href: '/p/documentos', label: 'Documentos', icon: FolderOpen, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
-          { href: '/p/agendar', label: 'Agendar', icon: Calendar, color: 'text-brand-400', bg: 'bg-brand-500/10 border-brand-500/20' },
+          { href: '/p/plano',      label: 'Plano',      icon: UtensilsCrossed, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+          { href: '/p/tracking',   label: 'Evolução',   icon: Activity,        color: 'text-brand-400',   bg: 'bg-brand-500/10 border-brand-500/20' },
+          { href: '/p/agendar',    label: 'Agendar',    icon: Calendar,        color: 'text-violet-400',  bg: 'bg-violet-500/10 border-violet-500/20' },
+          { href: '/p/chat',       label: 'Chat',       icon: MessageCircle,   color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20' },
         ].map(item => (
           <Link
             key={item.href}

@@ -259,6 +259,10 @@ export default function ClientProfilePage() {
 
   const { client, appointments, conversations } = data
   const displayName = (client.name && client.name !== 'Cliente') ? client.name : formatPhone(client.phone)
+  // Avatar: pega a primeira letra do nome real, ou "?" para telefones
+  const avatarChar = client.name && client.name !== 'Cliente'
+    ? client.name.replace(/\s+/g, '').charAt(0).toUpperCase()
+    : '#'
 
   // Weight delta
   const wLogs = trackingData?.weightLogs ?? []
@@ -310,67 +314,105 @@ export default function ClientProfilePage() {
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-4">
+          <>
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg font-bold text-brand-400">{displayName.charAt(0).toUpperCase()}</span>
+              {/* Avatar */}
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-xl font-bold ${
+                avatarChar === '#'
+                  ? 'bg-white/5 border border-white/10 text-white/20'
+                  : 'bg-brand-500/15 border border-brand-500/25 text-brand-400'
+              }`}>
+                {avatarChar === '#' ? <Phone className="w-5 h-5 text-white/20" /> : avatarChar}
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">{displayName}</h1>
-                <div className="flex items-center gap-1.5 mt-1 text-sm text-white/40">
-                  <Phone className="w-3.5 h-3.5" />{formatPhone(client.phone)}
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-white leading-tight">{displayName}</h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                  <span className="text-sm text-white/40 flex items-center gap-1">
+                    <Phone className="w-3 h-3" />{formatPhone(client.phone)}
+                  </span>
+                  {client.birthdate && (
+                    <span className="text-xs text-white/30">
+                      {(() => {
+                        try {
+                          const s = String(client.birthdate).slice(0, 10)
+                          return format(parseISO(s), 'dd/MM/yyyy')
+                        } catch { return String(client.birthdate).slice(0, 10) }
+                      })()}
+                    </span>
+                  )}
                 </div>
-                {client.birthdate && (
-                  <p className="text-xs text-white/30 mt-1">Nascimento: {(() => {
-                    try {
-                      const s = String(client.birthdate).slice(0, 10)
-                      return format(parseISO(s), 'dd/MM/yyyy')
-                    } catch { return String(client.birthdate).slice(0, 10) }
-                  })()}</p>
-                )}
                 {client.goal && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-white/50">
-                    <Target className="w-3 h-3" />{client.goal}
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-brand-500/8 border border-brand-500/15 text-xs text-brand-400">
+                    <Target className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate max-w-[260px]">{client.goal}</span>
                   </div>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => sendPortalLink.mutate()} disabled={sendPortalLink.isPending}
-                title="Envia link de acesso ao portal do paciente via WhatsApp"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/20 text-brand-400 hover:text-brand-300 text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
-                <Send className="w-3 h-3" />{sendPortalLink.isPending ? 'Enviando…' : 'Portal do paciente'}
-              </button>
-              <button onClick={() => setEditing(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs rounded-lg transition-colors">
-                <Edit2 className="w-3 h-3" />Editar
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Quick stats */}
-        {!editing && (
-          <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-white/[0.05]">
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">{appointments.length}</p>
-              <p className="text-xs text-white/30 mt-0.5">Consultas</p>
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => sendPortalLink.mutate()}
+                  disabled={sendPortalLink.isPending}
+                  title="Envia link de acesso ao portal do paciente via WhatsApp"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/20 text-brand-400 hover:text-brand-300 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  <Send className="w-3 h-3" />{sendPortalLink.isPending ? 'Enviando…' : 'Portal do paciente'}
+                </button>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs rounded-lg transition-colors whitespace-nowrap"
+                >
+                  <Edit2 className="w-3 h-3" />Editar
+                </button>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-emerald-400">{appointments.filter((a: Appointment) => a.status === 'completed').length}</p>
-              <p className="text-xs text-white/30 mt-0.5">Realizadas</p>
+
+            {/* Quick stats */}
+            <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-white/[0.05]">
+              <div className="text-center py-1">
+                <p className="text-2xl font-bold text-white tabular-nums">{appointments.length}</p>
+                <p className="text-[11px] text-white/30 mt-0.5">Consultas</p>
+              </div>
+              <div className="text-center py-1">
+                <p className="text-2xl font-bold text-emerald-400 tabular-nums">
+                  {appointments.filter((a: Appointment) => a.status === 'completed').length}
+                </p>
+                <p className="text-[11px] text-white/30 mt-0.5">Realizadas</p>
+              </div>
+              <div className="text-center py-1">
+                <p className="text-2xl font-bold text-white tabular-nums">{conversations.length}</p>
+                <p className="text-[11px] text-white/30 mt-0.5">Conversas</p>
+              </div>
+              <div className="text-center py-1">
+                {/* Próxima consulta */}
+                {(() => {
+                  const upcoming = appointments
+                    .filter((a: Appointment) => ['scheduled', 'confirmed'].includes(a.status) && new Date(a.scheduled_at) > new Date())
+                    .sort((a: Appointment, b: Appointment) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0]
+                  if (upcoming) {
+                    return (
+                      <>
+                        <p className="text-base font-bold text-violet-400 tabular-nums leading-tight">
+                          {format(new Date(upcoming.scheduled_at), 'd/MM')}
+                        </p>
+                        <p className="text-[10px] text-white/30">{format(new Date(upcoming.scheduled_at), 'HH:mm')}</p>
+                        <p className="text-[10px] text-white/25 mt-0">Próxima</p>
+                      </>
+                    )
+                  }
+                  return (
+                    <>
+                      <p className="text-2xl font-bold text-white/15 tabular-nums">—</p>
+                      <p className="text-[11px] text-white/30 mt-0.5">Próxima</p>
+                    </>
+                  )
+                })()}
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">{conversations.length}</p>
-              <p className="text-xs text-white/30 mt-0.5">Conversas</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-brand-400">
-                {trackingData ? (trackingData.checkins.length > 0 ? `${((trackingData.checkins[0].hunger_score + trackingData.checkins[0].energy_score + trackingData.checkins[0].sleep_score + trackingData.checkins[0].mood_score) / 4).toFixed(1)}` : '—') : '—'}
-              </p>
-              <p className="text-xs text-white/30 mt-0.5">Último check-in</p>
-            </div>
-          </div>
+          </>
         )}
       </div>
 
