@@ -185,11 +185,18 @@ export async function webhookRoutes(app: FastifyInstance) {
       if (assistantConfig) {
         let blocked = false
         let outOfHoursMsg = ''
+        let silentBlock = false // bloqueia sem enviar nada
 
         if (assistantConfig.vacation_mode) {
           blocked = true
-          outOfHoursMsg = assistantConfig.vacation_message ||
-            'Estamos em período de férias. Em breve retornaremos! 🌴'
+          const customMsg = assistantConfig.vacation_message?.trim()
+          if (customMsg) {
+            // Tem mensagem configurada → envia uma vez e para
+            outOfHoursMsg = customMsg
+          } else {
+            // Sem mensagem → bloqueia silenciosamente (não envia nada)
+            silentBlock = true
+          }
         } else {
           const isOpen = await isWithinWorkingHours(nutritionist_id)
           if (!isOpen) {
@@ -200,6 +207,7 @@ export async function webhookRoutes(app: FastifyInstance) {
         }
 
         if (blocked) {
+          // Salva a mensagem do cliente na conversa
           let convId = conversation?.id
           if (!convId) {
             const [newConv] = await query(
@@ -217,6 +225,12 @@ export async function webhookRoutes(app: FastifyInstance) {
             [convId, 'user', messageText]
           )
 
+          // Modo férias sem mensagem = silêncio total
+          if (silentBlock) {
+            return reply.send({ ok: true })
+          }
+
+          // Fora do horário ou férias com mensagem → envia apenas uma vez
           const lastAssistantMsg = await queryOne<any>(
             `SELECT content FROM messages
              WHERE conversation_id = $1 AND role = 'assistant'
@@ -226,7 +240,7 @@ export async function webhookRoutes(app: FastifyInstance) {
 
           const alreadyWarned = lastAssistantMsg?.content && (
             lastAssistantMsg.content.includes('fora do horário') ||
-            lastAssistantMsg.content.includes('férias')
+            lastAssistantMsg.content.includes(outOfHoursMsg.slice(0, 30))
           )
 
           if (!alreadyWarned) {
