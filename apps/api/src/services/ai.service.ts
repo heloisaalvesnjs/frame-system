@@ -310,7 +310,7 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     : emojiLevel === 4 ? 'Use emojis com frequência, 1-2 por mensagem quando adequado.'
     : 'Use emojis livremente, podem aparecer em quase todas as mensagens.'
 
-  // ── Mensagem personalizada de apresentação dos serviços ──────────
+  // ── Mensagens personalizadas de apresentação dos serviços ────────
   function resolveVars(msg: string): string {
     return msg
       .replace(/\{planos_online\}/gi, plansOnlineText || '(sem planos online cadastrados)')
@@ -319,12 +319,17 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
       .replace(/\{nutri\}/gi, nutriName)
   }
 
-  // Prioridade: mensagem online (se habilitada), senão mensagem geral
-  const customServicesMsg = (assistant.services_message_online_enabled && assistant.services_message_online?.trim())
-    ? resolveVars(assistant.services_message_online.trim())
-    : (assistant.services_message_enabled && assistant.services_message?.trim())
-    ? resolveVars(assistant.services_message.trim())
-    : null
+  const customMsgOnline     = (assistant.services_message_online_enabled     && assistant.services_message_online?.trim())
+    ? resolveVars(assistant.services_message_online.trim()) : null
+  const customMsgPresencial = (assistant.services_message_presencial_enabled && assistant.services_message_presencial?.trim())
+    ? resolveVars(assistant.services_message_presencial.trim()) : null
+  const customMsgGeral      = (assistant.services_message_enabled            && assistant.services_message?.trim())
+    ? resolveVars(assistant.services_message.trim()) : null
+
+  // Monta instrução de planos para o prompt — inclui TODAS as mensagens configuradas
+  // para que a IA use a certa conforme a modalidade escolhida pelo cliente
+  const hasAnyCustomMsg = customMsgOnline || customMsgPresencial || customMsgGeral
+  const customServicesMsg = customMsgGeral // usado no fallback de texto livre abaixo
 
   // Funções habilitadas
   const funcProspeccao  = assistant.func_prospeccao  !== false
@@ -382,10 +387,17 @@ ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
 
 ETAPA 3 — PLANOS:
 Após definida a modalidade (ou se só tiver uma):
-${customServicesMsg
-  ? `Use EXATAMENTE esta mensagem (sem acrescentar nem remover nada, apenas adapte o turno ao final):
-${customServicesMsg}`
-  : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito, SEM seções como *PRESENCIAL:* ou *ONLINE:*.
+${hasAnyCustomMsg ? `
+IMPORTANTE: use EXATAMENTE a mensagem abaixo correspondente à modalidade escolhida. Não acrescente nem remova nada.${
+  customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
+}${
+  customMsgOnline ? `\n\nSE o cliente escolheu ONLINE:\n${customMsgOnline}` : ''
+}${
+  customMsgGeral && !customMsgPresencial && !customMsgOnline ? `\n\n${customMsgGeral}` : ''
+}${
+  customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
+}
+Após a mensagem dos planos, pergunte: "Prefere manhã ou tarde?"` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito, SEM seções como *PRESENCIAL:* ou *ONLINE:*.
 ${plansText ? `Use apenas os planos da modalidade escolhida. Termine com: "Prefere manhã ou tarde?"` : `Informe que ${nutriName} apresenta os detalhes pessoalmente e pergunte: "Prefere manhã ou tarde?"`}`
 }
 
