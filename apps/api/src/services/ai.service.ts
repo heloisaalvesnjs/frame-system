@@ -183,7 +183,13 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   }
 
   // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
-  const availableSlots = await getNextAvailableSlots(nutritionist_id)
+  let availableSlots: any[] = []
+  try {
+    availableSlots = await getNextAvailableSlots(nutritionist_id)
+  } catch (slotsErr) {
+    console.error('[AI:slots] Erro ao buscar horários disponíveis:', slotsErr)
+    // Continua sem slots — IA vai dizer que vai verificar a agenda
+  }
 
   // 5b. Busca serviços estruturados do consultório (com fallback defensivo)
   let services: any[] = []
@@ -229,12 +235,18 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     services
   })
 
-  // 7. Chama a IA (Claude ou Gemini conforme AI_PROVIDER)
+  // 7. Chama a IA
+  console.log(`[AI:call] Chamando IA para nutri=${nutritionist_id} conv=${convId} hist=${historyForAI.length}msgs`)
   const responseText = await callAI(
     systemPrompt,
     historyForAI.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     message
   )
+  console.log(`[AI:call] Resposta recebida (${responseText.length} chars)`)
+
+  if (!responseText?.trim()) {
+    throw new Error('[AI] Resposta vazia retornada pelo provider')
+  }
 
   // 8. Salva a resposta da assistente
   await query(

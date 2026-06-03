@@ -332,6 +332,46 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.code(201).send({ ok: true, note })
   })
 
+  // GET /api/assistants/diagnose — testa se a IA está respondendo
+  app.get('/diagnose', auth, async (request, reply) => {
+    const results: Record<string, string> = {}
+
+    // Testa Claude
+    try {
+      const Anthropic = (await import('@anthropic-ai/sdk')).default
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+      const res = await client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 20,
+        messages: [{ role: 'user', content: 'responda só "ok"' }]
+      })
+      results.claude = `✅ ok — modelo: claude-3-5-haiku-20241022 — resposta: "${(res.content[0] as any).text?.slice(0,30)}"`
+    } catch (e: any) {
+      results.claude = `❌ ${e?.status ?? ''} ${e?.message ?? e}`
+    }
+
+    // Testa Groq
+    try {
+      const Groq = (await import('groq-sdk')).default
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
+      const res = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'say ok' }]
+      })
+      results.groq = `✅ ok — "${res.choices[0]?.message?.content?.slice(0,30)}"`
+    } catch (e: any) {
+      results.groq = `❌ ${e?.status ?? ''} ${e?.message ?? e}`
+    }
+
+    // Variáveis de ambiente (sem expor valores)
+    results.env_anthropic = process.env.ANTHROPIC_API_KEY ? `✅ definida (${process.env.ANTHROPIC_API_KEY.length} chars)` : '❌ NÃO definida'
+    results.env_groq      = process.env.GROQ_API_KEY      ? `✅ definida` : '❌ NÃO definida'
+    results.env_gemini    = process.env.GEMINI_API_KEY     ? `✅ definida` : '❌ NÃO definida'
+
+    return reply.send({ diagnose: results })
+  })
+
   // GET /api/assistants/training — lista notas de treinamento
   app.get('/training', auth, async (request, reply) => {
     const notes = await query(
