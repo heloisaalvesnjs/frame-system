@@ -175,8 +175,8 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 
   // 5b. Busca serviços estruturados do consultório
   const services = await query<any>(
-    `SELECT name, category, price, description FROM services
-     WHERE nutritionist_id = $1 AND is_active = true ORDER BY sort_order, created_at`,
+    `SELECT name, category, modality, price, description FROM services
+     WHERE nutritionist_id = $1 AND is_active = true ORDER BY modality, sort_order, created_at`,
     [nutritionist_id]
   )
 
@@ -231,16 +231,22 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone = assistant.tone || 'acolhedor'
   // Serviços estruturados têm prioridade sobre service_plans (texto livre)
-  const structuredServices = (services && services.length > 0)
-    ? services.map((s: any) => {
-        let line = `- ${s.name}`
-        if (s.category) line += ` [${s.category}]`
-        if (s.price)    line += `: ${s.price}`
-        if (s.description) line += ` — ${s.description}`
-        return line
-      }).join('\n')
-    : null
-  const plansText = structuredServices || assistant.service_plans?.trim() || null
+  function formatServices(list: any[]): string | null {
+    if (!list || list.length === 0) return null
+    return list.map((s: any) => {
+      let line = `- ${s.name}`
+      if (s.category) line += ` [${s.category}]`
+      if (s.price)    line += `: ${s.price}`
+      if (s.description) line += ` — ${s.description}`
+      return line
+    }).join('\n')
+  }
+  const servicesOnline     = (services || []).filter((s: any) => s.modality === 'online' || s.modality === 'ambos')
+  const servicesPresencial = (services || []).filter((s: any) => s.modality === 'presencial' || s.modality === 'ambos')
+  const plansOnlineText     = formatServices(servicesOnline)
+  const plansPresencialText = formatServices(servicesPresencial)
+  const plansAllText        = formatServices(services || []) || assistant.service_plans?.trim() || null
+  const plansText = plansAllText
   const specialtiesText = assistant.specialties || nutritionist.specialty || null
   const modalities = assistant.consultation_modalities || 'online'
   const modalityLabel = modalities === 'presencial' ? 'presencial'
@@ -261,11 +267,20 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     : emojiLevel === 4 ? 'Use emojis com frequência, 1-2 por mensagem quando adequado.'
     : 'Use emojis livremente, podem aparecer em quase todas as mensagens.'
 
-  // Mensagem personalizada de apresentação dos serviços
-  const customServicesMsg = (assistant.services_message_enabled && assistant.services_message?.trim())
-    ? assistant.services_message.trim()
-        .replace(/\{planos\}/gi, plansText || '(sem planos cadastrados)')
-        .replace(/\{nutri\}/gi, nutriName)
+  // ── Mensagem personalizada de apresentação dos serviços ──────────
+  function resolveVars(msg: string): string {
+    return msg
+      .replace(/\{planos_online\}/gi, plansOnlineText || '(sem planos online cadastrados)')
+      .replace(/\{planos_presencial\}/gi, plansPresencialText || '(sem planos presenciais cadastrados)')
+      .replace(/\{planos\}/gi, plansText || '(sem planos cadastrados)')
+      .replace(/\{nutri\}/gi, nutriName)
+  }
+
+  // Prioridade: mensagem online (se habilitada), senão mensagem geral
+  const customServicesMsg = (assistant.services_message_online_enabled && assistant.services_message_online?.trim())
+    ? resolveVars(assistant.services_message_online.trim())
+    : (assistant.services_message_enabled && assistant.services_message?.trim())
+    ? resolveVars(assistant.services_message.trim())
     : null
 
   // Funções habilitadas

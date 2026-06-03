@@ -399,6 +399,10 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT tru
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_agendamento BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_enabled BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online_enabled BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial_enabled BOOLEAN DEFAULT false;
 ALTER TABLE services ADD COLUMN IF NOT EXISTS modality TEXT DEFAULT 'presencial';
 
 -- Google Calendar integration

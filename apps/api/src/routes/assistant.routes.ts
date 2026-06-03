@@ -21,6 +21,8 @@ export async function assistantRoutes(app: FastifyInstance) {
               emoji_level, func_prospeccao, func_triagem, func_agendamento,
               followup_message_1, followup_message_2,
               services_message, services_message_enabled,
+              services_message_online, services_message_online_enabled,
+              services_message_presencial, services_message_presencial_enabled,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -53,6 +55,10 @@ export async function assistantRoutes(app: FastifyInstance) {
       followup_message_2: z.string().nullish().transform(v => v ?? undefined),
       services_message: z.string().nullish().transform(v => v ?? undefined),
       services_message_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      services_message_online: z.string().nullish().transform(v => v ?? undefined),
+      services_message_online_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      services_message_presencial: z.string().nullish().transform(v => v ?? undefined),
+      services_message_presencial_enabled: z.boolean().nullish().transform(v => v ?? undefined),
     }).passthrough()
 
     const body = schema.parse(request.body)
@@ -74,6 +80,10 @@ export async function assistantRoutes(app: FastifyInstance) {
            followup_message_1 = $18, followup_message_2 = $19,
            services_message = $20,
            services_message_enabled = COALESCE($21, services_message_enabled),
+           services_message_online = $22,
+           services_message_online_enabled = COALESCE($23, services_message_online_enabled),
+           services_message_presencial = $24,
+           services_message_presencial_enabled = COALESCE($25, services_message_presencial_enabled),
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
@@ -82,7 +92,9 @@ export async function assistantRoutes(app: FastifyInstance) {
                    followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
                    emoji_level, func_prospeccao, func_triagem, func_agendamento,
                    followup_message_1, followup_message_2,
-                   services_message, services_message_enabled`,
+                   services_message, services_message_enabled,
+                   services_message_online, services_message_online_enabled,
+                   services_message_presencial, services_message_presencial_enabled`,
         [id, body.name, body.tone, body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
          body.vacation_mode, body.vacation_message,
@@ -90,7 +102,9 @@ export async function assistantRoutes(app: FastifyInstance) {
          body.service_plans ?? null, body.nutri_display_name?.trim() || null,
          body.emoji_level, body.func_prospeccao, body.func_triagem, body.func_agendamento,
          body.followup_message_1 ?? null, body.followup_message_2 ?? null,
-         body.services_message ?? null, body.services_message_enabled ?? null]
+         body.services_message ?? null, body.services_message_enabled ?? null,
+         body.services_message_online ?? null, body.services_message_online_enabled ?? null,
+         body.services_message_presencial ?? null, body.services_message_presencial_enabled ?? null]
       )
     } else {
       ;[assistant] = await query(
