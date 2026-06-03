@@ -9,7 +9,7 @@ export async function appointmentRoutes(app: FastifyInstance) {
   // GET /api/appointments — lista consultas da nutricionista
   app.get('/', auth, async (request, reply) => {
     const { id } = (request as any).user
-    const { date, status } = request.query as any
+    const { date, start, end, status } = request.query as any
 
     let sql = `
       SELECT a.*, a.duration as duration_minutes, c.name as client_name, c.phone as client_phone
@@ -22,6 +22,13 @@ export async function appointmentRoutes(app: FastifyInstance) {
     if (date) {
       params.push(date)
       sql += ` AND DATE(a.scheduled_at) = $${params.length}`
+    } else if (start) {
+      params.push(start)
+      sql += ` AND DATE(a.scheduled_at) >= $${params.length}`
+      if (end) {
+        params.push(end)
+        sql += ` AND DATE(a.scheduled_at) <= $${params.length}`
+      }
     }
     if (status) {
       params.push(status)

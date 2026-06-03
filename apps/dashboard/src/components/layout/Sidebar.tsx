@@ -6,20 +6,28 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
   LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
+  BookOpen, Smartphone, Sun, Moon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Painel',     icon: LayoutDashboard },
-  { href: '/conversas', label: 'Conversas',  icon: MessageSquare },
-  { href: '/agenda',    label: 'Agenda',     icon: Calendar },
-  { href: '/clientes',  label: 'Clientes',   icon: Users },
-  { href: '/servicos',  label: 'Serviços',   icon: ShoppingBag },
-  { href: '/followup',  label: 'Follow-up',  icon: RefreshCw },
+const navMain = [
+  { href: '/dashboard',     label: 'Painel',       icon: LayoutDashboard },
+  { href: '/conversas',     label: 'Conversas',    icon: MessageSquare },
+  { href: '/agenda',        label: 'Agenda',       icon: Calendar },
+  { href: '/clientes',      label: 'Clientes',     icon: Users },
+  { href: '/servicos',      label: 'Serviços',     icon: ShoppingBag },
+  { href: '/followup',      label: 'Follow-up',    icon: RefreshCw },
 ]
 
-// ── Frame mark (bracket-style F, sem arquivo de logo) ────────────
+const navConfig = [
+  { href: '/treinamento',   label: 'Treinamento',  icon: BookOpen },
+  { href: '/whatsapp',      label: 'WhatsApp',     icon: Smartphone },
+  { href: '/configuracoes', label: 'Configurações',icon: Settings },
+]
+
+// ── Frame mark ────────────────────────────────────────────────────
 function FrameMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
@@ -74,7 +82,6 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
     ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
 
-  // Fecha ao clicar fora
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -92,13 +99,12 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
   return (
     <div ref={ref} className="relative px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
 
-      {/* ── Dropdown (abre para cima) ────────────────────── */}
+      {/* Dropdown (abre para cima) */}
       {open && (
         <div
           className="absolute left-3 right-3 bottom-full mb-2 rounded-xl overflow-hidden z-50 shadow-card-md"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
         >
-          {/* Cabeçalho do menu */}
           <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
             <div
               className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-brand-500"
@@ -112,7 +118,6 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
             </div>
           </div>
 
-          {/* Ações */}
           <div className="p-1.5">
             <button
               onClick={() => go('/perfil')}
@@ -120,13 +125,6 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
             >
               <User className="w-[14px] h-[14px] flex-shrink-0" />
               <span className="font-mono text-[11px] tracking-[0.05em]">Meu Perfil</span>
-            </button>
-            <button
-              onClick={() => go('/configuracoes')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
-            >
-              <Settings className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="font-mono text-[11px] tracking-[0.05em]">Configurações</span>
             </button>
             <button
               onClick={() => go('/seguranca')}
@@ -149,7 +147,7 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
         </div>
       )}
 
-      {/* ── Trigger ──────────────────────────────────────── */}
+      {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
         className={cn(
@@ -178,12 +176,13 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
 
-      {/* ── Logo ─────────────────────────────────────────────── */}
+      {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-[60px] flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <FrameMark size={28} />
         <div>
@@ -196,9 +195,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      {/* ── Nav ──────────────────────────────────────────────── */}
+      {/* Nav */}
       <nav className="flex-1 flex flex-col gap-0.5 px-3 py-4 overflow-y-auto">
-        {navItems.map(item => (
+
+        {/* Principal */}
+        {navMain.map(item => (
+          <NavItem key={item.href} {...item} onClick={onClose} />
+        ))}
+
+        {/* Configuração */}
+        <div className="my-2 mx-1" style={{ borderTop: '1px solid var(--border)' }} />
+        {navConfig.map(item => (
           <NavItem key={item.href} {...item} onClick={onClose} />
         ))}
 
@@ -226,7 +233,22 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         )}
       </nav>
 
-      {/* ── User menu ────────────────────────────────────────── */}
+      {/* Theme toggle */}
+      <div className="px-4 py-2.5 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all"
+        >
+          {theme === 'dark'
+            ? <Sun className="w-[14px] h-[14px] flex-shrink-0 text-t3" />
+            : <Moon className="w-[14px] h-[14px] flex-shrink-0 text-t3" />}
+          <span className="font-mono text-[11px] tracking-[0.05em]">
+            {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          </span>
+        </button>
+      </div>
+
+      {/* User menu */}
       <UserMenu onClose={onClose} />
     </div>
   )

@@ -1,15 +1,17 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Menu, Sun, Moon } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useTheme } from '@/contexts/ThemeContext'
+import { Menu } from 'lucide-react'
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard':     'Painel',
   '/conversas':     'Conversas',
   '/agenda':        'Agenda',
   '/clientes':      'Clientes',
+  '/servicos':      'Serviços',
+  '/followup':      'Follow-up',
+  '/treinamento':   'Treinamento',
+  '/whatsapp':      'WhatsApp',
   '/configuracoes': 'Configurações',
   '/onboarding':    'Configuração inicial',
   '/admin':         'Admin',
@@ -23,13 +25,7 @@ function getTitle(pathname: string): string {
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname()
-  const { user } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const title = getTitle(pathname)
-
-  const initials = user?.name
-    ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'U'
 
   return (
     <header
@@ -52,33 +48,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       <h1 className="font-display font-bold text-[18px] tracking-tight text-t1 flex-1 leading-none">
         {title}
       </h1>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Mudar para claro' : 'Mudar para escuro'}
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-t2 hover:text-t1 hover:bg-raised"
-          style={{ border: '1px solid var(--border)' }}
-        >
-          {theme === 'dark'
-            ? <Sun className="w-[15px] h-[15px]" />
-            : <Moon className="w-[15px] h-[15px]" />}
-        </button>
-
-        {/* Avatar */}
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-brand-500 flex-shrink-0"
-          style={{
-            background: 'var(--brand-s-solid)',
-            border: '1.5px solid rgba(0,194,124,.25)',
-          }}
-        >
-          {initials}
-        </div>
-      </div>
     </header>
   )
 }
