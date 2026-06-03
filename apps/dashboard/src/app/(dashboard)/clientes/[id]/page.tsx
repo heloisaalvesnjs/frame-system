@@ -8,7 +8,8 @@ import {
   ArrowLeft, Calendar, MessageSquare, Edit2, Save, X, Phone, Target,
   FileText, Clock, Send, TrendingUp, Droplets, Dumbbell, ClipboardList,
   Scale, ChevronUp, ChevronDown, Minus, KeyRound, Copy, RefreshCw, CheckCircle2,
-  UtensilsCrossed, FolderOpen, MessageCircle, Plus, Trash2, Download, Paperclip
+  UtensilsCrossed, FolderOpen, MessageCircle, Plus, Trash2, Download, Paperclip,
+  Search, ArrowRightLeft, Flame, ChevronRight,
 } from 'lucide-react'
 import { useRef } from 'react'
 import Link from 'next/link'
@@ -43,7 +44,21 @@ interface InviteCode {
   used_by: string | null; used_at: string | null
   expires_at: string; created_at: string
 }
-interface MealItem { id: string; name: string; time: string; items: string[]; notes?: string }
+// FoodEntry = alimento dentro de uma refeição (estruturado com macros)
+interface FoodEntry {
+  id: string
+  food_id?: number
+  name: string
+  quantity: number
+  unit: string
+  kcal_per_100g?: number
+  protein_per_100g?: number
+  carbs_per_100g?: number
+  fat_per_100g?: number
+  fiber_per_100g?: number
+  unit_weight_g?: number
+}
+interface MealItem { id: string; name: string; time: string; items: FoodEntry[]; notes?: string }
 interface MealPlan { id: string; title: string; meals: MealItem[]; notes: string | null; updated_at: string }
 interface PatientDoc { id: string; original_name: string; description: string | null; mimetype: string; size_bytes: number; created_at: string }
 interface ChatMessage { id: string; from_role: 'patient' | 'nutritionist'; content: string; read_at: string | null; created_at: string }
@@ -54,6 +69,415 @@ const STATUS_COLOR: Record<string, string> = {
   confirmed:  'text-blue-400 bg-blue-500/10 border-blue-500/20',
   cancelled:  'text-red-400 bg-red-500/10 border-red-500/20',
   completed:  'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+}
+
+// ── Helpers macros ────────────────────────────────────────────────────────────
+const UNIT_W: Record<string, number> = {
+  'g':1,'ml':1,'colher de sopa':15,'colher de chá':5,'xícara':200,'fatia':30,'porção':100,'unidade':100,
+}
+function entryGrams(e: FoodEntry): number {
+  const base = ['unidade','fatia','porção'].includes(e.unit) ? (e.unit_weight_g ?? UNIT_W[e.unit] ?? 100) : (UNIT_W[e.unit] ?? 1)
+  return e.quantity * base
+}
+function entryMacros(e: FoodEntry) {
+  if (!e.kcal_per_100g) return null
+  const f = entryGrams(e) / 100
+  return {
+    kcal:    Math.round((e.kcal_per_100g    ?? 0) * f),
+    protein: Math.round((e.protein_per_100g ?? 0) * f * 10) / 10,
+    carbs:   Math.round((e.carbs_per_100g   ?? 0) * f * 10) / 10,
+    fat:     Math.round((e.fat_per_100g     ?? 0) * f * 10) / 10,
+  }
+}
+function sumMealMacros(items: FoodEntry[]) {
+  return items.reduce((acc, e) => {
+    const m = entryMacros(e)
+    if (!m) return acc
+    return { kcal: acc.kcal + m.kcal, protein: +(acc.protein + m.protein).toFixed(1), carbs: +(acc.carbs + m.carbs).toFixed(1), fat: +(acc.fat + m.fat).toFixed(1) }
+  }, { kcal:0, protein:0, carbs:0, fat:0 })
+}
+
+// ── TacoFood (resposta da API) ────────────────────────────────────────────────
+interface TacoResult { id:number; name:string; category:string; kcal:number; protein:number; carbs:number; fat:number; fiber:number; typical_amount:number; typical_unit:string; unit_weight_g:number }
+
+// ── MealPlanEditor ────────────────────────────────────────────────────────────
+function MealPlanEditor({ clientId }: { clientId: string }) {
+  const qc = useQueryClient()
+  const [title, setTitle] = useState('Plano Alimentar')
+  const [meals, setMeals] = useState<MealItem[]>([])
+  const [notes, setNotes] = useState('')
+  // food search state: mealId → query/results/adding
+  const [searchQ, setSearchQ] = useState<Record<string, string>>({})
+  const [results, setResults] = useState<Record<string, TacoResult[]>>({})
+  const [adding, setAdding] = useState<Record<string, { food: TacoResult; qty: number; unit: string } | null>>({})
+  // substitution modal
+  const [subTarget, setSubTarget] = useState<{ mealId: string; entry: FoodEntry } | null>(null)
+  const [subResults, setSubResults] = useState<TacoResult[]>([])
+  const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const { isLoading } = useQuery<MealPlan | null>({
+    queryKey: ['meal-plan', clientId],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/features/clients/${clientId}/meal-plan`)
+      return data.plan
+    },
+    staleTime: 30_000,
+    onSuccess: (plan: MealPlan | null) => {
+      if (plan) {
+        setTitle(plan.title)
+        setNotes(plan.notes ?? '')
+        // migrar itens antigos (string → FoodEntry)
+        const migrated = plan.meals.map((m: any) => ({
+          ...m,
+          items: (m.items ?? []).map((item: any, i: number) =>
+            typeof item === 'string'
+              ? { id: `legacy-${m.id}-${i}`, name: item, quantity: 1, unit: 'porção' }
+              : item
+          ),
+        }))
+        setMeals(migrated)
+      }
+    },
+  } as any)
+
+  const savePlan = useMutation({
+    mutationFn: () => api.put(`/api/features/clients/${clientId}/meal-plan`, { title, meals, notes }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['meal-plan', clientId] }); toast.success('Plano salvo!') },
+    onError: () => toast.error('Erro ao salvar plano'),
+  })
+
+  // ── Food search ─────────────────────────────────────────────────────
+  function handleSearchChange(mealId: string, q: string) {
+    setSearchQ(prev => ({ ...prev, [mealId]: q }))
+    clearTimeout(searchTimers.current[mealId])
+    if (q.trim().length < 2) { setResults(prev => ({ ...prev, [mealId]: [] })); return }
+    searchTimers.current[mealId] = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/api/foods/search?q=${encodeURIComponent(q)}&limit=8`)
+        setResults(prev => ({ ...prev, [mealId]: data.foods ?? [] }))
+      } catch {}
+    }, 280)
+  }
+
+  function selectFood(mealId: string, food: TacoResult) {
+    setAdding(prev => ({ ...prev, [mealId]: { food, qty: food.typical_amount, unit: food.typical_unit } }))
+    setSearchQ(prev => ({ ...prev, [mealId]: '' }))
+    setResults(prev => ({ ...prev, [mealId]: [] }))
+  }
+
+  function confirmAdd(mealId: string) {
+    const a = adding[mealId]
+    if (!a) return
+    const entry: FoodEntry = {
+      id: crypto.randomUUID(),
+      food_id: a.food.id,
+      name: a.food.name,
+      quantity: a.qty,
+      unit: a.unit,
+      kcal_per_100g:    a.food.kcal,
+      protein_per_100g: a.food.protein,
+      carbs_per_100g:   a.food.carbs,
+      fat_per_100g:     a.food.fat,
+      fiber_per_100g:   a.food.fiber,
+      unit_weight_g:    a.food.unit_weight_g,
+    }
+    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, items: [...m.items, entry] } : m))
+    setAdding(prev => ({ ...prev, [mealId]: null }))
+  }
+
+  function removeEntry(mealId: string, entryId: string) {
+    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, items: m.items.filter(e => e.id !== entryId) } : m))
+  }
+
+  function updateEntry(mealId: string, entryId: string, patch: Partial<FoodEntry>) {
+    setMeals(prev => prev.map(m => m.id === mealId
+      ? { ...m, items: m.items.map(e => e.id === entryId ? { ...e, ...patch } : e) }
+      : m
+    ))
+  }
+
+  function addMeal() {
+    setMeals(prev => [...prev, { id: crypto.randomUUID(), name: 'Nova refeição', time: '', items: [], notes: '' }])
+  }
+
+  function removeMeal(mealId: string) { setMeals(prev => prev.filter(m => m.id !== mealId)) }
+  function updateMealField(mealId: string, field: 'name' | 'time' | 'notes', val: string) {
+    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, [field]: val } : m))
+  }
+
+  // substitutions
+  async function openSub(mealId: string, entry: FoodEntry) {
+    if (!entry.food_id) return
+    setSubTarget({ mealId, entry })
+    try {
+      const { data } = await api.get(`/api/foods/${entry.food_id}/substitutions`)
+      setSubResults(data.substitutions ?? [])
+    } catch {}
+  }
+
+  function applySub(sub: TacoResult) {
+    if (!subTarget) return
+    const { mealId, entry } = subTarget
+    updateEntry(mealId, entry.id, {
+      food_id: sub.id, name: sub.name,
+      kcal_per_100g: sub.kcal, protein_per_100g: sub.protein,
+      carbs_per_100g: sub.carbs, fat_per_100g: sub.fat,
+      fiber_per_100g: sub.fiber, unit_weight_g: sub.unit_weight_g,
+    })
+    setSubTarget(null)
+    setSubResults([])
+  }
+
+  // grand totals
+  const grandTotal = meals.reduce((acc, m) => {
+    const t = sumMealMacros(m.items)
+    return { kcal: acc.kcal + t.kcal, protein: +(acc.protein + t.protein).toFixed(1), carbs: +(acc.carbs + t.carbs).toFixed(1), fat: +(acc.fat + t.fat).toFixed(1) }
+  }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+
+  const UNITS = ['g','ml','unidade','fatia','colher de sopa','colher de chá','xícara','porção']
+
+  if (isLoading) return <div className="flex justify-center py-16"><RefreshCw className="w-5 h-5 animate-spin text-brand-400" /></div>
+
+  return (
+    <div className="space-y-5">
+      {/* Title + save */}
+      <div className="flex items-center gap-3">
+        <input value={title} onChange={e => setTitle(e.target.value)}
+          className="flex-1 text-sm font-semibold bg-transparent border-0 text-white/80 focus:outline-none focus:text-white placeholder:text-white/30"
+          placeholder="Título do plano" />
+        <button onClick={() => savePlan.mutate()} disabled={savePlan.isPending}
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 flex-shrink-0">
+          <Save className="w-3.5 h-3.5" />{savePlan.isPending ? 'Salvando…' : 'Salvar plano'}
+        </button>
+      </div>
+
+      {/* Grand total summary */}
+      {grandTotal.kcal > 0 && (
+        <div className="grid grid-cols-4 gap-2 rounded-xl p-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+          {[
+            { label: 'Kcal', value: grandTotal.kcal, color: 'text-amber-400' },
+            { label: 'Prot', value: `${grandTotal.protein}g`, color: 'text-blue-400' },
+            { label: 'Carb', value: `${grandTotal.carbs}g`, color: 'text-emerald-400' },
+            { label: 'Gord', value: `${grandTotal.fat}g`, color: 'text-orange-400' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="text-center">
+              <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
+              <p className="text-[10px] text-white/30">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Meals */}
+      {meals.length === 0 ? (
+        <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
+          <UtensilsCrossed className="w-8 h-8 text-white/10 mx-auto mb-3" />
+          <p className="text-sm text-white/25">Nenhuma refeição ainda</p>
+          <button onClick={addMeal}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white text-xs font-semibold rounded-lg hover:bg-brand-400 transition-colors">
+            <Plus className="w-3.5 h-3.5" />Adicionar refeição
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {meals.map(meal => {
+            const mTotal = sumMealMacros(meal.items)
+            const isAdding = !!adding[meal.id]
+            return (
+              <div key={meal.id} className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+                {/* Meal header */}
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <input value={meal.name} onChange={e => updateMealField(meal.id, 'name', e.target.value)}
+                    className="flex-1 text-sm font-semibold bg-transparent text-white/90 focus:outline-none placeholder:text-white/25" placeholder="Nome da refeição" />
+                  <input value={meal.time} onChange={e => updateMealField(meal.id, 'time', e.target.value)}
+                    type="time" className="text-xs text-white/40 bg-transparent focus:outline-none w-16 text-right" />
+                  <button onClick={() => removeMeal(meal.id)} className="text-white/20 hover:text-red-400 transition-colors ml-1">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Food items */}
+                {meal.items.length > 0 && (
+                  <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                    {meal.items.map(entry => {
+                      const m = entryMacros(entry)
+                      return (
+                        <li key={entry.id} className="flex items-center gap-2 px-4 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white/85 truncate">{entry.name}</p>
+                            {m && (
+                              <p className="text-[10px] text-white/30 mt-0.5 flex items-center gap-2">
+                                <span className="text-amber-400">{m.kcal}kcal</span>
+                                <span>P:{m.protein}g</span>
+                                <span>C:{m.carbs}g</span>
+                                <span>G:{m.fat}g</span>
+                              </p>
+                            )}
+                          </div>
+                          {/* Qty + unit inline */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <input
+                              type="number" min="0" step="any"
+                              value={entry.quantity}
+                              onChange={e => updateEntry(meal.id, entry.id, { quantity: parseFloat(e.target.value) || 0 })}
+                              className="w-14 text-right text-xs text-white/70 bg-transparent focus:outline-none focus:text-white"
+                              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px', background: 'var(--surface)' }}
+                            />
+                            <select value={entry.unit}
+                              onChange={e => updateEntry(meal.id, entry.id, { unit: e.target.value })}
+                              className="text-[10px] text-white/50 focus:outline-none cursor-pointer"
+                              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '2px 4px', background: 'var(--surface)', color: 'var(--t2)', maxWidth: 80 }}>
+                              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </div>
+                          {/* Substituir */}
+                          {entry.food_id && (
+                            <button onClick={() => openSub(meal.id, entry)} title="Substituições"
+                              className="text-white/20 hover:text-brand-400 transition-colors flex-shrink-0">
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button onClick={() => removeEntry(meal.id, entry.id)}
+                            className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+
+                {/* Meal total */}
+                {mTotal.kcal > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 text-[10px]" style={{ borderTop: '1px solid var(--border)', background: 'var(--raised)' }}>
+                    <Flame className="w-3 h-3 text-amber-400/60" />
+                    <span className="text-amber-400 font-semibold">{mTotal.kcal} kcal</span>
+                    <span className="text-white/30">P:{mTotal.protein}g · C:{mTotal.carbs}g · G:{mTotal.fat}g</span>
+                  </div>
+                )}
+
+                {/* Food search */}
+                <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+                  {!isAdding ? (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25 pointer-events-none" />
+                      <input
+                        value={searchQ[meal.id] ?? ''}
+                        onChange={e => handleSearchChange(meal.id, e.target.value)}
+                        placeholder="Buscar alimento (ex: frango, aveia, banana…)"
+                        className="w-full pl-8 pr-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none rounded-lg transition-colors"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                      />
+                      {/* Dropdown results */}
+                      {(results[meal.id]?.length ?? 0) > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl"
+                          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                          {results[meal.id].map(food => (
+                            <button key={food.id} onClick={() => selectFood(meal.id, food)}
+                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-raised text-left transition-colors">
+                              <span className="text-sm text-white/85">{food.name}</span>
+                              <span className="text-[10px] text-white/30 flex-shrink-0 ml-3">{food.kcal}kcal/100g · {food.category}</span>
+                            </button>
+                          ))}
+                          <button onClick={() => {
+                            const custom = searchQ[meal.id]?.trim()
+                            if (!custom) return
+                            const entry: FoodEntry = { id: crypto.randomUUID(), name: custom, quantity: 1, unit: 'porção' }
+                            setMeals(prev => prev.map(m => m.id === meal.id ? { ...m, items: [...m.items, entry] } : m))
+                            setSearchQ(prev => ({ ...prev, [meal.id]: '' }))
+                            setResults(prev => ({ ...prev, [meal.id]: [] }))
+                          }} className="w-full flex items-center gap-2 px-4 py-2.5 text-white/40 hover:text-white/70 text-xs border-t transition-colors" style={{ borderColor: 'var(--border)' }}>
+                            <Plus className="w-3.5 h-3.5" />Adicionar &quot;{searchQ[meal.id]}&quot; manualmente
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Confirm add panel */
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-white/70 flex-shrink-0 truncate max-w-[160px]">{adding[meal.id]?.food.name}</span>
+                      <input type="number" min="0" step="any"
+                        value={adding[meal.id]?.qty ?? 1}
+                        onChange={e => setAdding(prev => ({ ...prev, [meal.id]: prev[meal.id] ? { ...prev[meal.id]!, qty: parseFloat(e.target.value) || 0 } : null }))}
+                        className="w-16 text-sm text-white focus:outline-none rounded-lg px-2 py-1"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                      />
+                      <select value={adding[meal.id]?.unit ?? 'g'}
+                        onChange={e => setAdding(prev => ({ ...prev, [meal.id]: prev[meal.id] ? { ...prev[meal.id]!, unit: e.target.value } : null }))}
+                        className="text-xs text-white/70 focus:outline-none rounded-lg px-2 py-1"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                      <button onClick={() => confirmAdd(meal.id)}
+                        className="px-3 py-1 bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold rounded-lg transition-colors">
+                        Adicionar
+                      </button>
+                      <button onClick={() => setAdding(prev => ({ ...prev, [meal.id]: null }))}
+                        className="text-white/30 hover:text-white text-xs transition-colors">Cancelar</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Meal notes */}
+                <div className="px-4 pb-3">
+                  <input value={meal.notes ?? ''} onChange={e => updateMealField(meal.id, 'notes', e.target.value)}
+                    placeholder="Observação da refeição (opcional)"
+                    className="w-full text-xs text-white/40 placeholder:text-white/20 bg-transparent focus:outline-none focus:text-white/70 transition-colors" />
+                </div>
+              </div>
+            )
+          })}
+
+          <button onClick={addMeal}
+            className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm text-white/30 hover:text-white/60 hover:border-white/20 transition-colors"
+            style={{ border: '1px dashed var(--border)' }}>
+            <Plus className="w-4 h-4" />Nova refeição
+          </button>
+        </div>
+      )}
+
+      {/* General notes */}
+      <div>
+        <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2">Observações gerais</p>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)}
+          rows={2} placeholder="Ex: Beber 2L de água por dia, evitar processados..."
+          className="w-full bg-ui-card border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-white/20 resize-none transition-colors" />
+      </div>
+
+      {/* Substitution modal */}
+      {subTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSubTarget(null); setSubResults([]) }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <p className="text-sm font-semibold text-white/90">Substituições para</p>
+              <p className="text-xs text-brand-400 mt-0.5">{subTarget.entry.name}</p>
+            </div>
+            <div className="p-2">
+              {subResults.length === 0 ? (
+                <p className="text-xs text-white/30 text-center py-6">Nenhuma substituição encontrada</p>
+              ) : subResults.map(s => (
+                <button key={s.id} onClick={() => applySub(s)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-raised text-left transition-colors">
+                  <div>
+                    <p className="text-sm text-white/85">{s.name}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{s.category}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <p className="text-xs text-amber-400 font-semibold">{s.kcal} kcal</p>
+                    <p className="text-[10px] text-white/30">P:{s.protein}g C:{s.carbs}g</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+              <button onClick={() => { setSubTarget(null); setSubResults([]) }}
+                className="w-full text-xs text-white/30 hover:text-white/60 transition-colors">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function formatPhone(p: string) {
@@ -78,11 +502,6 @@ export default function ClientProfilePage() {
 
   const [tab, setTab] = useState<'appointments' | 'conversations' | 'tracking' | 'access' | 'plan' | 'docs' | 'chat'>('appointments')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
-  // Plano alimentar
-  const [planTitle, setPlanTitle] = useState('Plano Alimentar')
-  const [planMeals, setPlanMeals] = useState<MealItem[]>([])
-  const [planNotes, setPlanNotes] = useState('')
-  const [planEditing, setPlanEditing] = useState(false)
   // Chat
   const [chatText, setChatText] = useState('')
   const chatBottomRef = useRef<HTMLDivElement>(null)
@@ -125,40 +544,6 @@ export default function ClientProfilePage() {
     onSuccess: () => { refetchCodes(); toast.success('Código gerado!') },
     onError: () => toast.error('Erro ao gerar código'),
   })
-
-  // ── Plano alimentar ─────────────────────────────────────────────────────────
-  const { data: mealPlan, refetch: refetchPlan } = useQuery<MealPlan | null>({
-    queryKey: ['meal-plan', id],
-    queryFn: async () => {
-      const { data: d } = await api.get(`/api/features/clients/${id}/meal-plan`)
-      return d.plan
-    },
-    enabled: tab === 'plan',
-    staleTime: 30_000,
-  })
-
-  useEffect(() => {
-    if (mealPlan) {
-      setPlanTitle(mealPlan.title)
-      setPlanMeals(mealPlan.meals)
-      setPlanNotes(mealPlan.notes ?? '')
-    }
-  }, [mealPlan])
-
-  const savePlan = useMutation({
-    mutationFn: () => api.put(`/api/features/clients/${id}/meal-plan`, { title: planTitle, meals: planMeals, notes: planNotes }),
-    onSuccess: () => { refetchPlan(); setPlanEditing(false); toast.success('Plano salvo!') },
-    onError: () => toast.error('Erro ao salvar plano'),
-  })
-
-  function addMeal() {
-    setPlanMeals(prev => [...prev, { id: crypto.randomUUID(), name: 'Nova refeição', time: '', items: [], notes: '' }])
-    setPlanEditing(true)
-  }
-  function removeMeal(mealId: string) { setPlanMeals(prev => prev.filter(m => m.id !== mealId)) }
-  function updateMeal(mealId: string, field: keyof MealItem, value: string | string[]) {
-    setPlanMeals(prev => prev.map(m => m.id === mealId ? { ...m, [field]: value } : m))
-  }
 
   // ── Documentos ───────────────────────────────────────────────────────────────
   const { data: docs, refetch: refetchDocs } = useQuery<PatientDoc[]>({
@@ -658,121 +1043,7 @@ export default function ClientProfilePage() {
       )}
 
       {/* ── Tab: Plano Alimentar ── */}
-      {tab === 'plan' && (
-        <div className="space-y-4">
-          {/* Header + edit toggle */}
-          <div className="flex items-center gap-3">
-            {planEditing ? (
-              <input
-                value={planTitle}
-                onChange={e => setPlanTitle(e.target.value)}
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-500/40"
-              />
-            ) : (
-              <h3 className="flex-1 text-sm font-semibold text-white/80">{planTitle || 'Plano Alimentar'}</h3>
-            )}
-            <div className="flex gap-2">
-              {planEditing ? (
-                <>
-                  <button onClick={() => savePlan.mutate()} disabled={savePlan.isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
-                    <Save className="w-3.5 h-3.5" />{savePlan.isPending ? 'Salvando…' : 'Salvar'}
-                  </button>
-                  <button onClick={() => { setPlanEditing(false); if (mealPlan) { setPlanMeals(mealPlan.meals); setPlanNotes(mealPlan.notes ?? '') } }}
-                    className="px-3 py-1.5 text-white/40 hover:text-white text-xs rounded-lg transition-colors">
-                    Cancelar
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => setPlanEditing(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-medium rounded-lg transition-colors">
-                  <Edit2 className="w-3 h-3" />Editar
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Meals list */}
-          {planMeals.length === 0 && !planEditing ? (
-            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
-              <UtensilsCrossed className="w-8 h-8 text-white/10 mx-auto mb-3" />
-              <p className="text-sm text-white/25">Nenhuma refeição no plano ainda</p>
-              <button onClick={() => { addMeal() }}
-                className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white text-xs font-semibold rounded-lg mx-auto transition-colors hover:bg-brand-400">
-                <Plus className="w-3.5 h-3.5" />Adicionar refeição
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {planMeals.map(meal => (
-                <div key={meal.id} className="bg-ui-card border border-white/[0.06] rounded-2xl p-4">
-                  {planEditing ? (
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
-                        <input value={meal.name} onChange={e => updateMeal(meal.id, 'name', e.target.value)}
-                          placeholder="Nome (ex: Café da manhã)" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40" />
-                        <input value={meal.time} onChange={e => updateMeal(meal.id, 'time', e.target.value)}
-                          placeholder="07:00" className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40" />
-                        <button onClick={() => removeMeal(meal.id)} className="text-red-400/50 hover:text-red-400 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <textarea
-                        value={meal.items.join('\n')}
-                        onChange={e => updateMeal(meal.id, 'items', e.target.value.split('\n').filter(Boolean))}
-                        placeholder="Um alimento por linha:&#10;1 fatia de pão integral&#10;1 ovo mexido&#10;200ml de leite"
-                        rows={4}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 resize-none"
-                      />
-                      <input value={meal.notes ?? ''} onChange={e => updateMeal(meal.id, 'notes', e.target.value)}
-                        placeholder="Observação (opcional)" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500/40" />
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <UtensilsCrossed className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
-                        <span className="text-sm font-semibold text-white/85">{meal.name}</span>
-                        {meal.time && <span className="text-xs text-white/30 flex items-center gap-0.5"><Clock className="w-3 h-3" />{meal.time}</span>}
-                      </div>
-                      <ul className="space-y-0.5 ml-5">
-                        {meal.items.map((item, i) => (
-                          <li key={i} className="text-sm text-white/60 flex items-start gap-1.5">
-                            <span className="text-brand-400/50 flex-shrink-0">·</span>{item}
-                          </li>
-                        ))}
-                      </ul>
-                      {meal.notes && <p className="text-xs text-white/30 italic mt-2 ml-5">{meal.notes}</p>}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {planEditing && (
-                <button onClick={addMeal}
-                  className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-white/10 rounded-2xl text-sm text-white/30 hover:text-white/50 hover:border-white/20 transition-colors">
-                  <Plus className="w-4 h-4" />Adicionar refeição
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Notas gerais */}
-          {(planEditing || planNotes) && (
-            <div>
-              <p className="text-xs text-white/35 mb-2">Observações gerais</p>
-              {planEditing ? (
-                <textarea value={planNotes} onChange={e => setPlanNotes(e.target.value)}
-                  placeholder="Ex: Beber 2L de água por dia, evitar processados..." rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 resize-none" />
-              ) : (
-                <div className="bg-ui-card border border-white/[0.06] rounded-xl p-3">
-                  <p className="text-sm text-white/50 whitespace-pre-wrap">{planNotes}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {tab === 'plan' && <MealPlanEditor clientId={id} />}
 
       {/* ── Tab: Documentos ── */}
       {tab === 'docs' && (

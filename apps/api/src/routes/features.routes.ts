@@ -35,7 +35,7 @@ export async function featuresRoutes(app: FastifyInstance) {
     const { clientId } = request.params as { clientId: string }
     const { title, meals, notes } = request.body as {
       title?: string
-      meals: Array<{ id: string; name: string; time: string; items: string[]; notes?: string }>
+      meals: Array<{ id: string; name: string; time: string; items: any[]; notes?: string }>
       notes?: string
     }
 

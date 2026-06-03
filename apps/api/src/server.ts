@@ -20,6 +20,7 @@ import { adminRoutes }   from './routes/admin.routes'
 import { featuresRoutes } from './routes/features.routes'
 import { servicesRoutes } from './routes/services.routes'
 import { googleCalendarRoutes } from './routes/google-calendar.routes'
+import { foodsRoutes } from './routes/foods.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 import { readFileSync } from 'fs'
@@ -90,6 +91,7 @@ app.register(adminRoutes,    { prefix: '/api/admin' })
 app.register(featuresRoutes, { prefix: '/api/features' })
 app.register(servicesRoutes,        { prefix: '/api/services' })
 app.register(googleCalendarRoutes,  { prefix: '/api/google-calendar' })
+app.register(foodsRoutes,           { prefix: '/api/foods' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))
