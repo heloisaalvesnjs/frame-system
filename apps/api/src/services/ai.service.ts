@@ -13,21 +13,33 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 const genai     = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 const groq      = new Groq({ apiKey: process.env.GROQ_API_KEY || '' })
 
+// Modelos Claude em ordem de preferência (mais novo → mais antigo como fallback)
+const CLAUDE_MODELS = [
+  'claude-haiku-4-5',
+  'claude-3-5-haiku-20241022',
+  'claude-3-haiku-20240307',
+]
+
 async function callClaude(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
-  // Prompt Cache: system prompt cacheado por 5 min → reduz custo de input em ~90%
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 350,
-    system: [
-      {
-        type:          'text',
-        text:          systemPrompt,
-        cache_control: { type: 'ephemeral' },
-      } as any,
-    ],
-    messages: [...messages, { role: 'user', content: userMessage }],
-  })
-  return response.content[0].type === 'text' ? response.content[0].text : ''
+  let lastError: any
+  for (const model of CLAUDE_MODELS) {
+    try {
+      const response = await anthropic.messages.create({
+        model,
+        max_tokens: 350,
+        system: systemPrompt,
+        messages: [...messages, { role: 'user', content: userMessage }],
+      })
+      return response.content[0].type === 'text' ? response.content[0].text : ''
+    } catch (err: any) {
+      const status = err?.status ?? err?.error?.type ?? err?.message ?? 'unknown'
+      console.warn(`[AI] Claude model ${model} falhou (${status}), tentando próximo...`)
+      lastError = err
+      // Se for erro de autenticação/chave, não adianta tentar outros modelos
+      if (err?.status === 401 || err?.status === 403) throw err
+    }
+  }
+  throw lastError
 }
 
 async function callGemini(systemPrompt: string, messages: { role: 'user' | 'assistant', content: string }[], userMessage: string): Promise<string> {
