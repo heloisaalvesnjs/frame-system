@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Bot, Clock, Moon } from 'lucide-react'
+import { Moon } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -450,45 +450,33 @@ function TabHorarios() {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────
-const TABS = [
-  { id: 'assistente', label: 'Assistente', icon: Bot   },
-  { id: 'horarios',   label: 'Horários',   icon: Clock },
-]
-
 export default function ConfiguracoesPage() {
-  const [activeTab, setActiveTab] = useState('assistente')
-
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
+    <div className="p-6 max-w-3xl mx-auto space-y-8">
+      <div>
         <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Configurações</h1>
         <p className="text-sm text-t2 mt-0.5">Configure sua assistente e horários de atendimento</p>
       </div>
 
+      {/* Seção: Assistente */}
       <Card>
-        <div className="px-6" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex gap-0.5">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-mono border-b-2 transition-all duration-150 -mb-px tracking-wide',
-                  activeTab === id
-                    ? 'border-brand-500 text-brand-500'
-                    : 'border-transparent text-t3 hover:text-t2'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <p className="text-sm font-semibold text-t1">Assistente</p>
+          <p className="text-xs text-t3 mt-0.5">Personalidade, tom de voz e mensagem de boas-vindas</p>
         </div>
-
         <CardContent className="py-6">
-          {activeTab === 'assistente' && <TabAssistente />}
-          {activeTab === 'horarios'   && <TabHorarios />}
+          <TabAssistente />
+        </CardContent>
+      </Card>
+
+      {/* Seção: Horários */}
+      <Card>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <p className="text-sm font-semibold text-t1">Horários de atendimento</p>
+          <p className="text-xs text-t3 mt-0.5">Dias e horários disponíveis para agendamento</p>
+        </div>
+        <CardContent className="py-6">
+          <TabHorarios />
         </CardContent>
       </Card>
     </div>

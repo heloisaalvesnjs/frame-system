@@ -10,7 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/clientes':      'Clientes',
   '/servicos':      'Serviços',
   '/followup':      'Follow-up',
-  '/treinamento':   'Treinamento',
+  '/treinamento':   'Assistente',
   '/whatsapp':      'WhatsApp',
   '/configuracoes': 'Configurações',
   '/onboarding':    'Configuração inicial',
