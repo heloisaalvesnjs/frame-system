@@ -31,28 +31,29 @@ export async function assistantRoutes(app: FastifyInstance) {
   // POST /api/assistants — cria ou atualiza assistente
   app.post('/', auth, async (request, reply) => {
     const { id } = (request as any).user
+    const ns = (f?: z.ZodTypeAny) => z.string().nullish().transform(v => v ?? undefined).pipe(f ?? z.string().optional())
     const schema = z.object({
       name: z.string().min(1),
       tone: z.enum(['acolhedor', 'formal', 'descontraido']).default('acolhedor'),
-      greeting_message: z.string().optional(),
-      consultation_price: z.string().optional(),
-      consultation_modalities: z.string().optional(),
-      specialties: z.string().optional(),
-      vacation_mode: z.boolean().optional(),
-      vacation_message: z.string().optional(),
-      followup_enabled: z.boolean().optional(),
-      followup_delay_hours: z.number().int().min(1).max(48).optional(),
-      service_plans: z.string().optional(),
-      nutri_display_name: z.string().optional(),
+      greeting_message: z.string().nullish().transform(v => v ?? undefined),
+      consultation_price: z.string().nullish().transform(v => v ?? undefined),
+      consultation_modalities: z.string().nullish().transform(v => v ?? undefined),
+      specialties: z.string().nullish().transform(v => v ?? undefined),
+      vacation_mode: z.boolean().nullish().transform(v => v ?? undefined),
+      vacation_message: z.string().nullish().transform(v => v ?? undefined),
+      followup_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      followup_delay_hours: z.number().int().min(1).max(48).nullish().transform(v => v ?? undefined),
+      service_plans: z.string().nullish().transform(v => v ?? undefined),
+      nutri_display_name: z.string().nullish().transform(v => v ?? undefined),
       emoji_level: z.number().int().min(1).max(5).default(3),
       func_prospeccao: z.boolean().default(true),
       func_triagem: z.boolean().default(true),
       func_agendamento: z.boolean().default(true),
-      followup_message_1: z.string().optional(),
-      followup_message_2: z.string().optional(),
-      services_message: z.string().optional(),
-      services_message_enabled: z.boolean().optional(),
-    })
+      followup_message_1: z.string().nullish().transform(v => v ?? undefined),
+      followup_message_2: z.string().nullish().transform(v => v ?? undefined),
+      services_message: z.string().nullish().transform(v => v ?? undefined),
+      services_message_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+    }).passthrough()
 
     const body = schema.parse(request.body)
 

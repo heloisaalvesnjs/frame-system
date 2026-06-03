@@ -9,9 +9,9 @@ export async function servicesRoutes(app: FastifyInstance) {
   app.get('/', auth, async (request, reply) => {
     const { id } = (request as any).user
     const services = await query(
-      `SELECT id, name, category, price, description, is_active, sort_order
+      `SELECT id, name, category, modality, price, description, is_active, sort_order
        FROM services WHERE nutritionist_id = $1 AND is_active = true
-       ORDER BY sort_order, created_at`,
+       ORDER BY modality, sort_order, created_at`,
       [id]
     )
     return reply.send({ services })
@@ -23,16 +23,17 @@ export async function servicesRoutes(app: FastifyInstance) {
     const schema = z.object({
       name:        z.string().min(1).max(100),
       category:    z.string().default('Consulta'),
+      modality:    z.enum(['online', 'presencial', 'ambos']).default('presencial'),
       price:       z.string().optional(),
       description: z.string().optional(),
     })
     const body = schema.parse(request.body)
 
     const [service] = await query(
-      `INSERT INTO services (nutritionist_id, name, category, price, description)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, category, price, description, is_active, sort_order`,
-      [id, body.name, body.category, body.price ?? null, body.description ?? null]
+      `INSERT INTO services (nutritionist_id, name, category, modality, price, description)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, category, modality, price, description, is_active, sort_order`,
+      [id, body.name, body.category, body.modality, body.price ?? null, body.description ?? null]
     )
     return reply.code(201).send({ service })
   })
@@ -44,6 +45,7 @@ export async function servicesRoutes(app: FastifyInstance) {
     const schema = z.object({
       name:        z.string().min(1).max(100).optional(),
       category:    z.string().optional(),
+      modality:    z.enum(['online', 'presencial', 'ambos']).optional(),
       price:       z.string().optional(),
       description: z.string().optional(),
     })
@@ -53,11 +55,12 @@ export async function servicesRoutes(app: FastifyInstance) {
       `UPDATE services SET
          name        = COALESCE($3, name),
          category    = COALESCE($4, category),
-         price       = COALESCE($5, price),
-         description = COALESCE($6, description)
+         modality    = COALESCE($5, modality),
+         price       = COALESCE($6, price),
+         description = COALESCE($7, description)
        WHERE id = $1 AND nutritionist_id = $2
-       RETURNING id, name, category, price, description, is_active, sort_order`,
-      [serviceId, id, body.name, body.category, body.price, body.description]
+       RETURNING id, name, category, modality, price, description, is_active, sort_order`,
+      [serviceId, id, body.name, body.category, body.modality, body.price, body.description]
     )
     if (!service) return reply.code(404).send({ error: 'Serviço não encontrado' })
     return reply.send({ service })

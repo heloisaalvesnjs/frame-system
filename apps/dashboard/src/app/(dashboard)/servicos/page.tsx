@@ -12,43 +12,49 @@ import { cn } from '@/lib/utils'
 
 const CATEGORIES = ['Consulta', 'Pacote', 'Retorno', 'Avaliação', 'Outro']
 
-interface Service { id: string; name: string; category: string; price: string; description: string }
+interface Service { id: string; name: string; category: string; modality: 'online' | 'presencial' | 'ambos'; price: string; description: string }
 
 // ── Templates pré-definidos ───────────────────────────────────────
 const TEMPLATES: Omit<Service, 'id'>[] = [
   {
     name: 'Consultoria Online – Trimestral',
     category: 'Pacote',
+    modality: 'online',
     price: '3x de R$248,84',
     description: '90 dias · plataforma completa + suporte · check-in quinzenal com ajustes reais · suporte ativo no WhatsApp · grupo individualizado direto com o David e equipe'
   },
   {
     name: 'Consultoria Online – Semestral',
     category: 'Pacote',
+    modality: 'online',
     price: '6x de R$206,79',
     description: 'Melhor custo-benefício · grupo com David e equipe · área fitness inclusa · acompanhamento quinzenal · plano alimentar personalizado · menos de R$7/dia'
   },
   {
     name: 'Consultoria Online – Anual',
     category: 'Pacote',
+    modality: 'online',
     price: '12x de R$156,27',
     description: 'Maior transformação · tudo incluso · plataforma completa + suporte · plano alimentar para sua realidade · acompanhamento de verdade, não genérico'
   },
   {
-    name: 'Consultoria Premium – Mensal',
+    name: 'Consultoria Presencial – Mensal',
     category: 'Consulta',
+    modality: 'presencial',
     price: 'R$600 à vista',
     description: '1 consulta presencial · avaliação física · plano personalizado · suporte WhatsApp · Dossiê Evolutivo'
   },
   {
-    name: 'Consultoria Premium – Trimestral',
+    name: 'Consultoria Presencial – Trimestral',
     category: 'Pacote',
+    modality: 'presencial',
     price: '3x de R$414,63',
     description: 'Mais popular · 3 consultas presenciais · 3 avaliações físicas · treino individual elaborado · check-in quinzenal · Dossiê Evolutivo completo'
   },
   {
-    name: 'Consultoria Premium – Semestral',
+    name: 'Consultoria Presencial – Semestral',
     category: 'Pacote',
+    modality: 'presencial',
     price: '6x de R$362,73',
     description: 'Máxima transformação · 6 consultas · 6 monitoramentos · treino individual · ficha de treino · Dossiê Evolutivo semestral · planejamento dos próximos passos'
   },
@@ -61,15 +67,32 @@ const DEFAULT_SERVICES_MSG =
 
 Qual dessas faz mais sentido pra você agora? Se tiver dúvida, me conta e te ajudo a escolher a melhor!`
 
+const MODALITY_OPTIONS = [
+  { value: 'online',     label: '🌐 Online',      color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+  { value: 'presencial', label: '📍 Presencial',   color: 'text-violet-500 bg-violet-500/10 border-violet-500/20' },
+  { value: 'ambos',      label: '↔ Ambos',         color: 'text-brand-500 bg-brand-500/10 border-brand-500/20' },
+] as const
+
+function ModalityBadge({ modality }: { modality: string }) {
+  const opt = MODALITY_OPTIONS.find(o => o.value === modality)
+  if (!opt) return null
+  return (
+    <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${opt.color}`}>
+      {opt.label}
+    </span>
+  )
+}
+
 function ServiceForm({ initial, onSave, onCancel }: {
   initial?: Partial<Service>
   onSave: (data: Omit<Service, 'id'>) => Promise<void>
   onCancel: () => void
 }) {
   const [form, setForm] = useState({
-    name: initial?.name || '',
-    category: initial?.category || 'Consulta',
-    price: initial?.price || '',
+    name:        initial?.name || '',
+    category:    initial?.category || 'Consulta',
+    modality:    (initial?.modality || 'presencial') as 'online' | 'presencial' | 'ambos',
+    price:       initial?.price || '',
     description: initial?.description || '',
   })
   const [saving, setSaving] = useState(false)
@@ -82,22 +105,44 @@ function ServiceForm({ initial, onSave, onCancel }: {
   }
 
   return (
-    <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+    <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
       <p className="font-mono text-[11px] text-t2 tracking-wider">{initial?.id ? 'EDITAR SERVIÇO' : 'NOVO SERVIÇO'}</p>
+
+      {/* Modalidade — destaque no topo */}
+      <div>
+        <label className="text-[12px] font-medium text-t2 font-mono tracking-wide block mb-2">Modalidade</label>
+        <div className="flex gap-2">
+          {MODALITY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setForm(v => ({ ...v, modality: opt.value }))}
+              className={cn(
+                'flex-1 py-2 rounded-lg border text-sm font-medium transition-all',
+                form.modality === opt.value ? opt.color : 'text-t3 hover:text-t2'
+              )}
+              style={{ borderColor: form.modality === opt.value ? undefined : 'var(--border)' }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <Input label="Nome do serviço" placeholder="Ex: Consulta inicial" value={form.name}
+        <Input label="Nome do plano" placeholder="Ex: Mensal, Trimestral..." value={form.name}
           onChange={e => setForm(v => ({ ...v, name: e.target.value }))} />
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] font-medium text-t2 font-mono tracking-wide">Categoria</label>
           <select value={form.category} onChange={e => setForm(v => ({ ...v, category: e.target.value }))}
             className="h-9 w-full rounded-lg px-3 text-sm text-t1 focus:outline-none"
-            style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <Input label="Valor" placeholder="Ex: R$ 250 ou 3x de R$148" value={form.price}
           onChange={e => setForm(v => ({ ...v, price: e.target.value }))} />
-        <Input label="Descrição" placeholder="O que está incluso..." value={form.description}
+        <Input label="Descrição curta" placeholder="O que está incluso..." value={form.description}
           onChange={e => setForm(v => ({ ...v, description: e.target.value }))} />
       </div>
       <div className="flex gap-2 pt-1">
@@ -301,51 +346,54 @@ export default function ServicosPage() {
             <ShoppingBag className="w-5 h-5 text-brand-500" />
           </div>
           <p className="text-sm text-t2">Nenhum serviço ainda.</p>
-          <p className="text-xs text-t3">Use o botão "Templates" para adicionar os planos do David rapidamente.</p>
+          <p className="text-xs text-t3">Use o botão "Templates" para adicionar os planos rapidamente.</p>
           <button onClick={() => setShowTemplates(true)}
             className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 text-sm font-medium hover:bg-brand-500/15 transition-colors">
             <Sparkles className="w-3.5 h-3.5" /> Carregar templates
           </button>
         </div>
       ) : services.length > 0 ? (
-        <Card>
-          <div className="rounded-t-2xl overflow-hidden" style={{ borderBottom: '1px solid var(--border)' }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: 'var(--raised)' }}>
-                  <th className="px-4 py-3 text-left font-mono text-[10px] text-t3 tracking-wider">NOME</th>
-                  <th className="px-4 py-3 text-left font-mono text-[10px] text-t3 tracking-wider">CATEGORIA</th>
-                  <th className="px-4 py-3 text-left font-mono text-[10px] text-t3 tracking-wider">VALOR</th>
-                  <th className="px-4 py-3 text-right font-mono text-[10px] text-t3 tracking-wider">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((s, i) => (
-                  <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-t1">{s.name}</p>
-                      {s.description && <p className="text-xs text-t3 mt-0.5 line-clamp-1">{s.description}</p>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-[10px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">{s.category}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-t1">{s.price || '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setEditing(s)} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => remove(s.id)} className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="space-y-4">
+          {(['online', 'presencial', 'ambos'] as const).map(mod => {
+            const group = services.filter(s => (s.modality || 'presencial') === mod)
+            if (group.length === 0) return null
+            const labelMap = { online: '🌐 Online', presencial: '📍 Presencial', ambos: '↔ Online & Presencial' }
+            return (
+              <Card key={mod}>
+                <div className="px-5 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--raised)' }}>
+                  <span className="text-sm font-semibold text-t1">{labelMap[mod]}</span>
+                  <span className="font-mono text-[10px] text-t3 ml-1">{group.length} plano{group.length !== 1 ? 's' : ''}</span>
+                </div>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {group.map((s, i) => (
+                      <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-t1">{s.name}</p>
+                          {s.description && <p className="text-xs text-t3 mt-0.5 line-clamp-1">{s.description}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-[10px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">{s.category}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-t1 whitespace-nowrap">{s.price || '—'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => setEditing(s)} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => remove(s.id)} className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            )
+          })}
+        </div>
       ) : null}
 
       {/* ── Mensagem de Apresentação dos Planos ─────────────────── */}
