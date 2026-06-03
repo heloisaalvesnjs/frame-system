@@ -99,19 +99,64 @@ function sumMealMacros(items: FoodEntry[]) {
 // ── TacoFood (resposta da API) ────────────────────────────────────────────────
 interface TacoResult { id:number; name:string; category:string; kcal:number; protein:number; carbs:number; fat:number; fiber:number; typical_amount:number; typical_unit:string; unit_weight_g:number }
 
+// ── TACO visual helpers ───────────────────────────────────────────────────────
+const CAT_EMOJI: Record<string, string> = {
+  'Cereais e grãos':'🌾','Tubérculos':'🥔','Proteínas animais':'🥩',
+  'Ovos e derivados':'🥚','Leite e derivados':'🥛','Leguminosas':'🫘',
+  'Verduras e legumes':'🥦','Frutas':'🍎','Gorduras e óleos':'🫒',
+  'Oleaginosas e sementes':'🥜','Açúcares e adoçantes':'🍯','Bebidas':'☕','Suplementos':'💊',
+}
+// Specific food emojis for a nicer grid
+const FOOD_EMOJI: Record<number,string> = {
+  1:'🍚',2:'🍚',3:'🥖',4:'🍞',5:'🍞',6:'🥣',7:'🍝',8:'🍝',9:'🥞',10:'🌿',
+  11:'🥣',12:'🌽',13:'🥣',14:'🌽',15:'🥣',16:'🍞',17:'🍠',18:'🥔',19:'🌿',
+  20:'🌿',21:'🌿',22:'🍗',23:'🍗',24:'🥩',25:'🥩',26:'🐟',27:'🐟',28:'🐠',
+  29:'🐟',30:'🥩',31:'🦃',32:'🦐',33:'🥩',34:'🥩',35:'🥚',36:'🍳',37:'🥚',
+  38:'🥚',39:'🥛',40:'🥛',41:'🥛',42:'🫙',43:'🫙',44:'🫙',45:'🧀',46:'🧀',
+  47:'🧀',48:'🧀',49:'🧀',50:'🥛',51:'🥛',52:'🫘',53:'🫘',54:'🫘',55:'🫘',
+  56:'🟢',57:'🫘',58:'🫘',59:'🥦',60:'🥬',61:'🥬',62:'🍅',63:'🥗',64:'🥕',
+  65:'🥒',66:'🍆',67:'🥒',68:'🫚',69:'🥬',70:'🥦',71:'🫑',72:'🫛',73:'🌿',
+  74:'🌿',75:'🌽',76:'🍌',77:'🍎',78:'🍊',79:'🍈',80:'🍍',81:'🍇',82:'🍓',
+  83:'🍈',84:'🍉',85:'🥑',86:'🥭',87:'🍐',88:'🍈',89:'🥝',90:'🍊',91:'🍑',
+  92:'🥥',93:'🫒',94:'🥥',95:'🧈',96:'🧈',97:'🫒',98:'🥜',99:'🌰',100:'🥜',
+  101:'🌰',102:'🥜',103:'⚫',104:'🟤',105:'🌻',106:'⚪',107:'🌰',108:'🍯',
+  109:'🍬',110:'🍬',111:'🍓',112:'🍊',113:'☕',114:'🍵',115:'🥤',
+  116:'💪',117:'💪',118:'🌱',119:'💊',120:'🔋',
+}
+const CATEGORY_GROUPS = [
+  { id:'prot',  label:'Proteínas',    emoji:'🥩', cats:['Proteínas animais','Ovos e derivados','Leguminosas'] },
+  { id:'carb',  label:'Carboidratos', emoji:'🌾', cats:['Cereais e grãos','Tubérculos'] },
+  { id:'lact',  label:'Laticínios',   emoji:'🥛', cats:['Leite e derivados'] },
+  { id:'veg',   label:'Vegetais',     emoji:'🥦', cats:['Verduras e legumes'] },
+  { id:'fruit', label:'Frutas',       emoji:'🍎', cats:['Frutas'] },
+  { id:'gord',  label:'Gorduras',     emoji:'🫒', cats:['Gorduras e óleos','Oleaginosas e sementes'] },
+  { id:'other', label:'Outros',       emoji:'✨', cats:['Açúcares e adoçantes','Bebidas','Suplementos'] },
+]
+
+// ── Default meals template ────────────────────────────────────────────────────
+const DEFAULT_MEALS: MealItem[] = [
+  { id:'dm-1', name:'Café da manhã',  time:'07:00', items:[], notes:'' },
+  { id:'dm-2', name:'Almoço',         time:'12:00', items:[], notes:'' },
+  { id:'dm-3', name:'Café da tarde',  time:'15:30', items:[], notes:'' },
+  { id:'dm-4', name:'Jantar',         time:'19:00', items:[], notes:'' },
+  { id:'dm-5', name:'Ceia',           time:'21:00', items:[], notes:'' },
+]
+
 // ── MealPlanEditor ────────────────────────────────────────────────────────────
 function MealPlanEditor({ clientId }: { clientId: string }) {
   const qc = useQueryClient()
   const [title, setTitle] = useState('Plano Alimentar')
-  const [meals, setMeals] = useState<MealItem[]>([])
+  const [meals, setMeals] = useState<MealItem[]>(DEFAULT_MEALS.map(m => ({ ...m, id: crypto.randomUUID() })))
   const [notes, setNotes] = useState('')
   const [loaded, setLoaded] = useState(false)
   // food search per meal
   const [searchQ, setSearchQ] = useState<Record<string, string>>({})
   const [results, setResults] = useState<Record<string, TacoResult[]>>({})
-  // substitution modal
+  // substitution modal state
   const [subTarget, setSubTarget] = useState<{ mealId: string; entry: FoodEntry } | null>(null)
-  const [subList, setSubList] = useState<TacoResult[]>([])
+  const [allFoods, setAllFoods] = useState<TacoResult[]>([])
+  const [subSearch, setSubSearch] = useState('')
+  const [subCat, setSubCat] = useState<string | null>(null)
   const [subLoading, setSubLoading] = useState(false)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const UNITS = ['g','ml','unidade','fatia','colher de sopa','colher de chá','xícara','porção']
@@ -187,28 +232,35 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
 
   // ── Tabela de Substituições ──────────────────────────────────────────
   async function openSub(mealId: string, entry: FoodEntry) {
-    if (!entry.food_id) return
-    setSubTarget({ mealId, entry }); setSubList([]); setSubLoading(true)
+    setSubTarget({ mealId, entry }); setSubSearch(''); setSubCat(null); setSubLoading(true)
     try {
-      const { data } = await api.get(`/api/foods/${entry.food_id}/substitutions`)
-      setSubList(data.substitutions ?? [])
+      const { data } = await api.get('/api/foods/all')
+      setAllFoods(data.foods ?? [])
     } catch {} finally { setSubLoading(false) }
   }
 
   function applySub(sub: TacoResult) {
     if (!subTarget) return
     const { mealId, entry } = subTarget
-    // Calcula a quantidade equivalente em gramas para manter as mesmas calorias
     const targetKcal = entryMacros(entry)?.kcal ?? 0
-    const equivGrams = targetKcal > 0 && sub.kcal > 0 ? Math.round(targetKcal * 100 / sub.kcal) : entry.quantity
+    const equivG = targetKcal > 0 && sub.kcal > 0 ? Math.round(targetKcal * 100 / sub.kcal) : entry.quantity
     patchEntry(mealId, entry.id, {
-      food_id: sub.id, name: sub.name, quantity: equivGrams, unit: 'g',
+      food_id: sub.id, name: sub.name, quantity: equivG, unit: 'g',
       kcal_per_100g: sub.kcal, protein_per_100g: sub.protein,
       carbs_per_100g: sub.carbs, fat_per_100g: sub.fat,
       fiber_per_100g: sub.fiber, unit_weight_g: sub.unit_weight_g,
     })
-    setSubTarget(null); setSubList([])
+    setSubTarget(null); setAllFoods([])
   }
+
+  // Filtro da tabela de trocas
+  const filteredSubs = allFoods.filter(f => {
+    if (f.id === subTarget?.entry.food_id) return false
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const matchSearch = subSearch.trim().length < 2 || norm(f.name).includes(norm(subSearch))
+    const matchCat = !subCat || CATEGORY_GROUPS.find(g => g.id === subCat)?.cats.includes(f.category)
+    return matchSearch && matchCat
+  })
 
   // grand total
   const grand = meals.reduce((acc, m) => {
@@ -413,80 +465,107 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
           style={{ background:'var(--raised)', border:'1px solid var(--border)' }} />
       </div>
 
-      {/* ── Tabela de Substituições modal ── */}
+      {/* ── Tabela de Trocas modal ── */}
       {subTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => { setSubTarget(null); setSubList([]) }}>
-          <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
-            style={{ background:'var(--surface)', border:'1px solid var(--border)' }}
+          onClick={() => { setSubTarget(null); setAllFoods([]) }}>
+          <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            style={{ background:'var(--surface)', border:'1px solid var(--border)', maxHeight:'90vh' }}
             onClick={e => e.stopPropagation()}>
 
-            {/* Modal header */}
-            <div className="px-5 py-4 flex items-start justify-between gap-3" style={{ borderBottom:'1px solid var(--border)' }}>
-              <div>
-                <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-1">Tabela de trocas</p>
-                <p className="text-base font-bold text-t1">{subTarget.entry.name}</p>
-                {(() => {
-                  const m = entryMacros(subTarget.entry)
-                  const g = entryGrams(subTarget.entry)
-                  if (!m) return null
-                  return (
-                    <p className="text-xs text-t3 mt-1">
-                      {subTarget.entry.quantity}{subTarget.entry.unit !== 'g' ? ` ${subTarget.entry.unit}` : 'g'}
-                      {subTarget.entry.unit !== 'g' && subTarget.entry.unit !== 'ml' && ` (≈${g}g)`}
-                      {' · '}
-                      <span className="text-amber-500 font-semibold">{m.kcal} kcal</span>
-                      {' · '}P:{m.protein}g · C:{m.carbs}g · G:{m.fat}g
-                    </p>
-                  )
-                })()}
-              </div>
-              <button onClick={() => { setSubTarget(null); setSubList([]) }} className="text-t3 hover:text-t1 transition-colors flex-shrink-0">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Substitution list */}
-            <div className="max-h-80 overflow-y-auto">
-              {subLoading ? (
-                <div className="flex justify-center py-10"><RefreshCw className="w-5 h-5 text-brand-400 animate-spin" /></div>
-              ) : subList.length === 0 ? (
-                <p className="text-sm text-t3 text-center py-10">Nenhuma substituição encontrada na mesma categoria.</p>
-              ) : subList.map((s, i) => {
-                const targetKcal = entryMacros(subTarget.entry)?.kcal ?? 0
-                const equivG = targetKcal > 0 && s.kcal > 0 ? Math.round(targetKcal * 100 / s.kcal) : null
-                return (
-                  <div key={s.id} className={`flex items-center gap-4 px-5 py-3.5 ${i > 0 ? 'border-t' : ''}`} style={{ borderColor:'var(--border)' }}>
-                    {/* Equivalent amount pill */}
-                    {equivG && (
-                      <div className="flex-shrink-0 text-center">
-                        <p className="text-lg font-bold text-brand-500 tabular-nums leading-none">{equivG}</p>
-                        <p className="text-[9px] text-t3 mt-0.5">gramas</p>
-                      </div>
-                    )}
-                    {/* Food info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-t1">{s.name}</p>
-                      <p className="text-[10px] text-t3 mt-0.5 flex gap-2">
-                        <span className="text-amber-500">{equivG ? Math.round(s.kcal * equivG / 100) : s.kcal} kcal</span>
-                        <span>P:{equivG ? Math.round(s.protein * equivG / 100 * 10)/10 : s.protein}g</span>
-                        <span>C:{equivG ? Math.round(s.carbs * equivG / 100 * 10)/10 : s.carbs}g</span>
+            {/* Header */}
+            <div className="px-5 pt-5 pb-4 flex-shrink-0" style={{ borderBottom:'1px solid var(--border)' }}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-1">Tabela de trocas</p>
+                  <p className="text-lg font-bold text-t1 leading-tight">{subTarget.entry.name}</p>
+                  {(() => {
+                    const m = entryMacros(subTarget.entry)
+                    const g = entryGrams(subTarget.entry)
+                    if (!m) return null
+                    return (
+                      <p className="text-xs text-t3 mt-1 flex flex-wrap gap-x-2">
+                        <span>{subTarget.entry.quantity}{subTarget.entry.unit !== 'g' ? ` ${subTarget.entry.unit}` : 'g'}{subTarget.entry.unit !== 'g' && subTarget.entry.unit !== 'ml' && ` (≈${g}g)`}</span>
+                        <span>·</span>
+                        <span className="text-amber-500 font-semibold">{m.kcal} kcal</span>
+                        <span>P:{m.protein}g</span>
+                        <span>C:{m.carbs}g</span>
+                        <span>G:{m.fat}g</span>
                       </p>
-                    </div>
-                    {/* Apply */}
-                    <button onClick={() => applySub(s)}
-                      className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-500 hover:bg-brand-500/10 transition-colors border"
-                      style={{ borderColor:'var(--border)' }}>
-                      Trocar
-                    </button>
-                  </div>
-                )
-              })}
+                    )
+                  })()}
+                </div>
+                <button onClick={() => { setSubTarget(null); setAllFoods([]) }}
+                  className="text-t3 hover:text-t1 transition-colors flex-shrink-0 mt-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3 pointer-events-none" />
+                <input value={subSearch} onChange={e => setSubSearch(e.target.value)}
+                  placeholder="O que você quer trocar? (arroz, banana, frango…)"
+                  autoFocus
+                  className="w-full pl-9 pr-3 py-2.5 text-sm text-t1 placeholder:text-t3 focus:outline-none rounded-xl"
+                  style={{ background:'var(--raised)', border:'1px solid var(--border)' }} />
+              </div>
+
+              {/* Category pills */}
+              <div className="flex gap-1.5 flex-wrap">
+                <button onClick={() => setSubCat(null)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!subCat ? 'bg-brand-500 text-white' : 'text-t2 hover:bg-raised'}`}
+                  style={!subCat ? {} : { border:'1px solid var(--border)' }}>
+                  Todos
+                </button>
+                {CATEGORY_GROUPS.map(g => (
+                  <button key={g.id} onClick={() => setSubCat(subCat === g.id ? null : g.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${subCat === g.id ? 'bg-brand-500 text-white' : 'text-t2 hover:bg-raised'}`}
+                    style={subCat === g.id ? {} : { border:'1px solid var(--border)' }}>
+                    {g.emoji} {g.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="px-5 py-3 flex items-center gap-2 text-xs text-t3" style={{ borderTop:'1px solid var(--border)', background:'var(--raised)' }}>
+            {/* Foods grid */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {subLoading ? (
+                <div className="flex justify-center py-12"><RefreshCw className="w-5 h-5 text-brand-400 animate-spin" /></div>
+              ) : filteredSubs.length === 0 ? (
+                <p className="text-sm text-t3 text-center py-12">Nenhum alimento encontrado.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {filteredSubs.map(s => {
+                    const targetKcal = entryMacros(subTarget.entry)?.kcal ?? 0
+                    const equivG = targetKcal > 0 && s.kcal > 0 ? Math.round(targetKcal * 100 / s.kcal) : null
+                    const equivKcal = equivG ? Math.round(s.kcal * equivG / 100) : s.kcal
+                    const emoji = FOOD_EMOJI[s.id] ?? CAT_EMOJI[s.category] ?? '🍽️'
+                    return (
+                      <button key={s.id} onClick={() => applySub(s)}
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl text-center hover:bg-brand-500/8 hover:border-brand-500/30 transition-all active:scale-95 group"
+                        style={{ border:'1px solid var(--border)', background:'var(--raised)' }}>
+                        <span className="text-3xl leading-none">{emoji}</span>
+                        {equivG && (
+                          <div>
+                            <p className="text-base font-bold text-brand-500 tabular-nums leading-none">{equivG}g</p>
+                          </div>
+                        )}
+                        <p className="text-[11px] font-medium text-t1 leading-tight line-clamp-2 min-h-[2.5em]">{s.name}</p>
+                        <p className="text-[10px] text-amber-500 font-semibold">{equivKcal} kcal</p>
+                        <p className="text-[9px] text-t3">P:{equivG ? Math.round(s.protein*equivG/100*10)/10 : s.protein}g C:{equivG ? Math.round(s.carbs*equivG/100*10)/10 : s.carbs}g</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 flex items-center gap-2 text-[11px] text-t3 flex-shrink-0"
+              style={{ borderTop:'1px solid var(--border)', background:'var(--raised)' }}>
               <ArrowRightLeft className="w-3.5 h-3.5 flex-shrink-0" />
-              Quantidades calculadas para manter as mesmas calorias do alimento original.
+              Quantidades em gramas calculadas para manter as mesmas calorias do alimento original.
             </div>
           </div>
         </div>

@@ -4,6 +4,14 @@ import { searchFoods, getSubstitutions, calcMacros, UNIT_WEIGHTS } from '../data
 export async function foodsRoutes(app: FastifyInstance) {
 
   /**
+   * GET /api/foods/all — retorna todos os alimentos da tabela TACO
+   */
+  app.get('/all', async (_request, reply) => {
+    const { TACO } = await import('../data/taco')
+    return reply.send({ foods: TACO })
+  })
+
+  /**
    * GET /api/foods/search?q=frango&limit=10
    * Público — busca alimentos da tabela TACO
    */
