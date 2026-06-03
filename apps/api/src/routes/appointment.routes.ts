@@ -112,6 +112,66 @@ export async function appointmentRoutes(app: FastifyInstance) {
     return reply.code(201).send(appointment)
   })
 
+  // POST /api/appointments/manual — criação manual pelo nutri (autenticado)
+  app.post('/manual', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const schema = z.object({
+      client_id:    z.string().uuid().optional(),
+      client_name:  z.string().optional(),
+      client_phone: z.string().optional(),
+      scheduled_at: z.string(),
+      duration:     z.number().int().min(15).max(240).default(50),
+      modality:     z.enum(['online', 'presencial']).default('presencial'),
+      location_id:  z.string().uuid().optional(),
+      notes:        z.string().optional(),
+    })
+    const body = schema.parse(request.body)
+
+    // Resolve client
+    let clientId = body.client_id
+    if (!clientId && body.client_phone) {
+      const phone = body.client_phone.replace(/\D/g, '')
+      let cl = await queryOne<any>(
+        'SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2',
+        [nutritionistId, phone]
+      )
+      if (!cl && body.client_name) {
+        const [newCl] = await query(
+          'INSERT INTO clients (nutritionist_id, name, phone) VALUES ($1,$2,$3) RETURNING id',
+          [nutritionistId, body.client_name, phone]
+        )
+        cl = newCl
+      }
+      clientId = cl?.id
+    }
+    if (!clientId) return reply.code(400).send({ error: 'Informe o cliente' })
+
+    // Resolve location name
+    let locationName: string | null = null
+    if (body.location_id) {
+      const loc = await queryOne<any>('SELECT name FROM locations WHERE id = $1', [body.location_id])
+      locationName = loc?.name ?? null
+    }
+
+    // Check conflict
+    const conflict = await queryOne(
+      `SELECT id FROM appointments
+       WHERE nutritionist_id = $1 AND scheduled_at = $2 AND status NOT IN ('cancelled')`,
+      [nutritionistId, body.scheduled_at]
+    )
+    if (conflict) return reply.code(409).send({ error: 'Horário já ocupado' })
+
+    const [appt] = await query(
+      `INSERT INTO appointments
+         (nutritionist_id, client_id, scheduled_at, duration, modality, location_id, location_name, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'nutritionist')
+       RETURNING *`,
+      [nutritionistId, clientId, body.scheduled_at, body.duration, body.modality,
+       body.location_id ?? null, locationName, body.notes ?? null]
+    )
+    return reply.code(201).send({ appointment: appt })
+  })
+
   // PATCH /api/appointments/:id/status
   app.patch('/:id/status', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user

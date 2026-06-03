@@ -410,6 +410,33 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial TEXT
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial_enabled BOOLEAN DEFAULT false;
 ALTER TABLE services ADD COLUMN IF NOT EXISTS modality TEXT DEFAULT 'presencial';
 
+-- ── Locais de atendimento ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS locations (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  city            TEXT,
+  address         TEXT,
+  color           TEXT DEFAULT '#6366f1',
+  is_active       BOOLEAN DEFAULT true,
+  sort_order      INT DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Bloqueios de agenda ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS calendar_blocks (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  starts_at       TIMESTAMPTZ NOT NULL,
+  ends_at         TIMESTAMPTZ NOT NULL,
+  reason          TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS location_name TEXT;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS duration INT DEFAULT 50;
+
 -- Google Calendar integration
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -124,9 +124,17 @@ export async function getNextAvailableSlots(
 ): Promise<TimeSlot[]> {
   const allSlots: TimeSlot[] = []
 
-  // Base em horário de Brasília
+  // Busca bloqueios manuais dos próximos maxDays dias
   const now = new Date()
   const brazilNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const endDate = new Date(brazilNow)
+  endDate.setDate(brazilNow.getDate() + maxDays)
+
+  const blocks = await query<any>(
+    `SELECT starts_at, ends_at FROM calendar_blocks
+     WHERE nutritionist_id = $1 AND ends_at >= $2 AND starts_at <= $3`,
+    [nutritionist_id, brazilNow.toISOString(), endDate.toISOString()]
+  ).catch(() => [] as any[])
 
   for (let i = 1; i <= maxDays && allSlots.length < maxSlots; i++) {
     const next = new Date(brazilNow)
@@ -138,7 +146,18 @@ export async function getNextAvailableSlots(
     const dateStr = `${yr}-${mo}-${dy}`
 
     const daySlots = await getAvailableSlots(nutritionist_id, dateStr)
-    allSlots.push(...daySlots)
+
+    // Remove slots que caem dentro de bloqueios manuais
+    const filtered = daySlots.filter(slot => {
+      const slotTime = new Date(slot.datetime)
+      return !blocks.some((b: any) => {
+        const bStart = new Date(b.starts_at)
+        const bEnd   = new Date(b.ends_at)
+        return slotTime >= bStart && slotTime < bEnd
+      })
+    })
+
+    allSlots.push(...filtered)
   }
 
   return allSlots.slice(0, maxSlots)
