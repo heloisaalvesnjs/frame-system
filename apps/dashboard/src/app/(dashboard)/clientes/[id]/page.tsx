@@ -91,8 +91,7 @@ function entryMacros(e: FoodEntry) {
 }
 function sumMealMacros(items: FoodEntry[]) {
   return items.reduce((acc, e) => {
-    const m = entryMacros(e)
-    if (!m) return acc
+    const m = entryMacros(e); if (!m) return acc
     return { kcal: acc.kcal + m.kcal, protein: +(acc.protein + m.protein).toFixed(1), carbs: +(acc.carbs + m.carbs).toFixed(1), fat: +(acc.fat + m.fat).toFixed(1) }
   }, { kcal:0, protein:0, carbs:0, fat:0 })
 }
@@ -106,36 +105,30 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
   const [title, setTitle] = useState('Plano Alimentar')
   const [meals, setMeals] = useState<MealItem[]>([])
   const [notes, setNotes] = useState('')
-  // food search state: mealId → query/results/adding
+  const [loaded, setLoaded] = useState(false)
+  // food search per meal
   const [searchQ, setSearchQ] = useState<Record<string, string>>({})
   const [results, setResults] = useState<Record<string, TacoResult[]>>({})
-  const [adding, setAdding] = useState<Record<string, { food: TacoResult; qty: number; unit: string } | null>>({})
   // substitution modal
   const [subTarget, setSubTarget] = useState<{ mealId: string; entry: FoodEntry } | null>(null)
-  const [subResults, setSubResults] = useState<TacoResult[]>([])
-  const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const [subList, setSubList] = useState<TacoResult[]>([])
+  const [subLoading, setSubLoading] = useState(false)
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const UNITS = ['g','ml','unidade','fatia','colher de sopa','colher de chá','xícara','porção']
 
   const { isLoading } = useQuery<MealPlan | null>({
     queryKey: ['meal-plan', clientId],
-    queryFn: async () => {
-      const { data } = await api.get(`/api/features/clients/${clientId}/meal-plan`)
-      return data.plan
-    },
+    queryFn: async () => { const { data } = await api.get(`/api/features/clients/${clientId}/meal-plan`); return data.plan },
     staleTime: 30_000,
     onSuccess: (plan: MealPlan | null) => {
-      if (plan) {
-        setTitle(plan.title)
-        setNotes(plan.notes ?? '')
-        // migrar itens antigos (string → FoodEntry)
-        const migrated = plan.meals.map((m: any) => ({
+      if (plan && !loaded) {
+        setLoaded(true); setTitle(plan.title); setNotes(plan.notes ?? '')
+        setMeals(plan.meals.map((m: any) => ({
           ...m,
-          items: (m.items ?? []).map((item: any, i: number) =>
-            typeof item === 'string'
-              ? { id: `legacy-${m.id}-${i}`, name: item, quantity: 1, unit: 'porção' }
-              : item
+          items: (m.items ?? []).map((it: any, i: number) =>
+            typeof it === 'string' ? { id:`legacy-${m.id}-${i}`, name:it, quantity:1, unit:'porção' } : it
           ),
-        }))
-        setMeals(migrated)
+        })))
       }
     },
   } as any)
@@ -146,104 +139,92 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
     onError: () => toast.error('Erro ao salvar plano'),
   })
 
-  // ── Food search ─────────────────────────────────────────────────────
-  function handleSearchChange(mealId: string, q: string) {
-    setSearchQ(prev => ({ ...prev, [mealId]: q }))
-    clearTimeout(searchTimers.current[mealId])
-    if (q.trim().length < 2) { setResults(prev => ({ ...prev, [mealId]: [] })); return }
-    searchTimers.current[mealId] = setTimeout(async () => {
+  // ── Food search (debounced) ──────────────────────────────────────────
+  function handleSearch(mealId: string, q: string) {
+    setSearchQ(p => ({ ...p, [mealId]: q }))
+    clearTimeout(timers.current[mealId])
+    if (q.trim().length < 2) { setResults(p => ({ ...p, [mealId]: [] })); return }
+    timers.current[mealId] = setTimeout(async () => {
       try {
         const { data } = await api.get(`/api/foods/search?q=${encodeURIComponent(q)}&limit=8`)
-        setResults(prev => ({ ...prev, [mealId]: data.foods ?? [] }))
+        setResults(p => ({ ...p, [mealId]: data.foods ?? [] }))
       } catch {}
-    }, 280)
+    }, 260)
   }
 
-  function selectFood(mealId: string, food: TacoResult) {
-    setAdding(prev => ({ ...prev, [mealId]: { food, qty: food.typical_amount, unit: food.typical_unit } }))
-    setSearchQ(prev => ({ ...prev, [mealId]: '' }))
-    setResults(prev => ({ ...prev, [mealId]: [] }))
-  }
-
-  function confirmAdd(mealId: string) {
-    const a = adding[mealId]
-    if (!a) return
+  function addFoodFromTaco(mealId: string, food: TacoResult) {
     const entry: FoodEntry = {
-      id: crypto.randomUUID(),
-      food_id: a.food.id,
-      name: a.food.name,
-      quantity: a.qty,
-      unit: a.unit,
-      kcal_per_100g:    a.food.kcal,
-      protein_per_100g: a.food.protein,
-      carbs_per_100g:   a.food.carbs,
-      fat_per_100g:     a.food.fat,
-      fiber_per_100g:   a.food.fiber,
-      unit_weight_g:    a.food.unit_weight_g,
+      id: crypto.randomUUID(), food_id: food.id, name: food.name,
+      quantity: food.typical_amount, unit: food.typical_unit,
+      kcal_per_100g: food.kcal, protein_per_100g: food.protein,
+      carbs_per_100g: food.carbs, fat_per_100g: food.fat,
+      fiber_per_100g: food.fiber, unit_weight_g: food.unit_weight_g,
     }
-    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, items: [...m.items, entry] } : m))
-    setAdding(prev => ({ ...prev, [mealId]: null }))
+    setMeals(p => p.map(m => m.id === mealId ? { ...m, items: [...m.items, entry] } : m))
+    setSearchQ(p => ({ ...p, [mealId]: '' }))
+    setResults(p => ({ ...p, [mealId]: [] }))
   }
 
-  function removeEntry(mealId: string, entryId: string) {
-    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, items: m.items.filter(e => e.id !== entryId) } : m))
+  function addFoodCustom(mealId: string, name: string) {
+    if (!name.trim()) return
+    const entry: FoodEntry = { id: crypto.randomUUID(), name: name.trim(), quantity: 1, unit: 'porção' }
+    setMeals(p => p.map(m => m.id === mealId ? { ...m, items: [...m.items, entry] } : m))
+    setSearchQ(p => ({ ...p, [mealId]: '' }))
+    setResults(p => ({ ...p, [mealId]: [] }))
   }
 
-  function updateEntry(mealId: string, entryId: string, patch: Partial<FoodEntry>) {
-    setMeals(prev => prev.map(m => m.id === mealId
-      ? { ...m, items: m.items.map(e => e.id === entryId ? { ...e, ...patch } : e) }
-      : m
-    ))
+  function removeEntry(mealId: string, eid: string) {
+    setMeals(p => p.map(m => m.id === mealId ? { ...m, items: m.items.filter(e => e.id !== eid) } : m))
+  }
+  function patchEntry(mealId: string, eid: string, patch: Partial<FoodEntry>) {
+    setMeals(p => p.map(m => m.id === mealId ? { ...m, items: m.items.map(e => e.id === eid ? { ...e, ...patch } : e) } : m))
+  }
+  function addMeal() { setMeals(p => [...p, { id: crypto.randomUUID(), name: 'Nova refeição', time: '', items: [], notes: '' }]) }
+  function removeMeal(mid: string) { setMeals(p => p.filter(m => m.id !== mid)) }
+  function patchMeal(mid: string, field: 'name'|'time'|'notes', val: string) {
+    setMeals(p => p.map(m => m.id === mid ? { ...m, [field]: val } : m))
   }
 
-  function addMeal() {
-    setMeals(prev => [...prev, { id: crypto.randomUUID(), name: 'Nova refeição', time: '', items: [], notes: '' }])
-  }
-
-  function removeMeal(mealId: string) { setMeals(prev => prev.filter(m => m.id !== mealId)) }
-  function updateMealField(mealId: string, field: 'name' | 'time' | 'notes', val: string) {
-    setMeals(prev => prev.map(m => m.id === mealId ? { ...m, [field]: val } : m))
-  }
-
-  // substitutions
+  // ── Tabela de Substituições ──────────────────────────────────────────
   async function openSub(mealId: string, entry: FoodEntry) {
     if (!entry.food_id) return
-    setSubTarget({ mealId, entry })
+    setSubTarget({ mealId, entry }); setSubList([]); setSubLoading(true)
     try {
       const { data } = await api.get(`/api/foods/${entry.food_id}/substitutions`)
-      setSubResults(data.substitutions ?? [])
-    } catch {}
+      setSubList(data.substitutions ?? [])
+    } catch {} finally { setSubLoading(false) }
   }
 
   function applySub(sub: TacoResult) {
     if (!subTarget) return
     const { mealId, entry } = subTarget
-    updateEntry(mealId, entry.id, {
-      food_id: sub.id, name: sub.name,
+    // Calcula a quantidade equivalente em gramas para manter as mesmas calorias
+    const targetKcal = entryMacros(entry)?.kcal ?? 0
+    const equivGrams = targetKcal > 0 && sub.kcal > 0 ? Math.round(targetKcal * 100 / sub.kcal) : entry.quantity
+    patchEntry(mealId, entry.id, {
+      food_id: sub.id, name: sub.name, quantity: equivGrams, unit: 'g',
       kcal_per_100g: sub.kcal, protein_per_100g: sub.protein,
       carbs_per_100g: sub.carbs, fat_per_100g: sub.fat,
       fiber_per_100g: sub.fiber, unit_weight_g: sub.unit_weight_g,
     })
-    setSubTarget(null)
-    setSubResults([])
+    setSubTarget(null); setSubList([])
   }
 
-  // grand totals
-  const grandTotal = meals.reduce((acc, m) => {
+  // grand total
+  const grand = meals.reduce((acc, m) => {
     const t = sumMealMacros(m.items)
     return { kcal: acc.kcal + t.kcal, protein: +(acc.protein + t.protein).toFixed(1), carbs: +(acc.carbs + t.carbs).toFixed(1), fat: +(acc.fat + t.fat).toFixed(1) }
-  }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
-
-  const UNITS = ['g','ml','unidade','fatia','colher de sopa','colher de chá','xícara','porção']
+  }, { kcal:0, protein:0, carbs:0, fat:0 })
 
   if (isLoading) return <div className="flex justify-center py-16"><RefreshCw className="w-5 h-5 animate-spin text-brand-400" /></div>
 
   return (
     <div className="space-y-5">
+
       {/* Title + save */}
       <div className="flex items-center gap-3">
         <input value={title} onChange={e => setTitle(e.target.value)}
-          className="flex-1 text-sm font-semibold bg-transparent border-0 text-white/80 focus:outline-none focus:text-white placeholder:text-white/30"
+          className="flex-1 text-sm font-semibold bg-transparent focus:outline-none text-t1 placeholder:text-t3"
           placeholder="Título do plano" />
         <button onClick={() => savePlan.mutate()} disabled={savePlan.isPending}
           className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 flex-shrink-0">
@@ -251,18 +232,18 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
         </button>
       </div>
 
-      {/* Grand total summary */}
-      {grandTotal.kcal > 0 && (
-        <div className="grid grid-cols-4 gap-2 rounded-xl p-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-          {[
-            { label: 'Kcal', value: grandTotal.kcal, color: 'text-amber-400' },
-            { label: 'Prot', value: `${grandTotal.protein}g`, color: 'text-blue-400' },
-            { label: 'Carb', value: `${grandTotal.carbs}g`, color: 'text-emerald-400' },
-            { label: 'Gord', value: `${grandTotal.fat}g`, color: 'text-orange-400' },
-          ].map(({ label, value, color }) => (
+      {/* Grand total */}
+      {grand.kcal > 0 && (
+        <div className="grid grid-cols-4 gap-2 rounded-xl p-3" style={{ background:'var(--raised)', border:'1px solid var(--border)' }}>
+          {([
+            { label:'Kcal total', value:grand.kcal,         color:'text-amber-500' },
+            { label:'Proteína',   value:`${grand.protein}g`, color:'text-blue-500' },
+            { label:'Carboidrato',value:`${grand.carbs}g`,   color:'text-emerald-500' },
+            { label:'Gordura',    value:`${grand.fat}g`,     color:'text-orange-500' },
+          ] as const).map(({ label, value, color }) => (
             <div key={label} className="text-center">
               <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
-              <p className="text-[10px] text-white/30">{label}</p>
+              <p className="text-[10px] text-t3 mt-0.5">{label}</p>
             </div>
           ))}
         </div>
@@ -270,9 +251,9 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
 
       {/* Meals */}
       {meals.length === 0 ? (
-        <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
-          <UtensilsCrossed className="w-8 h-8 text-white/10 mx-auto mb-3" />
-          <p className="text-sm text-white/25">Nenhuma refeição ainda</p>
+        <div className="rounded-2xl p-10 text-center" style={{ border:'1px dashed var(--border)' }}>
+          <UtensilsCrossed className="w-8 h-8 text-t3 mx-auto mb-3 opacity-30" />
+          <p className="text-sm text-t3">Nenhuma refeição ainda</p>
           <button onClick={addMeal}
             className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white text-xs font-semibold rounded-lg hover:bg-brand-400 transition-colors">
             <Plus className="w-3.5 h-3.5" />Adicionar refeição
@@ -282,63 +263,68 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
         <div className="space-y-4">
           {meals.map(meal => {
             const mTotal = sumMealMacros(meal.items)
-            const isAdding = !!adding[meal.id]
             return (
-              <div key={meal.id} className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+              <div key={meal.id} className="rounded-2xl overflow-visible" style={{ border:'1px solid var(--border)', background:'var(--surface)' }}>
+
                 {/* Meal header */}
-                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                  <input value={meal.name} onChange={e => updateMealField(meal.id, 'name', e.target.value)}
-                    className="flex-1 text-sm font-semibold bg-transparent text-white/90 focus:outline-none placeholder:text-white/25" placeholder="Nome da refeição" />
-                  <input value={meal.time} onChange={e => updateMealField(meal.id, 'time', e.target.value)}
-                    type="time" className="text-xs text-white/40 bg-transparent focus:outline-none w-16 text-right" />
-                  <button onClick={() => removeMeal(meal.id)} className="text-white/20 hover:text-red-400 transition-colors ml-1">
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom:'1px solid var(--border)' }}>
+                  <UtensilsCrossed className="w-4 h-4 text-brand-500 flex-shrink-0" />
+                  <input value={meal.name} onChange={e => patchMeal(meal.id,'name',e.target.value)}
+                    className="flex-1 text-sm font-semibold bg-transparent focus:outline-none text-t1 placeholder:text-t3"
+                    placeholder="Nome da refeição (ex: Café da manhã)" />
+                  <input value={meal.time} onChange={e => patchMeal(meal.id,'time',e.target.value)}
+                    type="text" placeholder="07:00"
+                    className="w-14 text-xs text-t3 bg-transparent focus:outline-none text-right placeholder:text-t3"
+                    maxLength={5} />
+                  <button onClick={() => removeMeal(meal.id)}
+                    className="text-t3 hover:text-red-500 transition-colors ml-1 flex-shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {/* Food items */}
                 {meal.items.length > 0 && (
-                  <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                    {meal.items.map(entry => {
+                  <ul>
+                    {meal.items.map((entry, idx) => {
                       const m = entryMacros(entry)
                       return (
-                        <li key={entry.id} className="flex items-center gap-2 px-4 py-2.5">
+                        <li key={entry.id} className={`flex items-center gap-2 px-4 py-2.5 ${idx > 0 ? 'border-t' : ''}`} style={{ borderColor:'var(--border)' }}>
+                          {/* Name */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white/85 truncate">{entry.name}</p>
+                            <p className="text-sm text-t1 truncate">{entry.name}</p>
                             {m && (
-                              <p className="text-[10px] text-white/30 mt-0.5 flex items-center gap-2">
-                                <span className="text-amber-400">{m.kcal}kcal</span>
-                                <span>P:{m.protein}g</span>
-                                <span>C:{m.carbs}g</span>
-                                <span>G:{m.fat}g</span>
+                              <p className="text-[10px] text-t3 mt-0.5 flex flex-wrap gap-x-2">
+                                <span className="text-amber-500 font-medium">{m.kcal} kcal</span>
+                                <span>P: {m.protein}g</span>
+                                <span>C: {m.carbs}g</span>
+                                <span>G: {m.fat}g</span>
                               </p>
                             )}
                           </div>
-                          {/* Qty + unit inline */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <input
-                              type="number" min="0" step="any"
-                              value={entry.quantity}
-                              onChange={e => updateEntry(meal.id, entry.id, { quantity: parseFloat(e.target.value) || 0 })}
-                              className="w-14 text-right text-xs text-white/70 bg-transparent focus:outline-none focus:text-white"
-                              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px', background: 'var(--surface)' }}
-                            />
-                            <select value={entry.unit}
-                              onChange={e => updateEntry(meal.id, entry.id, { unit: e.target.value })}
-                              className="text-[10px] text-white/50 focus:outline-none cursor-pointer"
-                              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '2px 4px', background: 'var(--surface)', color: 'var(--t2)', maxWidth: 80 }}>
-                              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
-                          </div>
-                          {/* Substituir */}
+                          {/* Qty */}
+                          <input type="number" min="0" step="any"
+                            value={entry.quantity}
+                            onChange={e => patchEntry(meal.id, entry.id, { quantity: parseFloat(e.target.value)||0 })}
+                            className="w-14 text-right text-xs text-t2 focus:outline-none rounded-md"
+                            style={{ border:'1px solid var(--border)', padding:'3px 6px', background:'var(--raised)', color:'var(--t1)' }}
+                          />
+                          {/* Unit */}
+                          <select value={entry.unit}
+                            onChange={e => patchEntry(meal.id, entry.id, { unit: e.target.value })}
+                            className="text-[11px] focus:outline-none rounded-md cursor-pointer"
+                            style={{ border:'1px solid var(--border)', padding:'3px 5px', background:'var(--raised)', color:'var(--t2)', maxWidth:90 }}>
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                          {/* Trocar */}
                           {entry.food_id && (
-                            <button onClick={() => openSub(meal.id, entry)} title="Substituições"
-                              className="text-white/20 hover:text-brand-400 transition-colors flex-shrink-0">
+                            <button onClick={() => openSub(meal.id, entry)} title="Tabela de trocas"
+                              className="flex-shrink-0 text-t3 hover:text-brand-500 transition-colors" >
                               <ArrowRightLeft className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          {/* Remove */}
                           <button onClick={() => removeEntry(meal.id, entry.id)}
-                            className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0">
+                            className="flex-shrink-0 text-t3 hover:text-red-500 transition-colors">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </li>
@@ -347,90 +333,72 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
                   </ul>
                 )}
 
-                {/* Meal total */}
+                {/* Meal total bar */}
                 {mTotal.kcal > 0 && (
-                  <div className="flex items-center gap-3 px-4 py-2 text-[10px]" style={{ borderTop: '1px solid var(--border)', background: 'var(--raised)' }}>
-                    <Flame className="w-3 h-3 text-amber-400/60" />
-                    <span className="text-amber-400 font-semibold">{mTotal.kcal} kcal</span>
-                    <span className="text-white/30">P:{mTotal.protein}g · C:{mTotal.carbs}g · G:{mTotal.fat}g</span>
+                  <div className="flex items-center gap-3 px-4 py-2 text-[11px]" style={{ borderTop:'1px solid var(--border)', background:'var(--raised)' }}>
+                    <Flame className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    <span className="font-semibold text-amber-500">{mTotal.kcal} kcal</span>
+                    <span className="text-t3">·</span>
+                    <span className="text-t3">P: {mTotal.protein}g</span>
+                    <span className="text-t3">C: {mTotal.carbs}g</span>
+                    <span className="text-t3">G: {mTotal.fat}g</span>
                   </div>
                 )}
 
                 {/* Food search */}
-                <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  {!isAdding ? (
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25 pointer-events-none" />
-                      <input
-                        value={searchQ[meal.id] ?? ''}
-                        onChange={e => handleSearchChange(meal.id, e.target.value)}
-                        placeholder="Buscar alimento (ex: frango, aveia, banana…)"
-                        className="w-full pl-8 pr-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none rounded-lg transition-colors"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                      />
-                      {/* Dropdown results */}
-                      {(results[meal.id]?.length ?? 0) > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl"
-                          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                          {results[meal.id].map(food => (
-                            <button key={food.id} onClick={() => selectFood(meal.id, food)}
-                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-raised text-left transition-colors">
-                              <span className="text-sm text-white/85">{food.name}</span>
-                              <span className="text-[10px] text-white/30 flex-shrink-0 ml-3">{food.kcal}kcal/100g · {food.category}</span>
-                            </button>
-                          ))}
-                          <button onClick={() => {
-                            const custom = searchQ[meal.id]?.trim()
-                            if (!custom) return
-                            const entry: FoodEntry = { id: crypto.randomUUID(), name: custom, quantity: 1, unit: 'porção' }
-                            setMeals(prev => prev.map(m => m.id === meal.id ? { ...m, items: [...m.items, entry] } : m))
-                            setSearchQ(prev => ({ ...prev, [meal.id]: '' }))
-                            setResults(prev => ({ ...prev, [meal.id]: [] }))
-                          }} className="w-full flex items-center gap-2 px-4 py-2.5 text-white/40 hover:text-white/70 text-xs border-t transition-colors" style={{ borderColor: 'var(--border)' }}>
-                            <Plus className="w-3.5 h-3.5" />Adicionar &quot;{searchQ[meal.id]}&quot; manualmente
+                <div className="px-4 py-3 relative" style={{ borderTop:'1px solid var(--border)' }}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-t3 pointer-events-none" />
+                    <input
+                      value={searchQ[meal.id] ?? ''}
+                      onChange={e => handleSearch(meal.id, e.target.value)}
+                      placeholder="Buscar alimento na tabela TACO (ex: frango, aveia, banana…)"
+                      className="w-full pl-9 pr-3 py-2 text-sm focus:outline-none rounded-lg transition-colors text-t1 placeholder:text-t3"
+                      style={{ background:'var(--raised)', border:'1px solid var(--border)' }}
+                    />
+                    {/* Dropdown */}
+                    {(results[meal.id]?.length ?? 0) > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl overflow-hidden shadow-xl"
+                        style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+                        {results[meal.id].map(food => (
+                          <button key={food.id} onClick={() => addFoodFromTaco(meal.id, food)}
+                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-raised text-left transition-colors">
+                            <div>
+                              <span className="text-sm text-t1">{food.name}</span>
+                              <span className="ml-2 text-[10px] text-t3">{food.category}</span>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-3">
+                              <span className="text-[11px] font-semibold text-amber-500">{food.kcal} kcal</span>
+                              <span className="text-[10px] text-t3 ml-1">/ 100g</span>
+                            </div>
                           </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* Confirm add panel */
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-white/70 flex-shrink-0 truncate max-w-[160px]">{adding[meal.id]?.food.name}</span>
-                      <input type="number" min="0" step="any"
-                        value={adding[meal.id]?.qty ?? 1}
-                        onChange={e => setAdding(prev => ({ ...prev, [meal.id]: prev[meal.id] ? { ...prev[meal.id]!, qty: parseFloat(e.target.value) || 0 } : null }))}
-                        className="w-16 text-sm text-white focus:outline-none rounded-lg px-2 py-1"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                      />
-                      <select value={adding[meal.id]?.unit ?? 'g'}
-                        onChange={e => setAdding(prev => ({ ...prev, [meal.id]: prev[meal.id] ? { ...prev[meal.id]!, unit: e.target.value } : null }))}
-                        className="text-xs text-white/70 focus:outline-none rounded-lg px-2 py-1"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                      <button onClick={() => confirmAdd(meal.id)}
-                        className="px-3 py-1 bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold rounded-lg transition-colors">
-                        Adicionar
-                      </button>
-                      <button onClick={() => setAdding(prev => ({ ...prev, [meal.id]: null }))}
-                        className="text-white/30 hover:text-white text-xs transition-colors">Cancelar</button>
-                    </div>
-                  )}
+                        ))}
+                        {searchQ[meal.id]?.trim() && (
+                          <button
+                            onClick={() => addFoodCustom(meal.id, searchQ[meal.id])}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-t3 hover:text-t1 text-xs border-t transition-colors"
+                            style={{ borderColor:'var(--border)' }}>
+                            <Plus className="w-3.5 h-3.5" />Adicionar &ldquo;{searchQ[meal.id]}&rdquo; manualmente (sem macros)
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Meal notes */}
+                {/* Meal note */}
                 <div className="px-4 pb-3">
-                  <input value={meal.notes ?? ''} onChange={e => updateMealField(meal.id, 'notes', e.target.value)}
-                    placeholder="Observação da refeição (opcional)"
-                    className="w-full text-xs text-white/40 placeholder:text-white/20 bg-transparent focus:outline-none focus:text-white/70 transition-colors" />
+                  <input value={meal.notes ?? ''} onChange={e => patchMeal(meal.id,'notes',e.target.value)}
+                    placeholder="Observação (opcional)"
+                    className="w-full text-xs text-t3 placeholder:text-t3 bg-transparent focus:outline-none focus:text-t2 transition-colors" />
                 </div>
               </div>
             )
           })}
 
           <button onClick={addMeal}
-            className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm text-white/30 hover:text-white/60 hover:border-white/20 transition-colors"
-            style={{ border: '1px dashed var(--border)' }}>
+            className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm text-t3 hover:text-t2 transition-colors"
+            style={{ border:'1px dashed var(--border)' }}>
             <Plus className="w-4 h-4" />Nova refeição
           </button>
         </div>
@@ -438,40 +406,87 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
 
       {/* General notes */}
       <div>
-        <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2">Observações gerais</p>
+        <p className="text-[10px] font-semibold text-t3 uppercase tracking-wider mb-2">Observações gerais</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           rows={2} placeholder="Ex: Beber 2L de água por dia, evitar processados..."
-          className="w-full bg-ui-card border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-white/20 resize-none transition-colors" />
+          className="w-full rounded-xl px-3 py-2.5 text-sm text-t1 placeholder:text-t3 focus:outline-none resize-none transition-colors"
+          style={{ background:'var(--raised)', border:'1px solid var(--border)' }} />
       </div>
 
-      {/* Substitution modal */}
+      {/* ── Tabela de Substituições modal ── */}
       {subTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSubTarget(null); setSubResults([]) }}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <p className="text-sm font-semibold text-white/90">Substituições para</p>
-              <p className="text-xs text-brand-400 mt-0.5">{subTarget.entry.name}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => { setSubTarget(null); setSubList([]) }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+            style={{ background:'var(--surface)', border:'1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="px-5 py-4 flex items-start justify-between gap-3" style={{ borderBottom:'1px solid var(--border)' }}>
+              <div>
+                <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-1">Tabela de trocas</p>
+                <p className="text-base font-bold text-t1">{subTarget.entry.name}</p>
+                {(() => {
+                  const m = entryMacros(subTarget.entry)
+                  const g = entryGrams(subTarget.entry)
+                  if (!m) return null
+                  return (
+                    <p className="text-xs text-t3 mt-1">
+                      {subTarget.entry.quantity}{subTarget.entry.unit !== 'g' ? ` ${subTarget.entry.unit}` : 'g'}
+                      {subTarget.entry.unit !== 'g' && subTarget.entry.unit !== 'ml' && ` (≈${g}g)`}
+                      {' · '}
+                      <span className="text-amber-500 font-semibold">{m.kcal} kcal</span>
+                      {' · '}P:{m.protein}g · C:{m.carbs}g · G:{m.fat}g
+                    </p>
+                  )
+                })()}
+              </div>
+              <button onClick={() => { setSubTarget(null); setSubList([]) }} className="text-t3 hover:text-t1 transition-colors flex-shrink-0">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="p-2">
-              {subResults.length === 0 ? (
-                <p className="text-xs text-white/30 text-center py-6">Nenhuma substituição encontrada</p>
-              ) : subResults.map(s => (
-                <button key={s.id} onClick={() => applySub(s)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-raised text-left transition-colors">
-                  <div>
-                    <p className="text-sm text-white/85">{s.name}</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">{s.category}</p>
+
+            {/* Substitution list */}
+            <div className="max-h-80 overflow-y-auto">
+              {subLoading ? (
+                <div className="flex justify-center py-10"><RefreshCw className="w-5 h-5 text-brand-400 animate-spin" /></div>
+              ) : subList.length === 0 ? (
+                <p className="text-sm text-t3 text-center py-10">Nenhuma substituição encontrada na mesma categoria.</p>
+              ) : subList.map((s, i) => {
+                const targetKcal = entryMacros(subTarget.entry)?.kcal ?? 0
+                const equivG = targetKcal > 0 && s.kcal > 0 ? Math.round(targetKcal * 100 / s.kcal) : null
+                return (
+                  <div key={s.id} className={`flex items-center gap-4 px-5 py-3.5 ${i > 0 ? 'border-t' : ''}`} style={{ borderColor:'var(--border)' }}>
+                    {/* Equivalent amount pill */}
+                    {equivG && (
+                      <div className="flex-shrink-0 text-center">
+                        <p className="text-lg font-bold text-brand-500 tabular-nums leading-none">{equivG}</p>
+                        <p className="text-[9px] text-t3 mt-0.5">gramas</p>
+                      </div>
+                    )}
+                    {/* Food info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{s.name}</p>
+                      <p className="text-[10px] text-t3 mt-0.5 flex gap-2">
+                        <span className="text-amber-500">{equivG ? Math.round(s.kcal * equivG / 100) : s.kcal} kcal</span>
+                        <span>P:{equivG ? Math.round(s.protein * equivG / 100 * 10)/10 : s.protein}g</span>
+                        <span>C:{equivG ? Math.round(s.carbs * equivG / 100 * 10)/10 : s.carbs}g</span>
+                      </p>
+                    </div>
+                    {/* Apply */}
+                    <button onClick={() => applySub(s)}
+                      className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-500 hover:bg-brand-500/10 transition-colors border"
+                      style={{ borderColor:'var(--border)' }}>
+                      Trocar
+                    </button>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-3">
-                    <p className="text-xs text-amber-400 font-semibold">{s.kcal} kcal</p>
-                    <p className="text-[10px] text-white/30">P:{s.protein}g C:{s.carbs}g</p>
-                  </div>
-                </button>
-              ))}
+                )
+              })}
             </div>
-            <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-              <button onClick={() => { setSubTarget(null); setSubResults([]) }}
-                className="w-full text-xs text-white/30 hover:text-white/60 transition-colors">Fechar</button>
+
+            <div className="px-5 py-3 flex items-center gap-2 text-xs text-t3" style={{ borderTop:'1px solid var(--border)', background:'var(--raised)' }}>
+              <ArrowRightLeft className="w-3.5 h-3.5 flex-shrink-0" />
+              Quantidades calculadas para manter as mesmas calorias do alimento original.
             </div>
           </div>
         </div>
