@@ -281,17 +281,24 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   })
 
   // 10. Verifica se deve enviar mídia dos planos
-  // Detecta ETAPA 3: "manhã ou tarde" ou texto curto após ter mídia configurada
+  // Detecta ETAPA 3 pela resposta atual
   const isEtapa3 =
     responseText.toLowerCase().includes('manhã ou tarde') ||
-    responseText.toLowerCase().includes('manha ou tarde') ||
-    (hasAnyMedia && responseText.length < 200 && responseText.length > 20)
+    responseText.toLowerCase().includes('manha ou tarde')
+
+  // Evita reenvio: não envia se planos já foram apresentados no histórico
+  const alreadyPresentedPlans = historyForAI.some((m: any) =>
+    m.role === 'assistant' && (
+      m.content.toLowerCase().includes('manhã ou tarde') ||
+      m.content.toLowerCase().includes('manha ou tarde')
+    )
+  )
 
   let planMediaUrl: string | undefined
   let planMediaType: 'image' | 'pdf' | undefined
   let planMediaName: string | undefined
 
-  if (isEtapa3 && hasAnyMedia) {
+  if (isEtapa3 && hasAnyMedia && !alreadyPresentedPlans) {
     // Detecta modalidade pelo histórico recente
     const recentCtx = historyForAI.slice(-6).map((m: any) => m.content.toLowerCase()).join(' ')
     const isPresencialCtx = recentCtx.includes('presencial')
@@ -430,13 +437,9 @@ ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
 
 ETAPA 3 — PLANOS:
 Após definida a modalidade (ou se só tiver uma):
-${hasAnyMedia ? `
-IMAGEM/PDF JÁ SERÁ ENVIADO AUTOMATICAMENTE com todos os detalhes dos planos.
-Sua função: escreva APENAS 1 frase curta de introdução (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇" ou "Aqui estão nossos planos online:").
-NÃO liste planos, preços, parcelas nem detalhes em texto — a imagem mostrará tudo.
-Após a frase de introdução, pergunte: "Prefere manhã ou tarde?"
-` : hasAnyCustomMsg ? `
-IMPORTANTE: use EXATAMENTE a mensagem abaixo correspondente à modalidade escolhida. Não acrescente nem remova nada.${
+${hasAnyMedia && hasAnyCustomMsg ? `
+Uma imagem com os detalhes visuais dos planos será enviada automaticamente APÓS sua mensagem de texto.
+IMPORTANTE: use EXATAMENTE a mensagem de texto configurada abaixo (ela será seguida pela imagem):${
   customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
 }${
   customMsgOnline ? `\n\nSE o cliente escolheu ONLINE:\n${customMsgOnline}` : ''
@@ -445,7 +448,24 @@ IMPORTANTE: use EXATAMENTE a mensagem abaixo correspondente à modalidade escolh
 }${
   customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
 }
-Após a mensagem dos planos, pergunte: "Prefere manhã ou tarde?"` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito, SEM seções como *PRESENCIAL:* ou *ONLINE:*.
+Após a mensagem, pergunte: "Prefere manhã ou tarde?"
+` : hasAnyMedia ? `
+Uma imagem com todos os detalhes dos planos será enviada automaticamente após sua mensagem.
+Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇").
+NÃO liste planos, preços ou detalhes em texto — a imagem mostrará tudo.
+Pergunte: "Prefere manhã ou tarde?"
+` : hasAnyCustomMsg ? `
+IMPORTANTE: use EXATAMENTE a mensagem abaixo. Não acrescente nem remova nada.${
+  customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
+}${
+  customMsgOnline ? `\n\nSE o cliente escolheu ONLINE:\n${customMsgOnline}` : ''
+}${
+  customMsgGeral && !customMsgPresencial && !customMsgOnline ? `\n\n${customMsgGeral}` : ''
+}${
+  customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
+}
+Após a mensagem, pergunte: "Prefere manhã ou tarde?"
+` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito.
 ${plansText ? `Use apenas os planos da modalidade escolhida. Termine com: "Prefere manhã ou tarde?"` : `Informe que ${nutriName} apresenta os detalhes pessoalmente e pergunte: "Prefere manhã ou tarde?"`}`
 }
 
