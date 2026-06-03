@@ -23,6 +23,7 @@ export async function assistantRoutes(app: FastifyInstance) {
               services_message, services_message_enabled,
               services_message_online, services_message_online_enabled,
               services_message_presencial, services_message_presencial_enabled,
+              ai_paused,
               plans_media_enabled, plans_media_type, plans_media_original_name,
               CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
               plans_media,
@@ -333,6 +334,14 @@ export async function assistantRoutes(app: FastifyInstance) {
     }
 
     return reply.code(201).send({ ok: true, note })
+  })
+
+  /** PATCH /api/assistants/toggle-ai — pausa ou ativa a IA */
+  app.patch('/toggle-ai', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const { paused } = request.body as { paused: boolean }
+    await query('UPDATE assistants SET ai_paused = $2 WHERE nutritionist_id = $1', [id, paused])
+    return reply.send({ ok: true, ai_paused: paused })
   })
 
   // ── Mídia dos Planos ──────────────────────────────────────────────

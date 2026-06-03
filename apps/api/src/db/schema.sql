@@ -399,6 +399,7 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_triagem BOOLEAN DEFAULT tru
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS func_agendamento BOOLEAN DEFAULT true;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_enabled BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS ai_paused BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_path TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_type TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_enabled BOOLEAN DEFAULT false;
