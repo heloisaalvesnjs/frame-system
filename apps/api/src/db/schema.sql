@@ -403,6 +403,7 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_path TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_type TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_enabled BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media_original_name TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS plans_media JSONB DEFAULT '{}';
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online_enabled BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial TEXT;

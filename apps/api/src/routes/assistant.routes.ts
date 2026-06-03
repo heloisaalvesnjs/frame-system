@@ -25,6 +25,7 @@ export async function assistantRoutes(app: FastifyInstance) {
               services_message_presencial, services_message_presencial_enabled,
               plans_media_enabled, plans_media_type, plans_media_original_name,
               CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
+              plans_media,
               CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
        FROM assistants WHERE nutritionist_id = $1`,
       [id]
@@ -336,11 +337,15 @@ export async function assistantRoutes(app: FastifyInstance) {
 
   // ── Mídia dos Planos ──────────────────────────────────────────────
 
-  /** POST /api/assistants/plans-media — upload imagem ou PDF dos planos */
+  // ── Helper: lê/escreve plans_media JSONB ──────────────────────────────
+  type MediaVariant = 'geral' | 'online' | 'presencial'
+
+  /** POST /api/assistants/plans-media?variant=geral|online|presencial */
   app.post('/plans-media', auth, async (request, reply) => {
     const { id } = (request as any).user
+    const variant = ((request.query as any).variant ?? 'geral') as MediaVariant
 
-    const assistant = await queryOne<any>('SELECT id, plans_media_path FROM assistants WHERE nutritionist_id = $1', [id])
+    const assistant = await queryOne<any>('SELECT id, plans_media FROM assistants WHERE nutritionist_id = $1', [id])
     if (!assistant) return reply.code(404).send({ error: 'Configure a assistente primeiro' })
 
     const data = await request.file()
@@ -350,54 +355,57 @@ export async function assistantRoutes(app: FastifyInstance) {
     const isPdf   = data.mimetype === 'application/pdf'
     if (!isImage && !isPdf) return reply.code(400).send({ error: 'Apenas imagens (JPG, PNG) ou PDF são aceitos' })
 
-    const ext = isPdf ? 'pdf' : (data.mimetype.includes('png') ? 'png' : 'jpg')
+    const ext       = isPdf ? 'pdf' : (data.mimetype.includes('png') ? 'png' : 'jpg')
     const uploadDir = path.join(process.cwd(), 'uploads', 'plans', id)
     mkdirSync(uploadDir, { recursive: true })
 
-    // Remove arquivo anterior
-    if (assistant.plans_media_path) {
-      try { unlinkSync(assistant.plans_media_path) } catch {}
-    }
+    // Remove arquivo anterior desta variante
+    const current = (assistant.plans_media ?? {})[variant]
+    if (current?.path) { try { unlinkSync(current.path) } catch {} }
 
-    const filename = `plans_media.${ext}`
+    const filename = `${variant}_media.${ext}`
     const filePath = path.join(uploadDir, filename)
     writeFileSync(filePath, await data.toBuffer())
 
+    const mediaType = isPdf ? 'pdf' : 'image'
+    const entry = { path: filePath, type: mediaType, enabled: true, name: data.filename || filename }
+    const updated = { ...(assistant.plans_media ?? {}), [variant]: entry }
+
     await query(
-      `UPDATE assistants SET
-         plans_media_path = $2,
-         plans_media_type = $3,
-         plans_media_original_name = $4,
-         plans_media_enabled = true
-       WHERE nutritionist_id = $1`,
-      [id, filePath, isPdf ? 'pdf' : 'image', data.filename]
+      `UPDATE assistants SET plans_media = $2::jsonb WHERE nutritionist_id = $1`,
+      [id, JSON.stringify(updated)]
     )
 
     const publicUrl = `${process.env.API_PUBLIC_URL || ''}/uploads/plans/${id}/${filename}`
-    return reply.send({ ok: true, url: publicUrl, type: isPdf ? 'pdf' : 'image', original_name: data.filename })
+    return reply.send({ ok: true, url: publicUrl, type: mediaType, name: data.filename, variant })
   })
 
-  /** DELETE /api/assistants/plans-media — remove arquivo */
+  /** DELETE /api/assistants/plans-media?variant=... */
   app.delete('/plans-media', auth, async (request, reply) => {
     const { id } = (request as any).user
-    const assistant = await queryOne<any>('SELECT plans_media_path FROM assistants WHERE nutritionist_id = $1', [id])
-    if (assistant?.plans_media_path) {
-      try { unlinkSync(assistant.plans_media_path) } catch {}
-    }
-    await query(
-      `UPDATE assistants SET plans_media_path = NULL, plans_media_type = NULL,
-       plans_media_original_name = NULL, plans_media_enabled = false
-       WHERE nutritionist_id = $1`,
-      [id]
-    )
+    const variant = ((request.query as any).variant ?? 'geral') as MediaVariant
+
+    const assistant = await queryOne<any>('SELECT plans_media FROM assistants WHERE nutritionist_id = $1', [id])
+    const current = (assistant?.plans_media ?? {})[variant]
+    if (current?.path) { try { unlinkSync(current.path) } catch {} }
+
+    const updated = { ...(assistant?.plans_media ?? {}) }
+    delete updated[variant]
+    await query(`UPDATE assistants SET plans_media = $2::jsonb WHERE nutritionist_id = $1`, [id, JSON.stringify(updated)])
     return reply.send({ ok: true })
   })
 
-  /** PATCH /api/assistants/plans-media/toggle — ativa/desativa envio */
+  /** PATCH /api/assistants/plans-media/toggle?variant=... */
   app.patch('/plans-media/toggle', auth, async (request, reply) => {
     const { id } = (request as any).user
+    const variant  = ((request.query as any).variant ?? 'geral') as MediaVariant
     const { enabled } = request.body as { enabled: boolean }
-    await query('UPDATE assistants SET plans_media_enabled = $2 WHERE nutritionist_id = $1', [id, enabled])
+
+    const assistant = await queryOne<any>('SELECT plans_media FROM assistants WHERE nutritionist_id = $1', [id])
+    const current = assistant?.plans_media ?? {}
+    if (!current[variant]) return reply.code(400).send({ error: 'Nenhum arquivo enviado para esta variante' })
+    const updated = { ...current, [variant]: { ...current[variant], enabled } }
+    await query(`UPDATE assistants SET plans_media = $2::jsonb WHERE nutritionist_id = $1`, [id, JSON.stringify(updated)])
     return reply.send({ ok: true })
   })
 

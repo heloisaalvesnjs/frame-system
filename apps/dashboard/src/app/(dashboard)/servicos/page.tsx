@@ -254,11 +254,11 @@ export default function ServicosPage() {
   const [showTemplates, setShowTemplates] = useState(false)
   const [addingTemplates, setAddingTemplates] = useState<Set<number>>(new Set())
 
-  // Mídia dos planos
-  const [mediaEnabled, setMediaEnabled] = useState(false)
-  const [mediaInfo, setMediaInfo] = useState<{ type: string; name: string } | null>(null)
-  const [uploadingMedia, setUploadingMedia] = useState(false)
-  const mediaFileRef = useRef<HTMLInputElement>(null)
+  // Mídia dos planos (JSONB: geral | online | presencial)
+  type MediaVariant = 'geral' | 'online' | 'presencial'
+  type MediaEntry = { type: string; name: string; enabled: boolean } | null
+  const [plansMedia, setPlansMedia] = useState<Record<MediaVariant, MediaEntry>>({ geral: null, online: null, presencial: null })
+  const [uploadingVariant, setUploadingVariant] = useState<MediaVariant | null>(null)
 
   // Mensagens personalizadas
   const [msgEnabled, setMsgEnabled] = useState(false)
@@ -283,11 +283,12 @@ export default function ServicosPage() {
   // Sincroniza estado com dados do assistente
   useEffect(() => {
     if (assistantData) {
-      setMediaEnabled(assistantData.plans_media_enabled ?? false)
-      setMediaInfo(assistantData.has_plans_media ? {
-        type: assistantData.plans_media_type ?? 'image',
-        name: assistantData.plans_media_original_name ?? 'arquivo',
-      } : null)
+      const pm = assistantData.plans_media ?? {}
+      setPlansMedia({
+        geral:      pm.geral      ? { type: pm.geral.type,      name: pm.geral.name,      enabled: pm.geral.enabled      } : null,
+        online:     pm.online     ? { type: pm.online.type,     name: pm.online.name,     enabled: pm.online.enabled     } : null,
+        presencial: pm.presencial ? { type: pm.presencial.type, name: pm.presencial.name, enabled: pm.presencial.enabled } : null,
+      })
       setMsgEnabled(assistantData.services_message_enabled ?? false)
       setMsgText(assistantData.services_message || DEFAULT_SERVICES_MSG)
       setMsgOnlineEnabled(assistantData.services_message_online_enabled ?? false)
@@ -344,37 +345,35 @@ export default function ServicosPage() {
     }
   }
 
-  async function uploadMedia(file: File) {
-    setUploadingMedia(true)
+  async function uploadMedia(file: File, variant: MediaVariant) {
+    setUploadingVariant(variant)
     try {
       const form = new FormData()
       form.append('file', file)
-      const { data } = await api.post('/api/assistants/plans-media', form, {
+      const { data } = await api.post(`/api/assistants/plans-media?variant=${variant}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      setMediaInfo({ type: data.type, name: data.original_name || file.name })
-      setMediaEnabled(true)
+      setPlansMedia(prev => ({ ...prev, [variant]: { type: data.type, name: data.name || file.name, enabled: true } }))
       qc.invalidateQueries({ queryKey: ['assistant'] })
-      toast.success('Arquivo enviado com sucesso!')
+      toast.success('Arquivo enviado!')
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Erro ao enviar arquivo')
-    } finally { setUploadingMedia(false) }
+    } finally { setUploadingVariant(null) }
   }
 
-  async function deleteMedia() {
+  async function deleteMedia(variant: MediaVariant) {
     try {
-      await api.delete('/api/assistants/plans-media')
-      setMediaInfo(null)
-      setMediaEnabled(false)
+      await api.delete(`/api/assistants/plans-media?variant=${variant}`)
+      setPlansMedia(prev => ({ ...prev, [variant]: null }))
       qc.invalidateQueries({ queryKey: ['assistant'] })
       toast.success('Arquivo removido.')
     } catch { toast.error('Erro ao remover arquivo') }
   }
 
-  async function toggleMedia(val: boolean) {
-    setMediaEnabled(val)
+  async function toggleMedia(variant: MediaVariant, val: boolean) {
+    setPlansMedia(prev => ({ ...prev, [variant]: prev[variant] ? { ...prev[variant]!, enabled: val } : null }))
     try {
-      await api.patch('/api/assistants/plans-media/toggle', { enabled: val })
+      await api.patch(`/api/assistants/plans-media/toggle?variant=${variant}`, { enabled: val })
       qc.invalidateQueries({ queryKey: ['assistant'] })
     } catch { toast.error('Erro ao salvar') }
   }
@@ -559,74 +558,65 @@ export default function ServicosPage() {
       ) : null}
 
       {/* ── Mídia dos Planos ──────────────────────────────────────── */}
-      <Card>
-        <CardContent className="py-5 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                {mediaInfo?.type === 'pdf' ? <FileText className="w-4 h-4 text-brand-500" /> : <FileImage className="w-4 h-4 text-brand-500" />}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-t1">Imagem ou PDF dos planos</p>
-                <p className="text-xs text-t3 mt-0.5">
-                  A IA envia automaticamente quando apresentar os planos ao cliente
-                </p>
-              </div>
-            </div>
-            {mediaInfo && <Toggle checked={mediaEnabled} onChange={toggleMedia} />}
-          </div>
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-t1">Imagem ou PDF dos planos</h2>
+          <p className="text-xs text-t3 mt-0.5">
+            A IA envia automaticamente quando apresentar os planos — <strong className="text-t2">sem listar preços em texto</strong>
+          </p>
+        </div>
+        {([
+          { variant: 'online'     as MediaVariant, label: '🌐 Online',    color: 'text-blue-500',   bg: 'bg-blue-500/10' },
+          { variant: 'presencial' as MediaVariant, label: '📍 Presencial', color: 'text-violet-500', bg: 'bg-violet-500/10' },
+          { variant: 'geral'      as MediaVariant, label: 'Geral (ambos)', color: 'text-t2',         bg: 'bg-raised' },
+        ]).map(({ variant, label, color, bg }) => {
+          const info     = plansMedia[variant]
+          const loading  = uploadingVariant === variant
+          return (
+            <Card key={variant}>
+              <CardContent className="py-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${color}`}>{label}</span>
+                    {!info && <span className="text-[10px] text-t3 font-mono">sem arquivo</span>}
+                  </div>
+                  {info && <Toggle checked={info.enabled} onChange={val => toggleMedia(variant, val)} />}
+                </div>
 
-          {!mediaInfo ? (
-            <label className={cn(
-              'flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
-              uploadingMedia ? 'opacity-50 pointer-events-none' : 'hover:bg-raised'
-            )} style={{ borderColor: 'var(--border)' }}>
-              <Upload className="w-6 h-6 text-t3" />
-              <span className="text-sm text-t2">
-                {uploadingMedia ? 'Enviando...' : 'Clique para enviar imagem ou PDF dos planos'}
-              </span>
-              <span className="text-xs text-t3">JPG, PNG ou PDF · máx. 10MB</span>
-              <input
-                ref={mediaFileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/jpg,application/pdf"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = '' }}
-              />
-            </label>
-          ) : (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-              <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center flex-shrink-0">
-                {mediaInfo.type === 'pdf'
-                  ? <FileText className="w-5 h-5 text-brand-500" />
-                  : <FileImage className="w-5 h-5 text-brand-500" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-t1 truncate">{mediaInfo.name}</p>
-                <p className="text-xs text-t3 mt-0.5">
-                  {mediaInfo.type === 'pdf' ? 'PDF' : 'Imagem'} · {mediaEnabled ? '✅ Ativa — será enviada automaticamente' : '⏸ Desativada'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <label className="cursor-pointer text-xs text-brand-500 hover:text-brand-400 transition-colors">
-                  Trocar
-                  <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = '' }} />
-                </label>
-                <button onClick={deleteMedia} className="p-1.5 text-t3 hover:text-red-500 transition-colors">
-                  <XIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!mediaInfo && (
-            <p className="text-xs text-t3 text-center">
-              Exemplo: tabela de planos em imagem, cardápio de exemplo, apresentação em PDF
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                {info ? (
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background:'var(--raised)', border:'1px solid var(--border)' }}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${bg}`}>
+                      {info.type === 'pdf' ? <FileText className="w-4 h-4 text-t2" /> : <FileImage className="w-4 h-4 text-t2" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-t1 truncate">{info.name}</p>
+                      <p className="text-xs text-t3">{info.type === 'pdf' ? 'PDF' : 'Imagem'} · {info.enabled ? '✅ Ativa' : '⏸ Desativada'}</p>
+                    </div>
+                    <label className="cursor-pointer text-xs text-brand-500 hover:text-brand-400 flex-shrink-0">
+                      Trocar
+                      <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f, variant); e.target.value = '' }} />
+                    </label>
+                    <button onClick={() => deleteMedia(variant)} className="p-1 text-t3 hover:text-red-500 flex-shrink-0">
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
+                    loading ? 'opacity-50 pointer-events-none' : 'hover:bg-raised'
+                  )} style={{ borderColor:'var(--border)' }}>
+                    <Upload className="w-4 h-4 text-t3 flex-shrink-0" />
+                    <span className="text-sm text-t3">{loading ? 'Enviando…' : 'Clique para enviar imagem ou PDF'}</span>
+                    <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f, variant); e.target.value = '' }} />
+                  </label>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
 
       {/* ── Mensagens de Apresentação dos Planos ─────────────────── */}
       <div className="space-y-4">

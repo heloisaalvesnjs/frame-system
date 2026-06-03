@@ -226,7 +226,18 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     []
   )
 
-  // 6. Monta o system prompt personalizado
+  // 6. Resolve mídia dos planos (JSONB) — precisa estar em processMessage para o retorno
+  const plansMediaCfg = assistant.plans_media ?? {}
+  const mediaGeral      = plansMediaCfg.geral?.enabled      && plansMediaCfg.geral?.path      ? plansMediaCfg.geral      : null
+  const mediaOnline     = plansMediaCfg.online?.enabled     && plansMediaCfg.online?.path     ? plansMediaCfg.online     : null
+  const mediaPresencial = plansMediaCfg.presencial?.enabled && plansMediaCfg.presencial?.path ? plansMediaCfg.presencial : null
+  const mediaLegacy     = assistant.plans_media_enabled && assistant.plans_media_path ? {
+    path: assistant.plans_media_path, type: assistant.plans_media_type || 'image',
+    name: assistant.plans_media_original_name || 'planos'
+  } : null
+  const hasAnyMedia = !!(mediaGeral || mediaOnline || mediaPresencial || mediaLegacy)
+
+  // 7. Monta o system prompt personalizado
   const systemPrompt = buildSystemPrompt({
     assistant,
     nutritionist,
@@ -235,7 +246,8 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     contextData,
     isFirstMessage,
     trainingNotes,
-    services
+    services,
+    hasAnyMedia,
   })
 
   // 7. Chama a IA
@@ -269,34 +281,40 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   })
 
   // 10. Verifica se deve enviar mídia dos planos
-  // Detecta ETAPA 3: resposta contém "manhã ou tarde" (instrução de agendamento)
-  // ou contém R$ com texto longo (apresentação de planos)
+  // Detecta ETAPA 3: "manhã ou tarde" ou texto curto após ter mídia configurada
+  const isEtapa3 =
+    responseText.toLowerCase().includes('manhã ou tarde') ||
+    responseText.toLowerCase().includes('manha ou tarde') ||
+    (hasAnyMedia && responseText.length < 200 && responseText.length > 20)
+
   let planMediaUrl: string | undefined
   let planMediaType: 'image' | 'pdf' | undefined
   let planMediaName: string | undefined
 
-  if (
-    assistant.plans_media_enabled &&
-    assistant.plans_media_path &&
-    assistant.plans_media_type &&
-    (
-      responseText.toLowerCase().includes('manhã ou tarde') ||
-      responseText.toLowerCase().includes('manha ou tarde') ||
-      (responseText.includes('R$') && responseText.length > 80)
-    )
-  ) {
-    const apiBase = process.env.API_PUBLIC_URL || ''
-    const parts   = assistant.plans_media_path.replace(/\\/g, '/').split('uploads/')
-    planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
-    planMediaType = assistant.plans_media_type as 'image' | 'pdf'
-    planMediaName = assistant.plans_media_original_name || 'planos.pdf'
+  if (isEtapa3 && hasAnyMedia) {
+    // Detecta modalidade pelo histórico recente
+    const recentCtx = historyForAI.slice(-6).map((m: any) => m.content.toLowerCase()).join(' ')
+    const isPresencialCtx = recentCtx.includes('presencial')
+    const isOnlineCtx     = recentCtx.includes('online')
+
+    const chosen = isPresencialCtx && mediaPresencial ? mediaPresencial
+      : isOnlineCtx && mediaOnline ? mediaOnline
+      : mediaGeral ?? mediaPresencial ?? mediaOnline ?? mediaLegacy
+
+    if (chosen?.path) {
+      const apiBase = process.env.API_PUBLIC_URL || ''
+      const parts   = chosen.path.replace(/\\/g, '/').split('uploads/')
+      planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
+      planMediaType = (chosen.type as 'image' | 'pdf') || 'image'
+      planMediaName = chosen.name || 'planos.pdf'
+    }
   }
 
   return { text: responseText, action, planMediaUrl, planMediaType, planMediaName }
 }
 
 // ── Monta o system prompt da assistente ───────────────────
-function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services }: any): string {
+function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia }: any): string {
   const aiName = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone = assistant.tone || 'acolhedor'
@@ -353,10 +371,8 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
   const customMsgGeral      = (assistant.services_message_enabled            && assistant.services_message?.trim())
     ? resolveVars(assistant.services_message.trim()) : null
 
-  // Monta instrução de planos para o prompt — inclui TODAS as mensagens configuradas
-  // para que a IA use a certa conforme a modalidade escolhida pelo cliente
   const hasAnyCustomMsg = customMsgOnline || customMsgPresencial || customMsgGeral
-  const customServicesMsg = customMsgGeral // usado no fallback de texto livre abaixo
+  const customServicesMsg = customMsgGeral
 
   // Funções habilitadas
   const funcProspeccao  = assistant.func_prospeccao  !== false
@@ -414,7 +430,12 @@ ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
 
 ETAPA 3 — PLANOS:
 Após definida a modalidade (ou se só tiver uma):
-${hasAnyCustomMsg ? `
+${hasAnyMedia ? `
+IMAGEM/PDF JÁ SERÁ ENVIADO AUTOMATICAMENTE com todos os detalhes dos planos.
+Sua função: escreva APENAS 1 frase curta de introdução (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇" ou "Aqui estão nossos planos online:").
+NÃO liste planos, preços, parcelas nem detalhes em texto — a imagem mostrará tudo.
+Após a frase de introdução, pergunte: "Prefere manhã ou tarde?"
+` : hasAnyCustomMsg ? `
 IMPORTANTE: use EXATAMENTE a mensagem abaixo correspondente à modalidade escolhida. Não acrescente nem remova nada.${
   customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
 }${
