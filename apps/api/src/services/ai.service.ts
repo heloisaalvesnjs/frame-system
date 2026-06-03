@@ -173,12 +173,31 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   // 5. Busca próximos horários disponíveis (varre até 14 dias, pula feriados)
   const availableSlots = await getNextAvailableSlots(nutritionist_id)
 
-  // 5b. Busca serviços estruturados do consultório
-  const services = await query<any>(
-    `SELECT name, category, modality, price, description FROM services
-     WHERE nutritionist_id = $1 AND is_active = true ORDER BY modality, sort_order, created_at`,
-    [nutritionist_id]
-  )
+  // 5b. Busca serviços estruturados do consultório (com fallback defensivo)
+  let services: any[] = []
+  try {
+    services = await query<any>(
+      `SELECT name, category,
+              COALESCE(modality, 'presencial') AS modality,
+              price, description
+       FROM services
+       WHERE nutritionist_id = $1 AND is_active = true
+       ORDER BY sort_order, created_at`,
+      [nutritionist_id]
+    )
+  } catch {
+    // Fallback: busca sem a coluna modality (coluna pode não existir ainda)
+    try {
+      const rows = await query<any>(
+        `SELECT name, category, price, description FROM services
+         WHERE nutritionist_id = $1 AND is_active = true ORDER BY sort_order, created_at`,
+        [nutritionist_id]
+      )
+      services = rows.map((s: any) => ({ ...s, modality: 'presencial' }))
+    } catch (err2) {
+      console.error('[AI] Erro ao buscar serviços (fallback também falhou):', err2)
+    }
+  }
 
   // 5c. Busca notas de treinamento globais (cérebro universal)
   const trainingNotes = await query<any>(

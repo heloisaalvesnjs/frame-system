@@ -255,13 +255,22 @@ export async function webhookRoutes(app: FastifyInstance) {
             conversation_id: conversation?.id
           })
 
+          if (!response?.text) {
+            app.log.error('[webhook] processMessage retornou sem texto — sem resposta enviada')
+            return
+          }
+
           if (response.raw) {
             await sendConfiguredMessage(phone, response.text, activeInstance, messageId)
           } else {
             await sendWithHumanDelay(phone, response.text, activeInstance, messageId)
           }
-        } catch (err) {
-          app.log.error(err, '[webhook] Erro ao processar mensagem em background')
+        } catch (err: any) {
+          app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')
+          // Tenta enviar mensagem de fallback para não deixar o cliente sem resposta
+          try {
+            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeInstance)
+          } catch {}
         }
       })()
 
