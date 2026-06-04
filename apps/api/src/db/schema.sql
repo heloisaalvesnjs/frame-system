@@ -467,6 +467,19 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
   UNIQUE (nutritionist_id, blocked_date)
 );
 
+-- ── Integrações n8n / webhook externo ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS webhook_integrations (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL DEFAULT 'n8n',
+  webhook_url     TEXT NOT NULL,
+  secret          TEXT,                        -- HMAC secret opcional para validar payload
+  events          TEXT[] NOT NULL DEFAULT '{}',-- eventos subscritos
+  is_active       BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Google Calendar integration
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

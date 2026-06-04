@@ -5,6 +5,7 @@ import { query, queryOne } from '../db'
 import { getNextAvailableSlots } from './appointment.service'
 import { sendMessageForNutri } from './whatsapp.service'
 import { createCalendarEvent } from './google-calendar.service'
+import { fireWebhookEvent, buildPlansPayload, buildAppointmentPayload } from './webhook-events.service'
 
 // ── Providers ────────────────────────────────────────────────
 // Ordem: Claude Haiku (primário + cache) → Gemini Flash (fallback grátis) → Groq (emergência)
@@ -106,11 +107,12 @@ interface ProcessMessageInput {
 interface ProcessMessageOutput {
   text: string
   action?: 'appointment_created' | 'slots_shown' | null
-  raw?: boolean       // true = mensagem configurada pelo nutri, enviar sem split
-  planMediaUrl?: string   // URL da mídia dos planos (imagem ou PDF) para envio automático
+  raw?: boolean
+  planMediaUrl?: string
   planMediaType?: 'image' | 'pdf'
   planMediaName?: string
-  planMessageText?: string  // Mensagem de texto enviada APÓS a mídia dos planos
+  planMessageText?: string
+  bookingConfirmationMessage?: string
 }
 
 // ── Serviço principal ──────────────────────────────────────
@@ -175,14 +177,18 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   )
 
   // ── Atalho: greeting_message configurada na primeira mensagem ──
-  // Envia o texto EXATAMENTE como escrito, sem passar pela IA
-  // raw: true → webhook envia por parágrafo, sem split de sentenças
   if (isFirstMessage && assistant.greeting_message?.trim()) {
     const greeting = assistant.greeting_message.trim()
     await query(
       'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
       [convId, 'assistant', greeting]
     )
+    // Evento: primeiro contato de um novo lead
+    fireWebhookEvent(nutritionist_id, 'first_contact', {
+      client_phone,
+      conversation_id: convId,
+      data: { message, instance_name: null },
+    }).catch(() => {})
     return { text: greeting, action: null, raw: true }
   }
 
@@ -328,6 +334,11 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   let planMessageText: string | undefined
 
   if (isEtapa3 && !alreadyPresentedPlans) {
+    // Evento n8n: momento de apresentar planos
+    buildPlansPayload(nutritionist_id, client_phone, convId).then(p =>
+      fireWebhookEvent(nutritionist_id, 'plans_stage_reached', p)
+    ).catch(() => {})
+
     // Detecta modalidade pelo histórico recente + mensagem atual
     const recentCtx = [...historyForAI.slice(-6).map((m: any) => m.content), message]
       .join(' ').toLowerCase()
@@ -560,11 +571,12 @@ async function detectAndCreateAppointment({
     const city = cityMatch?.[1] || null
 
     // Cria o agendamento
-    await query(
-      `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, modality, city, created_by, status)
-       VALUES ($1, $2, $3, $4, $5, 'assistant', 'scheduled')`,
-      [nutritionist_id, client.id, scheduledAt, modality, city]
+    const [newAppt] = await query<any>(
+      `INSERT INTO appointments (nutritionist_id, client_id, client_phone, scheduled_at, modality, city, created_by, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'assistant', 'scheduled') RETURNING id`,
+      [nutritionist_id, client.id, client_phone, scheduledAt, modality, city]
     )
+    const newAppointmentId: string = newAppt?.id ?? null
 
     // Atualiza conversa
     await query(
@@ -656,6 +668,13 @@ async function detectAndCreateAppointment({
       console.error('[notif] Erro ao notificar nutricionista:', notifErr)
     }
     // ─────────────────────────────────────────────────────────
+
+    // Evento n8n: consulta agendada
+    if (newAppointmentId) {
+      buildAppointmentPayload(nutritionist_id, client_phone, convId, newAppointmentId).then(p =>
+        fireWebhookEvent(nutritionist_id, 'appointment_booked', p)
+      ).catch(() => {})
+    }
 
     return { action: 'appointment_created', bookingConfirmationMessage }
   } catch (err) {

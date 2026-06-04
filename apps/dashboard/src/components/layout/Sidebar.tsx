@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
   LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
-  BookOpen, Smartphone, Sun, Moon, UsersRound, Clock,
+  BookOpen, Smartphone, Sun, Moon, UsersRound, Clock, Zap,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -26,6 +26,7 @@ const navConfig = [
   { href: '/disponibilidade', label: 'Disponibilidade',icon: Clock },
   { href: '/equipe',          label: 'Equipe',         icon: UsersRound },
   { href: '/whatsapp',        label: 'Conexões',       icon: Smartphone },
+  { href: '/integracoes',     label: 'Integrações',    icon: Zap },
   { href: '/configuracoes',   label: 'Configurações',  icon: Settings },
 ]
 
