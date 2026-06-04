@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
   LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
-  BookOpen, Smartphone, Sun, Moon, UsersRound,
+  BookOpen, Smartphone, Sun, Moon, UsersRound, Clock,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -22,10 +22,11 @@ const navMain = [
 ]
 
 const navConfig = [
-  { href: '/treinamento',   label: 'Assistente',   icon: BookOpen },
-  { href: '/equipe',        label: 'Equipe',       icon: UsersRound },
-  { href: '/whatsapp',      label: 'Conexões',     icon: Smartphone },
-  { href: '/configuracoes', label: 'Configurações',icon: Settings },
+  { href: '/treinamento',     label: 'Assistente',     icon: BookOpen },
+  { href: '/disponibilidade', label: 'Disponibilidade',icon: Clock },
+  { href: '/equipe',          label: 'Equipe',         icon: UsersRound },
+  { href: '/whatsapp',        label: 'Conexões',       icon: Smartphone },
+  { href: '/configuracoes',   label: 'Configurações',  icon: Settings },
 ]
 
 // ── Frame mark ────────────────────────────────────────────────────

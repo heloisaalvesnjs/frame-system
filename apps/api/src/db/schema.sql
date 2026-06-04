@@ -438,6 +438,21 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES lo
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS location_name TEXT;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS duration INT DEFAULT 50;
 
+-- ── Disponibilidade semanal (garante a tabela com todos os campos) ───────────
+ALTER TABLE availability ADD COLUMN IF NOT EXISTS slot_duration INT DEFAULT 60;
+ALTER TABLE availability ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- ── Locais de atendimento: campos de confirmação ──────────────────────────
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS price TEXT;
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS payment_info TEXT;
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS deposit_required BOOLEAN DEFAULT false;
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS deposit_amount TEXT;
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS confirmation_message TEXT;
+ALTER TABLE locations ADD COLUMN IF NOT EXISTS modality TEXT DEFAULT 'presencial';
+
+-- ── Agendamento: campo de cidade escolhida pela IA ────────────────────────
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS city TEXT;
+
 -- Google Calendar integration
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

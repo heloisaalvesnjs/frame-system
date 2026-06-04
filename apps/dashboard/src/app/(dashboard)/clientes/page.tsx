@@ -210,25 +210,31 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Modal de importação CSV ──────────────────────────────────────────────────
+// ── Modal de importação CSV inteligente ─────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  name:      'Nome',
+  phone:     'Telefone ✱',
+  email:     'E-mail',
+  goal:      'Objetivo',
+  gender:    'Sexo',
+  height_cm: 'Altura (cm)',
+  birthdate: 'Nascimento',
+  notes:     'Observações',
+  ignore:    '— ignorar —',
+}
 
 function ImportarModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
+  const [step, setStep] = useState<'upload' | 'mapping' | 'done'>('upload')
   const [csv, setCsv] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [analysis, setAnalysis] = useState<{
+    headers: string[]; mapping: Record<string,string>; total_rows: number; sample_rows: string[][]
+  } | null>(null)
+  const [mapping, setMapping] = useState<Record<string,string>>({})
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  async function handleImport() {
-    if (!csv.trim()) return
-    setLoading(true)
-    try {
-      const { data } = await api.post('/api/clients/import', { csv })
-      setResult(data)
-      qc.invalidateQueries({ queryKey: ['clients'] })
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? 'Erro ao importar')
-    } finally { setLoading(false) }
-  }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -238,10 +244,40 @@ function ImportarModal({ onClose }: { onClose: () => void }) {
     reader.readAsText(file, 'UTF-8')
   }
 
+  async function handleAnalyze() {
+    if (!csv.trim()) return
+    setAnalyzing(true)
+    try {
+      const { data } = await api.post('/api/clients/import/analyze', { csv })
+      setAnalysis(data)
+      setMapping(data.mapping)
+      setStep('mapping')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Erro ao analisar CSV')
+    } finally { setAnalyzing(false) }
+  }
+
+  async function handleImport() {
+    if (!csv.trim()) return
+    setImporting(true)
+    try {
+      const { data } = await api.post('/api/clients/import', { csv, mapping })
+      setResult(data)
+      setStep('done')
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Erro ao importar')
+    } finally { setImporting(false) }
+  }
+
+  const hasPhone = Object.values(mapping).includes('phone')
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl shadow-black/50" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center">
@@ -249,36 +285,102 @@ function ImportarModal({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <h2 className="text-[15px] font-bold text-t1">Importar pacientes</h2>
-              <p className="text-xs text-t3">CSV com colunas: nome, telefone, email, objetivo, sexo, altura</p>
+              <p className="text-xs text-t3">
+                {step === 'upload' ? 'Envie qualquer CSV — a IA detecta as colunas' :
+                 step === 'mapping' ? 'Confirme o mapeamento das colunas' :
+                 'Importação concluída'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="text-t3 hover:text-t1 transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
-          {!result ? (
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+
+          {step === 'upload' && (
             <>
               <label className="flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer hover:bg-raised transition-colors" style={{ borderColor: 'var(--border)' }}>
                 <Upload className="w-6 h-6 text-t3" />
-                <span className="text-sm text-t2">Clique para selecionar o arquivo CSV</span>
+                <span className="text-sm text-t2">Clique para selecionar arquivo CSV</span>
+                <span className="text-xs text-t3">Qualquer formato, qualquer ordem de colunas</span>
                 <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
               </label>
-              {csv && (
-                <p className="text-xs text-brand-500 font-mono">{csv.split('\n').length - 1} linhas detectadas</p>
-              )}
+              {csv && <p className="text-xs text-brand-500 font-mono">{csv.split('\n').filter(Boolean).length - 1} linhas detectadas</p>}
               <div>
-                <p className="text-xs text-t3 mb-1.5 font-mono">OU cole o CSV abaixo:</p>
-                <textarea value={csv} onChange={e => setCsv(e.target.value)} rows={5}
-                  placeholder="nome,telefone,email,objetivo&#10;Maria Silva,11999999999,maria@email.com,emagrecer"
+                <p className="text-xs text-t3 mb-1.5">OU cole o conteúdo abaixo:</p>
+                <textarea value={csv} onChange={e => setCsv(e.target.value)} rows={4}
+                  placeholder="nome,telefone,email&#10;Maria,11999999999,maria@email.com"
                   className="w-full rounded-lg px-3 py-2.5 text-xs text-t1 font-mono resize-none"
                   style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
               </div>
             </>
-          ) : (
+          )}
+
+          {step === 'mapping' && analysis && (
+            <div className="space-y-3">
+              <p className="text-xs text-t2">
+                A IA mapeou <span className="text-brand-400 font-medium">{analysis.total_rows} pacientes</span>.
+                Ajuste o mapeamento se necessário:
+              </p>
+
+              {/* Sample preview */}
+              {analysis.sample_rows[0] && (
+                <div className="rounded-lg overflow-x-auto" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                  <table className="text-[11px] text-t3 font-mono w-full">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        {analysis.headers.map(h => (
+                          <th key={h} className="px-3 py-1.5 text-left text-t2 font-medium">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysis.sample_rows.slice(0, 2).map((row, i) => (
+                        <tr key={i}>
+                          {analysis.headers.map((h, j) => (
+                            <td key={h} className="px-3 py-1.5 truncate max-w-[120px]">{row[j] ?? ''}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Mapping editor */}
+              <div className="space-y-2">
+                {analysis.headers.map(h => (
+                  <div key={h} className="flex items-center gap-3">
+                    <span className="text-xs text-t2 font-mono w-36 truncate flex-shrink-0" title={h}>{h}</span>
+                    <span className="text-t3 text-xs">→</span>
+                    <select
+                      value={mapping[h] ?? 'ignore'}
+                      onChange={e => setMapping(m => ({ ...m, [h]: e.target.value }))}
+                      className="flex-1 rounded-lg px-2.5 py-1.5 text-xs text-t1 focus:outline-none"
+                      style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+                    >
+                      {Object.entries(FIELD_LABELS).map(([v, l]) => (
+                        <option key={v} value={v}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              {!hasPhone && (
+                <div className="rounded-lg px-3 py-2.5 text-xs text-amber-400" style={{ background: 'rgba(251,191,36,.08)', border: '1px solid rgba(251,191,36,.2)' }}>
+                  ⚠️ Nenhuma coluna mapeada como Telefone — obrigatório para importar.
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'done' && result && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-emerald-400 font-medium">
                 <CheckCircle className="w-5 h-5" />
-                <span>Importação concluída</span>
+                <span>Importação concluída!</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl p-4 text-center" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
@@ -292,22 +394,39 @@ function ImportarModal({ onClose }: { onClose: () => void }) {
               </div>
               {result.errors.length > 0 && (
                 <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)' }}>
-                  <p className="text-xs text-red-400 font-mono">{result.errors.join('\n')}</p>
+                  <p className="text-xs text-red-400 font-mono whitespace-pre-line">{result.errors.join('\n')}</p>
                 </div>
               )}
             </div>
           )}
         </div>
 
+        {/* Footer */}
         <div className="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>
-            {result ? 'Fechar' : 'Cancelar'}
-          </button>
-          {!result && (
-            <button onClick={handleImport} disabled={!csv.trim() || loading}
-              className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all disabled:opacity-50">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Importar'}
+          {step === 'done' ? (
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all">
+              Fechar
             </button>
+          ) : step === 'mapping' ? (
+            <>
+              <button onClick={() => setStep('upload')} className="py-2.5 px-4 rounded-xl border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>
+                Voltar
+              </button>
+              <button onClick={handleImport} disabled={!hasPhone || importing}
+                className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all disabled:opacity-50">
+                {importing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `Importar ${analysis?.total_rows ?? ''} pacientes`}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>
+                Cancelar
+              </button>
+              <button onClick={handleAnalyze} disabled={!csv.trim() || analyzing}
+                className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all disabled:opacity-50">
+                {analyzing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Analisar CSV'}
+              </button>
+            </>
           )}
         </div>
       </div>

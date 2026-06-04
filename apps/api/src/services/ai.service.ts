@@ -289,15 +289,18 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   } catch { /* não crítico */ }
 
   // 9. Detecta intenção de agendamento na resposta
-  const action = await detectAndCreateAppointment({
+  const bookingResult = await detectAndCreateAppointment({
     responseText,
     message,
     nutritionist_id,
     client_phone,
     availableSlots,
     convId,
-    assistantName: assistant?.name || 'assistente'
+    assistantName:       assistant?.name || 'assistente',
+    conversationContext: contextData,
   })
+  const action = bookingResult?.action ?? null
+  const bookingConfirmationMessage = bookingResult?.bookingConfirmationMessage
 
   // 10. Verifica se deve enviar mídia dos planos e/ou mensagem configurada
   // Detecta ETAPA 3: IA acabou de apresentar os planos
@@ -359,59 +362,59 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     else if (customMsgOnline2)                   planMessageText = customMsgOnline2
   }
 
-  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName, planMessageText }
+  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName, planMessageText, bookingConfirmationMessage }
 }
 
 // ── Monta o system prompt da assistente ───────────────────
 function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia }: any): string {
-  const aiName = assistant.name
+  const aiName    = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
-  const tone = assistant.tone || 'acolhedor'
-  // Serviços estruturados têm prioridade sobre service_plans (texto livre)
+  const tone      = assistant.tone || 'acolhedor'
+
+  // ── Helpers ─────────────────────────────────────────────
   function formatServices(list: any[]): string | null {
     if (!list || list.length === 0) return null
     return list.map((s: any) => {
       let line = `- ${s.name}`
-      if (s.category) line += ` [${s.category}]`
-      if (s.price)    line += `: ${s.price}`
-      if (s.description) line += ` — ${s.description}`
+      if (s.price)       line += `: ${s.price}`
+      if (s.description) line += ` (${s.description})`
       return line
     }).join('\n')
   }
+
   const servicesOnline     = (services || []).filter((s: any) => s.modality === 'online' || s.modality === 'ambos')
   const servicesPresencial = (services || []).filter((s: any) => s.modality === 'presencial' || s.modality === 'ambos')
   const plansOnlineText     = formatServices(servicesOnline)
   const plansPresencialText = formatServices(servicesPresencial)
   const plansAllText        = formatServices(services || []) || assistant.service_plans?.trim() || null
-  // Quando há mídia ou mensagem configurada, a IA NÃO deve ver nem descrever os planos
-  // — eles serão enviados automaticamente pelo webhook como mensagem separada
-  const plansText = (hasAnyMedia || hasAnyCustomMsg) ? null : plansAllText
+
   const specialtiesText = assistant.specialties || nutritionist.specialty || null
-  const modalities = assistant.consultation_modalities || 'online'
-  const modalityLabel = modalities === 'presencial' ? 'presencial'
-    : modalities.includes('presencial') ? 'presencial ou online'
-    : 'online'
-
-  const toneDesc = tone === 'formal' ? 'profissional e respeitoso'
-    : tone === 'descontraido' ? 'leve e próximo, como uma amiga'
-    : 'acolhedor e próximo'
-
-  const greetingMsg = assistant.greeting_message?.trim() || null
+  const modalities      = assistant.consultation_modalities || 'online'
+  const isPresencialOnly = modalities === 'presencial'
+  const isOnlineOnly     = !modalities.includes('presencial')
+  const modalityLabel    = isPresencialOnly ? 'presencial' : isOnlineOnly ? 'online' : 'presencial ou online'
 
   // Emoji
   const emojiLevel: number = assistant.emoji_level ?? 3
-  const emojiRule = emojiLevel === 1 ? 'NUNCA use emojis. Nenhum em nenhuma mensagem.'
-    : emojiLevel === 2 ? 'Use emojis raramente — no máximo 1 a cada 3 ou 4 mensagens.'
-    : emojiLevel === 3 ? 'Máximo 1 emoji por mensagem, apenas quando agregar valor.'
-    : emojiLevel === 4 ? 'Use emojis com frequência, 1-2 por mensagem quando adequado.'
-    : 'Use emojis livremente, podem aparecer em quase todas as mensagens.'
+  const emojiRule = emojiLevel === 1 ? 'Sem emojis.'
+    : emojiLevel === 2 ? 'Emojis raros — máx 1 a cada 3 mensagens.'
+    : emojiLevel === 3 ? 'Máx 1 emoji por mensagem.'
+    : emojiLevel === 4 ? '1-2 emojis por mensagem.'
+    : 'Emojis livres.'
 
-  // ── Mensagens personalizadas de apresentação dos serviços ────────
+  // Tom
+  const toneGuide = tone === 'formal'
+    ? 'Tom profissional. Direto, sem intimidades.'
+    : tone === 'descontraido'
+    ? 'Tom leve, como se fossem amigas. Pode usar "haha", "boa" etc com moderação.'
+    : 'Tom acolhedor e próximo — quente mas sem exagero.'
+
+  // Mensagens customizadas de planos
   function resolveVars(msg: string): string {
     return msg
-      .replace(/\{planos_online\}/gi, plansOnlineText || '(sem planos online cadastrados)')
-      .replace(/\{planos_presencial\}/gi, plansPresencialText || '(sem planos presenciais cadastrados)')
-      .replace(/\{planos\}/gi, plansText || '(sem planos cadastrados)')
+      .replace(/\{planos_online\}/gi, plansOnlineText || '')
+      .replace(/\{planos_presencial\}/gi, plansPresencialText || '')
+      .replace(/\{planos\}/gi, plansAllText || '')
       .replace(/\{nutri\}/gi, nutriName)
   }
 
@@ -423,101 +426,95 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     ? resolveVars(assistant.services_message.trim()) : null
 
   const hasAnyCustomMsg = !!(customMsgOnline || customMsgPresencial || customMsgGeral)
-  const customServicesMsg = customMsgGeral
 
-  // Funções habilitadas
-  const funcProspeccao  = assistant.func_prospeccao  !== false
-  const funcTriagem     = assistant.func_triagem     !== false
+  // Planos para o prompt (só quando não há mídia nem msg automática)
+  const plansForPrompt = (hasAnyMedia || hasAnyCustomMsg) ? null : plansAllText
+
+  // Funções
   const funcAgendamento = assistant.func_agendamento !== false
+  const funcTriagem     = assistant.func_triagem     !== false
 
-  const funcoesSection = [
-    !funcProspeccao  && 'PROSPECÇÃO DESABILITADA: não faça follow-up ativo nem tente recuperar leads silenciosos.',
-    !funcTriagem     && 'TRIAGEM DESABILITADA: não faça perguntas de qualificação sobre objetivos ou condições de saúde. Vá direto à apresentação do serviço.',
-    !funcAgendamento && 'AGENDAMENTO DESABILITADO: não ofereça nem confirme agendamentos. Informe que o nutricionista entrará em contato.',
-  ].filter(Boolean).join('\n')
+  // Slots
+  const morningSlots   = availableSlots.filter((s: any) => { const m = s.label.match(/(\d{2}):\d{2}$/); return m && parseInt(m[1]) < 12 })
+  const afternoonSlots = availableSlots.filter((s: any) => { const m = s.label.match(/(\d{2}):\d{2}$/); return m && parseInt(m[1]) >= 12 })
+  const morningSlotsText    = morningSlots.slice(0, 5).map((s: any) => s.label).join(' | ')
+  const afternoonSlotsText  = afternoonSlots.slice(0, 5).map((s: any) => s.label).join(' | ')
+  const hasSlotsConfigured  = morningSlots.length > 0 || afternoonSlots.length > 0
 
-  // Agrupa slots por turno (manhã < 12h / tarde >= 12h)
-  const morningSlots = availableSlots.filter((s: any) => {
-    const m = s.label.match(/(\d{2}):(\d{2})$/)
-    return m && parseInt(m[1]) < 12
-  })
-  const afternoonSlots = availableSlots.filter((s: any) => {
-    const m = s.label.match(/(\d{2}):(\d{2})$/)
-    return m && parseInt(m[1]) >= 12
-  })
-  const morningSlotsText = morningSlots.slice(0, 5).map((s: any) => `• ${s.label}`).join('\n')
-  const afternoonSlotsText = afternoonSlots.slice(0, 5).map((s: any) => `• ${s.label}`).join('\n')
-  const hasSlotsConfigured = morningSlots.length > 0 || afternoonSlots.length > 0
-
-  // Seção de treinamento (notas globais do cérebro universal)
+  // Treinamento global
   const trainingSection = (trainingNotes && trainingNotes.length > 0)
-    ? `\n==============================\nAPRENDIZADOS DE TREINAMENTO\n==============================\nCom base em revisões anteriores, aplique sempre estas correções:\n\n${
-        trainingNotes.map((n: any) => `[${n.category.toUpperCase()}] ${n.content}`).join('\n')
-      }\n`
+    ? `\nCORREÇÕES DE TREINAMENTO (aplique sempre):\n${trainingNotes.map((n: any) => `- ${n.content}`).join('\n')}\n`
     : ''
 
-  // ── Primeira mensagem (apenas quando isFirstMessage=true e sem bypass de greeting) ──
+  // Saudação
+  const greetingMsg = assistant.greeting_message?.trim() || null
   const firstMsgInstruction = isFirstMessage && !greetingMsg
-    ? `AGORA (1ª mensagem): "Bom dia/tarde/noite! Me chamo ${aiName}, faço parte da equipe de ${nutriName} e será uma honra ter você no time de pacientes 😊 Qual seu objetivo: [opção A] ou [opção B]?" — use EXATAMENTE 2 opções separadas por "ou", sem lista.`
-    : !isFirstMessage
-    ? 'Saudação já enviada. Responda ao que o cliente disse seguindo o fluxo abaixo.'
+    ? `PRIMEIRA MENSAGEM: apresente-se brevemente como ${aiName} da equipe de ${nutriName} e pergunte o objetivo da pessoa em 1 frase simples.`
     : ''
 
-  return `${aiName}, recepcionista virtual de ${nutriName} (WhatsApp).${specialtiesText ? ` Área: ${specialtiesText}.` : ''} Modalidade: ${modalityLabel}. Tom: ${toneDesc}. Age como humana experiente, nunca como chatbot.
-${plansText ? `\nSERVIÇOS:\n${plansText}\n` : ''}${assistant.pdf_content ? `\nINSTRUÇÕES DO CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}
-FLUXO CONSULTIVO — siga SEMPRE nesta ordem, não pule etapas:
+  // Contexto do cliente
+  const clientCtx = [
+    contextData.client_name ? `Nome: ${contextData.client_name}` : '',
+    contextData.goal        ? `Objetivo mencionado: ${contextData.goal}` : '',
+  ].filter(Boolean).join(' | ')
 
-ETAPA 1 — OBJETIVO RECEBIDO:
-Valide com as palavras exatas do cliente. Ex: se disse "ganho de massa", diga "Ganho de massa e definição é exatamente o que trabalhamos 💪"
-Depois faça UMA pergunta de aprofundamento — escolha a mais relevante:
-- "Qual sua maior dificuldade com isso hoje?"
-- "Há quanto tempo você está buscando isso?"
-- "O que você já tentou antes?"
+  // ── Instrução de apresentação dos planos ────────────────
+  const plansPresentation = hasAnyMedia
+    ? `Uma imagem com os planos será enviada automaticamente após sua mensagem. Escreva apenas 1 frase curta de apresentação (ex: "Deixa eu te mostrar as opções 👇"). NÃO liste planos nem preços. Termine com: "Me fala qual chamou mais atenção e eu já abro a agenda pra você."`
+    : hasAnyCustomMsg
+    ? `Os detalhes dos planos chegam automaticamente na próxima mensagem. Escreva apenas 1 frase de introdução (ex: "Olha as opções que temos 👇"). Não descreva valores. Termine com: "Me fala qual chamou mais atenção e eu já abro a agenda pra você."`
+    : plansForPrompt
+    ? `Apresente os planos em texto corrido, 1 frase por plano, sem asterisco ou negrito:\n${plansForPrompt}\nTermine com: "Me fala qual chamou mais atenção e eu já abro a agenda pra você."`
+    : `Diga que ${nutriName} apresenta os detalhes na consulta e convide para agendar.`
 
-ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
-(1) Mostre empatia genuína com as palavras dele. Ex: "Entendo, essa é exatamente a situação que o David trabalha."
-(2) Explique em 1-2 frases COMO o consultório resolve isso — use o que estiver em INSTRUÇÕES DO CONSULTÓRIO.
-(3) Avance direto para a ETAPA 3 apresentando os planos. NÃO pergunte modalidade — o cliente vai escolher ao ver os planos.
+  // ── Agendamento ─────────────────────────────────────────
+  const schedulingFlow = funcAgendamento
+    ? `AGENDAMENTO — colete nesta ordem (1 pergunta por vez):
+1. Plano escolhido → pergunte preferência de turno (manhã ou tarde)
+2. Turno → mostre os horários: ${hasSlotsConfigured ? `Manhã: ${morningSlotsText || '—'} | Tarde: ${afternoonSlotsText || '—'}` : 'diga que vai verificar com ' + nutriName}
+3. Horário escolhido → pergunte nome completo
+4. Nome → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" (nada mais)
+${hasSlotsConfigured ? 'NUNCA invente horários fora da lista acima.' : ''}`
+    : `Agendamento desabilitado — diga que ${nutriName} entrará em contato para confirmar o horário.`
 
-ETAPA 3 — PLANOS:
-Após definida a modalidade (ou se só tiver uma):
-${hasAnyMedia ? `
-Uma imagem com todos os detalhes dos planos será enviada automaticamente após sua mensagem.
-Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇").
-NÃO liste planos, preços ou detalhes em texto — a imagem mostrará tudo.
-Termine com: "É só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
-` : hasAnyCustomMsg ? `
-Os detalhes dos planos serão enviados AUTOMATICAMENTE como mensagem separada após a sua.
-Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções disponíveis 👇").
-NÃO descreva planos, preços ou condições — isso chegará em seguida de forma automática.
-Termine com: "É só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
-` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito.
-${plansAllText
-  ? `Use apenas os planos da modalidade escolhida. Termine com: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."`
-  : `Informe que ${nutriName} apresenta os detalhes pessoalmente. Termine com: "Se faz sentido pra você, posso verificar um horário com ${nutriName} agora."`}
-`}
+  return `Você é ${aiName}, recepcionista do consultório de ${nutriName}${specialtiesText ? ` (${specialtiesText})` : ''}. Atende por WhatsApp. Modalidade: ${modalityLabel}.
 
-SEQUÊNCIA DE AGENDAMENTO — siga ESTA ORDEM sem pular etapas:
-1. Cliente indica o plano ou interesse → pergunte: "Me conta: para qual cidade deseja o atendimento?"
-2. Cliente informa a cidade → pergunte: "Preferência pela manhã ou à tarde?"
-3. Cliente informa o turno → mostre os horários disponíveis do turno escolhido
-4. Cliente escolhe horário → pergunte: "Qual seu nome completo?"
-5. Cliente informa nome → confirme com EXATAMENTE "✅ Consulta confirmada para DD/MM/AAAA às HH:MM" e nada mais.
-${hasSlotsConfigured
-  ? `Manhã: ${morningSlotsText || '(indisponível)'} | Tarde: ${afternoonSlotsText || '(indisponível)'}
-NUNCA invente horários fora desta lista.`
-  : `Horários não configurados — diga: "Vou confirmar com ${nutriName} e te retorno."`}
+QUEM VOCÊ É:
+Você é uma recepcionista humana, experiente, que gosta do que faz. Sua função é receber a pessoa com calor, entender rapidamente o que ela busca e marcar a consulta. Você não é nutricionista — não dá conselhos alimentares. Você é a pessoa que abre a porta do consultório.
 
-REGRAS: máx 2 frases/35 palavras por msg. 1 pergunta por msg. Sem listas (•-*). Sem markdown/negrito/—. ${emojiRule} "você" não "senhor/a". Proibido: "Claro!""Com certeza!""certamente""definitivamente".
-OBJEÇÕES → preço: mostre a imagem/planos e pergunte qual chamou atenção | pensando/hesitando: "Posso reservar um horário pra você confirmar depois — assim a vaga fica garantida. Qual plano faz mais sentido?" | caro: "Entendo. Quer que eu te avise se abrir alguma condição especial?" | não funcionou antes: "Cada método é diferente. Uma consulta já resolve a dúvida. Qual plano chamou mais atenção?" | sumiu sem responder: "Oi! Ainda consigo ver um horário com ${nutriName}. Qual plano fazia mais sentido pra você?" | ignorou horário oferecido: reofereça com urgência leve "Ainda tem ${hasSlotsConfigured ? 'horários disponíveis' : 'espaço na agenda'}. Posso reservar agora?"
-SENSÍVEL (transtornos/doenças): valide com cuidado, direcione para ${nutriName}, nunca dê conselho médico.${funcoesSection ? `\n${funcoesSection}` : ''}
-NUNCA: inventar horários | ✅ sem data real | pedir telefone | usar listas | 2 perguntas | conselho nutricional | prometer resultado | repetir saudação.${contextData.client_name ? ` | Cliente: ${contextData.client_name}` : ''}${contextData.goal ? ` | Objetivo: ${contextData.goal}` : ''}`
+${toneGuide} ${emojiRule} Escreva como se fosse uma mensagem de WhatsApp real: frases curtas, sem listas, sem asterisco, sem markdown. Máximo 2 frases por mensagem. 1 pergunta por vez. Nunca use "Claro!", "Com certeza!", "Certamente" — soa robótico.
+${assistant.pdf_content ? `\nSOBRE O CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}
+FLUXO DA CONVERSA:
+
+1. ENTENDER O OBJETIVO
+${funcTriagem
+  ? `Pergunte o objetivo da pessoa em 1 frase direta. Quando ela responder, valide com as palavras dela (ex: "Perda de peso é exatamente o que trabalhamos") e faça só mais 1 pergunta de contexto — a mais importante pra mostrar que você entendeu a situação dela.`
+  : `Vá direto para a apresentação dos planos sem perguntas de triagem.`}
+
+2. CONECTAR COM O CONSULTÓRIO
+Com 1-2 frases, mostre como ${nutriName} resolve exatamente o que ela descreveu. Use o que estiver em "SOBRE O CONSULTÓRIO". Não invente — se não tiver info, diga apenas "é exatamente nisso que o ${nutriName} trabalha".
+
+3. APRESENTAR OS PLANOS
+${plansPresentation}
+
+4. APÓS ESCOLHA DO PLANO
+${schedulingFlow}
+
+OBJEÇÕES (responda de forma natural, sem script óbvio):
+- "Tá caro" / "não tenho esse valor": Ancore no valor, não no preço. Ex: "Faz sentido olhar assim. Uma coisa que vale considerar é que é o tipo de investimento que você faz uma vez e muda o resultado de vez. Qual plano fez mais sentido pra você?" — nunca prometa desconto.
+- "Vou pensar" / "me dá um tempo": Crie leveza + urgência suave. Ex: "Tranquilo! Posso deixar um horário reservado enquanto você decide — assim você não perde a vaga. Faz sentido?"
+- "Já tentei dieta antes e não funcionou": Valide e diferencione. Ex: "Entendo, a maioria das pessoas que chegam até nós passaram pela mesma coisa. O acompanhamento do ${nutriName} é diferente justamente por isso — o que chamou mais atenção nos planos?"
+- Pergunta técnica de nutrição: "Isso é uma ótima pergunta pra levar direto pro ${nutriName} na consulta — ele vai conseguir te responder com muito mais precisão do que eu."
+- Condição de saúde sensível (diabetes, transtorno alimentar, etc): Acolha com cuidado. "Que bom que você está buscando apoio nisso. O ${nutriName} tem experiência com esse perfil — uma consulta já clareia muito o caminho."
+
+NUNCA: inventar horários | confirmar consulta sem data e hora reais | pedir telefone | dar conselho alimentar | prometer resultado | repetir saudação.${clientCtx ? `\n\nCONTEXTO DO CLIENTE: ${clientCtx}` : ''}
+`
 }
 
 // ── Detecta e cria agendamento automaticamente ─────────────
 async function detectAndCreateAppointment({
-  responseText, message, nutritionist_id, client_phone, availableSlots, convId, assistantName
-}: any): Promise<'appointment_created' | null> {
+  responseText, message, nutritionist_id, client_phone, availableSlots, convId, assistantName, conversationContext
+}: any): Promise<{ action: 'appointment_created'; bookingConfirmationMessage?: string } | null> {
   // Detecta confirmação de agendamento na resposta da IA
   const confirmationPattern = /✅ Consulta confirmada para (.+) às (\d{2}:\d{2})/i
   const match = responseText.match(confirmationPattern)
@@ -526,7 +523,7 @@ async function detectAndCreateAppointment({
 
   try {
     // Tenta extrair data e hora da confirmação
-    const dateStr = match[1] // ex: "21/05/2026"
+    const dateStr = match[1].trim() // ex: "21/05/2026"
     const timeStr = match[2] // ex: "14:00"
 
     // Converte para ISO datetime
@@ -552,11 +549,21 @@ async function detectAndCreateAppointment({
       client = newClient
     }
 
+    // Detecta modalidade e cidade do histórico da conversa
+    const ctxText = (conversationContext?.goal || '') + ' ' + message
+    const recentText = responseText.toLowerCase()
+    const isPresencial = recentText.includes('presencial') || ctxText.toLowerCase().includes('presencial')
+    const modality = isPresencial ? 'presencial' : 'online'
+
+    // Tenta detectar cidade mencionada no contexto
+    const cityMatch = ctxText.match(/(?:cidad[ea]|em|de)\s+([A-ZÁÉÍÓÚÃÕÇÜ][a-záéíóúãõçü]+(?:\s+[A-ZÁÉÍÓÚÃÕÇÜ][a-záéíóúãõçü]+)?)/i)
+    const city = cityMatch?.[1] || null
+
     // Cria o agendamento
     await query(
-      `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, modality, created_by, status)
-       VALUES ($1, $2, $3, 'online', 'assistant', 'scheduled')`,
-      [nutritionist_id, client.id, scheduledAt]
+      `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, modality, city, created_by, status)
+       VALUES ($1, $2, $3, $4, $5, 'assistant', 'scheduled')`,
+      [nutritionist_id, client.id, scheduledAt, modality, city]
     )
 
     // Atualiza conversa
@@ -565,13 +572,51 @@ async function detectAndCreateAppointment({
       [convId]
     )
 
+    // ── Mensagem de confirmação com local/preço/instruções ────────
+    let bookingConfirmationMessage: string | undefined
+    try {
+      let locSql = `SELECT name, address, city, price, payment_info, deposit_required, deposit_amount, confirmation_message
+                    FROM locations WHERE nutritionist_id = $1 AND is_active = true`
+      const locParams: any[] = [nutritionist_id]
+      if (modality === 'presencial') {
+        locSql += ` AND (modality = 'presencial' OR modality = 'ambos')`
+      } else {
+        locSql += ` AND (modality = 'online' OR modality = 'ambos')`
+      }
+      if (city) { locParams.push(`%${city}%`); locSql += ` AND city ILIKE $${locParams.length}` }
+      locSql += ' ORDER BY sort_order LIMIT 1'
+      const loc = await queryOne<any>(locSql, locParams)
+
+      if (loc) {
+        const parts: string[] = []
+        if (loc.confirmation_message?.trim()) {
+          parts.push(loc.confirmation_message.trim())
+        }
+        if (loc.address?.trim()) {
+          parts.push(`📍 Endereço: ${loc.address.trim()}`)
+        }
+        if (loc.price?.trim()) {
+          parts.push(`💰 Valor: ${loc.price.trim()}`)
+        }
+        if (loc.deposit_required && loc.deposit_amount?.trim()) {
+          parts.push(`⚡ Sinal para confirmar: ${loc.deposit_amount.trim()}`)
+        }
+        if (loc.payment_info?.trim()) {
+          parts.push(loc.payment_info.trim())
+        }
+        if (parts.length > 0) {
+          bookingConfirmationMessage = parts.join('\n')
+        }
+      }
+    } catch { /* não crítico */ }
+
     // ── Cria evento no Google Calendar (se conectado) ──────────
     createCalendarEvent(nutritionist_id, {
       client_name:   client.name || 'Cliente',
       client_phone,
       scheduled_at:  scheduledAt,
       duration:      50,
-      modality:      'online',
+      modality,
     }).catch(err => console.error('[GCal] Falha silenciosa:', err))
 
     // ── Notifica a nutricionista via WhatsApp pessoal ──────────
@@ -612,7 +657,7 @@ async function detectAndCreateAppointment({
     }
     // ─────────────────────────────────────────────────────────
 
-    return 'appointment_created'
+    return { action: 'appointment_created', bookingConfirmationMessage }
   } catch (err) {
     console.error('Erro ao criar agendamento automático:', err)
     return null

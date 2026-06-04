@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Moon } from 'lucide-react'
+import { Moon, MapPin, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -449,6 +449,311 @@ function TabHorarios() {
   )
 }
 
+// ─── Tab: Locais de Atendimento ───────────────────────────────────
+
+interface Location {
+  id: string
+  name: string
+  city?: string
+  address?: string
+  color?: string
+  modality?: string
+  price?: string
+  payment_info?: string
+  deposit_required?: boolean
+  deposit_amount?: string
+  confirmation_message?: string
+}
+
+const LOCATION_MODALITIES = [
+  { value: 'presencial', label: 'Presencial' },
+  { value: 'online',     label: 'Online'     },
+  { value: 'ambos',      label: 'Ambos'      },
+]
+
+const LOCATION_COLORS = [
+  '#00c27c', '#6366f1', '#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#f97316'
+]
+
+function LocationCard({
+  loc,
+  onSave,
+  onDelete,
+}: {
+  loc: Partial<Location> & { _new?: boolean }
+  onSave: (data: Partial<Location>) => Promise<void>
+  onDelete?: () => void
+}) {
+  const [open, setOpen] = useState(loc._new ?? false)
+  const [form, setForm] = useState<Partial<Location>>({
+    name:                 loc.name                 ?? '',
+    city:                 loc.city                 ?? '',
+    address:              loc.address              ?? '',
+    color:                loc.color                ?? '#00c27c',
+    modality:             loc.modality             ?? 'presencial',
+    price:                loc.price                ?? '',
+    payment_info:         loc.payment_info         ?? '',
+    deposit_required:     loc.deposit_required     ?? false,
+    deposit_amount:       loc.deposit_amount       ?? '',
+    confirmation_message: loc.confirmation_message ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  function set(field: keyof Location, value: any) {
+    setForm(f => ({ ...f, [field]: value }))
+  }
+
+  async function handleSave() {
+    if (!form.name?.trim()) { toast.error('Nome obrigatório'); return }
+    setSaving(true)
+    try {
+      await onSave({ ...loc, ...form })
+      setOpen(false)
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      {/* Header row */}
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-raised transition-colors" onClick={() => setOpen(o => !o)}>
+        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: form.color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-t1 truncate">{form.name || <span className="text-t3 italic">Novo local</span>}</p>
+          {form.city && <p className="text-xs text-t3 truncate">{form.city}{form.modality ? ` · ${form.modality}` : ''}</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onDelete() }}
+              className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {open ? <ChevronUp className="w-4 h-4 text-t3" /> : <ChevronDown className="w-4 h-4 text-t3" />}
+        </div>
+      </div>
+
+      {/* Form (collapsible) */}
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+
+          <div className="grid grid-cols-2 gap-3 pt-3">
+            <div className="col-span-2">
+              <Input
+                label="Nome do local"
+                placeholder="Ex: Consultório Centro SP, Clínica Online..."
+                value={form.name}
+                onChange={e => set('name', e.target.value)}
+              />
+            </div>
+
+            <Input
+              label="Cidade"
+              placeholder="São Paulo"
+              value={form.city}
+              onChange={e => set('city', e.target.value)}
+            />
+
+            {/* Modalidade */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-t2">Modalidade</label>
+              <select
+                value={form.modality}
+                onChange={e => set('modality', e.target.value)}
+                className="rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+              >
+                {LOCATION_MODALITIES.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-span-2">
+              <Input
+                label="Endereço completo"
+                placeholder="Rua das Flores, 100 — Sala 5 — Centro"
+                value={form.address}
+                onChange={e => set('address', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Valor + pagamento */}
+          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs font-semibold text-t2 uppercase tracking-wider">Valor & Pagamento</p>
+
+            <Input
+              label="Valor da consulta"
+              placeholder="Ex: R$ 250,00 ou A partir de R$ 200"
+              value={form.price}
+              onChange={e => set('price', e.target.value)}
+            />
+
+            <Textarea
+              label="Instruções de pagamento"
+              placeholder="Ex: Pix: 11999999999 (João Silva) ou Cartão no local."
+              rows={2}
+              value={form.payment_info}
+              onChange={e => set('payment_info', e.target.value)}
+            />
+
+            {/* Sinal / Depósito */}
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <p className="text-sm font-medium text-t1">Exige sinal para confirmar</p>
+                <p className="text-xs text-t3">Paciente precisa pagar antecipadamente</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => set('deposit_required', !form.deposit_required)}
+                className={cn(
+                  'relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0',
+                  form.deposit_required ? 'bg-brand-500' : 'bg-raised'
+                )}
+                style={form.deposit_required ? {} : { border: '1px solid var(--border)' }}
+              >
+                <span className={cn(
+                  'absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform',
+                  form.deposit_required ? 'left-[20px]' : 'left-[2px]'
+                )} />
+              </button>
+            </div>
+
+            {form.deposit_required && (
+              <Input
+                label="Valor do sinal"
+                placeholder="Ex: R$ 50,00 (10% do valor total)"
+                value={form.deposit_amount}
+                onChange={e => set('deposit_amount', e.target.value)}
+              />
+            )}
+          </div>
+
+          {/* Mensagem de confirmação */}
+          <Textarea
+            label="Mensagem de confirmação de agendamento"
+            hint="Enviada automaticamente após o paciente agendar — inclui endereço e instruções"
+            placeholder="Ex: Sua consulta está confirmada! 🎉 Aguardamos você no endereço abaixo..."
+            rows={3}
+            value={form.confirmation_message}
+            onChange={e => set('confirmation_message', e.target.value)}
+          />
+
+          {/* Cor */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-t2">Cor na agenda</label>
+            <div className="flex gap-2 flex-wrap">
+              {LOCATION_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => set('color', c)}
+                  className={cn(
+                    'w-7 h-7 rounded-full border-2 transition-transform hover:scale-110',
+                    form.color === c ? 'border-white scale-110' : 'border-transparent'
+                  )}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <Button onClick={handleSave} loading={saving} className="w-full">
+            Salvar local
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TabLocais() {
+  const qc = useQueryClient()
+
+  const { data: locations = [], isLoading } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: () => api.get('/api/locations').then(r => r.data.locations ?? r.data),
+  })
+
+  const [newItems, setNewItems] = useState<{ id: string }[]>([])
+
+  const saveMut = useMutation({
+    mutationFn: async (data: Partial<Location>) => {
+      if (data.id && !String(data.id).startsWith('_new')) {
+        await api.put(`/api/locations/${data.id}`, data)
+      } else {
+        const { id: _ignore, _new: _ignore2, ...rest } = data as any
+        await api.post('/api/locations', rest)
+      }
+    },
+    onSuccess: () => {
+      toast.success('Local salvo!')
+      qc.invalidateQueries({ queryKey: ['locations'] })
+      setNewItems([])
+    },
+    onError: () => toast.error('Erro ao salvar local'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/locations/${id}`),
+    onSuccess: () => {
+      toast.success('Local removido')
+      qc.invalidateQueries({ queryKey: ['locations'] })
+    },
+    onError: () => toast.error('Erro ao remover'),
+  })
+
+  function addNew() {
+    setNewItems(prev => [...prev, { id: `_new_${Date.now()}` }])
+  }
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
+  }
+
+  return (
+    <div className="space-y-3">
+      {locations.length === 0 && newItems.length === 0 && (
+        <div className="text-center py-8 text-sm text-t3">
+          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          Nenhum local cadastrado ainda. Adicione seu consultório ou cidade de atendimento.
+        </div>
+      )}
+
+      {locations.map(loc => (
+        <LocationCard
+          key={loc.id}
+          loc={loc}
+          onSave={data => saveMut.mutateAsync(data)}
+          onDelete={() => deleteMut.mutate(loc.id)}
+        />
+      ))}
+
+      {newItems.map(item => (
+        <LocationCard
+          key={item.id}
+          loc={{ _new: true } as any}
+          onSave={data => saveMut.mutateAsync(data)}
+          onDelete={() => setNewItems(prev => prev.filter(n => n.id !== item.id))}
+        />
+      ))}
+
+      <button
+        type="button"
+        onClick={addNew}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-sm text-t3 hover:text-brand-400 hover:border-brand-500/40 transition-colors"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <Plus className="w-4 h-4" />
+        Adicionar local de atendimento
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────
 export default function ConfiguracoesPage() {
   return (
@@ -477,6 +782,20 @@ export default function ConfiguracoesPage() {
         </div>
         <CardContent className="py-6">
           <TabHorarios />
+        </CardContent>
+      </Card>
+
+      {/* Seção: Locais */}
+      <Card>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-t3" />
+            <p className="text-sm font-semibold text-t1">Locais de atendimento</p>
+          </div>
+          <p className="text-xs text-t3 mt-0.5">Consultórios, cidades, modalidade, valor e mensagem de confirmação</p>
+        </div>
+        <CardContent className="py-6">
+          <TabLocais />
         </CardContent>
       </Card>
     </div>

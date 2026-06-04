@@ -308,6 +308,13 @@ export async function webhookRoutes(app: FastifyInstance) {
             await sendMessage(phone, response.planMessageText, activeInstance)
               .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem de planos (não crítico)'))
           }
+
+          // Envia mensagem de confirmação de agendamento (local, preço, instruções)
+          if (response.bookingConfirmationMessage) {
+            await new Promise(r => setTimeout(r, 2500))
+            await sendMessage(phone, response.bookingConfirmationMessage, activeInstance)
+              .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar confirmação de agendamento (não crítico)'))
+          }
         } catch (err: any) {
           app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')
           // Tenta enviar mensagem de fallback para não deixar o cliente sem resposta

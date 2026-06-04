@@ -110,11 +110,84 @@ export async function clientRoutes(app: FastifyInstance) {
     return reply.send({ client })
   })
 
-  // POST /api/clients/import — importação em massa via CSV
-  app.post('/import', auth, async (request, reply) => {
-    const { id: nutritionistId } = (request as any).user
+  // POST /api/clients/import/analyze — IA analisa CSV e sugere mapeamento de colunas
+  app.post('/import/analyze', auth, async (request, reply) => {
     const body = request.body as { csv: string }
     if (!body.csv?.trim()) return reply.code(400).send({ error: 'CSV vazio' })
+
+    const raw = body.csv.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    const lines = raw.trim().split('\n').filter(Boolean)
+    if (lines.length < 2) return reply.code(400).send({ error: 'CSV precisa de cabeçalho + ao menos 1 linha' })
+
+    const sep = lines[0].includes(';') ? ';' : ','
+    const headers = lines[0].split(sep).map(h => h.trim().replace(/['"]/g, ''))
+
+    // Pega até 3 linhas de amostra para a IA entender o conteúdo
+    const sampleRows = lines.slice(1, 4).map(l => l.split(sep).map(c => c.trim().replace(/['"]/g, '')))
+    const sampleText = sampleRows.map((r, i) => `Linha ${i + 2}: ${headers.map((h, j) => `${h}="${r[j] ?? ''}"`).join(', ')}`).join('\n')
+
+    const prompt = `Analise este CSV de pacientes e mapeie cada coluna para um dos campos do sistema.
+
+Cabeçalhos: ${headers.join(' | ')}
+
+${sampleText}
+
+Campos disponíveis no sistema:
+- name: nome completo do paciente
+- phone: telefone/celular/WhatsApp (OBRIGATÓRIO — se não existir, retorne error)
+- email: e-mail
+- goal: objetivo (emagrecer, ganhar massa, saúde, etc.)
+- gender: sexo/gênero
+- height_cm: altura em cm
+- birthdate: data de nascimento
+- notes: observações gerais
+- (ignore): ignore esta coluna
+
+Retorne APENAS um JSON válido no formato:
+{
+  "mapping": {
+    "NomeExatoColuna": "campodoSistema"
+  },
+  "total_rows": ${lines.length - 1},
+  "has_phone": true/false
+}
+
+Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ignore".`
+
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai')
+      const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY || '')
+      const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash', generationConfig: { maxOutputTokens: 500, responseMimeType: 'application/json' } })
+      const result = await model.generateContent(prompt)
+      const jsonText = result.response.text().trim()
+      const parsed = JSON.parse(jsonText)
+      return reply.send({ ok: true, headers, sample_rows: sampleRows.slice(0, 2), mapping: parsed.mapping, total_rows: parsed.total_rows, has_phone: parsed.has_phone })
+    } catch {
+      // Fallback: mapeamento por heurística simples
+      const fieldMap: Record<string, string> = {}
+      for (const h of headers) {
+        const hl = h.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (['nome', 'paciente', 'name', 'cliente'].some(t => hl.includes(t)))           fieldMap[h] = 'name'
+        else if (['telefone', 'celular', 'whatsapp', 'fone', 'phone', 'tel'].some(t => hl.includes(t))) fieldMap[h] = 'phone'
+        else if (['email', 'mail'].some(t => hl.includes(t)))                             fieldMap[h] = 'email'
+        else if (['objetivo', 'goal', 'meta'].some(t => hl.includes(t)))                  fieldMap[h] = 'goal'
+        else if (['sexo', 'genero', 'gender'].some(t => hl.includes(t)))                  fieldMap[h] = 'gender'
+        else if (['altura', 'height'].some(t => hl.includes(t)))                          fieldMap[h] = 'height_cm'
+        else if (['nascimento', 'birthdate', 'birth'].some(t => hl.includes(t)))          fieldMap[h] = 'birthdate'
+        else if (['obs', 'note', 'observ'].some(t => hl.includes(t)))                     fieldMap[h] = 'notes'
+        else fieldMap[h] = 'ignore'
+      }
+      return reply.send({ ok: true, headers, sample_rows: sampleRows.slice(0, 2), mapping: fieldMap, total_rows: lines.length - 1, has_phone: Object.values(fieldMap).includes('phone') })
+    }
+  })
+
+  // POST /api/clients/import — importação em massa via CSV
+  // Aceita { csv, mapping } onde mapping = { "ColunaCsv": "campodoSistema" }
+  app.post('/import', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const body = request.body as { csv: string; mapping?: Record<string, string> }
+    if (!body.csv?.trim()) return reply.code(400).send({ error: 'CSV vazio' })
+    const customMapping: Record<string, string> | undefined = body.mapping
 
     // Remove BOM (Excel UTF-8 com BOM: ﻿) e normaliza quebras de linha
     const rawCsv = body.csv
@@ -146,13 +219,23 @@ export async function clientRoutes(app: FastifyInstance) {
       return -1
     }
 
-    const iName      = colIndex(['nome do paciente', 'nome', 'paciente', 'name', 'cliente'])
-    const iPhone     = colIndex(['telefone', 'celular', 'whatsapp', 'phone', 'fone', 'tel'])
-    const iEmail     = colIndex(['email', 'e-mail', 'e_mail'])
-    const iGoal      = colIndex(['objetivo', 'goal', 'meta'])
-    const iGender    = colIndex(['sexo', 'genero', 'gênero', 'gender'])
-    const iHeight    = colIndex(['altura', 'height', 'height_cm'])
-    const iBirthdate = colIndex(['data de nascimento', 'nascimento', 'data_nascimento', 'birthdate', 'dt_nascimento'])
+    // Se tem mapeamento customizado (da IA), usa ele; senão faz heurística
+    const findMapped = (field: string): number => {
+      if (!customMapping) return -1
+      // O customMapping usa os headers originais (antes do lowercase)
+      const rawHeaders = lines[0].split(sep).map((h: string) => h.trim().replace(/['"]/g, '').replace(/﻿/g, ''))
+      const col = Object.entries(customMapping).find(([, v]) => v === field)
+      if (!col) return -1
+      return rawHeaders.indexOf(col[0])
+    }
+
+    const iName      = findMapped('name')      >= 0 ? findMapped('name')      : colIndex(['nome do paciente', 'nome', 'paciente', 'name', 'cliente'])
+    const iPhone     = findMapped('phone')     >= 0 ? findMapped('phone')     : colIndex(['telefone', 'celular', 'whatsapp', 'phone', 'fone', 'tel'])
+    const iEmail     = findMapped('email')     >= 0 ? findMapped('email')     : colIndex(['email', 'e-mail', 'e_mail'])
+    const iGoal      = findMapped('goal')      >= 0 ? findMapped('goal')      : colIndex(['objetivo', 'goal', 'meta'])
+    const iGender    = findMapped('gender')    >= 0 ? findMapped('gender')    : colIndex(['sexo', 'genero', 'gênero', 'gender'])
+    const iHeight    = findMapped('height_cm') >= 0 ? findMapped('height_cm'): colIndex(['altura', 'height', 'height_cm'])
+    const iBirthdate = findMapped('birthdate') >= 0 ? findMapped('birthdate'): colIndex(['data de nascimento', 'nascimento', 'data_nascimento', 'birthdate', 'dt_nascimento'])
 
     if (iPhone < 0) {
       return reply.code(400).send({
