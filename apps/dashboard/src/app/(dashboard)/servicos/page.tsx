@@ -409,11 +409,6 @@ export default function ServicosPage() {
             <ShoppingBag className="w-5 h-5 text-brand-500" />
           </div>
           <p className="text-sm text-t2">Nenhum plano ainda.</p>
-          <p className="text-xs text-t3">Clique em "+ Novo serviço" para adicionar seus planos.</p>
-          <button onClick={() => setEditing({})}
-            className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 text-sm font-medium hover:bg-brand-500/15 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Adicionar primeiro plano
-          </button>
         </div>
       ) : services.length > 0 ? (
         <div className="space-y-4">
