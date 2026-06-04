@@ -453,6 +453,20 @@ ALTER TABLE locations ADD COLUMN IF NOT EXISTS modality TEXT DEFAULT 'presencial
 -- ── Agendamento: campo de cidade escolhida pela IA ────────────────────────
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS city TEXT;
 
+-- ── Disponibilidade: pausa (almoço etc) ───────────────────────────────────
+ALTER TABLE availability ADD COLUMN IF NOT EXISTS break_start TIME;
+ALTER TABLE availability ADD COLUMN IF NOT EXISTS break_end   TIME;
+
+-- ── Datas bloqueadas (feriados / dias sem atendimento) ────────────────────
+CREATE TABLE IF NOT EXISTS blocked_dates (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  blocked_date    DATE NOT NULL,
+  reason          TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (nutritionist_id, blocked_date)
+);
+
 -- Google Calendar integration
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

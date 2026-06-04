@@ -60,6 +60,13 @@ export async function getAvailableSlots(nutritionist_id: string, date: string): 
   const holidays = await getHolidays(year)
   if (holidays.has(date)) return []
 
+  // Verifica data bloqueada manualmente pelo nutricionista
+  const blocked = await query<any>(
+    `SELECT id FROM blocked_dates WHERE nutritionist_id = $1 AND blocked_date = $2`,
+    [nutritionist_id, date]
+  ).catch(() => [] as any[])
+  if (blocked.length > 0) return []
+
   // Busca horários configurados para o dia da semana
   const availability = await query<any>(
     `SELECT * FROM availability
@@ -93,10 +100,33 @@ export async function getAvailableSlots(nutritionist_id: string, date: string): 
     const [endH, endM] = avail.end_time.split(':').map(Number)
     const duration = avail.slot_duration
 
+    // Pausa (ex: almoço)
+    const breakStart = avail.break_start ? (() => {
+      const [bH, bM] = avail.break_start.slice(0, 5).split(':').map(Number)
+      return bH * 60 + bM
+    })() : null
+    const breakEnd = avail.break_end ? (() => {
+      const [bH, bM] = avail.break_end.slice(0, 5).split(':').map(Number)
+      return bH * 60 + bM
+    })() : null
+
     let currentMinutes = startH * 60 + startM
     const endMinutes = endH * 60 + endM
 
     while (currentMinutes + duration <= endMinutes) {
+      // Pula slots que caem dentro da pausa
+      if (breakStart !== null && breakEnd !== null) {
+        if (currentMinutes >= breakStart && currentMinutes < breakEnd) {
+          currentMinutes += duration
+          continue
+        }
+        // Pula slot que começaria antes da pausa mas terminaria dentro dela
+        if (currentMinutes < breakStart && currentMinutes + duration > breakStart) {
+          currentMinutes = breakEnd
+          continue
+        }
+      }
+
       const h = Math.floor(currentMinutes / 60).toString().padStart(2, '0')
       const m = (currentMinutes % 60).toString().padStart(2, '0')
       const timeStr = `${h}:${m}`
