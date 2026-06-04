@@ -12,28 +12,55 @@ export async function assistantRoutes(app: FastifyInstance) {
   // GET /api/assistants — busca assistente da nutri
   app.get('/', auth, async (request, reply) => {
     const { id } = (request as any).user
-    const assistant = await queryOne<any>(
-      `SELECT id, name, tone, greeting_message, is_active, created_at,
-              consultation_price, consultation_modalities, specialties,
-              vacation_mode, vacation_message,
-              followup_enabled, followup_delay_hours,
-              service_plans, nutri_display_name,
-              emoji_level, func_prospeccao, func_triagem, func_agendamento,
-              followup_message_1, followup_message_2,
-              auto_feedback_enabled, auto_feedback_delay_hours, auto_feedback_message,
-              auto_reminder_enabled, auto_reminder_hours_before, auto_reminder_message,
-              auto_return_enabled, auto_return_days, auto_return_message,
-              services_message, services_message_enabled,
-              services_message_online, services_message_online_enabled,
-              services_message_presencial, services_message_presencial_enabled,
-              ai_paused,
-              plans_media_enabled, plans_media_type, plans_media_original_name,
-              CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
-              plans_media,
-              CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
-       FROM assistants WHERE nutritionist_id = $1`,
-      [id]
-    )
+
+    // Tenta busca completa (com colunas novas de automação)
+    let assistant: any = null
+    try {
+      assistant = await queryOne<any>(
+        `SELECT id, name, tone, greeting_message, is_active, created_at,
+                consultation_price, consultation_modalities, specialties,
+                vacation_mode, vacation_message,
+                followup_enabled, followup_delay_hours,
+                service_plans, nutri_display_name,
+                emoji_level, func_prospeccao, func_triagem, func_agendamento,
+                followup_message_1, followup_message_2,
+                auto_feedback_enabled, auto_feedback_delay_hours, auto_feedback_message,
+                auto_reminder_enabled, auto_reminder_hours_before, auto_reminder_message,
+                auto_return_enabled, auto_return_days, auto_return_message,
+                services_message, services_message_enabled,
+                services_message_online, services_message_online_enabled,
+                services_message_presencial, services_message_presencial_enabled,
+                ai_paused,
+                plans_media_enabled, plans_media_type, plans_media_original_name,
+                CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
+                plans_media,
+                CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
+         FROM assistants WHERE nutritionist_id = $1`,
+        [id]
+      )
+    } catch {
+      // Fallback sem colunas novas (migration ainda não rodou)
+      assistant = await queryOne<any>(
+        `SELECT id, name, tone, greeting_message, is_active, created_at,
+                consultation_price, consultation_modalities, specialties,
+                vacation_mode, vacation_message,
+                followup_enabled, followup_delay_hours,
+                service_plans, nutri_display_name,
+                emoji_level, func_prospeccao, func_triagem, func_agendamento,
+                followup_message_1, followup_message_2,
+                services_message, services_message_enabled,
+                services_message_online, services_message_online_enabled,
+                services_message_presencial, services_message_presencial_enabled,
+                ai_paused,
+                plans_media_enabled, plans_media_type, plans_media_original_name,
+                CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
+                plans_media,
+                CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
+         FROM assistants WHERE nutritionist_id = $1`,
+        [id]
+      )
+    }
+
     return reply.send({ assistant: assistant ?? null })
   })
 
@@ -100,15 +127,6 @@ export async function assistantRoutes(app: FastifyInstance) {
            services_message_online_enabled = COALESCE($23, services_message_online_enabled),
            services_message_presencial = $24,
            services_message_presencial_enabled = COALESCE($25, services_message_presencial_enabled),
-           auto_feedback_enabled = COALESCE($26, auto_feedback_enabled),
-           auto_feedback_delay_hours = COALESCE($27, auto_feedback_delay_hours),
-           auto_feedback_message = COALESCE($28, auto_feedback_message),
-           auto_reminder_enabled = COALESCE($29, auto_reminder_enabled),
-           auto_reminder_hours_before = COALESCE($30, auto_reminder_hours_before),
-           auto_reminder_message = COALESCE($31, auto_reminder_message),
-           auto_return_enabled = COALESCE($32, auto_return_enabled),
-           auto_return_days = COALESCE($33, auto_return_days),
-           auto_return_message = COALESCE($34, auto_return_message),
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
@@ -117,9 +135,6 @@ export async function assistantRoutes(app: FastifyInstance) {
                    followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
                    emoji_level, func_prospeccao, func_triagem, func_agendamento,
                    followup_message_1, followup_message_2,
-                   auto_feedback_enabled, auto_feedback_delay_hours, auto_feedback_message,
-                   auto_reminder_enabled, auto_reminder_hours_before, auto_reminder_message,
-                   auto_return_enabled, auto_return_days, auto_return_message,
                    services_message, services_message_enabled,
                    services_message_online, services_message_online_enabled,
                    services_message_presencial, services_message_presencial_enabled`,
@@ -132,11 +147,29 @@ export async function assistantRoutes(app: FastifyInstance) {
          body.followup_message_1 ?? null, body.followup_message_2 ?? null,
          body.services_message ?? null, body.services_message_enabled ?? null,
          body.services_message_online ?? null, body.services_message_online_enabled ?? null,
-         body.services_message_presencial ?? null, body.services_message_presencial_enabled ?? null,
-         body.auto_feedback_enabled ?? null, body.auto_feedback_delay_hours ?? null, body.auto_feedback_message ?? null,
-         body.auto_reminder_enabled ?? null, body.auto_reminder_hours_before ?? null, body.auto_reminder_message ?? null,
-         body.auto_return_enabled ?? null, body.auto_return_days ?? null, body.auto_return_message ?? null]
+         body.services_message_presencial ?? null, body.services_message_presencial_enabled ?? null]
       )
+
+      // Atualiza campos de automação separadamente (defensivo — colunas podem não existir até rodar migration)
+      try {
+        const autoUpdates: string[] = []
+        const autoParams: any[] = [id]
+        let p = 2
+        if (body.auto_feedback_enabled !== undefined)      { autoUpdates.push(`auto_feedback_enabled = $${p++}`);      autoParams.push(body.auto_feedback_enabled) }
+        if (body.auto_feedback_delay_hours !== undefined)  { autoUpdates.push(`auto_feedback_delay_hours = $${p++}`);  autoParams.push(body.auto_feedback_delay_hours) }
+        if (body.auto_feedback_message !== undefined)      { autoUpdates.push(`auto_feedback_message = $${p++}`);      autoParams.push(body.auto_feedback_message) }
+        if (body.auto_reminder_enabled !== undefined)      { autoUpdates.push(`auto_reminder_enabled = $${p++}`);      autoParams.push(body.auto_reminder_enabled) }
+        if (body.auto_reminder_hours_before !== undefined) { autoUpdates.push(`auto_reminder_hours_before = $${p++}`); autoParams.push(body.auto_reminder_hours_before) }
+        if (body.auto_reminder_message !== undefined)      { autoUpdates.push(`auto_reminder_message = $${p++}`);      autoParams.push(body.auto_reminder_message) }
+        if (body.auto_return_enabled !== undefined)        { autoUpdates.push(`auto_return_enabled = $${p++}`);        autoParams.push(body.auto_return_enabled) }
+        if (body.auto_return_days !== undefined)           { autoUpdates.push(`auto_return_days = $${p++}`);           autoParams.push(body.auto_return_days) }
+        if (body.auto_return_message !== undefined)        { autoUpdates.push(`auto_return_message = $${p++}`);        autoParams.push(body.auto_return_message) }
+        if (autoUpdates.length > 0) {
+          await query(`UPDATE assistants SET ${autoUpdates.join(', ')} WHERE nutritionist_id = $1`, autoParams)
+        }
+      } catch {
+        // Colunas de automação ainda não existem — ignorar até rodar migration
+      }
     } else {
       ;[assistant] = await query(
         `INSERT INTO assistants
