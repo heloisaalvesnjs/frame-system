@@ -110,6 +110,7 @@ interface ProcessMessageOutput {
   planMediaUrl?: string   // URL da mídia dos planos (imagem ou PDF) para envio automático
   planMediaType?: 'image' | 'pdf'
   planMediaName?: string
+  planMessageText?: string  // Mensagem de texto enviada APÓS a mídia dos planos
 }
 
 // ── Serviço principal ──────────────────────────────────────
@@ -294,6 +295,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   let planMediaUrl: string | undefined
   let planMediaType: 'image' | 'pdf' | undefined
   let planMediaName: string | undefined
+  let planMessageText: string | undefined
 
   if (isEtapa3 && hasAnyMedia && !alreadyPresentedPlans) {
     // Detecta modalidade pelo histórico recente
@@ -312,9 +314,20 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
       planMediaType = (chosen.type as 'image' | 'pdf') || 'image'
       planMediaName = chosen.name || 'planos.pdf'
     }
+
+    // Mensagem enviada APÓS a mídia (texto configurado pelo nutri na aba Serviços)
+    const customMsgOnline2     = assistant.services_message_online_enabled     && assistant.services_message_online?.trim()     ? assistant.services_message_online.trim()     : null
+    const customMsgPresencial2 = assistant.services_message_presencial_enabled && assistant.services_message_presencial?.trim() ? assistant.services_message_presencial.trim() : null
+    const customMsgGeral2      = assistant.services_message_enabled            && assistant.services_message?.trim()            ? assistant.services_message.trim()            : null
+
+    if (isPresencialCtx && customMsgPresencial2) planMessageText = customMsgPresencial2
+    else if (isOnlineCtx && customMsgOnline2)    planMessageText = customMsgOnline2
+    else if (customMsgGeral2)                    planMessageText = customMsgGeral2
+    else if (customMsgPresencial2)               planMessageText = customMsgPresencial2
+    else if (customMsgOnline2)                   planMessageText = customMsgOnline2
   }
 
-  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName }
+  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName, planMessageText }
 }
 
 // ── Monta o system prompt da assistente ───────────────────
@@ -434,19 +447,7 @@ ETAPA 2 — CLIENTE COMPARTILHOU A SITUAÇÃO:
 
 ETAPA 3 — PLANOS:
 Após definida a modalidade (ou se só tiver uma):
-${hasAnyMedia && hasAnyCustomMsg ? `
-Uma imagem com os detalhes visuais dos planos será enviada automaticamente APÓS sua mensagem de texto.
-IMPORTANTE: use EXATAMENTE a mensagem de texto configurada abaixo (ela será seguida pela imagem):${
-  customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
-}${
-  customMsgOnline ? `\n\nSE o cliente escolheu ONLINE:\n${customMsgOnline}` : ''
-}${
-  customMsgGeral && !customMsgPresencial && !customMsgOnline ? `\n\n${customMsgGeral}` : ''
-}${
-  customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
-}
-Após a mensagem dos planos, use EXATAMENTE: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
-` : hasAnyMedia ? `
+${hasAnyMedia ? `
 Uma imagem com todos os detalhes dos planos será enviada automaticamente após sua mensagem.
 Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇").
 NÃO liste planos, preços ou detalhes em texto — a imagem mostrará tudo.

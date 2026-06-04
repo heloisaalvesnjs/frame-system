@@ -23,7 +23,7 @@ const navMain = [
 
 const navConfig = [
   { href: '/treinamento',   label: 'Assistente',   icon: BookOpen },
-  { href: '/whatsapp',      label: 'WhatsApp',     icon: Smartphone },
+  { href: '/whatsapp',      label: 'Conexões',     icon: Smartphone },
   { href: '/configuracoes', label: 'Configurações',icon: Settings },
 ]
 

@@ -136,6 +136,16 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.code(existing ? 200 : 201).send({ assistant })
   })
 
+  // GET /api/assistants/manual-content — retorna o conteúdo do manual/pdf atual
+  app.get('/manual-content', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const assistant = await queryOne<any>(
+      'SELECT pdf_content FROM assistants WHERE nutritionist_id = $1',
+      [id]
+    )
+    return reply.send({ content: assistant?.pdf_content ?? null })
+  })
+
   // POST /api/assistants/upload-pdf — upload do PDF com instruções
   app.post('/upload-pdf', auth, async (request, reply) => {
     const { id } = (request as any).user

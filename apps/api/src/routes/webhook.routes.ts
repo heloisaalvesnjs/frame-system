@@ -295,6 +295,13 @@ export async function webhookRoutes(app: FastifyInstance) {
               response.planMediaName || 'planos.pdf',
               activeInstance
             ).catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mídia dos planos (não crítico)'))
+
+            // Envia mensagem de texto APÓS a mídia (configurada pelo nutri)
+            if (response.planMessageText) {
+              await new Promise(r => setTimeout(r, 2000))
+              await sendMessage(phone, response.planMessageText, activeInstance)
+                .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem pós-mídia (não crítico)'))
+            }
           }
         } catch (err: any) {
           app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')
