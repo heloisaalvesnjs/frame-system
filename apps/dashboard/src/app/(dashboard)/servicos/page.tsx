@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, ShoppingBag, Sparkles, MessageSquare, Info, Upload, FileImage, FileText, X as XIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, ShoppingBag, MessageSquare, Info, Upload, FileImage, FileText, X as XIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -13,52 +13,6 @@ import { cn } from '@/lib/utils'
 const CATEGORIES = ['Consulta', 'Pacote', 'Retorno', 'Avaliação', 'Outro']
 
 interface Service { id: string; name: string; category: string; modality: 'online' | 'presencial' | 'ambos'; price: string; description: string }
-
-// ── Templates pré-definidos ───────────────────────────────────────
-const TEMPLATES: Omit<Service, 'id'>[] = [
-  {
-    name: 'Consultoria Online – Trimestral',
-    category: 'Pacote',
-    modality: 'online',
-    price: '3x de R$248,84',
-    description: '90 dias · plataforma completa + suporte · check-in quinzenal com ajustes reais · suporte ativo no WhatsApp · grupo individualizado direto com o David e equipe'
-  },
-  {
-    name: 'Consultoria Online – Semestral',
-    category: 'Pacote',
-    modality: 'online',
-    price: '6x de R$206,79',
-    description: 'Melhor custo-benefício · grupo com David e equipe · área fitness inclusa · acompanhamento quinzenal · plano alimentar personalizado · menos de R$7/dia'
-  },
-  {
-    name: 'Consultoria Online – Anual',
-    category: 'Pacote',
-    modality: 'online',
-    price: '12x de R$156,27',
-    description: 'Maior transformação · tudo incluso · plataforma completa + suporte · plano alimentar para sua realidade · acompanhamento de verdade, não genérico'
-  },
-  {
-    name: 'Consultoria Presencial – Mensal',
-    category: 'Consulta',
-    modality: 'presencial',
-    price: 'R$600 à vista',
-    description: '1 consulta presencial · avaliação física · plano personalizado · suporte WhatsApp · Dossiê Evolutivo'
-  },
-  {
-    name: 'Consultoria Presencial – Trimestral',
-    category: 'Pacote',
-    modality: 'presencial',
-    price: '3x de R$414,63',
-    description: 'Mais popular · 3 consultas presenciais · 3 avaliações físicas · treino individual elaborado · check-in quinzenal · Dossiê Evolutivo completo'
-  },
-  {
-    name: 'Consultoria Presencial – Semestral',
-    category: 'Pacote',
-    modality: 'presencial',
-    price: '6x de R$362,73',
-    description: 'Máxima transformação · 6 consultas · 6 monitoramentos · treino individual · ficha de treino · Dossiê Evolutivo semestral · planejamento dos próximos passos'
-  },
-]
 
 const DEFAULT_SERVICES_MSG =
 `Tenho algumas opções para você 😊
@@ -160,13 +114,18 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       type="button"
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
-        checked ? 'bg-brand-500' : 'bg-t3/30'
+        'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-all duration-200 focus:outline-none',
+        checked
+          ? 'bg-brand-500 shadow-[0_0_0_3px_rgba(0,194,124,0.18)]'
+          : 'bg-zinc-700 border border-zinc-600'
       )}
+      title={checked ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar'}
     >
       <span className={cn(
-        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200',
-        checked ? 'translate-x-4' : 'translate-x-0'
+        'absolute top-0.5 inline-block h-5 w-5 transform rounded-full shadow-sm transition-transform duration-200',
+        checked
+          ? 'translate-x-[22px] bg-white'
+          : 'translate-x-0.5 bg-zinc-400'
       )} />
     </button>
   )
@@ -192,7 +151,15 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
               <p className="text-xs text-t3 mt-0.5">{subtitle}</p>
             </div>
           </div>
-          <Toggle checked={enabled} onChange={onToggle} />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={cn(
+              'font-mono text-[10px] tracking-wider transition-colors',
+              enabled ? 'text-brand-500' : 'text-t3'
+            )}>
+              {enabled ? 'ATIVO' : 'INATIVO'}
+            </span>
+            <Toggle checked={enabled} onChange={onToggle} />
+          </div>
         </div>
 
         {enabled && (
@@ -251,8 +218,6 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
 export default function ServicosPage() {
   const qc = useQueryClient()
   const [editing, setEditing] = useState<Partial<Service> | null>(null)
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [addingTemplates, setAddingTemplates] = useState<Set<number>>(new Set())
 
   // Mídia dos planos (JSONB: geral | online | presencial)
   type MediaVariant = 'geral' | 'online' | 'presencial'
@@ -315,16 +280,6 @@ export default function ServicosPage() {
     await api.delete(`/api/services/${id}`)
     toast.success('Serviço removido.')
     qc.invalidateQueries({ queryKey: ['services'] })
-  }
-
-  async function addTemplate(t: Omit<Service, 'id'>, idx: number) {
-    setAddingTemplates(s => new Set(s).add(idx))
-    try {
-      await api.post('/api/services', t)
-      qc.invalidateQueries({ queryKey: ['services'] })
-      toast.success(`"${t.name}" adicionado!`)
-    } catch { toast.error('Erro ao adicionar.') }
-    finally { setAddingTemplates(s => { const n = new Set(s); n.delete(idx); return n }) }
   }
 
   function buildPayload(overrides: Record<string, unknown> = {}) {
@@ -437,63 +392,10 @@ export default function ServicosPage() {
           <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Planos</h1>
           <p className="text-sm text-t2 mt-0.5">A assistente usa esses valores para responder sobre preços e planos</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setShowTemplates(v => !v)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border',
-              showTemplates ? 'bg-brand-500/15 border-brand-500/40 text-brand-500' : 'border-theme text-t2 hover:text-t1'
-            )}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Templates
-          </button>
-          <Button size="sm" onClick={() => setEditing({})}>
-            <Plus className="w-3.5 h-3.5" /> Novo serviço
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => setEditing({})}>
+          <Plus className="w-3.5 h-3.5" /> Novo serviço
+        </Button>
       </div>
-
-      {/* Templates */}
-      {showTemplates && (
-        <Card>
-          <CardContent className="py-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-brand-500" />
-              <p className="text-sm font-semibold text-t1">Templates — Consultoria David Effgen</p>
-              <span className="font-mono text-[10px] text-t3 ml-auto">Clique para adicionar</span>
-            </div>
-            <p className="font-mono text-[10px] text-t3 tracking-wider mb-2">ONLINE — PERFORMANCE REAL</p>
-            <div className="space-y-2 mb-5">
-              {TEMPLATES.slice(0, 3).map((t, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--raised)' }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-t1">{t.name}</p>
-                    <p className="text-xs text-t2">{t.price}</p>
-                  </div>
-                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i)} onClick={() => addTemplate(t, i)}>
-                    Adicionar
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <p className="font-mono text-[10px] text-t3 tracking-wider mb-2">PRESENCIAL — PREMIUM</p>
-            <div className="space-y-2">
-              {TEMPLATES.slice(3).map((t, i) => (
-                <div key={i+3} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--raised)' }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-t1">{t.name}</p>
-                    <p className="text-xs text-t2">{t.price}</p>
-                  </div>
-                  <Button size="sm" variant="secondary" loading={addingTemplates.has(i+3)} onClick={() => addTemplate(t, i+3)}>
-                    Adicionar
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Formulário inline */}
       {editing && (
@@ -506,11 +408,11 @@ export default function ServicosPage() {
           <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
             <ShoppingBag className="w-5 h-5 text-brand-500" />
           </div>
-          <p className="text-sm text-t2">Nenhum serviço ainda.</p>
-          <p className="text-xs text-t3">Use o botão "Templates" para adicionar os planos rapidamente.</p>
-          <button onClick={() => setShowTemplates(true)}
+          <p className="text-sm text-t2">Nenhum plano ainda.</p>
+          <p className="text-xs text-t3">Clique em "+ Novo serviço" para adicionar seus planos.</p>
+          <button onClick={() => setEditing({})}
             className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 text-sm font-medium hover:bg-brand-500/15 transition-colors">
-            <Sparkles className="w-3.5 h-3.5" /> Carregar templates
+            <Plus className="w-3.5 h-3.5" /> Adicionar primeiro plano
           </button>
         </div>
       ) : services.length > 0 ? (
@@ -580,7 +482,17 @@ export default function ServicosPage() {
                     <span className={`text-sm font-semibold ${color}`}>{label}</span>
                     {!info && <span className="text-[10px] text-t3 font-mono">sem arquivo</span>}
                   </div>
-                  {info && <Toggle checked={info.enabled} onChange={val => toggleMedia(variant, val)} />}
+                  {info && (
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        'font-mono text-[10px] tracking-wider transition-colors',
+                        info.enabled ? 'text-brand-500' : 'text-t3'
+                      )}>
+                        {info.enabled ? 'ATIVO' : 'INATIVO'}
+                      </span>
+                      <Toggle checked={info.enabled} onChange={val => toggleMedia(variant, val)} />
+                    </div>
+                  )}
                 </div>
 
                 {info ? (

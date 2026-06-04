@@ -302,6 +302,11 @@ export async function webhookRoutes(app: FastifyInstance) {
               await sendMessage(phone, response.planMessageText, activeInstance)
                 .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem pós-mídia (não crítico)'))
             }
+          } else if (response.planMessageText) {
+            // Sem mídia, mas há mensagem de planos configurada — envia direto
+            await new Promise(r => setTimeout(r, 1500))
+            await sendMessage(phone, response.planMessageText, activeInstance)
+              .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem de planos (não crítico)'))
           }
         } catch (err: any) {
           app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')

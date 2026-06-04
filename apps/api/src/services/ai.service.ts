@@ -155,7 +155,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   const history = await query<any>(
     `SELECT role, content FROM messages
      WHERE conversation_id = $1
-     ORDER BY sent_at DESC LIMIT 10`,
+     ORDER BY sent_at DESC LIMIT 20`,
     [convId]
   )
   const historyReversed = history.reverse()
@@ -270,6 +270,24 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     [convId, 'assistant', responseText]
   )
 
+  // 8b. Atualiza contextData com informações extraídas da conversa
+  // (nome do cliente e objetivo — persistidos no JSONB para não perder contexto)
+  try {
+    const updatedCtx = { ...contextData }
+    if (!updatedCtx.goal) {
+      // Tenta extrair objetivo da mensagem atual (palavras-chave comuns)
+      const goalKeywords = ['perder peso', 'emagrecer', 'ganho de massa', 'massa muscular', 'definição',
+        'saúde', 'nutrição', 'dieta', 'hipertrofia', 'emagrecimento', 'alimentação', 'gestação',
+        'grávida', 'diabetes', 'pressão', 'colesterol', 'vegetariano', 'vegano']
+      const msgLower = message.toLowerCase()
+      const found = goalKeywords.find(k => msgLower.includes(k))
+      if (found) updatedCtx.goal = found
+    }
+    if (Object.keys(updatedCtx).length > Object.keys(contextData).length) {
+      await query('UPDATE conversations SET context = $1 WHERE id = $2', [JSON.stringify(updatedCtx), convId])
+    }
+  } catch { /* não crítico */ }
+
   // 9. Detecta intenção de agendamento na resposta
   const action = await detectAndCreateAppointment({
     responseText,
@@ -281,15 +299,24 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     assistantName: assistant?.name || 'assistente'
   })
 
-  // 10. Verifica se deve enviar mídia dos planos
+  // 10. Verifica se deve enviar mídia dos planos e/ou mensagem configurada
   // Detecta ETAPA 3: IA acabou de apresentar os planos
-  // Gatilho: resposta contém a frase de fechamento configurada
-  const ETAPA3_MARKER = 'chamou mais atenção'
-  const isEtapa3 = responseText.toLowerCase().includes(ETAPA3_MARKER)
+  // Múltiplos markers para não depender de frase exata
+  const ETAPA3_MARKERS = [
+    'chamou mais atenção',
+    'qual plano',
+    'vou te mostrar',
+    'as opções agora',
+    'os detalhes agora',
+    'a imagem com',
+    '[planos]',
+  ]
+  const responseTextLower = responseText.toLowerCase()
+  const isEtapa3 = ETAPA3_MARKERS.some(m => responseTextLower.includes(m))
 
   // Evita reenvio: verifica se planos já foram apresentados no histórico
   const alreadyPresentedPlans = historyForAI.some((m: any) =>
-    m.role === 'assistant' && m.content.toLowerCase().includes(ETAPA3_MARKER)
+    m.role === 'assistant' && ETAPA3_MARKERS.some(marker => m.content.toLowerCase().includes(marker))
   )
 
   let planMediaUrl: string | undefined
@@ -297,25 +324,30 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   let planMediaName: string | undefined
   let planMessageText: string | undefined
 
-  if (isEtapa3 && hasAnyMedia && !alreadyPresentedPlans) {
-    // Detecta modalidade pelo histórico recente
-    const recentCtx = historyForAI.slice(-6).map((m: any) => m.content.toLowerCase()).join(' ')
+  if (isEtapa3 && !alreadyPresentedPlans) {
+    // Detecta modalidade pelo histórico recente + mensagem atual
+    const recentCtx = [...historyForAI.slice(-6).map((m: any) => m.content), message]
+      .join(' ').toLowerCase()
     const isPresencialCtx = recentCtx.includes('presencial')
     const isOnlineCtx     = recentCtx.includes('online')
 
-    const chosen = isPresencialCtx && mediaPresencial ? mediaPresencial
-      : isOnlineCtx && mediaOnline ? mediaOnline
-      : mediaGeral ?? mediaPresencial ?? mediaOnline ?? mediaLegacy
+    // ── Mídia dos planos ───────────────────────────────────────
+    if (hasAnyMedia) {
+      const chosen = isPresencialCtx && mediaPresencial ? mediaPresencial
+        : isOnlineCtx && mediaOnline ? mediaOnline
+        : mediaGeral ?? mediaPresencial ?? mediaOnline ?? mediaLegacy
 
-    if (chosen?.path) {
-      const apiBase = process.env.API_PUBLIC_URL || ''
-      const parts   = chosen.path.replace(/\\/g, '/').split('uploads/')
-      planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
-      planMediaType = (chosen.type as 'image' | 'pdf') || 'image'
-      planMediaName = chosen.name || 'planos.pdf'
+      if (chosen?.path) {
+        const apiBase = process.env.API_PUBLIC_URL || ''
+        const parts   = chosen.path.replace(/\\/g, '/').split('uploads/')
+        planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
+        planMediaType = (chosen.type as 'image' | 'pdf') || 'image'
+        planMediaName = chosen.name || 'planos.pdf'
+      }
     }
 
-    // Mensagem enviada APÓS a mídia (texto configurado pelo nutri na aba Serviços)
+    // ── Mensagem configurada (enviada após mídia ou sozinha) ───
+    // Nunca passa pela IA — enviada como mensagem separada no webhook
     const customMsgOnline2     = assistant.services_message_online_enabled     && assistant.services_message_online?.trim()     ? assistant.services_message_online.trim()     : null
     const customMsgPresencial2 = assistant.services_message_presencial_enabled && assistant.services_message_presencial?.trim() ? assistant.services_message_presencial.trim() : null
     const customMsgGeral2      = assistant.services_message_enabled            && assistant.services_message?.trim()            ? assistant.services_message.trim()            : null
@@ -351,7 +383,9 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
   const plansOnlineText     = formatServices(servicesOnline)
   const plansPresencialText = formatServices(servicesPresencial)
   const plansAllText        = formatServices(services || []) || assistant.service_plans?.trim() || null
-  const plansText = plansAllText
+  // Quando há mídia ou mensagem configurada, a IA NÃO deve ver nem descrever os planos
+  // — eles serão enviados automaticamente pelo webhook como mensagem separada
+  const plansText = (hasAnyMedia || hasAnyCustomMsg) ? null : plansAllText
   const specialtiesText = assistant.specialties || nutritionist.specialty || null
   const modalities = assistant.consultation_modalities || 'online'
   const modalityLabel = modalities === 'presencial' ? 'presencial'
@@ -388,7 +422,7 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
   const customMsgGeral      = (assistant.services_message_enabled            && assistant.services_message?.trim())
     ? resolveVars(assistant.services_message.trim()) : null
 
-  const hasAnyCustomMsg = customMsgOnline || customMsgPresencial || customMsgGeral
+  const hasAnyCustomMsg = !!(customMsgOnline || customMsgPresencial || customMsgGeral)
   const customServicesMsg = customMsgGeral
 
   // Funções habilitadas
@@ -451,20 +485,14 @@ ${hasAnyMedia ? `
 Uma imagem com todos os detalhes dos planos será enviada automaticamente após sua mensagem.
 Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções de acompanhamento presencial agora 👇").
 NÃO liste planos, preços ou detalhes em texto — a imagem mostrará tudo.
-Após a frase, use: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
+Termine com: "É só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
 ` : hasAnyCustomMsg ? `
-IMPORTANTE: use EXATAMENTE a mensagem abaixo. Não acrescente nem remova nada.${
-  customMsgPresencial ? `\n\nSE o cliente escolheu PRESENCIAL:\n${customMsgPresencial}` : ''
-}${
-  customMsgOnline ? `\n\nSE o cliente escolheu ONLINE:\n${customMsgOnline}` : ''
-}${
-  customMsgGeral && !customMsgPresencial && !customMsgOnline ? `\n\n${customMsgGeral}` : ''
-}${
-  customMsgGeral && (customMsgPresencial || customMsgOnline) ? `\n\nSE não souber a modalidade:\n${customMsgGeral}` : ''
-}
-Após a mensagem, use: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
+Os detalhes dos planos serão enviados AUTOMATICAMENTE como mensagem separada após a sua.
+Escreva APENAS 1 frase curta de apresentação (ex: "Perfeito! Vou te mostrar as opções disponíveis 👇").
+NÃO descreva planos, preços ou condições — isso chegará em seguida de forma automática.
+Termine com: "É só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."
 ` : `Apresente em prosa corrida, 1 frase por plano, SEM asterisco, SEM negrito.
-${plansText
+${plansAllText
   ? `Use apenas os planos da modalidade escolhida. Termine com: "Se faz sentido pra você, é só me falar qual plano chamou mais atenção — eu abro a agenda e a gente marca sua primeira consulta."`
   : `Informe que ${nutriName} apresenta os detalhes pessoalmente. Termine com: "Se faz sentido pra você, posso verificar um horário com ${nutriName} agora."`}
 `}
