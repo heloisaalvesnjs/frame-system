@@ -1,18 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, ShoppingBag, MessageSquare, Info, Upload, FileImage, FileText, X as XIcon } from 'lucide-react'
+import { MessageSquare, Info, Upload, FileImage, FileText, X as XIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
-
-const CATEGORIES = ['Consulta', 'Pacote', 'Retorno', 'Avaliação', 'Outro']
-
-interface Service { id: string; name: string; category: string; modality: 'online' | 'presencial' | 'ambos'; price: string; description: string }
 
 const DEFAULT_SERVICES_MSG =
 `Tenho algumas opções para você 😊
@@ -21,93 +16,7 @@ const DEFAULT_SERVICES_MSG =
 
 Qual dessas faz mais sentido pra você agora? Se tiver dúvida, me conta e te ajudo a escolher a melhor!`
 
-const MODALITY_OPTIONS = [
-  { value: 'online',     label: '🌐 Online',      color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
-  { value: 'presencial', label: '📍 Presencial',   color: 'text-violet-500 bg-violet-500/10 border-violet-500/20' },
-  { value: 'ambos',      label: '↔ Ambos',         color: 'text-brand-500 bg-brand-500/10 border-brand-500/20' },
-] as const
-
-function ModalityBadge({ modality }: { modality: string }) {
-  const opt = MODALITY_OPTIONS.find(o => o.value === modality)
-  if (!opt) return null
-  return (
-    <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${opt.color}`}>
-      {opt.label}
-    </span>
-  )
-}
-
-function ServiceForm({ initial, onSave, onCancel }: {
-  initial?: Partial<Service>
-  onSave: (data: Omit<Service, 'id'>) => Promise<void>
-  onCancel: () => void
-}) {
-  const [form, setForm] = useState({
-    name:        initial?.name || '',
-    category:    initial?.category || 'Consulta',
-    modality:    (initial?.modality || 'presencial') as 'online' | 'presencial' | 'ambos',
-    price:       initial?.price || '',
-    description: initial?.description || '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  async function submit() {
-    if (!form.name.trim()) return
-    setSaving(true)
-    await onSave(form)
-    setSaving(false)
-  }
-
-  return (
-    <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-      <p className="font-mono text-[11px] text-t2 tracking-wider">{initial?.id ? 'EDITAR SERVIÇO' : 'NOVO SERVIÇO'}</p>
-
-      {/* Modalidade — destaque no topo */}
-      <div>
-        <label className="text-[12px] font-medium text-t2 font-mono tracking-wide block mb-2">Modalidade</label>
-        <div className="flex gap-2">
-          {MODALITY_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setForm(v => ({ ...v, modality: opt.value }))}
-              className={cn(
-                'flex-1 py-2 rounded-lg border text-sm font-medium transition-all',
-                form.modality === opt.value ? opt.color : 'text-t3 hover:text-t2'
-              )}
-              style={{ borderColor: form.modality === opt.value ? undefined : 'var(--border)' }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Input label="Nome do plano" placeholder="Ex: Mensal, Trimestral..." value={form.name}
-          onChange={e => setForm(v => ({ ...v, name: e.target.value }))} />
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12px] font-medium text-t2 font-mono tracking-wide">Categoria</label>
-          <select value={form.category} onChange={e => setForm(v => ({ ...v, category: e.target.value }))}
-            className="h-9 w-full rounded-lg px-3 text-sm text-t1 focus:outline-none"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <Input label="Valor" placeholder="Ex: R$ 250 ou 3x de R$148" value={form.price}
-          onChange={e => setForm(v => ({ ...v, price: e.target.value }))} />
-        <Input label="Descrição curta" placeholder="O que está incluso..." value={form.description}
-          onChange={e => setForm(v => ({ ...v, description: e.target.value }))} />
-      </div>
-      <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={submit} loading={saving} disabled={!form.name.trim()}>Salvar</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
-      </div>
-    </div>
-  )
-}
-
-// ── Toggle component ──────────────────────────────────────────────
+// ── Toggle ────────────────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -123,15 +32,13 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     >
       <span className={cn(
         'absolute top-0.5 inline-block h-5 w-5 transform rounded-full shadow-sm transition-transform duration-200',
-        checked
-          ? 'translate-x-[22px] bg-white'
-          : 'translate-x-0.5 bg-zinc-400'
+        checked ? 'translate-x-[22px] bg-white' : 'translate-x-0.5 bg-zinc-400'
       )} />
     </button>
   )
 }
 
-// ── MsgCard ──────────────────────────────────────────────────────
+// ── MsgCard ───────────────────────────────────────────────────────
 function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, variables, defaultMsg, onSave, saving, dirty, onReset }: {
   title: string; subtitle: string; enabled: boolean; onToggle: (v: boolean) => void
   text: string; onTextChange: (v: string) => void; variables: string[]
@@ -215,17 +122,15 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
   )
 }
 
-export default function ServicosPage() {
+// ── Page ──────────────────────────────────────────────────────────
+export default function PlanosPage() {
   const qc = useQueryClient()
-  const [editing, setEditing] = useState<Partial<Service> | null>(null)
 
-  // Mídia dos planos (JSONB: geral | online | presencial)
   type MediaVariant = 'geral' | 'online' | 'presencial'
   type MediaEntry = { type: string; name: string; enabled: boolean } | null
   const [plansMedia, setPlansMedia] = useState<Record<MediaVariant, MediaEntry>>({ geral: null, online: null, presencial: null })
   const [uploadingVariant, setUploadingVariant] = useState<MediaVariant | null>(null)
 
-  // Mensagens personalizadas
   const [msgEnabled, setMsgEnabled] = useState(false)
   const [msgText, setMsgText] = useState(DEFAULT_SERVICES_MSG)
   const [msgOnlineEnabled, setMsgOnlineEnabled] = useState(false)
@@ -235,17 +140,11 @@ export default function ServicosPage() {
   const [savingMsg, setSavingMsg] = useState(false)
   const [msgDirty, setMsgDirty] = useState(false)
 
-  const { data: services = [], isLoading } = useQuery<Service[]>({
-    queryKey: ['services'],
-    queryFn: async () => { const { data } = await api.get('/api/services'); return data.services }
-  })
-
   const { data: assistantData } = useQuery<any>({
     queryKey: ['assistant'],
     queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant }
   })
 
-  // Sincroniza estado com dados do assistente
   useEffect(() => {
     if (assistantData) {
       const pm = assistantData.plans_media ?? {}
@@ -264,27 +163,8 @@ export default function ServicosPage() {
     }
   }, [assistantData])
 
-  async function saveService(data: Omit<Service, 'id'>) {
-    if ((editing as Service)?.id) {
-      await api.put(`/api/services/${(editing as Service).id}`, data)
-      toast.success('Serviço atualizado!')
-    } else {
-      await api.post('/api/services', data)
-      toast.success('Serviço adicionado!')
-    }
-    qc.invalidateQueries({ queryKey: ['services'] })
-    setEditing(null)
-  }
-
-  async function remove(id: string) {
-    await api.delete(`/api/services/${id}`)
-    toast.success('Serviço removido.')
-    qc.invalidateQueries({ queryKey: ['services'] })
-  }
-
   function buildPayload(overrides: Record<string, unknown> = {}) {
     if (!assistantData) return null
-    // Remove nulls e campos extras que o Zod não aceita
     const safe = Object.fromEntries(
       Object.entries(assistantData).filter(([, v]) => v !== null && v !== undefined)
     )
@@ -345,9 +225,7 @@ export default function ServicosPage() {
       toast.success('Mensagens salvas!')
     } catch {
       toast.error('Erro ao salvar.')
-    } finally {
-      setSavingMsg(false)
-    }
+    } finally { setSavingMsg(false) }
   }
 
   async function toggleMsg(val: boolean) {
@@ -355,10 +233,8 @@ export default function ServicosPage() {
     if (!assistantData) return
     const payload = buildPayload({ services_message_enabled: val })
     if (!payload) return
-    try {
-      await api.post('/api/assistants', payload)
-      qc.invalidateQueries({ queryKey: ['assistant'] })
-    } catch { toast.error('Erro ao salvar.') }
+    try { await api.post('/api/assistants', payload); qc.invalidateQueries({ queryKey: ['assistant'] }) }
+    catch { toast.error('Erro ao salvar.') }
   }
 
   async function toggleMsgOnline(val: boolean) {
@@ -366,10 +242,8 @@ export default function ServicosPage() {
     if (!assistantData) return
     const payload = buildPayload({ services_message_online_enabled: val })
     if (!payload) return
-    try {
-      await api.post('/api/assistants', payload)
-      qc.invalidateQueries({ queryKey: ['assistant'] })
-    } catch { toast.error('Erro ao salvar.') }
+    try { await api.post('/api/assistants', payload); qc.invalidateQueries({ queryKey: ['assistant'] }) }
+    catch { toast.error('Erro ao salvar.') }
   }
 
   async function toggleMsgPresencial(val: boolean) {
@@ -377,82 +251,16 @@ export default function ServicosPage() {
     if (!assistantData) return
     const payload = buildPayload({ services_message_presencial_enabled: val })
     if (!payload) return
-    try {
-      await api.post('/api/assistants', payload)
-      qc.invalidateQueries({ queryKey: ['assistant'] })
-    } catch { toast.error('Erro ao salvar.') }
+    try { await api.post('/api/assistants', payload); qc.invalidateQueries({ queryKey: ['assistant'] }) }
+    catch { toast.error('Erro ao salvar.') }
   }
 
-  if (isLoading) return <div className="p-6 text-t2 text-sm">Carregando...</div>
-
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Planos</h1>
-          <p className="text-sm text-t2 mt-0.5">A assistente usa esses valores para responder sobre preços e planos</p>
-        </div>
-        <Button size="sm" onClick={() => setEditing({})}>
-          <Plus className="w-3.5 h-3.5" /> Novo serviço
-        </Button>
+    <div className="p-6 max-w-3xl mx-auto space-y-8">
+      <div>
+        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Planos</h1>
+        <p className="text-sm text-t2 mt-0.5">Configure a imagem e a mensagem que a assistente envia ao apresentar os planos</p>
       </div>
-
-      {/* Formulário inline */}
-      {editing && (
-        <ServiceForm initial={editing} onSave={saveService} onCancel={() => setEditing(null)} />
-      )}
-
-      {/* Lista de serviços */}
-      {services.length === 0 && !editing ? (
-        <div className="flex flex-col items-center py-12 gap-3 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
-            <ShoppingBag className="w-5 h-5 text-brand-500" />
-          </div>
-          <p className="text-sm text-t2">Nenhum plano ainda.</p>
-        </div>
-      ) : services.length > 0 ? (
-        <div className="space-y-4">
-          {(['online', 'presencial', 'ambos'] as const).map(mod => {
-            const group = services.filter(s => (s.modality || 'presencial') === mod)
-            if (group.length === 0) return null
-            const labelMap = { online: '🌐 Online', presencial: '📍 Presencial', ambos: '↔ Online & Presencial' }
-            return (
-              <Card key={mod}>
-                <div className="px-5 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--raised)' }}>
-                  <span className="text-sm font-semibold text-t1">{labelMap[mod]}</span>
-                  <span className="font-mono text-[10px] text-t3 ml-1">{group.length} plano{group.length !== 1 ? 's' : ''}</span>
-                </div>
-                <table className="w-full text-sm">
-                  <tbody>
-                    {group.map((s, i) => (
-                      <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-t1">{s.name}</p>
-                          {s.description && <p className="text-xs text-t3 mt-0.5 line-clamp-1">{s.description}</p>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-[10px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">{s.category}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-t1 whitespace-nowrap">{s.price || '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => setEditing(s)} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => remove(s.id)} className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            )
-          })}
-        </div>
-      ) : null}
 
       {/* ── Mídia dos Planos ──────────────────────────────────────── */}
       <div className="space-y-3">
@@ -467,8 +275,8 @@ export default function ServicosPage() {
           { variant: 'presencial' as MediaVariant, label: '📍 Presencial', color: 'text-violet-500', bg: 'bg-violet-500/10' },
           { variant: 'geral'      as MediaVariant, label: 'Geral (ambos)', color: 'text-t2',         bg: 'bg-raised' },
         ]).map(({ variant, label, color, bg }) => {
-          const info     = plansMedia[variant]
-          const loading  = uploadingVariant === variant
+          const info    = plansMedia[variant]
+          const loading = uploadingVariant === variant
           return (
             <Card key={variant}>
               <CardContent className="py-4 space-y-3">
@@ -491,7 +299,7 @@ export default function ServicosPage() {
                 </div>
 
                 {info ? (
-                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background:'var(--raised)', border:'1px solid var(--border)' }}>
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${bg}`}>
                       {info.type === 'pdf' ? <FileText className="w-4 h-4 text-t2" /> : <FileImage className="w-4 h-4 text-t2" />}
                     </div>
@@ -512,7 +320,7 @@ export default function ServicosPage() {
                   <label className={cn(
                     'flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
                     loading ? 'opacity-50 pointer-events-none' : 'hover:bg-raised'
-                  )} style={{ borderColor:'var(--border)' }}>
+                  )} style={{ borderColor: 'var(--border)' }}>
                     <Upload className="w-4 h-4 text-t3 flex-shrink-0" />
                     <span className="text-sm text-t3">{loading ? 'Enviando…' : 'Clique para enviar imagem ou PDF'}</span>
                     <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
@@ -525,14 +333,13 @@ export default function ServicosPage() {
         })}
       </div>
 
-      {/* ── Mensagens de Apresentação dos Planos ─────────────────── */}
+      {/* ── Mensagens dos Planos ──────────────────────────────────── */}
       <div className="space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-t1">Mensagens dos planos</h2>
           <p className="text-xs text-t3 mt-0.5">Configure exatamente o que a assistente diz ao apresentar seus planos</p>
         </div>
 
-        {/* ── Card Online ── */}
         <MsgCard
           title="🌐 Mensagem dos planos Online"
           subtitle="Usada quando o cliente pergunta sobre planos online"
@@ -547,7 +354,6 @@ export default function ServicosPage() {
           dirty={msgDirty}
         />
 
-        {/* ── Card Presencial ── */}
         <MsgCard
           title="📍 Mensagem dos planos Presenciais"
           subtitle="Usada quando o cliente pergunta sobre planos presenciais"
@@ -562,7 +368,6 @@ export default function ServicosPage() {
           dirty={msgDirty}
         />
 
-        {/* ── Card Geral (fallback) ── */}
         <MsgCard
           title="Mensagem geral (todos os planos)"
           subtitle="Usada quando nenhuma mensagem específica acima estiver ativa"
@@ -578,7 +383,6 @@ export default function ServicosPage() {
           onReset={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
         />
       </div>
-
     </div>
   )
 }
