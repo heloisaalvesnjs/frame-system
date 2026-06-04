@@ -1,0 +1,105 @@
+{
+  "name": "Frame System — Lembrete de Consulta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-agendamento",
+        "responseMode": "immediately",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "trigger-agendamento",
+      "name": "Recebe Agendamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "frame-agendamento"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "appointment_booked",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-event",
+      "name": "É agendamento?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula quando enviar o lembrete: 24 horas antes da consulta\nconst item = $input.first().json;\nconst scheduledAt = new Date(item.data.scheduled_at);\n\n// Lembrete 24h antes\nconst reminderTime = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);\nconst now = new Date();\n\n// Se já passou do horário do lembrete, envia agora\nconst sendAt = reminderTime > now ? reminderTime : now;\n\n// Formata a data da consulta para exibição\nconst appointmentDate = scheduledAt.toLocaleDateString('pt-BR', {\n  weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',\n  timeZone: 'America/Sao_Paulo'\n});\nconst appointmentTime = scheduledAt.toLocaleTimeString('pt-BR', {\n  hour: '2-digit', minute: '2-digit',\n  timeZone: 'America/Sao_Paulo'\n});\n\n// Monta a mensagem de lembrete\nconst clientName = item.data.client_name ? item.data.client_name.split(' ')[0] : 'cliente';\nlet message = `Olá, ${clientName}! 😊\\n\\nPassando para lembrar da sua consulta:`;\nmessage += `\\n\\n📅 *${appointmentDate}*`;\nmessage += `\\n⏰ *${appointmentTime}*`;\n\nif (item.data.location_name) {\n  message += `\\n\\n📍 *${item.data.location_name}*`;\n  if (item.data.address) message += `\\n${item.data.address}`;\n  if (item.data.city) message += `, ${item.data.city}`;\n}\n\nif (item.data.modality === 'online') {\n  message += `\\n\\n💻 *Consulta online* — o link será enviado em breve`;\n}\n\nif (item.data.confirmation_message) {\n  message += `\\n\\n${item.data.confirmation_message}`;\n} else {\n  message += `\\n\\nQualquer dúvida, é só falar! Até lá! 🌿`;\n}\n\nreturn [{\n  json: {\n    ...item,\n    sendAt: sendAt.toISOString(),\n    reminderMessage: message,\n    appointmentDate,\n    appointmentTime\n  }\n}];"
+      },
+      "id": "build-reminder",
+      "name": "Calcula horário e monta mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.max(0, Math.round((new Date($json.sendAt) - new Date()) / 1000)) }}",
+        "unit": "seconds"
+      },
+      "id": "wait-reminder",
+      "name": "Aguarda horário do lembrete",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Agendamento').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Agendamento').item.json.data.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Agendamento').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Agendamento').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $json.reminderMessage }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-reminder",
+      "name": "Envia lembrete no WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Recebe Agendamento": {
+      "main": [[{ "node": "É agendamento?", "type": "main", "index": 0 }]]
+    },
+    "É agendamento?": {
+      "main": [[{ "node": "Calcula horário e monta mensagem", "type": "main", "index": 0 }]]
+    },
+    "Calcula horário e monta mensagem": {
+      "main": [[{ "node": "Aguarda horário do lembrete", "type": "main", "index": 0 }]]
+    },
+    "Aguarda horário do lembrete": {
+      "main": [[{ "node": "Envia lembrete no WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateId": "frame-system-lembrete-v1",
+    "description": "Recebe appointment_booked, aguarda 24h antes da consulta e envia lembrete automático via Evolution API"
+  }
+}

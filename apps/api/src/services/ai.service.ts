@@ -5,7 +5,7 @@ import { query, queryOne } from '../db'
 import { getNextAvailableSlots } from './appointment.service'
 import { sendMessageForNutri } from './whatsapp.service'
 import { createCalendarEvent } from './google-calendar.service'
-import { fireWebhookEvent, buildPlansPayload, buildAppointmentPayload } from './webhook-events.service'
+import { fireWebhookEvent, buildPlansPayload, buildAppointmentPayload, getConnectionData } from './webhook-events.service'
 
 // ── Providers ────────────────────────────────────────────────
 // Ordem: Claude Haiku (primário + cache) → Gemini Flash (fallback grátis) → Groq (emergência)
@@ -183,12 +183,14 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
       'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
       [convId, 'assistant', greeting]
     )
-    // Evento: primeiro contato de um novo lead
-    fireWebhookEvent(nutritionist_id, 'first_contact', {
-      client_phone,
-      conversation_id: convId,
-      data: { message, instance_name: null },
-    }).catch(() => {})
+    // Evento: primeiro contato de um novo lead (fire-and-forget)
+    getConnectionData(nutritionist_id, client_phone).then(connData =>
+      fireWebhookEvent(nutritionist_id, 'first_contact', {
+        client_phone,
+        conversation_id: convId,
+        data: { ...connData, first_message: message },
+      })
+    ).catch(() => {})
     return { text: greeting, action: null, raw: true }
   }
 

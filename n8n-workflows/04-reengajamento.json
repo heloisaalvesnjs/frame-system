@@ -1,0 +1,91 @@
+{
+  "name": "Frame System — Reengajamento (Sem Resposta)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-reengajamento",
+        "responseMode": "immediately",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "trigger-reeng",
+      "name": "Recebe Evento Sem Resposta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "frame-reengajamento"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "no_reply_24h",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-event",
+      "name": "É sem resposta 24h?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst clientName = item.data.client_name ? item.data.client_name.split(' ')[0] : null;\n\n// Escolhe aleatoriamente uma das mensagens de reengajamento\n// para não parecer robótico\nconst messages = [\n  clientName\n    ? `Oi, ${clientName}! 😊 Vi que você esteve aqui. Ficou alguma dúvida? Estou aqui para te ajudar!`\n    : `Oi! 😊 Vi que você esteve aqui. Ficou alguma dúvida? Estou aqui para te ajudar!`,\n  clientName\n    ? `Olá, ${clientName}! Tudo bem? Posso te ajudar com alguma informação sobre nossos serviços?`\n    : `Olá! Tudo bem? Posso te ajudar com alguma informação sobre nossos serviços?`,\n  clientName\n    ? `${clientName}, oi! 🌿 Ainda quer dar um passo em direção à sua saúde? Me fala!`\n    : `Oi! 🌿 Ainda quer dar um passo em direção à sua saúde? Me fala!`\n];\n\nconst message = messages[Math.floor(Math.random() * messages.length)];\n\nreturn [{ json: { ...item, reengajamentoMessage: message } }];"
+      },
+      "id": "build-reeng",
+      "name": "Monta mensagem de reengajamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Evento Sem Resposta').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Sem Resposta').item.json.data.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Sem Resposta').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Sem Resposta').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $json.reengajamentoMessage }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-reeng",
+      "name": "Envia mensagem no WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Recebe Evento Sem Resposta": {
+      "main": [[{ "node": "É sem resposta 24h?", "type": "main", "index": 0 }]]
+    },
+    "É sem resposta 24h?": {
+      "main": [[{ "node": "Monta mensagem de reengajamento", "type": "main", "index": 0 }]]
+    },
+    "Monta mensagem de reengajamento": {
+      "main": [[{ "node": "Envia mensagem no WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateId": "frame-system-reengajamento-v1",
+    "description": "Recebe no_reply_24h do Frame System e envia mensagem de reengajamento via Evolution API"
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "name": "Frame System — Pós-Consulta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-pos-consulta",
+        "responseMode": "immediately",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "trigger-pos",
+      "name": "Recebe Agendamento (Pós)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "frame-pos-consulta"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "appointment_booked",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-event",
+      "name": "É agendamento?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula quando enviar a mensagem pós-consulta: 2 horas após o fim da consulta\n// Assumindo que a consulta dura 1 hora por padrão\nconst item = $input.first().json;\nconst scheduledAt = new Date(item.data.scheduled_at);\n\n// Pós-consulta: 3 horas após o horário agendado (1h consulta + 2h depois)\nconst postConsultTime = new Date(scheduledAt.getTime() + 3 * 60 * 60 * 1000);\nconst now = new Date();\nconst sendAt = postConsultTime > now ? postConsultTime : new Date(now.getTime() + 5 * 60 * 1000);\n\nconst clientName = item.data.client_name ? item.data.client_name.split(' ')[0] : 'cliente';\n\nlet message = `Olá, ${clientName}! 🌿\\n\\nEspero que sua consulta tenha sido ótima!\\n\\n`;\nmessage += `Caso tenha alguma dúvida sobre o que conversamos, pode me chamar aqui. 😊\\n\\n`;\nmessage += `Em breve enviarei o plano alimentar para você. Qualquer coisa, estou por aqui!`;\n\nreturn [{\n  json: {\n    ...item,\n    sendAt: sendAt.toISOString(),\n    postConsultMessage: message\n  }\n}];"
+      },
+      "id": "build-post",
+      "name": "Calcula pós-consulta e monta mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.max(60, Math.round((new Date($json.sendAt) - new Date()) / 1000)) }}",
+        "unit": "seconds"
+      },
+      "id": "wait-post",
+      "name": "Aguarda fim da consulta",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Agendamento (Pós)').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Agendamento (Pós)').item.json.data.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Agendamento (Pós)').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Agendamento (Pós)').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $json.postConsultMessage }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-post",
+      "name": "Envia mensagem pós-consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "amount": 7,
+        "unit": "days"
+      },
+      "id": "wait-return",
+      "name": "Aguarda 7 dias para retorno",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Recebe Agendamento (Pós)').first().json;\nconst clientName = item.data.client_name ? item.data.client_name.split(' ')[0] : 'cliente';\n\nlet message = `Olá, ${clientName}! 😊\\n\\n`;\nmessage += `Tudo bem? Passando para saber como você está se sentindo após nossa consulta.\\n\\n`;\nmessage += `Conseguiu seguir as orientações? Tem alguma dúvida?\\n\\n`;\nmessage += `Quando quiser agendar seu retorno, é só me falar! 🌱`;\n\nreturn [{ json: { ...item, returnMessage: message } }];"
+      },
+      "id": "build-return",
+      "name": "Monta mensagem de retorno",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Agendamento (Pós)').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Agendamento (Pós)').item.json.data.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Agendamento (Pós)').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Agendamento (Pós)').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $json.returnMessage }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-return",
+      "name": "Envia mensagem de retorno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Recebe Agendamento (Pós)": {
+      "main": [[{ "node": "É agendamento?", "type": "main", "index": 0 }]]
+    },
+    "É agendamento?": {
+      "main": [[{ "node": "Calcula pós-consulta e monta mensagem", "type": "main", "index": 0 }]]
+    },
+    "Calcula pós-consulta e monta mensagem": {
+      "main": [[{ "node": "Aguarda fim da consulta", "type": "main", "index": 0 }]]
+    },
+    "Aguarda fim da consulta": {
+      "main": [[{ "node": "Envia mensagem pós-consulta", "type": "main", "index": 0 }]]
+    },
+    "Envia mensagem pós-consulta": {
+      "main": [[{ "node": "Aguarda 7 dias para retorno", "type": "main", "index": 0 }]]
+    },
+    "Aguarda 7 dias para retorno": {
+      "main": [[{ "node": "Monta mensagem de retorno", "type": "main", "index": 0 }]]
+    },
+    "Monta mensagem de retorno": {
+      "main": [[{ "node": "Envia mensagem de retorno", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateId": "frame-system-pos-consulta-v1",
+    "description": "Após appointment_booked: envia mensagem 3h depois da consulta e mensagem de retorno 7 dias depois"
+  }
+}

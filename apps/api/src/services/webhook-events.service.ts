@@ -15,6 +15,7 @@ export type WebhookEventType =
   | 'first_contact'          // Primeiro contato de um novo lead
   | 'no_reply_24h'           // Cliente não respondeu em 24h
   | 'conversation_closed'    // Nutricionista encerrou a conversa
+  | 'appointment_reminder_due' // 24h antes da consulta (disparado pelo cron)
 
 export interface WebhookEventPayload {
   event:           WebhookEventType
@@ -86,6 +87,29 @@ export async function fireWebhookEvent(
 }
 
 /**
+ * Dados básicos de conexão WhatsApp do nutricionista para incluir nos payloads.
+ * O n8n precisa desses dados para chamar a Evolution API diretamente.
+ */
+export async function getConnectionData(nutritionist_id: string, client_phone?: string) {
+  const conn = await queryOne<any>(
+    `SELECT wc.instance_name,
+            COALESCE(c.name, '') as client_name
+     FROM whatsapp_connections wc
+     LEFT JOIN clients c ON c.phone = $2 AND c.nutritionist_id = wc.nutritionist_id
+     WHERE wc.nutritionist_id = $1 LIMIT 1`,
+    [nutritionist_id, client_phone ?? '']
+  ).catch(() => null)
+
+  return {
+    instance_name:     conn?.instance_name ?? null,
+    client_name:       conn?.client_name   ?? null,
+    // URL e chave da Evolution API vêm do ambiente (configurado no Railway)
+    evolution_api_url: process.env.EVOLUTION_API_URL ?? null,
+    evolution_api_key: process.env.EVOLUTION_API_KEY ?? null,
+  }
+}
+
+/**
  * Monta o payload completo de "plans_stage_reached" buscando
  * a config de serviços/planos do nutricionista.
  */
@@ -96,12 +120,7 @@ export async function buildPlansPayload(nutritionist_id: string, client_phone: s
     [nutritionist_id]
   ).catch(() => [])
 
-  const assistant = await queryOne<any>(
-    `SELECT name, instance_name FROM assistants a
-     LEFT JOIN whatsapp_connections wc ON wc.nutritionist_id = a.nutritionist_id
-     WHERE a.nutritionist_id = $1 AND a.is_active = true LIMIT 1`,
-    [nutritionist_id]
-  ).catch(() => null)
+  const connData = await getConnectionData(nutritionist_id, client_phone)
 
   // Primeira mídia encontrada
   const mediaService = services.find((s: any) => s.media_url)
@@ -110,7 +129,7 @@ export async function buildPlansPayload(nutritionist_id: string, client_phone: s
     client_phone,
     conversation_id,
     data: {
-      instance_name:     assistant?.instance_name ?? null,
+      ...connData,
       services,
       plan_media_url:    mediaService?.media_url    ?? null,
       plan_media_type:   mediaService?.media_type   ?? null,
@@ -140,27 +159,25 @@ export async function buildAppointmentPayload(
     [appointment_id]
   ).catch(() => null)
 
-  const conn = await queryOne<any>(
-    `SELECT instance_name FROM whatsapp_connections WHERE nutritionist_id = $1 LIMIT 1`,
-    [nutritionist_id]
-  ).catch(() => null)
+  const connData = await getConnectionData(nutritionist_id, client_phone)
 
   return {
     client_phone,
     conversation_id,
     data: {
+      ...connData,
+      client_name:          apt?.client_name          ?? connData.client_name ?? null,
       appointment_id,
       scheduled_at:         apt?.scheduled_at         ?? null,
-      client_name:          apt?.client_name          ?? null,
       location_name:        apt?.location_name        ?? null,
       address:              apt?.address              ?? null,
       city:                 apt?.city                 ?? null,
+      modality:             apt?.modality             ?? null,
       price:                apt?.price                ?? null,
       payment_info:         apt?.payment_info         ?? null,
       deposit_required:     apt?.deposit_required     ?? false,
       deposit_amount:       apt?.deposit_amount       ?? null,
       confirmation_message: apt?.confirmation_message ?? null,
-      instance_name:        conn?.instance_name       ?? null,
     },
   }
 }

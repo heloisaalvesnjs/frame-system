@@ -1,0 +1,134 @@
+{
+  "name": "Frame System — Envio de Planos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-planos",
+        "responseMode": "immediately",
+        "responseCode": 200,
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "trigger-planos",
+      "name": "Recebe Evento de Planos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "frame-planos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "plans_stage_reached",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "check-event",
+      "name": "É evento de planos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.plan_media_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ]
+        }
+      },
+      "id": "has-media",
+      "name": "Tem mídia (PDF/imagem)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Evento de Planos').item.json.data.evolution_api_url }}/message/sendMedia/{{ $('Recebe Evento de Planos').item.json.data.instance_name }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number",    "value": "={{ $('Recebe Evento de Planos').item.json.client_phone }}" },
+            { "name": "mediatype", "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_type ?? 'document' }}" },
+            { "name": "media",     "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_url }}" },
+            { "name": "caption",   "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_message_text ?? '' }}" },
+            { "name": "fileName",  "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_name ?? 'planos.pdf' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-media",
+      "name": "Envia mídia dos planos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $('Recebe Evento de Planos').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Evento de Planos').item.json.data.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.data.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento de Planos').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_message_text }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-text",
+      "name": "Envia texto dos planos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420]
+    }
+  ],
+  "connections": {
+    "Recebe Evento de Planos": {
+      "main": [[{ "node": "É evento de planos?", "type": "main", "index": 0 }]]
+    },
+    "É evento de planos?": {
+      "main": [
+        [{ "node": "Tem mídia (PDF/imagem)?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Tem mídia (PDF/imagem)?": {
+      "main": [
+        [{ "node": "Envia mídia dos planos", "type": "main", "index": 0 }],
+        [{ "node": "Envia texto dos planos",  "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateId": "frame-system-planos-v1", "description": "Recebe evento plans_stage_reached do Frame System e envia a mídia/mensagem dos planos via Evolution API" }
+}

@@ -1,5 +1,6 @@
 import { query } from '../db'
 import { sendMessage } from './whatsapp.service'
+import { fireWebhookEvent, getConnectionData } from './webhook-events.service'
 
 // ── 4.1 — Lead frio ───────────────────────────────────────────────
 // Envia follow-up para clientes que pararam de responder há X horas
@@ -81,12 +82,40 @@ export async function runColdLeadFollowup(): Promise<void> {
       : (lead.followup_message_1 ? applyVars(lead.followup_message_1) : DEFAULT_MSG_1)
 
     try {
-      await sendMessage(lead.client_phone, msg, lead.instance_name)
-
-      await query(
-        'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
-        [lead.conversation_id, 'assistant', msg]
+      // Verifica se há integração n8n ativa para este evento
+      const integrations = await query<any>(
+        `SELECT id FROM webhook_integrations
+         WHERE nutritionist_id = $1 AND is_active = true AND 'no_reply_24h' = ANY(events) LIMIT 1`,
+        [lead.nutritionist_id]
       )
+
+      const hasN8n = integrations.length > 0
+
+      if (hasN8n) {
+        // n8n é responsável por enviar — apenas dispara o evento
+        const connData = await getConnectionData(lead.nutritionist_id, lead.client_phone)
+        await fireWebhookEvent(lead.nutritionist_id, 'no_reply_24h', {
+          client_phone: lead.client_phone,
+          conversation_id: lead.conversation_id,
+          data: {
+            ...connData,
+            client_name:    lead.client_name    ?? null,
+            assistant_name: lead.assistant_name ?? null,
+            nutri_name:     lead.nutri_name     ?? null,
+            touch_number:   isSecondTouch ? 2 : 1,
+            suggested_message: msg,
+          },
+        })
+        console.log(`[followup] ✓ Evento no_reply_24h → n8n → ${lead.client_phone}`)
+      } else {
+        // Fallback: sem n8n configurado, envia direto pelo backend
+        await sendMessage(lead.client_phone, msg, lead.instance_name)
+        await query(
+          'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+          [lead.conversation_id, 'assistant', msg]
+        )
+        console.log(`[followup] ✓ ${isSecondTouch ? '2º toque' : '1º toque'} direto → ${lead.client_phone}`)
+      }
 
       await query(
         `UPDATE conversations
@@ -94,8 +123,6 @@ export async function runColdLeadFollowup(): Promise<void> {
          WHERE id = $1`,
         [lead.conversation_id]
       )
-
-      console.log(`[followup] ✓ ${isSecondTouch ? '2º toque' : '1º toque'} → ${lead.client_phone}`)
     } catch (err) {
       console.error(`[followup] ✗ Erro ao enviar para ${lead.client_phone}:`, err)
     }
@@ -112,6 +139,7 @@ export async function runAppointmentReminders(): Promise<void> {
       a.id,
       a.scheduled_at,
       a.modality,
+      a.nutritionist_id,
       c.name  AS client_name,
       c.phone AS client_phone,
       n.name  AS nutritionist_name,
@@ -156,14 +184,30 @@ export async function runAppointmentReminders(): Promise<void> {
       `Confirme sua presença respondendo *sim*, ou avise se precisar reagendar 🙏`
 
     try {
-      await sendMessage(appt.client_phone, msg, appt.instance_name)
+      // Verifica se há integração n8n ativa para appointment_booked (lembrete via n8n)
+      const integrations = await query<any>(
+        `SELECT id FROM webhook_integrations
+         WHERE nutritionist_id = $1 AND is_active = true AND 'appointment_booked' = ANY(events) LIMIT 1`,
+        [appt.nutritionist_id]
+      )
+
+      const hasN8n = integrations.length > 0
+
+      if (hasN8n) {
+        // n8n já cuida do lembrete via workflow 02-lembrete-consulta
+        // O evento appointment_booked foi disparado na hora do agendamento
+        // e o n8n usa Wait node para enviar 24h antes — não duplicar aqui
+        console.log(`[reminder] ↷ Lembrete delegado ao n8n para ${appt.client_phone}`)
+      } else {
+        // Fallback: envia direto pelo backend
+        await sendMessage(appt.client_phone, msg, appt.instance_name)
+        console.log(`[reminder] ✓ Lembrete direto enviado para ${appt.client_phone}`)
+      }
 
       await query(
         'UPDATE appointments SET reminder_sent = true WHERE id = $1',
         [appt.id]
       )
-
-      console.log(`[reminder] ✓ Lembrete enviado para ${appt.client_phone}`)
     } catch (err) {
       console.error(`[reminder] ✗ Erro ao enviar para ${appt.client_phone}:`, err)
     }
