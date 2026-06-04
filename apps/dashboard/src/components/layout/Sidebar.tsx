@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, Calendar, Users,
   LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
-  BookOpen, Smartphone, Sun, Moon,
+  BookOpen, Smartphone, Sun, Moon, UsersRound,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -17,12 +17,13 @@ const navMain = [
   { href: '/conversas',     label: 'Conversas',    icon: MessageSquare },
   { href: '/agenda',        label: 'Agenda',       icon: Calendar },
   { href: '/clientes',      label: 'Clientes',     icon: Users },
-  { href: '/servicos',      label: 'Serviços',     icon: ShoppingBag },
-  { href: '/followup',      label: 'Follow-up',    icon: RefreshCw },
+  { href: '/servicos',      label: 'Planos',       icon: ShoppingBag },
+  { href: '/followup',      label: 'Automações',   icon: RefreshCw },
 ]
 
 const navConfig = [
   { href: '/treinamento',   label: 'Assistente',   icon: BookOpen },
+  { href: '/equipe',        label: 'Equipe',       icon: UsersRound },
   { href: '/whatsapp',      label: 'Conexões',     icon: Smartphone },
   { href: '/configuracoes', label: 'Configurações',icon: Settings },
 ]

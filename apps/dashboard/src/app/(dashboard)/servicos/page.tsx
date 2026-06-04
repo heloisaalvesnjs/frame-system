@@ -434,7 +434,7 @@ export default function ServicosPage() {
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Serviços</h1>
+          <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Planos</h1>
           <p className="text-sm text-t2 mt-0.5">A assistente usa esses valores para responder sobre preços e planos</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">

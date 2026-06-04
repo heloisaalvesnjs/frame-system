@@ -20,6 +20,9 @@ export async function assistantRoutes(app: FastifyInstance) {
               service_plans, nutri_display_name,
               emoji_level, func_prospeccao, func_triagem, func_agendamento,
               followup_message_1, followup_message_2,
+              auto_feedback_enabled, auto_feedback_delay_hours, auto_feedback_message,
+              auto_reminder_enabled, auto_reminder_hours_before, auto_reminder_message,
+              auto_return_enabled, auto_return_days, auto_return_message,
               services_message, services_message_enabled,
               services_message_online, services_message_online_enabled,
               services_message_presencial, services_message_presencial_enabled,
@@ -57,6 +60,15 @@ export async function assistantRoutes(app: FastifyInstance) {
       func_agendamento: z.boolean().default(true),
       followup_message_1: z.string().nullish().transform(v => v ?? undefined),
       followup_message_2: z.string().nullish().transform(v => v ?? undefined),
+      auto_feedback_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      auto_feedback_delay_hours: z.number().int().min(1).nullish().transform(v => v ?? undefined),
+      auto_feedback_message: z.string().nullish().transform(v => v ?? undefined),
+      auto_reminder_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      auto_reminder_hours_before: z.number().int().min(1).nullish().transform(v => v ?? undefined),
+      auto_reminder_message: z.string().nullish().transform(v => v ?? undefined),
+      auto_return_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      auto_return_days: z.number().int().min(1).nullish().transform(v => v ?? undefined),
+      auto_return_message: z.string().nullish().transform(v => v ?? undefined),
       services_message: z.string().nullish().transform(v => v ?? undefined),
       services_message_enabled: z.boolean().nullish().transform(v => v ?? undefined),
       services_message_online: z.string().nullish().transform(v => v ?? undefined),
@@ -88,6 +100,15 @@ export async function assistantRoutes(app: FastifyInstance) {
            services_message_online_enabled = COALESCE($23, services_message_online_enabled),
            services_message_presencial = $24,
            services_message_presencial_enabled = COALESCE($25, services_message_presencial_enabled),
+           auto_feedback_enabled = COALESCE($26, auto_feedback_enabled),
+           auto_feedback_delay_hours = COALESCE($27, auto_feedback_delay_hours),
+           auto_feedback_message = COALESCE($28, auto_feedback_message),
+           auto_reminder_enabled = COALESCE($29, auto_reminder_enabled),
+           auto_reminder_hours_before = COALESCE($30, auto_reminder_hours_before),
+           auto_reminder_message = COALESCE($31, auto_reminder_message),
+           auto_return_enabled = COALESCE($32, auto_return_enabled),
+           auto_return_days = COALESCE($33, auto_return_days),
+           auto_return_message = COALESCE($34, auto_return_message),
            updated_at = NOW()
          WHERE nutritionist_id = $1
          RETURNING id, name, tone, greeting_message, is_active,
@@ -96,6 +117,9 @@ export async function assistantRoutes(app: FastifyInstance) {
                    followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
                    emoji_level, func_prospeccao, func_triagem, func_agendamento,
                    followup_message_1, followup_message_2,
+                   auto_feedback_enabled, auto_feedback_delay_hours, auto_feedback_message,
+                   auto_reminder_enabled, auto_reminder_hours_before, auto_reminder_message,
+                   auto_return_enabled, auto_return_days, auto_return_message,
                    services_message, services_message_enabled,
                    services_message_online, services_message_online_enabled,
                    services_message_presencial, services_message_presencial_enabled`,
@@ -108,7 +132,10 @@ export async function assistantRoutes(app: FastifyInstance) {
          body.followup_message_1 ?? null, body.followup_message_2 ?? null,
          body.services_message ?? null, body.services_message_enabled ?? null,
          body.services_message_online ?? null, body.services_message_online_enabled ?? null,
-         body.services_message_presencial ?? null, body.services_message_presencial_enabled ?? null]
+         body.services_message_presencial ?? null, body.services_message_presencial_enabled ?? null,
+         body.auto_feedback_enabled ?? null, body.auto_feedback_delay_hours ?? null, body.auto_feedback_message ?? null,
+         body.auto_reminder_enabled ?? null, body.auto_reminder_hours_before ?? null, body.auto_reminder_message ?? null,
+         body.auto_return_enabled ?? null, body.auto_return_days ?? null, body.auto_return_message ?? null]
       )
     } else {
       ;[assistant] = await query(

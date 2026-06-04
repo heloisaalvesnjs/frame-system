@@ -22,6 +22,7 @@ import { servicesRoutes } from './routes/services.routes'
 import { googleCalendarRoutes } from './routes/google-calendar.routes'
 import { foodsRoutes } from './routes/foods.routes'
 import { locationsRoutes } from './routes/locations.routes'
+import { teamRoutes } from './routes/team.routes'
 import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 import { readFileSync } from 'fs'
@@ -87,6 +88,7 @@ app.register(webhookRoutes, { prefix: '/webhook' })
 app.register(internalRoutes, { prefix: '/api/internal' })
 app.register(metricsRoutes,  { prefix: '/api/metrics' })
 app.register(clientRoutes,   { prefix: '/api/clients' })
+app.register(teamRoutes,     { prefix: '/api/team' })
 app.register(patientRoutes,  { prefix: '/api/patient' })
 app.register(adminRoutes,    { prefix: '/api/admin' })
 app.register(featuresRoutes, { prefix: '/api/features' })
