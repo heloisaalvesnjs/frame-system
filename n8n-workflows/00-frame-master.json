@@ -1,0 +1,360 @@
+{
+  "name": "Frame System — Master Workflow",
+  "nodes": [
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-master",
+        "responseMode": "immediately",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Recebe Evento Frame System",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "webhookId": "frame-master"
+    },
+
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "plans_stage_reached",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Planos"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "appointment_booked",
+                    "operator": { "type": "string", "operation": "equals" }
+                  },
+                  {
+                    "leftValue": "={{ $json.event_subtype }}",
+                    "rightValue": "reminder_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Lembrete"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "pos_consulta_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "PosConsulta"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "followup_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Followup"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "retorno_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Retorno"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "first_contact",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "PrimeiroContato"
+            }
+          ]
+        }
+      },
+      "id": "router",
+      "name": "Roteador de Eventos",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [440, 400]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.plan_media_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ]
+        }
+      },
+      "id": "check-media",
+      "name": "Tem mídia (PDF/imagem)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 100]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendMedia/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number",    "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "mediatype", "value": "={{ $('Recebe Evento Frame System').item.json.plan_media_type ?? 'document' }}" },
+            { "name": "media",     "value": "={{ $('Recebe Evento Frame System').item.json.plan_media_url }}" },
+            { "name": "caption",   "value": "={{ $('Recebe Evento Frame System').item.json.plan_message_text ?? '' }}" },
+            { "name": "fileName",  "value": "={{ $('Recebe Evento Frame System').item.json.plan_media_name ?? 'planos.pdf' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-planos-midia",
+      "name": "Envia mídia dos planos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 20]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.plan_message_text }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-planos-texto",
+      "name": "Envia texto dos planos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 180]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-lembrete",
+      "name": "Envia lembrete de consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 320]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-pos-consulta",
+      "name": "Envia mensagem pós-consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-followup",
+      "name": "Envia follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 600]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-retorno",
+      "name": "Envia mensagem de retorno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 740]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Evento Frame System').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Frame System').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Evento Frame System').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Evento Frame System').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Evento Frame System').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-primeiro-contato",
+      "name": "Envia mensagem primeiro contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 880]
+    }
+
+  ],
+
+  "connections": {
+    "Recebe Evento Frame System": {
+      "main": [[{ "node": "Roteador de Eventos", "type": "main", "index": 0 }]]
+    },
+    "Roteador de Eventos": {
+      "main": [
+        [{ "node": "Tem mídia (PDF/imagem)?",       "type": "main", "index": 0 }],
+        [{ "node": "Envia lembrete de consulta",    "type": "main", "index": 0 }],
+        [{ "node": "Envia mensagem pós-consulta",   "type": "main", "index": 0 }],
+        [{ "node": "Envia follow-up",               "type": "main", "index": 0 }],
+        [{ "node": "Envia mensagem de retorno",     "type": "main", "index": 0 }],
+        [{ "node": "Envia mensagem primeiro contato", "type": "main", "index": 0 }]
+      ]
+    },
+    "Tem mídia (PDF/imagem)?": {
+      "main": [
+        [{ "node": "Envia mídia dos planos",  "type": "main", "index": 0 }],
+        [{ "node": "Envia texto dos planos",  "type": "main", "index": 0 }]
+      ]
+    }
+  },
+
+  "settings": { "executionOrder": "v1" },
+
+  "meta": {
+    "templateId": "frame-system-master-v1",
+    "description": "Workflow único que recebe todos os eventos do Frame System via N8N_WEBHOOK_URL. Switch central roteia por event: plans_stage_reached → envia planos (mídia ou texto), appointment_booked/reminder_due → lembrete 24h antes, pos_consulta_due → pós-consulta, followup_due → follow-up de lead frio, retorno_due → reengajamento de paciente sem retorno, first_contact → mensagem de boas-vindas. URL: POST /webhook/frame-master"
+  }
+}
