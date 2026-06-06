@@ -461,8 +461,8 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       const normalized: Record<string, string> = {}
       for (const k of Object.keys(row)) normalized[norm(k)] = String(row[k] ?? '').trim()
 
-      const name  = normalized['nome'] || normalized['name'] || normalized['paciente'] || ''
-      const phone = (normalized['telefone'] || normalized['phone'] || normalized['celular'] || normalized['whatsapp'] || '')
+      const name  = normalized['nome'] || normalized['nome_do_paciente'] || normalized['name'] || normalized['paciente'] || normalized['cliente'] || ''
+      const phone = (normalized['telefone'] || normalized['telefone_celular'] || normalized['celular'] || normalized['phone'] || normalized['whatsapp'] || normalized['fone'] || '')
         .replace(/\D/g, '')
       const email = normalized['email'] || ''
 
