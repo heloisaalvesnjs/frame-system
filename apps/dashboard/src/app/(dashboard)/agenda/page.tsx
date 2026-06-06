@@ -796,8 +796,6 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <LocationsPanel />
-        <GoogleCalendarCard />
       </aside>
 
       {/* ── Main area ─────────────────────────────────────────────── */}

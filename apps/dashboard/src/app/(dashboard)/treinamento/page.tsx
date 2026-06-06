@@ -818,7 +818,6 @@ function AutomacoesSection() {
 const TABS = [
   { id: 'interview',  label: 'Entrevista',  icon: MessageSquare },
   { id: 'pdf',        label: 'Manual',      icon: FileText },
-  { id: 'automacoes', label: 'Automações',  icon: Zap },
 ]
 
 export default function TreinamentoPage() {
@@ -853,7 +852,6 @@ export default function TreinamentoPage() {
         <CardContent className="py-6">
           {activeTab === 'interview'  && <InterviewMode onSaved={() => setActiveTab('pdf')} />}
           {activeTab === 'pdf'        && <ManualSection />}
-          {activeTab === 'automacoes' && <AutomacoesSection />}
         </CardContent>
       </Card>
     </div>
