@@ -30,6 +30,7 @@ export async function assistantRoutes(app: FastifyInstance) {
                 services_message, services_message_enabled,
                 services_message_online, services_message_online_enabled,
                 services_message_presencial, services_message_presencial_enabled,
+                pos_consulta_message, retorno_message, retorno_days,
                 ai_paused,
                 plans_media_enabled, plans_media_type, plans_media_original_name,
                 CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
@@ -51,6 +52,7 @@ export async function assistantRoutes(app: FastifyInstance) {
                 services_message, services_message_enabled,
                 services_message_online, services_message_online_enabled,
                 services_message_presencial, services_message_presencial_enabled,
+                pos_consulta_message, retorno_message, retorno_days,
                 ai_paused,
                 plans_media_enabled, plans_media_type, plans_media_original_name,
                 CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
@@ -102,6 +104,10 @@ export async function assistantRoutes(app: FastifyInstance) {
       services_message_online_enabled: z.boolean().nullish().transform(v => v ?? undefined),
       services_message_presencial: z.string().nullish().transform(v => v ?? undefined),
       services_message_presencial_enabled: z.boolean().nullish().transform(v => v ?? undefined),
+      // Campos de automação n8n
+      pos_consulta_message: z.string().nullish().transform(v => v ?? undefined),
+      retorno_message: z.string().nullish().transform(v => v ?? undefined),
+      retorno_days: z.number().int().min(1).max(365).nullish().transform(v => v ?? undefined),
     }).passthrough()
 
     const body = schema.parse(request.body)
@@ -164,6 +170,9 @@ export async function assistantRoutes(app: FastifyInstance) {
         if (body.auto_return_enabled !== undefined)        { autoUpdates.push(`auto_return_enabled = $${p++}`);        autoParams.push(body.auto_return_enabled) }
         if (body.auto_return_days !== undefined)           { autoUpdates.push(`auto_return_days = $${p++}`);           autoParams.push(body.auto_return_days) }
         if (body.auto_return_message !== undefined)        { autoUpdates.push(`auto_return_message = $${p++}`);        autoParams.push(body.auto_return_message) }
+        if (body.pos_consulta_message !== undefined)       { autoUpdates.push(`pos_consulta_message = $${p++}`);       autoParams.push(body.pos_consulta_message) }
+        if (body.retorno_message !== undefined)            { autoUpdates.push(`retorno_message = $${p++}`);            autoParams.push(body.retorno_message) }
+        if (body.retorno_days !== undefined)               { autoUpdates.push(`retorno_days = $${p++}`);               autoParams.push(body.retorno_days) }
         if (autoUpdates.length > 0) {
           await query(`UPDATE assistants SET ${autoUpdates.join(', ')} WHERE nutritionist_id = $1`, autoParams)
         }

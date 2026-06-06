@@ -25,7 +25,8 @@ import { locationsRoutes } from './routes/locations.routes'
 import { availabilityRoutes } from './routes/availability.routes'
 import { teamRoutes } from './routes/team.routes'
 import { integrationsRoutes } from './routes/integrations.routes'
-import { runColdLeadFollowup, runAppointmentReminders } from './services/followup.service'
+import { followupSequencesRoutes } from './routes/followup-sequences.routes'
+import { runFollowupSequences, runAppointmentReminders, runPosConsulta, runRetorno } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 import { readFileSync } from 'fs'
 import { db } from './db'
@@ -99,7 +100,8 @@ app.register(googleCalendarRoutes,  { prefix: '/api/google-calendar' })
 app.register(foodsRoutes,           { prefix: '/api/foods' })
 app.register(locationsRoutes,       { prefix: '/api/locations' })
 app.register(availabilityRoutes,    { prefix: '/api/availability' })
-app.register(integrationsRoutes,    { prefix: '/api/integrations' })
+app.register(integrationsRoutes,         { prefix: '/api/integrations' })
+app.register(followupSequencesRoutes,    { prefix: '/api/followup-sequences' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))
@@ -120,25 +122,36 @@ const start = async () => {
     await app.listen({ port, host: '0.0.0.0' })
     console.log(`\n🚀 Frame System API rodando na porta ${port}`)
 
-    // ── Schedulers de follow-up ────────────────────────────────
-    // Primeira execução: 1 min após o startup (servidor esquentar)
+    // ── Schedulers automáticos ─────────────────────────────────
+    // Aquecimento: primeira execução 1 min após o startup
     setTimeout(() => {
-      runColdLeadFollowup().catch(console.error)
+      runFollowupSequences().catch(console.error)
       runAppointmentReminders().catch(console.error)
+      runPosConsulta().catch(console.error)
+      runRetorno().catch(console.error)
     }, 60_000)
 
-    // Lead frio: a cada 2 horas
+    // Follow-up por etapas: a cada 30 minutos (precisão dos delays configurados)
     setInterval(() => {
-      runColdLeadFollowup().catch(console.error)
-    }, 2 * 60 * 60 * 1000)
+      runFollowupSequences().catch(console.error)
+    }, 30 * 60 * 1000)
 
-    // Lembrete de consulta: a cada 1 hora
+    // Lembrete de consulta 24h antes: a cada 1 hora
     setInterval(() => {
       runAppointmentReminders().catch(console.error)
     }, 60 * 60 * 1000)
 
+    // Pós-consulta: a cada 30 minutos
+    setInterval(() => {
+      runPosConsulta().catch(console.error)
+    }, 30 * 60 * 1000)
+
+    // Mensagem de retorno: a cada 6 horas (precisão ±12h já na query)
+    setInterval(() => {
+      runRetorno().catch(console.error)
+    }, 6 * 60 * 60 * 1000)
+
     // Relatório semanal: toda segunda-feira às 08h BRT
-    // Verifica a cada hora se é segunda às 8h
     setInterval(() => {
       const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
       if (now.getDay() === 1 && now.getHours() === 8 && now.getMinutes() < 60) {
@@ -146,7 +159,7 @@ const start = async () => {
       }
     }, 60 * 60 * 1000)
 
-    console.log('⏰ Schedulers de follow-up e relatório semanal registrados')
+    console.log('⏰ Schedulers registrados: follow-up, lembrete, pós-consulta, retorno, relatório')
     // ──────────────────────────────────────────────────────────
 
   } catch (err) {

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Upload, Trash2, CheckCircle, MessageSquare,
   ArrowRight, ArrowLeft, FileText, Edit3,
+  Zap, Plus, GripVertical, Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -564,10 +565,260 @@ function ManualSection() {
   )
 }
 
+// ─── Automações Section ───────────────────────────────────────────────────────
+interface FollowupStep {
+  id?: string
+  step_order: number
+  delay_hours: number
+  message: string
+  is_active?: boolean
+}
+
+function AutomacoesSection() {
+  const queryClient = useQueryClient()
+
+  // ── Assistant (pos_consulta, retorno) ──
+  const { data: assistant } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant },
+  })
+
+  const [posConsulta,       setPosConsulta]       = useState('')
+  const [retornoMsg,        setRetornoMsg]         = useState('')
+  const [retornoDays,       setRetornoDays]        = useState(30)
+  const [savingAssistant,   setSavingAssistant]    = useState(false)
+
+  useEffect(() => {
+    if (!assistant) return
+    setPosConsulta(assistant.pos_consulta_message ?? '')
+    setRetornoMsg(assistant.retorno_message ?? '')
+    setRetornoDays(assistant.retorno_days ?? 30)
+  }, [assistant])
+
+  async function saveAssistantFields() {
+    setSavingAssistant(true)
+    try {
+      await api.put('/api/assistants', {
+        name:                    assistant?.name ?? '',
+        tone:                    assistant?.tone ?? '',
+        greeting_message:        assistant?.greeting_message ?? '',
+        consultation_price:      assistant?.consultation_price ?? null,
+        consultation_modalities: assistant?.consultation_modalities ?? [],
+        specialties:             assistant?.specialties ?? [],
+        emoji_level:             assistant?.emoji_level ?? 'medium',
+        func_prospeccao:         assistant?.func_prospeccao ?? true,
+        func_triagem:            assistant?.func_triagem ?? true,
+        func_agendamento:        assistant?.func_agendamento ?? true,
+        pos_consulta_message:    posConsulta.trim() || null,
+        retorno_message:         retornoMsg.trim() || null,
+        retorno_days:            retornoDays,
+      })
+      toast.success('Mensagens de automação salvas!')
+      queryClient.invalidateQueries({ queryKey: ['assistant'] })
+    } catch {
+      toast.error('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSavingAssistant(false)
+    }
+  }
+
+  // ── Follow-up sequences ──
+  const { data: seqData, isLoading: seqLoading } = useQuery<any>({
+    queryKey: ['followup-sequences'],
+    queryFn: async () => { const { data } = await api.get('/api/followup-sequences'); return data },
+  })
+
+  const [steps, setSteps] = useState<FollowupStep[]>([])
+
+  useEffect(() => {
+    if (seqData?.sequences) setSteps(seqData.sequences)
+  }, [seqData])
+
+  async function addStep() {
+    const newStep = {
+      step_order: steps.length + 1,
+      delay_hours: 24,
+      message: '',
+    }
+    try {
+      const { data } = await api.post('/api/followup-sequences', newStep)
+      setSteps(prev => [...prev, data.sequence])
+      toast.success('Etapa adicionada!')
+    } catch {
+      toast.error('Erro ao adicionar etapa.')
+    }
+  }
+
+  async function updateStep(index: number, field: keyof FollowupStep, value: any) {
+    const step = steps[index]
+    const updated = { ...step, [field]: value }
+    setSteps(prev => prev.map((s, i) => i === index ? updated : s))
+    if (!step.id) return
+    try {
+      await api.put(`/api/followup-sequences/${step.id}`, { [field]: value })
+    } catch {
+      toast.error('Erro ao salvar etapa.')
+    }
+  }
+
+  async function removeStep(index: number) {
+    const step = steps[index]
+    if (step.id) {
+      try {
+        await api.delete(`/api/followup-sequences/${step.id}`)
+      } catch {
+        toast.error('Erro ao remover etapa.')
+        return
+      }
+    }
+    setSteps(prev => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, step_order: i + 1 })))
+    toast.success('Etapa removida.')
+    queryClient.invalidateQueries({ queryKey: ['followup-sequences'] })
+  }
+
+  return (
+    <div className="space-y-8">
+
+      {/* Follow-up por etapas */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-brand-500" />
+            Follow-up automático
+          </h3>
+          <p className="text-xs text-t2 mt-1 leading-relaxed">
+            Sequência de mensagens enviadas quando o lead para de responder.
+            Cada etapa tem seu próprio delay. Use <code className="text-brand-400 font-mono">{'{nome}'}</code> para o nome do cliente.
+          </p>
+        </div>
+
+        {seqLoading ? (
+          <div className="text-xs text-t3">Carregando...</div>
+        ) : (
+          <div className="space-y-3">
+            {steps.map((step, i) => (
+              <div
+                key={step.id ?? `new-${i}`}
+                className="rounded-xl border p-4 space-y-3"
+                style={{ borderColor: 'var(--border)', background: 'var(--raised)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-3.5 h-3.5 text-t3" />
+                    <span className="text-xs font-mono text-brand-500 font-semibold">Etapa {i + 1}</span>
+                  </div>
+                  <button onClick={() => removeStep(i)} className="text-t3 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-t2 flex-shrink-0">Enviar após</label>
+                  <input
+                    type="number" min={0.5} step={0.5}
+                    value={step.delay_hours}
+                    onChange={e => updateStep(i, 'delay_hours', Number(e.target.value))}
+                    className="w-20 rounded-lg px-3 py-1.5 text-sm text-t1 text-center focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  />
+                  <span className="text-xs text-t2">horas sem resposta</span>
+                </div>
+
+                <textarea
+                  value={step.message}
+                  onChange={e => updateStep(i, 'message', e.target.value)}
+                  rows={3}
+                  placeholder={`Mensagem da etapa ${i + 1}...`}
+                  className="w-full rounded-lg px-3 py-2 text-sm text-t1 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                />
+              </div>
+            ))}
+
+            <button
+              onClick={addStep}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-xs text-t3 hover:text-t2 hover:border-brand-500/30 transition-colors"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar etapa de follow-up
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+
+      {/* Pós-consulta */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-brand-500" />
+            Mensagem pós-consulta
+          </h3>
+          <p className="text-xs text-t2 mt-1">
+            Enviada automaticamente ~3h após a consulta. Use <code className="text-brand-400 font-mono">{'{nome}'}</code> para o nome do paciente.
+          </p>
+        </div>
+        <textarea
+          value={posConsulta}
+          onChange={e => setPosConsulta(e.target.value)}
+          rows={4}
+          placeholder="Olá {nome}! 🌿 Espero que sua consulta tenha sido ótima! Qualquer dúvida é só falar. 😊"
+          className="w-full rounded-xl px-4 py-3 text-sm text-t1 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+        />
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+
+      {/* Retorno */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
+            <ArrowRight className="w-3.5 h-3.5 text-brand-500" />
+            Mensagem de retorno
+          </h3>
+          <p className="text-xs text-t2 mt-1">
+            Enviada para pacientes que fizeram consulta e <strong>não remarcaram</strong> após X dias.
+            Use <code className="text-brand-400 font-mono">{'{nome}'}</code> e <code className="text-brand-400 font-mono">{'{dias}'}</code>.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-t2 flex-shrink-0">Enviar após</label>
+          <input
+            type="number" min={1} max={365}
+            value={retornoDays}
+            onChange={e => setRetornoDays(Number(e.target.value))}
+            className="w-20 rounded-lg px-3 py-1.5 text-sm text-t1 text-center focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+          />
+          <span className="text-xs text-t2">dias da última consulta</span>
+        </div>
+
+        <textarea
+          value={retornoMsg}
+          onChange={e => setRetornoMsg(e.target.value)}
+          rows={4}
+          placeholder="Olá {nome}! 😊 Faz {dias} dias desde nossa última consulta. Que tal agendarmos seu retorno? 🌱"
+          className="w-full rounded-xl px-4 py-3 text-sm text-t1 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+        />
+      </div>
+
+      <Button onClick={saveAssistantFields} loading={savingAssistant}>
+        Salvar automações
+      </Button>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────
 const TABS = [
-  { id: 'interview', label: 'Entrevista',  icon: MessageSquare },
-  { id: 'pdf',       label: 'Manual',      icon: FileText },
+  { id: 'interview',  label: 'Entrevista',  icon: MessageSquare },
+  { id: 'pdf',        label: 'Manual',      icon: FileText },
+  { id: 'automacoes', label: 'Automações',  icon: Zap },
 ]
 
 export default function TreinamentoPage() {
@@ -600,8 +851,9 @@ export default function TreinamentoPage() {
         </div>
 
         <CardContent className="py-6">
-          {activeTab === 'interview' && <InterviewMode onSaved={() => setActiveTab('pdf')} />}
-          {activeTab === 'pdf'       && <ManualSection />}
+          {activeTab === 'interview'  && <InterviewMode onSaved={() => setActiveTab('pdf')} />}
+          {activeTab === 'pdf'        && <ManualSection />}
+          {activeTab === 'automacoes' && <AutomacoesSection />}
         </CardContent>
       </Card>
     </div>

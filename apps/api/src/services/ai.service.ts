@@ -185,10 +185,12 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     )
     // Evento: primeiro contato de um novo lead (fire-and-forget)
     getConnectionData(nutritionist_id, client_phone).then(connData =>
-      fireWebhookEvent(nutritionist_id, 'first_contact', {
+      fireWebhookEvent('first_contact', {
+        nutritionist_id,
         client_phone,
         conversation_id: convId,
-        data: { ...connData, first_message: message },
+        ...connData,
+        first_message: message,
       })
     ).catch(() => {})
     return { text: greeting, action: null, raw: true }
@@ -338,7 +340,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   if (isEtapa3 && !alreadyPresentedPlans) {
     // Evento n8n: momento de apresentar planos
     buildPlansPayload(nutritionist_id, client_phone, convId).then(p =>
-      fireWebhookEvent(nutritionist_id, 'plans_stage_reached', p)
+      fireWebhookEvent('plans_stage_reached', p)
     ).catch(() => {})
 
     // Detecta modalidade pelo histórico recente + mensagem atual
@@ -674,7 +676,7 @@ async function detectAndCreateAppointment({
     // Evento n8n: consulta agendada
     if (newAppointmentId) {
       buildAppointmentPayload(nutritionist_id, client_phone, convId, newAppointmentId).then(p =>
-        fireWebhookEvent(nutritionist_id, 'appointment_booked', p)
+        fireWebhookEvent('appointment_booked', p)
       ).catch(() => {})
     }
 

@@ -467,14 +467,42 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
   UNIQUE (nutritionist_id, blocked_date)
 );
 
--- ── Integrações n8n / webhook externo ────────────────────────────────────────
+-- ── n8n: sequência de follow-up configurável por nutri ───────────────────────
+-- Substitui os campos fixos followup_message_1/2 — permite N etapas com delay próprio
+CREATE TABLE IF NOT EXISTS followup_sequences (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  step_order      INT NOT NULL DEFAULT 1,      -- ordem: 1, 2, 3...
+  delay_hours     NUMERIC(5,1) NOT NULL DEFAULT 4, -- horas após a última mensagem do cliente
+  message         TEXT NOT NULL,
+  is_active       BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (nutritionist_id, step_order)
+);
+CREATE INDEX IF NOT EXISTS idx_followup_seq_nutri ON followup_sequences(nutritionist_id, step_order);
+
+-- Campos de retorno e pós-consulta no assistente
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS retorno_message TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS retorno_days    INT DEFAULT 30;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS pos_consulta_message TEXT;
+
+-- Rastreamento de envios automáticos em appointments
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS client_phone        TEXT;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS return_message_sent BOOLEAN DEFAULT false;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS pos_consulta_sent   BOOLEAN DEFAULT false;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS completed_at        TIMESTAMPTZ;
+
+-- Rastreamento de qual etapa de follow-up foi enviada na conversa
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS followup_step INT DEFAULT 0;
+
+-- webhook_integrations mantida apenas para compatibilidade (não usada pelo n8n interno)
 CREATE TABLE IF NOT EXISTS webhook_integrations (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
   name            TEXT NOT NULL DEFAULT 'n8n',
   webhook_url     TEXT NOT NULL,
-  secret          TEXT,                        -- HMAC secret opcional para validar payload
-  events          TEXT[] NOT NULL DEFAULT '{}',-- eventos subscritos
+  secret          TEXT,
+  events          TEXT[] NOT NULL DEFAULT '{}',
   is_active       BOOLEAN DEFAULT true,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
