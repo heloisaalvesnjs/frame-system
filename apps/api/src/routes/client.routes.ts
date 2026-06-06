@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
+import * as XLSX from 'xlsx'
 
 export async function clientRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
@@ -424,5 +425,62 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
     )
     if (!updated) return reply.code(404).send({ error: 'Cliente não encontrado' })
     return reply.send(updated)
+  })
+
+  // POST /api/clients/import-csv — importa pacientes de CSV ou Excel
+  app.post('/import-csv', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+
+    const data = await (request as any).file()
+    if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
+
+    const buffer = await data.toBuffer()
+    const filename: string = data.filename ?? ''
+
+    let rows: Record<string, string>[] = []
+
+    try {
+      const wb = XLSX.read(buffer, { type: 'buffer' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, string>[]
+    } catch {
+      return reply.code(400).send({ error: 'Não foi possível ler o arquivo. Use CSV ou Excel (.xlsx).' })
+    }
+
+    if (rows.length === 0) return reply.code(400).send({ error: 'Arquivo vazio ou sem dados.' })
+
+    // Normaliza nomes de coluna: lowercase, sem acento, sem espaço
+    function norm(s: string) {
+      return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_')
+    }
+
+    let imported = 0
+    let skipped  = 0
+
+    for (const row of rows) {
+      const normalized: Record<string, string> = {}
+      for (const k of Object.keys(row)) normalized[norm(k)] = String(row[k] ?? '').trim()
+
+      const name  = normalized['nome'] || normalized['name'] || normalized['paciente'] || ''
+      const phone = (normalized['telefone'] || normalized['phone'] || normalized['celular'] || normalized['whatsapp'] || '')
+        .replace(/\D/g, '')
+      const email = normalized['email'] || ''
+
+      if (!name || !phone || phone.length < 10) { skipped++; continue }
+
+      // Upsert: se já existe o telefone para essa nutri, ignora
+      const inserted = await query(
+        `INSERT INTO clients (nutritionist_id, name, phone, email)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (nutritionist_id, phone) DO NOTHING
+         RETURNING id`,
+        [nutritionistId, name, phone, email || null]
+      ).catch(() => [])
+
+      if ((inserted as any[]).length > 0) imported++
+      else skipped++
+    }
+
+    return reply.send({ imported, skipped })
   })
 }
