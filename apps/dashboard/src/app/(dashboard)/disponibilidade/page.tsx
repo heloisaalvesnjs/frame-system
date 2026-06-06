@@ -2,23 +2,25 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, Plus, X, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-interface TimeSlot { start: string; end: string }
-
 interface DayConfig {
   day_of_week:   number
   label:         string
+  abbr:          string
   is_active:     boolean
-  slots:         TimeSlot[]       // UI state: N slots
+  start_time:    string
+  end_time:      string
+  has_break:     boolean
+  break_start:   string
+  break_end:     string
   slot_duration: number
 }
 
-// Persist format (API still uses start_time/end_time/break_start/break_end)
 interface DayConfigApi {
   day_of_week:   number
   is_active:     boolean
@@ -29,8 +31,16 @@ interface DayConfigApi {
   break_end:     string | null
 }
 
-const DAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-const DAY_ABBR   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DAYS_META = [
+  { day_of_week: 1, label: 'Segunda-feira', abbr: 'Seg' },
+  { day_of_week: 2, label: 'Terça-feira',   abbr: 'Ter' },
+  { day_of_week: 3, label: 'Quarta-feira',  abbr: 'Qua' },
+  { day_of_week: 4, label: 'Quinta-feira',  abbr: 'Qui' },
+  { day_of_week: 5, label: 'Sexta-feira',   abbr: 'Sex' },
+  { day_of_week: 6, label: 'Sábado',        abbr: 'Sáb' },
+  { day_of_week: 0, label: 'Domingo',       abbr: 'Dom' },
+]
+
 const SLOT_OPTIONS = [
   { value: 30,  label: '30 min' },
   { value: 45,  label: '45 min' },
@@ -39,39 +49,34 @@ const SLOT_OPTIONS = [
   { value: 90,  label: '1h 30'  },
   { value: 120, label: '2 horas'},
 ]
+
 const MONTHS    = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const WEEK_DAYS = ['D','S','T','Q','Q','S','S']
 
-// Converte API → UI: start/end/break → slots[]
-function apiToSlots(d: DayConfigApi): TimeSlot[] {
-  if (!d.is_active) return [{ start: d.start_time, end: d.end_time }]
-  if (d.break_start && d.break_end) {
-    return [
-      { start: d.start_time,  end: d.break_start },
-      { start: d.break_end,   end: d.end_time },
-    ]
+// Convert API → DayConfig
+function apiToConfig(d: DayConfigApi): Omit<DayConfig, 'label' | 'abbr'> {
+  return {
+    day_of_week:   d.day_of_week,
+    is_active:     d.is_active,
+    start_time:    d.start_time?.slice(0, 5) ?? '08:00',
+    end_time:      d.end_time?.slice(0, 5)   ?? '18:00',
+    has_break:     !!(d.break_start && d.break_end),
+    break_start:   d.break_start?.slice(0, 5) ?? '12:00',
+    break_end:     d.break_end?.slice(0, 5)   ?? '13:00',
+    slot_duration: d.slot_duration ?? 60,
   }
-  return [{ start: d.start_time, end: d.end_time }]
 }
 
-// Converte UI → API: slots[] → start/end/break
-function slotsToApi(day: DayConfig): DayConfigApi {
-  const s = day.slots.filter(sl => sl.start && sl.end)
-  if (s.length === 0) {
-    return { day_of_week: day.day_of_week, is_active: day.is_active, start_time: '08:00', end_time: '18:00', slot_duration: day.slot_duration, break_start: null, break_end: null }
-  }
-  if (s.length === 1) {
-    return { day_of_week: day.day_of_week, is_active: day.is_active, start_time: s[0].start, end_time: s[0].end, slot_duration: day.slot_duration, break_start: null, break_end: null }
-  }
-  // 2+ slots: encode as start→break_start | break_end→end (use first and last)
+// Convert DayConfig → API
+function configToApi(d: DayConfig): DayConfigApi {
   return {
-    day_of_week:   day.day_of_week,
-    is_active:     day.is_active,
-    start_time:    s[0].start,
-    end_time:      s[s.length - 1].end,
-    slot_duration: day.slot_duration,
-    break_start:   s[0].end,
-    break_end:     s[s.length - 1].start,
+    day_of_week:   d.day_of_week,
+    is_active:     d.is_active,
+    start_time:    d.start_time,
+    end_time:      d.end_time,
+    slot_duration: d.slot_duration,
+    break_start:   d.has_break ? d.break_start : null,
+    break_end:     d.has_break ? d.break_end   : null,
   }
 }
 
@@ -94,95 +99,105 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
-// ── Day Card ───────────────────────────────────────────────────────────────────
-function DayCard({
-  day, onToggle, onAddSlot, onRemoveSlot, onUpdateSlot, onUpdateDuration
-}: {
+// ── TimeInput ──────────────────────────────────────────────────────────────────
+function TimeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <span className="text-[10px] text-t3 uppercase tracking-wider font-mono">{label}</span>}
+      <input
+        type="time"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="rounded-lg px-2.5 py-2 text-sm font-mono text-t1 focus:outline-none focus:ring-1 focus:ring-brand-500/40 w-[100px]"
+        style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+      />
+    </div>
+  )
+}
+
+// ── Day Row ────────────────────────────────────────────────────────────────────
+function DayRow({ day, onChange }: {
   day: DayConfig
-  onToggle: () => void
-  onAddSlot: () => void
-  onRemoveSlot: (i: number) => void
-  onUpdateSlot: (i: number, field: 'start' | 'end', v: string) => void
-  onUpdateDuration: (v: number) => void
+  onChange: (patch: Partial<DayConfig>) => void
 }) {
   return (
     <div className={cn(
-      'rounded-xl border flex flex-col transition-all',
-      day.is_active ? 'border-border bg-surface' : 'border-border/40 bg-surface/40'
+      'rounded-2xl border transition-all overflow-hidden',
+      day.is_active
+        ? 'border-border bg-surface'
+        : 'border-border/40 bg-surface/30'
     )}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: day.is_active ? '1px solid var(--border)' : undefined }}>
-        <div className="flex items-center gap-2.5">
-          <span className={cn(
-            'w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold font-mono flex-shrink-0',
-            day.is_active ? 'bg-brand-500/15 text-brand-400' : 'bg-raised text-t3'
-          )}>
-            {DAY_ABBR[day.day_of_week]}
-          </span>
-          <span className={cn('text-sm font-medium', day.is_active ? 'text-t1' : 'text-t3')}>
+      {/* Row header */}
+      <div className="flex items-center gap-4 px-5 py-4">
+        {/* Day badge */}
+        <div className={cn(
+          'w-10 h-10 flex items-center justify-center rounded-xl text-xs font-bold font-mono flex-shrink-0',
+          day.is_active ? 'bg-brand-500/15 text-brand-400' : 'bg-raised text-t3'
+        )}>
+          {day.abbr}
+        </div>
+
+        {/* Day name */}
+        <div className="w-32 flex-shrink-0">
+          <p className={cn('text-sm font-medium', day.is_active ? 'text-t1' : 'text-t3')}>
             {day.label}
-          </span>
+          </p>
+          {!day.is_active && (
+            <p className="text-xs text-t3 mt-0.5">Indisponível</p>
+          )}
         </div>
-        <Toggle checked={day.is_active} onChange={onToggle} />
-      </div>
 
-      {day.is_active && (
-        <div className="px-4 py-3 space-y-3">
-          {/* Slots */}
-          {day.slots.map((slot, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-t3 flex-shrink-0" />
-              <input
-                type="time"
-                value={slot.start}
-                onChange={e => onUpdateSlot(i, 'start', e.target.value)}
-                className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-sm font-mono text-t1 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
-                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
-              />
-              <span className="text-t3 text-xs flex-shrink-0">–</span>
-              <input
-                type="time"
-                value={slot.end}
-                onChange={e => onUpdateSlot(i, 'end', e.target.value)}
-                className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-sm font-mono text-t1 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
-                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
-              />
-              {day.slots.length > 1 && (
-                <button
-                  onClick={() => onRemoveSlot(i)}
-                  className="p-1 text-t3 hover:text-red-400 transition-colors flex-shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+        {/* Toggle */}
+        <div className="flex-shrink-0">
+          <Toggle checked={day.is_active} onChange={v => onChange({ is_active: v })} />
+        </div>
+
+        {/* Time fields — only when active */}
+        {day.is_active && (
+          <div className="flex items-end gap-3 ml-4 flex-wrap flex-1">
+            {/* Manhã/tarde */}
+            <div className="flex items-end gap-2">
+              <TimeInput label="Início" value={day.start_time} onChange={v => onChange({ start_time: v })} />
+              <span className="text-t3 text-sm mb-2.5">–</span>
+              <TimeInput label="Fim" value={day.end_time} onChange={v => onChange({ end_time: v })} />
             </div>
-          ))}
 
-          {/* Add slot + duration */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              onClick={onAddSlot}
-              className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
-            >
-              <Plus className="w-3 h-3" /> Adicionar horário
-            </button>
-            <select
-              value={day.slot_duration}
-              onChange={e => onUpdateDuration(Number(e.target.value))}
-              className="text-xs rounded-lg px-2 py-1 text-t2 focus:outline-none"
-              style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
-            >
-              {SLOT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            {/* Separator */}
+            <div className="h-8 w-px self-end mb-1 bg-border flex-shrink-0" />
+
+            {/* Almoço toggle */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-t3 uppercase tracking-wider font-mono">Pausa almoço</span>
+              <div className="flex items-center gap-2 h-[38px]">
+                <Toggle checked={day.has_break} onChange={v => onChange({ has_break: v })} />
+                <Coffee className={cn('w-3.5 h-3.5 flex-shrink-0', day.has_break ? 'text-amber-400' : 'text-t3')} />
+              </div>
+            </div>
+
+            {/* Break times — only when has_break */}
+            {day.has_break && (
+              <div className="flex items-end gap-2">
+                <TimeInput label="Início pausa" value={day.break_start} onChange={v => onChange({ break_start: v })} />
+                <span className="text-t3 text-sm mb-2.5">–</span>
+                <TimeInput label="Fim pausa" value={day.break_end} onChange={v => onChange({ break_end: v })} />
+              </div>
+            )}
+
+            {/* Duration — pushed right */}
+            <div className="flex flex-col gap-1 ml-auto">
+              <span className="text-[10px] text-t3 uppercase tracking-wider font-mono">Duração consulta</span>
+              <select
+                value={day.slot_duration}
+                onChange={e => onChange({ slot_duration: Number(e.target.value) })}
+                className="h-[38px] rounded-lg px-3 text-sm text-t1 focus:outline-none"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+              >
+                {SLOT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
-      )}
-
-      {!day.is_active && (
-        <div className="px-4 py-2">
-          <p className="text-xs text-t3">Indisponível</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -228,17 +243,18 @@ function BlockedCalendar() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-          <button onClick={prevMonth} className="p-1 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Calendar */}
+      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <button onClick={prevMonth} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-semibold text-t1">{MONTHS[month]} {year}</span>
-          <button onClick={nextMonth} className="p-1 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronRight className="w-4 h-4" /></button>
+          <button onClick={nextMonth} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
-        <div className="grid grid-cols-7 px-2 pt-2">
+        <div className="grid grid-cols-7 px-3 pt-3">
           {WEEK_DAYS.map((d, i) => <div key={i} className="text-center text-[10px] font-mono text-t3 py-1">{d}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-0.5 px-2 pb-3">
+        <div className="grid grid-cols-7 gap-1 px-3 pb-4">
           {cells.map((day, i) => {
             if (!day) return <div key={i} />
             const dateStr   = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -261,50 +277,68 @@ function BlockedCalendar() {
         </div>
       </div>
 
-      {selected && (
-        <div className="rounded-xl border px-4 py-3 space-y-3" style={{ borderColor: 'rgba(245,158,11,.3)', background: 'rgba(245,158,11,.06)' }}>
-          <p className="text-sm font-medium text-amber-300">
-            Bloquear {new Date(selected + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}?
-          </p>
-          <input type="text" value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Motivo (opcional): folga, feriado, viagem..."
-            className="w-full rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
-            style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
-          <div className="flex gap-2">
-            <button onClick={() => setSelected(null)} className="flex-1 py-2 rounded-lg border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>Cancelar</button>
-            <button onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
-              className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">Confirmar</button>
-          </div>
-        </div>
-      )}
-
-      {blocked.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-t3 uppercase tracking-wider">Dias bloqueados</p>
-          {blocked.map(b => (
-            <div key={b.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-              <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="text-sm text-t1 font-mono">
-                  {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
-                {b.reason && <span className="text-xs text-t3 ml-2">· {b.reason}</span>}
-              </div>
-              <button onClick={() => delMut.mutate(b.blocked_date.slice(0, 10))} className="p-1 rounded text-t3 hover:text-red-400 transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
+      {/* Right column: confirm + list */}
+      <div className="space-y-4">
+        {selected ? (
+          <div className="rounded-2xl border px-5 py-4 space-y-3" style={{ borderColor: 'rgba(245,158,11,.3)', background: 'rgba(245,158,11,.06)' }}>
+            <p className="text-sm font-medium text-amber-300">
+              Bloquear {new Date(selected + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}?
+            </p>
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)}
+              placeholder="Motivo (opcional): folga, feriado, viagem..."
+              className="w-full rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
+              style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
+            <div className="flex gap-2">
+              <button onClick={() => setSelected(null)} className="flex-1 py-2 rounded-lg border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>Cancelar</button>
+              <button onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
+                className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">Confirmar</button>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border px-5 py-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <p className="text-sm text-t3">Clique em um dia no calendário para bloqueá-lo. A assistente não vai oferecer agendamentos nessas datas.</p>
+          </div>
+        )}
+
+        {blocked.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-mono text-t3 uppercase tracking-wider">Dias bloqueados</p>
+            {blocked.map(b => (
+              <div key={b.id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-t1 font-mono">
+                    {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  {b.reason && <span className="text-xs text-t3 ml-2">· {b.reason}</span>}
+                </div>
+                <button onClick={() => delMut.mutate(b.blocked_date.slice(0, 10))} className="p-1 rounded text-t3 hover:text-red-400 transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
+const DEFAULT_DAYS: DayConfig[] = DAYS_META.map(m => ({
+  ...m,
+  is_active:     m.day_of_week >= 1 && m.day_of_week <= 5,
+  start_time:    '08:00',
+  end_time:      '18:00',
+  has_break:     false,
+  break_start:   '12:00',
+  break_end:     '13:00',
+  slot_duration: 60,
+}))
+
 export default function DisponibilidadePage() {
   const qc = useQueryClient()
-  const [days, setDays] = useState<DayConfig[]>([])
+  const [days, setDays] = useState<DayConfig[]>(DEFAULT_DAYS)
   const [dirty, setDirty] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -314,20 +348,18 @@ export default function DisponibilidadePage() {
 
   useEffect(() => {
     if (data) {
-      setDays(data.map(d => ({
-        day_of_week:   d.day_of_week,
-        label:         DAY_LABELS[d.day_of_week],
-        is_active:     d.is_active,
-        slot_duration: d.slot_duration,
-        slots:         apiToSlots(d),
-      })))
+      setDays(DAYS_META.map(m => {
+        const found = data.find(d => d.day_of_week === m.day_of_week)
+        if (found) return { ...m, ...apiToConfig(found) }
+        return { ...m, is_active: false, start_time: '08:00', end_time: '18:00', has_break: false, break_start: '12:00', break_end: '13:00', slot_duration: 60 }
+      }))
       setDirty(false)
     }
   }, [data])
 
   const saveMut = useMutation({
     mutationFn: (days: DayConfig[]) =>
-      api.put('/api/availability', { availability: days.map(slotsToApi) }),
+      api.put('/api/availability', { availability: days.map(configToApi) }),
     onSuccess: () => { toast.success('Disponibilidade salva!'); setDirty(false); qc.invalidateQueries({ queryKey: ['availability'] }) },
     onError: () => toast.error('Erro ao salvar'),
   })
@@ -335,28 +367,6 @@ export default function DisponibilidadePage() {
   function updateDay(idx: number, patch: Partial<DayConfig>) {
     setDays(prev => { const next = [...prev]; next[idx] = { ...next[idx], ...patch }; return next })
     setDirty(true)
-  }
-
-  function addSlot(idx: number) {
-    const day = days[idx]
-    const lastEnd = day.slots[day.slots.length - 1]?.end ?? '18:00'
-    // Suggest next slot 1h after last end
-    const [h, m] = lastEnd.split(':').map(Number)
-    const newStart = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-    const newEnd   = `${String(h + 2).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-    updateDay(idx, { slots: [...day.slots, { start: newStart, end: newEnd }] })
-  }
-
-  function removeSlot(dayIdx: number, slotIdx: number) {
-    const day = days[dayIdx]
-    if (day.slots.length <= 1) return
-    updateDay(dayIdx, { slots: day.slots.filter((_, i) => i !== slotIdx) })
-  }
-
-  function updateSlot(dayIdx: number, slotIdx: number, field: 'start' | 'end', value: string) {
-    const day = days[dayIdx]
-    const slots = day.slots.map((s, i) => i === slotIdx ? { ...s, [field]: value } : s)
-    updateDay(dayIdx, { slots })
   }
 
   const activeDays = days.filter(d => d.is_active).length
@@ -367,12 +377,11 @@ export default function DisponibilidadePage() {
     </div>
   )
 
-  // Split: work days (Mon-Fri) first, then weekend
   const workDays    = days.filter(d => d.day_of_week >= 1 && d.day_of_week <= 5)
   const weekendDays = days.filter(d => d.day_of_week === 0 || d.day_of_week === 6)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
+    <div className="p-6 max-w-5xl mx-auto space-y-10">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -381,12 +390,17 @@ export default function DisponibilidadePage() {
           <p className="text-sm text-t3 mt-0.5">
             Configure os dias e horários. A assistente usa isso para agendar consultas.
           </p>
+          {activeDays > 0 && (
+            <p className="text-sm text-brand-400 font-medium mt-2">
+              {activeDays} {activeDays === 1 ? 'dia ativo' : 'dias ativos'}
+            </p>
+          )}
         </div>
         <button
           onClick={() => saveMut.mutate(days)}
           disabled={!dirty || saveMut.isPending}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0',
             dirty ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm' : 'bg-raised text-t3 cursor-not-allowed',
           )}
         >
@@ -397,66 +411,36 @@ export default function DisponibilidadePage() {
         </button>
       </div>
 
-      {activeDays > 0 && (
-        <p className="text-sm text-brand-400 font-medium">
-          {activeDays} {activeDays === 1 ? 'dia ativo' : 'dias ativos'}
-        </p>
-      )}
-
-      {/* Days de semana — 5 colunas */}
-      <div>
-        <p className="text-xs font-mono text-t3 uppercase tracking-wider mb-3">Dias úteis</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {workDays.map((day, i) => {
-            const globalIdx = days.findIndex(d => d.day_of_week === day.day_of_week)
-            return (
-              <DayCard
-                key={day.day_of_week}
-                day={day}
-                onToggle={() => updateDay(globalIdx, { is_active: !day.is_active })}
-                onAddSlot={() => addSlot(globalIdx)}
-                onRemoveSlot={si => removeSlot(globalIdx, si)}
-                onUpdateSlot={(si, f, v) => updateSlot(globalIdx, si, f, v)}
-                onUpdateDuration={v => updateDay(globalIdx, { slot_duration: v })}
-              />
-            )
-          })}
-        </div>
+      {/* Dias úteis */}
+      <div className="space-y-3">
+        <p className="text-xs font-mono text-t3 uppercase tracking-wider">Dias úteis</p>
+        {workDays.map(day => {
+          const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
+          return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
+        })}
       </div>
 
-      {/* Fim de semana — 2 colunas */}
-      <div>
-        <p className="text-xs font-mono text-t3 uppercase tracking-wider mb-3">Fim de semana</p>
-        <div className="grid grid-cols-2 gap-3 max-w-xs">
-          {weekendDays.map(day => {
-            const globalIdx = days.findIndex(d => d.day_of_week === day.day_of_week)
-            return (
-              <DayCard
-                key={day.day_of_week}
-                day={day}
-                onToggle={() => updateDay(globalIdx, { is_active: !day.is_active })}
-                onAddSlot={() => addSlot(globalIdx)}
-                onRemoveSlot={si => removeSlot(globalIdx, si)}
-                onUpdateSlot={(si, f, v) => updateSlot(globalIdx, si, f, v)}
-                onUpdateDuration={v => updateDay(globalIdx, { slot_duration: v })}
-              />
-            )
-          })}
-        </div>
+      {/* Fim de semana */}
+      <div className="space-y-3">
+        <p className="text-xs font-mono text-t3 uppercase tracking-wider">Fim de semana</p>
+        {weekendDays.map(day => {
+          const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
+          return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
+        })}
       </div>
 
       {/* Datas bloqueadas */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
           <h2 className="text-base font-semibold text-t1">Dias sem atendimento</h2>
-          <p className="text-sm text-t3 mt-0.5">Clique em um dia para bloqueá-lo. A IA não vai oferecer agendamentos nessas datas.</p>
+          <p className="text-sm text-t3 mt-0.5">Feriados, folgas ou qualquer data que não haverá atendimento.</p>
         </div>
         <BlockedCalendar />
+        <p className="text-xs text-t3">
+          Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
+        </p>
       </div>
 
-      <p className="text-xs text-t3 text-center">
-        Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
-      </p>
     </div>
   )
 }
