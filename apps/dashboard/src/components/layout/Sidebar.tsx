@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
-  LayoutDashboard, MessageSquare, Calendar, Users,
-  LogOut, Shield, User, Settings, ChevronUp, Lock, RefreshCw, ShoppingBag,
-  BookOpen, Smartphone, Sun, Moon, UsersRound, Clock, Zap,
+  LayoutDashboard, MessageSquare, CalendarDays, Users,
+  LogOut, Shield, User, Settings, ChevronUp, Lock, Bot, CreditCard,
+  Sparkles, Sun, Moon, Building2, Clock, Plug,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -15,18 +15,17 @@ import { cn } from '@/lib/utils'
 const navMain = [
   { href: '/dashboard',     label: 'Painel',       icon: LayoutDashboard },
   { href: '/conversas',     label: 'Conversas',    icon: MessageSquare },
-  { href: '/agenda',        label: 'Agenda',       icon: Calendar },
+  { href: '/agenda',        label: 'Agenda',       icon: CalendarDays },
   { href: '/clientes',      label: 'Clientes',     icon: Users },
-  { href: '/servicos',      label: 'Planos',       icon: ShoppingBag },
-  { href: '/followup',      label: 'Automações',   icon: RefreshCw },
+  { href: '/servicos',      label: 'Planos',       icon: CreditCard },
+  { href: '/followup',      label: 'Automações',   icon: Bot },
 ]
 
 const navConfig = [
-  { href: '/treinamento',     label: 'Assistente',     icon: BookOpen },
+  { href: '/treinamento',     label: 'Assistente',     icon: Sparkles },
   { href: '/disponibilidade', label: 'Disponibilidade',icon: Clock },
-  { href: '/equipe',          label: 'Equipe',         icon: UsersRound },
-  { href: '/whatsapp',        label: 'Conexões',       icon: Smartphone },
-  { href: '/integracoes',     label: 'Integrações',    icon: Zap },
+  { href: '/equipe',          label: 'Equipe',         icon: Building2 },
+  { href: '/integracoes',     label: 'Integrações',    icon: Plug },
   { href: '/configuracoes',   label: 'Configurações',  icon: Settings },
 ]
 

@@ -439,7 +439,6 @@ function ImportarModal({ onClose }: { onClose: () => void }) {
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [showImport, setShowImport] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients', search],
@@ -455,8 +454,7 @@ export default function ClientesPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl">
-      {showModal  && <NovoClienteModal onClose={() => setShowModal(false)} />}
-      {showImport && <ImportarModal    onClose={() => setShowImport(false)} />}
+      {showModal && <NovoClienteModal onClose={() => setShowModal(false)} />}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
@@ -467,14 +465,6 @@ export default function ClientesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <Upload className="w-4 h-4" />
-            Importar CSV
-          </button>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-brand-500/20"
