@@ -1,5 +1,5 @@
 {
-  "name": "Frame System — Envio de Planos",
+  "name": "Frame System — 01 Envio de Planos",
   "nodes": [
     {
       "parameters": {
@@ -7,7 +7,6 @@
         "path": "frame-planos",
         "responseMode": "immediately",
         "responseCode": 200,
-        "responseData": "firstEntryJson",
         "options": {}
       },
       "id": "trigger-planos",
@@ -44,7 +43,7 @@
           "combinator": "and",
           "conditions": [
             {
-              "leftValue": "={{ $json.data.plan_media_url }}",
+              "leftValue": "={{ $json.plan_media_url }}",
               "rightValue": "",
               "operator": { "type": "string", "operation": "notEmpty" }
             }
@@ -60,23 +59,21 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $('Recebe Evento de Planos').item.json.data.evolution_api_url }}/message/sendMedia/{{ $('Recebe Evento de Planos').item.json.data.instance_name }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "={{ $('Recebe Evento de Planos').item.json.evolution_api_url }}/message/sendMedia/{{ $('Recebe Evento de Planos').item.json.instance_name }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.data.evolution_api_key }}" }
+            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.evolution_api_key }}" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             { "name": "number",    "value": "={{ $('Recebe Evento de Planos').item.json.client_phone }}" },
-            { "name": "mediatype", "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_type ?? 'document' }}" },
-            { "name": "media",     "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_url }}" },
-            { "name": "caption",   "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_message_text ?? '' }}" },
-            { "name": "fileName",  "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_media_name ?? 'planos.pdf' }}" }
+            { "name": "mediatype", "value": "={{ $('Recebe Evento de Planos').item.json.plan_media_type ?? 'document' }}" },
+            { "name": "media",     "value": "={{ $('Recebe Evento de Planos').item.json.plan_media_url }}" },
+            { "name": "caption",   "value": "={{ $('Recebe Evento de Planos').item.json.plan_message_text ?? '' }}" },
+            { "name": "fileName",  "value": "={{ $('Recebe Evento de Planos').item.json.plan_media_name ?? 'planos.pdf' }}" }
           ]
         },
         "options": {}
@@ -90,18 +87,18 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $('Recebe Evento de Planos').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Evento de Planos').item.json.data.instance_name }}",
+        "url": "={{ $('Recebe Evento de Planos').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Evento de Planos').item.json.instance_name }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.data.evolution_api_key }}" }
+            { "name": "apikey", "value": "={{ $('Recebe Evento de Planos').item.json.evolution_api_key }}" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             { "name": "number", "value": "={{ $('Recebe Evento de Planos').item.json.client_phone }}" },
-            { "name": "text",   "value": "={{ $('Recebe Evento de Planos').item.json.data.plan_message_text }}" }
+            { "name": "text",   "value": "={{ $('Recebe Evento de Planos').item.json.plan_message_text }}" }
           ]
         },
         "options": {}
@@ -130,5 +127,8 @@
     }
   },
   "settings": { "executionOrder": "v1" },
-  "meta": { "templateId": "frame-system-planos-v1", "description": "Recebe evento plans_stage_reached do Frame System e envia a mídia/mensagem dos planos via Evolution API" }
+  "meta": {
+    "templateId": "frame-system-planos-v2",
+    "description": "Recebe plans_stage_reached. Payload flat: instance_name, evolution_api_url, evolution_api_key, plan_media_url, plan_message_text direto na raiz do JSON."
+  }
 }

@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
 import { sendMessage } from '../services/whatsapp.service'
-import { runColdLeadFollowup, runAppointmentReminders } from '../services/followup.service'
+import { runFollowupSequences, runAppointmentReminders } from '../services/followup.service'
 import { runWeeklyReport } from '../services/report.service'
 
 /**
@@ -197,7 +197,7 @@ export async function internalRoutes(app: FastifyInstance) {
   // ── POST /api/internal/followups/run ─────────────────────
   // Dispara manualmente o follow-up de leads frios (teste / n8n).
   app.post('/followups/run', auth, async (_request, reply) => {
-    runColdLeadFollowup().catch(console.error) // fire-and-forget
+    runFollowupSequences().catch(console.error) // fire-and-forget
     return reply.send({ ok: true, message: 'Follow-up iniciado em background' })
   })
 

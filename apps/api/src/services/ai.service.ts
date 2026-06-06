@@ -339,7 +339,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 
   if (isEtapa3 && !alreadyPresentedPlans) {
     // Evento n8n: momento de apresentar planos
-    buildPlansPayload(nutritionist_id, client_phone, convId).then(p =>
+    buildPlansPayload(nutritionist_id, client_phone, convId!).then(p =>
       fireWebhookEvent('plans_stage_reached', p)
     ).catch(() => {})
 

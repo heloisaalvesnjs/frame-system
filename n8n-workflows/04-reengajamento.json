@@ -1,91 +1,130 @@
 {
-  "name": "Frame System — Reengajamento (Sem Resposta)",
+  "name": "Frame System — 04 Follow-up e Retorno",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "frame-reengajamento",
+        "path": "frame-followup",
         "responseMode": "immediately",
         "responseCode": 200,
         "options": {}
       },
-      "id": "trigger-reeng",
-      "name": "Recebe Evento Sem Resposta",
+      "id": "trigger-followup",
+      "name": "Recebe Follow-up ou Retorno",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [240, 300],
-      "webhookId": "frame-reengajamento"
+      "webhookId": "frame-followup"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-          "combinator": "and",
-          "conditions": [
+        "mode": "rules",
+        "rules": {
+          "values": [
             {
-              "leftValue": "={{ $json.event }}",
-              "rightValue": "no_reply_24h",
-              "operator": { "type": "string", "operation": "equals" }
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "followup_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Follow-up"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "retorno_due",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Retorno"
             }
           ]
         }
       },
-      "id": "check-event",
-      "name": "É sem resposta 24h?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "id": "switch-event",
+      "name": "Tipo de evento",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [460, 300]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst clientName = item.data.client_name ? item.data.client_name.split(' ')[0] : null;\n\n// Escolhe aleatoriamente uma das mensagens de reengajamento\n// para não parecer robótico\nconst messages = [\n  clientName\n    ? `Oi, ${clientName}! 😊 Vi que você esteve aqui. Ficou alguma dúvida? Estou aqui para te ajudar!`\n    : `Oi! 😊 Vi que você esteve aqui. Ficou alguma dúvida? Estou aqui para te ajudar!`,\n  clientName\n    ? `Olá, ${clientName}! Tudo bem? Posso te ajudar com alguma informação sobre nossos serviços?`\n    : `Olá! Tudo bem? Posso te ajudar com alguma informação sobre nossos serviços?`,\n  clientName\n    ? `${clientName}, oi! 🌿 Ainda quer dar um passo em direção à sua saúde? Me fala!`\n    : `Oi! 🌿 Ainda quer dar um passo em direção à sua saúde? Me fala!`\n];\n\nconst message = messages[Math.floor(Math.random() * messages.length)];\n\nreturn [{ json: { ...item, reengajamentoMessage: message } }];"
-      },
-      "id": "build-reeng",
-      "name": "Monta mensagem de reengajamento",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [680, 300]
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "=https://{{ $('Recebe Evento Sem Resposta').item.json.data.evolution_api_url }}/message/sendText/{{ $('Recebe Evento Sem Resposta').item.json.data.instance_name }}",
+        "url": "={{ $('Recebe Follow-up ou Retorno').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Follow-up ou Retorno').item.json.instance_name }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $('Recebe Evento Sem Resposta').item.json.data.evolution_api_key }}" }
+            { "name": "apikey", "value": "={{ $('Recebe Follow-up ou Retorno').item.json.evolution_api_key }}" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "number", "value": "={{ $('Recebe Evento Sem Resposta').item.json.client_phone }}" },
-            { "name": "text",   "value": "={{ $json.reengajamentoMessage }}" }
+            { "name": "number", "value": "={{ $('Recebe Follow-up ou Retorno').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Follow-up ou Retorno').item.json.message }}" }
           ]
         },
         "options": {}
       },
-      "id": "send-reeng",
-      "name": "Envia mensagem no WhatsApp",
+      "id": "send-followup",
+      "name": "Envia follow-up",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300]
+      "position": [700, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Recebe Follow-up ou Retorno').item.json.evolution_api_url }}/message/sendText/{{ $('Recebe Follow-up ou Retorno').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Recebe Follow-up ou Retorno').item.json.evolution_api_key }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Recebe Follow-up ou Retorno').item.json.client_phone }}" },
+            { "name": "text",   "value": "={{ $('Recebe Follow-up ou Retorno').item.json.message }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-retorno",
+      "name": "Envia mensagem de retorno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 420]
     }
   ],
   "connections": {
-    "Recebe Evento Sem Resposta": {
-      "main": [[{ "node": "É sem resposta 24h?", "type": "main", "index": 0 }]]
+    "Recebe Follow-up ou Retorno": {
+      "main": [[{ "node": "Tipo de evento", "type": "main", "index": 0 }]]
     },
-    "É sem resposta 24h?": {
-      "main": [[{ "node": "Monta mensagem de reengajamento", "type": "main", "index": 0 }]]
-    },
-    "Monta mensagem de reengajamento": {
-      "main": [[{ "node": "Envia mensagem no WhatsApp", "type": "main", "index": 0 }]]
+    "Tipo de evento": {
+      "main": [
+        [{ "node": "Envia follow-up",             "type": "main", "index": 0 }],
+        [{ "node": "Envia mensagem de retorno",    "type": "main", "index": 0 }]
+      ]
     }
   },
   "settings": { "executionOrder": "v1" },
   "meta": {
-    "templateId": "frame-system-reengajamento-v1",
-    "description": "Recebe no_reply_24h do Frame System e envia mensagem de reengajamento via Evolution API"
+    "templateId": "frame-system-followup-v2",
+    "description": "Recebe followup_due (etapa de follow-up sem resposta) e retorno_due (paciente sem agendamento após X dias). Em ambos os casos a mensagem já vem pronta no campo 'message'. Payload flat na raiz do JSON."
   }
 }

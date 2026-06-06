@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { usePatient, patientApi } from '@/contexts/PatientContext'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
-export default function PatientEntryPage() {
+function PatientEntry() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { setSession, client } = usePatient()
@@ -13,7 +13,6 @@ export default function PatientEntryPage() {
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    // Already authenticated
     if (client) {
       router.replace('/p/home')
       return
@@ -47,7 +46,6 @@ export default function PatientEntryPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-ui-bg">
-      {/* Logo */}
       <div className="mb-10 text-center">
         <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-500/30">
           <span className="text-white text-2xl font-bold">F</span>
@@ -78,5 +76,17 @@ export default function PatientEntryPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function PatientEntryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-ui-bg">
+        <Loader2 className="w-8 h-8 text-brand-400 animate-spin" />
+      </div>
+    }>
+      <PatientEntry />
+    </Suspense>
   )
 }
