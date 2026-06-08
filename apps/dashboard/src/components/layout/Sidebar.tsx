@@ -132,14 +132,14 @@ function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => vo
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
             >
               <User className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="font-mono text-[11px] tracking-[0.05em]">Meu Perfil</span>
+              <span className="text-[13px] font-medium">Meu Perfil</span>
             </button>
             <button
               onClick={() => go('/seguranca')}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all text-left"
             >
               <Lock className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="font-mono text-[11px] tracking-[0.05em]">Segurança</span>
+              <span className="text-[13px] font-medium">Segurança</span>
             </button>
           </div>
 
@@ -149,7 +149,7 @@ function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => vo
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/[0.07] transition-all text-left"
             >
               <LogOut className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="font-mono text-[11px] tracking-[0.05em]">Sair</span>
+              <span className="text-[13px] font-medium">Sair</span>
             </button>
           </div>
         </div>

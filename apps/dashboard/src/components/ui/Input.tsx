@@ -14,7 +14,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-[12px] font-medium text-t2 font-mono tracking-wide">
+          <label htmlFor={inputId} className="text-[12px] font-medium text-t2">
             {label}
           </label>
         )}
@@ -32,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className
           )}
           style={{
-            background: 'var(--raised)',
+            background: 'var(--surface)',
             border: error ? undefined : '1px solid var(--border)',
           }}
           {...props}

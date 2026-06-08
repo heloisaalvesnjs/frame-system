@@ -28,7 +28,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 md:left-[220px] h-[60px] flex items-center px-5 gap-4 z-10 backdrop-blur-md"
+      className="fixed top-0 left-0 right-0 md:left-[64px] h-[60px] flex items-center px-5 gap-4 z-10 backdrop-blur-md"
       style={{
         background: 'color-mix(in srgb, var(--bg) 90%, transparent)',
         borderBottom: '1px solid var(--border)',
