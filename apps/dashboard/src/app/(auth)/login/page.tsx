@@ -190,6 +190,12 @@ export default function LoginPage() {
             )}
           </div>
         </div>
+
+        <p className="text-center text-xs text-white/20 mt-6">
+          <Link href="/termos" className="hover:text-white/40 transition-colors">Termos de Uso</Link>
+          {' · '}
+          <Link href="/privacidade" className="hover:text-white/40 transition-colors">Privacidade</Link>
+        </p>
       </div>
     </div>
   )
