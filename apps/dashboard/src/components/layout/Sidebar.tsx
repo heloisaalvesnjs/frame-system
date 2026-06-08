@@ -70,7 +70,7 @@ function NavItem({ href, label, icon: Icon, expanded, onClick }: {
         active ? 'text-brand-500' : 'text-t3 group-hover:text-t2'
       )} />
       <span className={cn(
-        'font-mono text-[11px] tracking-[0.06em] whitespace-nowrap transition-all duration-200 overflow-hidden',
+        'text-[13px] font-medium whitespace-nowrap transition-all duration-200 overflow-hidden',
         expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0',
         active ? 'text-brand-500' : ''
       )}>
@@ -253,7 +253,7 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
                 expanded ? 'w-[15px] h-[15px]' : 'w-[18px] h-[18px]'
               )} />
               <span className={cn(
-                'font-mono text-[11px] tracking-[0.06em] whitespace-nowrap transition-all duration-200 overflow-hidden',
+                'text-[13px] font-medium whitespace-nowrap transition-all duration-200 overflow-hidden',
                 expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'
               )}>
                 Admin

@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('frame-theme') as Theme | null
-    const initial: Theme = saved === 'light' ? 'light' : 'dark'
+    const initial: Theme = saved === 'dark' ? 'dark' : 'light'
     setTheme(initial)
     document.documentElement.setAttribute('data-theme', initial)
   }, [])

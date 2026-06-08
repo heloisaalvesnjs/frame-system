@@ -22,18 +22,18 @@
 }
 
 [data-theme="light"] {
-  --bg:      #F0F2EF;
+  --bg:      #F5F5F7;
   --surface: #FFFFFF;
-  --raised:  #F4F6F3;
-  --border:  #D1D5DB;
-  --t1:      #0B0C0E;
-  --t2:      #374151;
-  --t3:      #6B7280;
+  --raised:  #F0F0F2;
+  --border:  #E5E5EA;
+  --t1:      #1D1D1F;
+  --t2:      #3C3C43;
+  --t3:      #6E6E73;
   --brand:   #00C27C;
   --brand-h: #009A62;
-  --brand-s: rgba(0, 194, 124, 0.08);
+  --brand-s: rgba(0, 194, 124, 0.10);
   --brand-s-solid: #E8FBF4;
-  --shadow:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow:  0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.03);
 }
 
 /* ── Base ──────────────────────────────────────────────────────── */
