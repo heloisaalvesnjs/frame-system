@@ -467,6 +467,16 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
   UNIQUE (nutritionist_id, blocked_date)
 );
 
+-- ── Tokens de recuperação de senha ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  token           TEXT NOT NULL UNIQUE,
+  expires_at      TIMESTAMPTZ NOT NULL,
+  used_at         TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── n8n: sequência de follow-up configurável por nutri ───────────────────────
 -- Substitui os campos fixos followup_message_1/2 — permite N etapas com delay próprio
 CREATE TABLE IF NOT EXISTS followup_sequences (

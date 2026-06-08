@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { randomBytes } from 'crypto'
 import { query, queryOne } from '../db'
+import { sendPasswordResetEmail } from '../services/email.service'
 
 export async function authRoutes(app: FastifyInstance) {
 
@@ -65,6 +67,62 @@ export async function authRoutes(app: FastifyInstance) {
 
     const { password_hash, ...safe } = nutritionist
     return reply.send({ token, nutritionist: safe })
+  })
+
+  // ── POST /api/auth/forgot-password ────────────────────────────────────────
+  app.post('/forgot-password', async (request, reply) => {
+    const { email } = z.object({ email: z.string().email() }).parse(request.body)
+
+    // Always return 200 to avoid e-mail enumeration
+    const nutri = await queryOne<any>(
+      `SELECT id, name, email FROM nutritionists WHERE email = $1 AND is_active = true`,
+      [email]
+    )
+    if (!nutri) return reply.send({ ok: true })
+
+    // Invalidate any previous tokens
+    await query(
+      `UPDATE password_reset_tokens SET used_at = NOW() WHERE nutritionist_id = $1 AND used_at IS NULL`,
+      [nutri.id]
+    )
+
+    const token     = randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+    await query(
+      `INSERT INTO password_reset_tokens (nutritionist_id, token, expires_at) VALUES ($1, $2, $3)`,
+      [nutri.id, token, expiresAt]
+    )
+
+    await sendPasswordResetEmail(nutri.email, nutri.name, token)
+
+    return reply.send({ ok: true })
+  })
+
+  // ── POST /api/auth/reset-password ─────────────────────────────────────────
+  app.post('/reset-password', async (request, reply) => {
+    const { token, password } = z.object({
+      token:    z.string().min(1),
+      password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    }).parse(request.body)
+
+    const row = await queryOne<any>(
+      `SELECT prt.id, prt.nutritionist_id, prt.expires_at, prt.used_at
+       FROM password_reset_tokens prt
+       WHERE prt.token = $1`,
+      [token]
+    )
+
+    if (!row)                                   return reply.code(400).send({ error: 'Token inválido.' })
+    if (row.used_at)                            return reply.code(400).send({ error: 'Este link já foi utilizado.' })
+    if (new Date(row.expires_at) < new Date())  return reply.code(400).send({ error: 'Link expirado. Solicite um novo.' })
+
+    const hash = await bcrypt.hash(password, 10)
+
+    await query(`UPDATE nutritionists SET password_hash = $1 WHERE id = $2`, [hash, row.nutritionist_id])
+    await query(`UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1`, [row.id])
+
+    return reply.send({ ok: true })
   })
 
   // ── GET /api/auth/me ───────────────────────────────────────────────────────

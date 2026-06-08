@@ -56,8 +56,7 @@ function WhatsAppCard() {
             </div>
           </div>
           <p className="text-xs text-t3">
-            Para trocar o número ou reconectar, vá para{' '}
-            <a href="/whatsapp" className="text-brand-400 hover:underline">Configurações → WhatsApp</a>.
+            Para trocar o número ou reconectar, desconecte e leia o QR code novamente.
           </p>
           <button
             onClick={handleDisconnect}
@@ -72,7 +71,7 @@ function WhatsAppCard() {
             Conecte seu WhatsApp para que a IA possa atender seus pacientes automaticamente.
           </p>
           <a
-            href="/whatsapp"
+            href="/integracoes"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-all"
           >
             Conectar WhatsApp <ExternalLink className="w-3.5 h-3.5" />

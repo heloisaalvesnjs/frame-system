@@ -129,8 +129,14 @@ export default function LoginPage() {
                   </div>
                 )}
 
+                <div className="flex items-center justify-end">
+                  <Link href="/esqueci-senha" className="text-xs text-white/30 hover:text-white/60 transition-colors">
+                    Esqueceu a senha?
+                  </Link>
+                </div>
+
                 <button type="submit" disabled={nutriLoading}
-                  className="w-full mt-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-brand-500/20">
+                  className="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-brand-500/20">
                   {nutriLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Entrar'}
                 </button>
 

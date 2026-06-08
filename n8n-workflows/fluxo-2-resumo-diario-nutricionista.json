@@ -31,7 +31,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=http://host.docker.internal:3001/api/internal/appointments?date={{ $json.date }}",
+        "url": "=http://nutriapp_api:3001/api/internal/appointments?date={{ $json.date }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -52,7 +52,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "http://host.docker.internal:3001/api/internal/nutritionists",
+        "url": "=http://nutriapp_api:3001/api/internal/nutritionists",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -104,7 +104,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:3001/api/internal/whatsapp/send",
+        "url": "=http://nutriapp_api:3001/api/internal/whatsapp/send",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

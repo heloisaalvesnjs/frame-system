@@ -11,7 +11,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/servicos':      'Serviços',
   '/followup':      'Follow-up',
   '/treinamento':   'Assistente',
-  '/whatsapp':      'WhatsApp',
   '/configuracoes': 'Configurações',
   '/onboarding':    'Configuração inicial',
   '/admin':         'Admin',
