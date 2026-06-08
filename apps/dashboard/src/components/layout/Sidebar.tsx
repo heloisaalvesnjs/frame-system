@@ -5,28 +5,27 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, CalendarDays, Users,
-  LogOut, Shield, User, Settings, ChevronUp, Lock, Bot, CreditCard,
-  Sparkles, Sun, Moon, Building2, Clock, Plug,
+  LogOut, Shield, User, Settings, Lock, CreditCard,
+  Sparkles, Clock, Plug, Building2, Layers,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
 const navMain = [
-  { href: '/dashboard',     label: 'Painel',       icon: LayoutDashboard },
-  { href: '/conversas',     label: 'Conversas',    icon: MessageSquare },
-  { href: '/agenda',        label: 'Agenda',       icon: CalendarDays },
-  { href: '/clientes',      label: 'Clientes',     icon: Users },
-  { href: '/servicos',      label: 'Planos',       icon: CreditCard },
-  { href: '/followup',      label: 'Automações',   icon: Bot },
+  { href: '/dashboard',     label: 'Painel',          icon: LayoutDashboard },
+  { href: '/conversas',     label: 'Conversas',        icon: MessageSquare },
+  { href: '/agenda',        label: 'Agenda',           icon: CalendarDays },
+  { href: '/clientes',      label: 'Clientes',         icon: Users },
+  { href: '/servicos',      label: 'Planos',           icon: CreditCard },
+  { href: '/followup',      label: 'Automações',       icon: Layers },
 ]
 
 const navConfig = [
-  { href: '/treinamento',     label: 'Assistente',     icon: Sparkles },
-  { href: '/disponibilidade', label: 'Disponibilidade',icon: Clock },
-  { href: '/equipe',          label: 'Equipe',         icon: Building2 },
-  { href: '/integracoes',     label: 'Integrações',    icon: Plug },
-  { href: '/configuracoes',   label: 'Configurações',  icon: Settings },
+  { href: '/treinamento',     label: 'Assistente',      icon: Sparkles },
+  { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
+  { href: '/equipe',          label: 'Equipe',          icon: Building2 },
+  { href: '/integracoes',     label: 'Integrações',     icon: Plug },
+  { href: '/configuracoes',   label: 'Configurações',   icon: Settings },
 ]
 
 // ── Frame mark ────────────────────────────────────────────────────
@@ -43,8 +42,8 @@ function FrameMark({ size = 28 }: { size?: number }) {
   )
 }
 
-function NavItem({ href, label, icon: Icon, onClick }: {
-  href: string; label: string; icon: any; onClick?: () => void
+function NavItem({ href, label, icon: Icon, expanded, onClick }: {
+  href: string; label: string; icon: any; expanded: boolean; onClick?: () => void
 }) {
   const pathname = usePathname()
   const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -53,8 +52,10 @@ function NavItem({ href, label, icon: Icon, onClick }: {
     <Link
       href={href}
       onClick={onClick}
+      title={!expanded ? label : undefined}
       className={cn(
-        'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group',
+        'relative flex items-center gap-3 rounded-xl transition-all duration-150 group overflow-hidden',
+        expanded ? 'px-3 py-2.5' : 'px-0 py-2.5 justify-center',
         active
           ? 'bg-brand-s text-brand-500'
           : 'text-t2 hover:text-t1 hover:bg-raised'
@@ -63,9 +64,14 @@ function NavItem({ href, label, icon: Icon, onClick }: {
       {active && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 bg-brand-500 rounded-r-full" />
       )}
-      <Icon className={cn('w-[15px] h-[15px] flex-shrink-0 transition-colors', active ? 'text-brand-500' : 'text-t3 group-hover:text-t2')} />
+      <Icon className={cn(
+        'flex-shrink-0 transition-colors',
+        expanded ? 'w-[15px] h-[15px]' : 'w-[18px] h-[18px]',
+        active ? 'text-brand-500' : 'text-t3 group-hover:text-t2'
+      )} />
       <span className={cn(
-        'font-mono text-[11px] tracking-[0.06em] transition-colors',
+        'font-mono text-[11px] tracking-[0.06em] whitespace-nowrap transition-all duration-200 overflow-hidden',
+        expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0',
         active ? 'text-brand-500' : ''
       )}>
         {label}
@@ -74,7 +80,7 @@ function NavItem({ href, label, icon: Icon, onClick }: {
   )
 }
 
-function UserMenu({ onClose }: { onClose?: () => void }) {
+function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => void }) {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -99,12 +105,12 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div ref={ref} className="relative px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+    <div ref={ref} className="relative px-2 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
 
       {/* Dropdown (abre para cima) */}
       {open && (
         <div
-          className="absolute left-3 right-3 bottom-full mb-2 rounded-xl overflow-hidden z-50 shadow-card-md"
+          className="absolute left-2 right-2 bottom-full mb-2 rounded-xl overflow-hidden z-50 shadow-card-md"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -152,8 +158,10 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
+        title={!expanded ? user?.name : undefined}
         className={cn(
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group',
+          'w-full flex items-center rounded-xl transition-all duration-150',
+          expanded ? 'gap-3 px-3 py-2.5' : 'justify-center py-2.5',
           open ? 'bg-raised' : 'hover:bg-raised'
         )}
       >
@@ -163,31 +171,40 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
         >
           {initials}
         </div>
-        <div className="min-w-0 flex-1 text-left">
+        <div className={cn(
+          'min-w-0 flex-1 text-left transition-all duration-200 overflow-hidden',
+          expanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'
+        )}>
           <p className="text-[12px] font-medium text-t1 truncate leading-tight">{user?.name}</p>
           <p className="font-mono text-[10px] text-t3 truncate mt-0.5">{user?.email}</p>
         </div>
-        <ChevronUp className={cn(
-          'w-3.5 h-3.5 text-t3 flex-shrink-0 transition-transform duration-200',
-          open ? 'rotate-0' : 'rotate-180'
-        )} />
       </button>
     </div>
   )
 }
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: () => void }) {
   const { user } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
 
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 h-[60px] flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-        <FrameMark size={28} />
-        <div>
+      <div
+        className={cn(
+          'flex items-center h-[60px] flex-shrink-0 overflow-hidden transition-all duration-200',
+          expanded ? 'gap-3 px-5' : 'justify-center px-0'
+        )}
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <div className="flex-shrink-0">
+          <FrameMark size={28} />
+        </div>
+        <div className={cn(
+          'transition-all duration-200 overflow-hidden whitespace-nowrap',
+          expanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'
+        )}>
           <p className="font-display font-bold text-[16px] leading-none tracking-tight text-t1">
             Frame<span style={{ color: 'var(--brand)' }}>.</span>
           </p>
@@ -198,17 +215,18 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 flex flex-col gap-0.5 px-3 py-4 overflow-y-auto">
-
-        {/* Principal */}
+      <nav className={cn(
+        'flex-1 flex flex-col gap-0.5 py-4 overflow-y-auto transition-all duration-200',
+        expanded ? 'px-3' : 'px-2'
+      )}>
         {navMain.map(item => (
-          <NavItem key={item.href} {...item} onClick={onClose} />
+          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
         ))}
 
-        {/* Configuração */}
         <div className="my-2 mx-1" style={{ borderTop: '1px solid var(--border)' }} />
+
         {navConfig.map(item => (
-          <NavItem key={item.href} {...item} onClick={onClose} />
+          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
         ))}
 
         {/* Admin */}
@@ -218,8 +236,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <Link
               href="/admin"
               onClick={onClose}
+              title={!expanded ? 'Admin' : undefined}
               className={cn(
-                'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group',
+                'relative flex items-center rounded-xl transition-all duration-150 group overflow-hidden',
+                expanded ? 'gap-3 px-3 py-2.5' : 'justify-center px-0 py-2.5',
                 pathname.startsWith('/admin')
                   ? 'bg-amber-500/10 text-amber-400'
                   : 'text-t2 hover:text-amber-400 hover:bg-amber-500/[0.07]'
@@ -228,43 +248,43 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               {pathname.startsWith('/admin') && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 bg-amber-400 rounded-r-full" />
               )}
-              <Shield className="w-[15px] h-[15px] flex-shrink-0 text-amber-500/60" />
-              <span className="font-mono text-[11px] tracking-[0.06em]">Admin</span>
+              <Shield className={cn(
+                'flex-shrink-0 text-amber-500/60',
+                expanded ? 'w-[15px] h-[15px]' : 'w-[18px] h-[18px]'
+              )} />
+              <span className={cn(
+                'font-mono text-[11px] tracking-[0.06em] whitespace-nowrap transition-all duration-200 overflow-hidden',
+                expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'
+              )}>
+                Admin
+              </span>
             </Link>
           </>
         )}
       </nav>
 
-      {/* Theme toggle */}
-      <div className="px-4 py-2.5 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-t2 hover:text-t1 hover:bg-raised transition-all"
-        >
-          {theme === 'dark'
-            ? <Sun className="w-[14px] h-[14px] flex-shrink-0 text-t3" />
-            : <Moon className="w-[14px] h-[14px] flex-shrink-0 text-t3" />}
-          <span className="font-mono text-[11px] tracking-[0.05em]">
-            {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-          </span>
-        </button>
-      </div>
-
       {/* User menu */}
-      <UserMenu onClose={onClose} />
+      <UserMenu expanded={expanded} onClose={onClose} />
     </div>
   )
 }
 
 export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <>
-      {/* Desktop */}
+      {/* Desktop — slim com hover expand */}
       <aside
-        className="hidden md:flex fixed left-0 top-0 h-screen w-[220px] flex-col z-20"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className={cn(
+          'hidden md:flex fixed left-0 top-0 h-screen flex-col z-20 transition-all duration-200 ease-in-out',
+          hovered ? 'w-[210px]' : 'w-[64px]'
+        )}
         style={{ borderRight: '1px solid var(--border)' }}
       >
-        <SidebarContent />
+        <SidebarContent expanded={hovered} />
       </aside>
 
       {/* Mobile overlay */}
@@ -275,7 +295,7 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
         />
       )}
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — sempre expandido */}
       <aside
         className={cn(
           'md:hidden fixed left-0 top-0 h-screen w-[260px] flex flex-col z-50 transition-transform duration-300 ease-in-out',
@@ -283,7 +303,7 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
         )}
         style={{ borderRight: '1px solid var(--border)' }}
       >
-        <SidebarContent onClose={onClose} />
+        <SidebarContent expanded={true} onClose={onClose} />
       </aside>
     </>
   )
