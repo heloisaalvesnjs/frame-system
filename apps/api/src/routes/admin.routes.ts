@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query, queryOne } from '../db'
+import { sendApprovalEmail } from '../services/email.service'
 
 // Middleware: apenas conta mestre
 async function authenticateMaster(request: any, reply: any) {
@@ -42,6 +43,14 @@ export async function adminRoutes(app: FastifyInstance) {
       [status, id]
     )
     if (!updated) return reply.code(404).send({ error: 'Nutricionista não encontrada' })
+
+    // Envia e-mail de aprovação quando conta é ativada
+    if (status === 'active') {
+      sendApprovalEmail(updated.email, updated.name).catch(err =>
+        console.error('[admin] Erro ao enviar e-mail de aprovação:', err)
+      )
+    }
+
     return reply.send({ nutritionist: updated })
   })
 
