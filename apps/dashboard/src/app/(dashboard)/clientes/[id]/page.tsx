@@ -64,11 +64,11 @@ interface PatientDoc { id: string; original_name: string; description: string | 
 interface ChatMessage { id: string; from_role: 'patient' | 'nutritionist'; content: string; read_at: string | null; created_at: string }
 
 const STATUS_LABEL: Record<string, string> = { scheduled: 'Agendada', confirmed: 'Confirmada', cancelled: 'Cancelada', completed: 'Realizada' }
-const STATUS_COLOR: Record<string, string> = {
-  scheduled: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  confirmed:  'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  cancelled:  'text-red-400 bg-red-500/10 border-red-500/20',
-  completed:  'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+const STATUS_COLOR: Record<string, { color: string; bg: string; border: string }> = {
+  scheduled: { color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  confirmed:  { color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  cancelled:  { color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  completed:  { color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
 }
 
 // ── Helpers macros ────────────────────────────────────────────────────────────
@@ -731,8 +731,8 @@ export default function ClientProfilePage() {
 
   if (!data) return (
     <div className="p-8">
-      <p className="text-white/40">Cliente não encontrado.</p>
-      <button onClick={() => router.back()} className="mt-4 text-brand-400 text-sm">← Voltar</button>
+      <p className="text-sm" style={{ color: 'var(--t3)' }}>Cliente não encontrado.</p>
+      <button onClick={() => router.back()} className="mt-4 text-sm" style={{ color: 'var(--brand)' }}>← Voltar</button>
     </div>
   )
 
@@ -752,42 +752,48 @@ export default function ClientProfilePage() {
   return (
     <div className="p-6 md:p-8 max-w-4xl">
       {/* Back */}
-      <Link href="/clientes" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 mb-6 transition-colors">
+      <Link href="/clientes" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--t3)' }}>
         <ArrowLeft className="w-4 h-4" /> Clientes
       </Link>
 
       {/* Header card */}
-      <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-6 mb-5">
+      <div className="rounded-2xl p-6 mb-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
         {editing ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Nome</label>
-                <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40"
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--t3)' }}>Nome</label>
+                <input className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                   value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome do paciente" />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Data de nascimento</label>
-                <input type="date" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40"
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--t3)' }}>Data de nascimento</label>
+                <input type="date" className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                   value={form.birthdate} onChange={e => setForm(f => ({ ...f, birthdate: e.target.value }))} />
               </div>
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1 block">Objetivo</label>
-              <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40"
+              <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--t3)' }}>Objetivo</label>
+              <input className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                 value={form.goal} onChange={e => setForm(f => ({ ...f, goal: e.target.value }))} placeholder="Ex: perda de peso, ganho de massa..." />
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1 block">Anotações clínicas</label>
-              <textarea rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/40 resize-none"
+              <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--t3)' }}>Anotações clínicas</label>
+              <textarea rows={3} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                 value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Anotações clínicas, observações..." />
             </div>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-400 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                className="flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                style={{ background: 'var(--brand)' }}>
                 <Save className="w-3.5 h-3.5" />{saveMutation.isPending ? 'Salvando...' : 'Salvar'}
               </button>
-              <button onClick={() => setEditing(false)} className="flex items-center gap-2 px-4 py-2 text-white/50 hover:text-white text-sm rounded-lg transition-colors">
+              <button onClick={() => setEditing(false)} className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors hover:bg-raised"
+                style={{ color: 'var(--t3)', border: '1px solid var(--border)' }}>
                 <X className="w-3.5 h-3.5" />Cancelar
               </button>
             </div>
@@ -796,23 +802,25 @@ export default function ClientProfilePage() {
           <>
             <div className="flex items-start gap-4">
               {/* Avatar */}
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-xl font-bold ${
-                avatarChar === '#'
-                  ? 'bg-white/5 border border-white/10 text-white/20'
-                  : 'bg-brand-500/15 border border-brand-500/25 text-brand-400'
-              }`}>
-                {avatarChar === '#' ? <Phone className="w-5 h-5 text-white/20" /> : avatarChar}
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-xl font-bold"
+                style={avatarChar === '#'
+                  ? { background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t3)' }
+                  : { background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.25)', color: 'var(--brand)' }
+                }
+              >
+                {avatarChar === '#' ? <Phone className="w-5 h-5" style={{ color: 'var(--t3)' }} /> : avatarChar}
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-white leading-tight">{displayName}</h1>
+                <h1 className="text-xl font-bold leading-tight" style={{ color: 'var(--t1)' }}>{displayName}</h1>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-                  <span className="text-sm text-white/40 flex items-center gap-1">
+                  <span className="text-sm flex items-center gap-1" style={{ color: 'var(--t3)' }}>
                     <Phone className="w-3 h-3" />{formatPhone(client.phone)}
                   </span>
                   {client.birthdate && (
-                    <span className="text-xs text-white/30">
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>
                       {(() => {
                         try {
                           const s = String(client.birthdate).slice(0, 10)
@@ -823,7 +831,8 @@ export default function ClientProfilePage() {
                   )}
                 </div>
                 {client.goal && (
-                  <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-brand-500/8 border border-brand-500/15 text-xs text-brand-400">
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs"
+                    style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)', color: 'var(--brand)' }}>
                     <Target className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate max-w-[260px]">{client.goal}</span>
                   </div>
@@ -836,13 +845,15 @@ export default function ClientProfilePage() {
                   onClick={() => sendPortalLink.mutate()}
                   disabled={sendPortalLink.isPending}
                   title="Envia link de acesso ao portal do paciente via WhatsApp"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/20 text-brand-400 hover:text-brand-300 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                  style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)', color: 'var(--brand)' }}
                 >
                   <Send className="w-3 h-3" />{sendPortalLink.isPending ? 'Enviando…' : 'Portal do paciente'}
                 </button>
                 <button
                   onClick={() => setEditing(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs rounded-lg transition-colors whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors hover:bg-raised whitespace-nowrap"
+                  style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
                 >
                   <Edit2 className="w-3 h-3" />Editar
                 </button>
@@ -850,20 +861,20 @@ export default function ClientProfilePage() {
             </div>
 
             {/* Quick stats */}
-            <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-white/[0.05]">
+            <div className="grid grid-cols-4 gap-2 mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
               <div className="text-center py-1">
-                <p className="text-2xl font-bold text-white tabular-nums">{appointments.length}</p>
-                <p className="text-[11px] text-white/30 mt-0.5">Consultas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--t1)' }}>{appointments.length}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>Consultas</p>
               </div>
               <div className="text-center py-1">
-                <p className="text-2xl font-bold text-emerald-400 tabular-nums">
+                <p className="text-2xl font-bold tabular-nums" style={{ color: '#059669' }}>
                   {appointments.filter((a: Appointment) => a.status === 'completed').length}
                 </p>
-                <p className="text-[11px] text-white/30 mt-0.5">Realizadas</p>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>Realizadas</p>
               </div>
               <div className="text-center py-1">
-                <p className="text-2xl font-bold text-white tabular-nums">{conversations.length}</p>
-                <p className="text-[11px] text-white/30 mt-0.5">Conversas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--t1)' }}>{conversations.length}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>Conversas</p>
               </div>
               <div className="text-center py-1">
                 {/* Próxima consulta */}
@@ -874,18 +885,18 @@ export default function ClientProfilePage() {
                   if (upcoming) {
                     return (
                       <>
-                        <p className="text-base font-bold text-violet-400 tabular-nums leading-tight">
+                        <p className="text-base font-bold tabular-nums leading-tight" style={{ color: '#7C3AED' }}>
                           {format(new Date(upcoming.scheduled_at), 'd/MM')}
                         </p>
-                        <p className="text-[10px] text-white/30">{format(new Date(upcoming.scheduled_at), 'HH:mm')}</p>
-                        <p className="text-[10px] text-white/25 mt-0">Próxima</p>
+                        <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{format(new Date(upcoming.scheduled_at), 'HH:mm')}</p>
+                        <p className="text-[10px] mt-0" style={{ color: 'var(--t3)' }}>Próxima</p>
                       </>
                     )
                   }
                   return (
                     <>
-                      <p className="text-2xl font-bold text-white/15 tabular-nums">—</p>
-                      <p className="text-[11px] text-white/30 mt-0.5">Próxima</p>
+                      <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--t3)', opacity: 0.4 }}>—</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>Próxima</p>
                     </>
                   )
                 })()}
@@ -897,17 +908,17 @@ export default function ClientProfilePage() {
 
       {/* Notes */}
       {!editing && client.notes && (
-        <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-4 mb-5">
+        <div className="rounded-2xl p-4 mb-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-3.5 h-3.5 text-white/30" />
-            <span className="text-xs font-semibold text-white/40 uppercase tracking-wide">Anotações clínicas</span>
+            <FileText className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--t3)' }}>Anotações clínicas</span>
           </div>
-          <p className="text-sm text-white/60 whitespace-pre-wrap">{client.notes}</p>
+          <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--t2)' }}>{client.notes}</p>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 bg-ui-card border border-white/[0.06] rounded-xl flex-wrap">
+      <div className="flex gap-1 mb-5 p-1 rounded-xl flex-wrap" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         {([
           { key: 'appointments',  label: 'Consultas',      icon: Calendar,         count: appointments.length },
           { key: 'conversations', label: 'Conversas',      icon: MessageSquare,    count: conversations.length },
@@ -918,7 +929,11 @@ export default function ClientProfilePage() {
           { key: 'access',        label: 'Acesso',         icon: KeyRound,         count: null },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-brand-500/10 text-brand-400' : 'text-white/40 hover:text-white'}`}>
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+            style={tab === t.key
+              ? { background: 'var(--brand-s)', color: 'var(--brand)' }
+              : { color: 'var(--t3)' }
+            }>
             <t.icon className="w-3.5 h-3.5" />
             {t.label}
             {t.count !== null && <span className="text-xs opacity-60">({t.count})</span>}
@@ -929,51 +944,68 @@ export default function ClientProfilePage() {
       {/* ── Tab: Consultas ── */}
       {tab === 'appointments' && (
         <div className="space-y-2">
-          {appointments.length === 0 && <div className="text-center py-12 text-sm text-white/25">Nenhuma consulta registrada</div>}
-          {appointments.map((appt: Appointment) => (
-            <div key={appt.id} className="bg-ui-card border border-white/[0.06] rounded-xl p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-4 h-4 text-white/30" />
+          {appointments.length === 0 && (
+            <div className="text-center py-12 text-sm" style={{ color: 'var(--t3)' }}>Nenhuma consulta registrada</div>
+          )}
+          {appointments.map((appt: Appointment) => {
+            const sc = STATUS_COLOR[appt.status]
+            return (
+              <div key={appt.id} className="rounded-xl p-4 flex items-center gap-4"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                  <Calendar className="w-4 h-4" style={{ color: 'var(--t3)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium" style={{ color: 'var(--t1)' }}>
+                    {new Date(appt.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
+                    {appt.modality === 'presencial' ? 'Presencial' : 'Online'} · {appt.duration} min
+                    {appt.created_by === 'assistant' ? ' · Agendada pela IA' : ''}
+                  </p>
+                  {appt.notes && <p className="text-xs mt-1 truncate" style={{ color: 'var(--t3)' }}>{appt.notes}</p>}
+                </div>
+                <span className="text-xs px-2 py-1 rounded-lg border font-medium"
+                  style={sc
+                    ? { color: sc.color, background: sc.bg, borderColor: sc.border }
+                    : { color: 'var(--t3)', background: 'var(--raised)', borderColor: 'var(--border)' }
+                  }>
+                  {STATUS_LABEL[appt.status] ?? appt.status}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white">
-                  {new Date(appt.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </p>
-                <p className="text-xs text-white/30 mt-0.5">
-                  {appt.modality === 'presencial' ? 'Presencial' : 'Online'} · {appt.duration} min
-                  {appt.created_by === 'assistant' ? ' · Agendada pela IA' : ''}
-                </p>
-                {appt.notes && <p className="text-xs text-white/25 mt-1 truncate">{appt.notes}</p>}
-              </div>
-              <span className={`text-xs px-2 py-1 rounded-lg border font-medium ${STATUS_COLOR[appt.status] ?? 'text-white/40 bg-white/5 border-white/10'}`}>
-                {STATUS_LABEL[appt.status] ?? appt.status}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {/* ── Tab: Conversas ── */}
       {tab === 'conversations' && (
         <div className="space-y-2">
-          {conversations.length === 0 && <div className="text-center py-12 text-sm text-white/25">Nenhuma conversa registrada</div>}
+          {conversations.length === 0 && (
+            <div className="text-center py-12 text-sm" style={{ color: 'var(--t3)' }}>Nenhuma conversa registrada</div>
+          )}
           {conversations.map((conv: Conversation) => (
             <Link key={conv.id} href={`/conversas?id=${conv.id}`}
-              className="bg-ui-card border border-white/[0.06] rounded-xl p-4 flex items-center gap-4 hover:border-white/10 transition-colors group">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-4 h-4 text-white/30" />
+              className="rounded-xl p-4 flex items-center gap-4 transition-colors hover:bg-raised/50 group block"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                <MessageSquare className="w-4 h-4" style={{ color: 'var(--t3)' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white">{conv.message_count} mensagen{conv.message_count !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-white/30 mt-0.5 flex items-center gap-1">
+                <p className="text-sm font-medium" style={{ color: 'var(--t1)' }}>{conv.message_count} mensagen{conv.message_count !== 1 ? 's' : ''}</p>
+                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--t3)' }}>
                   <Clock className="w-3 h-3" />
                   {conv.last_message_at ? formatDistanceToNow(new Date(conv.last_message_at), { locale: ptBR, addSuffix: true }) : 'Sem mensagens'}
                 </p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-lg border font-medium flex-shrink-0 ${
-                conv.status === 'active' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
-                conv.status === 'human_takeover' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
-                'text-white/30 bg-white/5 border-white/10'}`}>
+              <span className="text-xs px-2 py-1 rounded-lg border font-medium flex-shrink-0"
+                style={
+                  conv.status === 'active' ? { color: '#059669', background: '#ECFDF5', borderColor: '#A7F3D0' } :
+                  conv.status === 'human_takeover' ? { color: '#D97706', background: '#FFFBEB', borderColor: '#FDE68A' } :
+                  { color: 'var(--t3)', background: 'var(--raised)', borderColor: 'var(--border)' }
+                }>
                 {conv.status === 'active' ? 'Ativa' : conv.status === 'human_takeover' ? 'Assumida' : 'Encerrada'}
               </span>
             </Link>
@@ -988,36 +1020,38 @@ export default function ClientProfilePage() {
           {/* Peso */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Scale className="w-4 h-4 text-brand-400" />
-              <h3 className="text-sm font-semibold text-white/80">Peso e medidas</h3>
+              <Scale className="w-4 h-4" style={{ color: 'var(--brand)' }} />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Peso e medidas</h3>
               {wLogs.length > 0 && wLogs[0].weight_kg && (
-                <span className="ml-auto text-lg font-bold text-white">
+                <span className="ml-auto text-lg font-bold" style={{ color: 'var(--t1)' }}>
                   {parseFloat(wLogs[0].weight_kg).toFixed(1)}kg
                 </span>
               )}
               {weightDelta !== null && (
-                <span className={`flex items-center gap-0.5 text-xs font-semibold ${weightDelta < 0 ? 'text-emerald-400' : weightDelta > 0 ? 'text-amber-400' : 'text-white/30'}`}>
+                <span className={`flex items-center gap-0.5 text-xs font-semibold`}
+                  style={{ color: weightDelta < 0 ? '#059669' : weightDelta > 0 ? '#D97706' : 'var(--t3)' }}>
                   {weightDelta < 0 ? <ChevronDown className="w-3 h-3" /> : weightDelta > 0 ? <ChevronUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                   {Math.abs(weightDelta).toFixed(1)}kg
                 </span>
               )}
             </div>
             {wLogs.length === 0 ? (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-6 text-center text-sm text-white/25">
+              <div className="rounded-2xl p-6 text-center text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t3)' }}>
                 Nenhum registro de peso ainda
               </div>
             ) : (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
-                <ul className="divide-y divide-white/[0.04]">
-                  {wLogs.slice(0, 10).map(w => (
-                    <li key={w.id} className="flex items-center gap-4 px-4 py-3">
-                      <p className="text-sm text-white/40 w-20 flex-shrink-0">{format(parseISO(w.logged_at), "dd/MM/yyyy")}</p>
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <ul>
+                  {wLogs.slice(0, 10).map((w, i) => (
+                    <li key={w.id} className="flex items-center gap-4 px-4 py-3"
+                      style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                      <p className="text-sm w-20 flex-shrink-0" style={{ color: 'var(--t3)' }}>{format(parseISO(w.logged_at), "dd/MM/yyyy")}</p>
                       <div className="flex-1 grid grid-cols-3 gap-4 text-sm">
-                        <span className="font-semibold text-white">{w.weight_kg ? `${parseFloat(w.weight_kg).toFixed(1)}kg` : '—'}</span>
-                        <span className="text-white/40">C: {w.waist_cm ? `${parseFloat(w.waist_cm).toFixed(0)}cm` : '—'}</span>
-                        <span className="text-white/40">Q: {w.hip_cm ? `${parseFloat(w.hip_cm).toFixed(0)}cm` : '—'}</span>
+                        <span className="font-semibold" style={{ color: 'var(--t1)' }}>{w.weight_kg ? `${parseFloat(w.weight_kg).toFixed(1)}kg` : '—'}</span>
+                        <span style={{ color: 'var(--t3)' }}>C: {w.waist_cm ? `${parseFloat(w.waist_cm).toFixed(0)}cm` : '—'}</span>
+                        <span style={{ color: 'var(--t3)' }}>Q: {w.hip_cm ? `${parseFloat(w.hip_cm).toFixed(0)}cm` : '—'}</span>
                       </div>
-                      {w.notes && <p className="text-xs text-white/25 truncate max-w-[120px]">{w.notes}</p>}
+                      {w.notes && <p className="text-xs truncate max-w-[120px]" style={{ color: 'var(--t3)' }}>{w.notes}</p>}
                     </li>
                   ))}
                 </ul>
@@ -1028,32 +1062,33 @@ export default function ClientProfilePage() {
           {/* Check-ins */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <ClipboardList className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-semibold text-white/80">Check-ins semanais</h3>
-              <span className="ml-auto text-xs text-white/30">{trackingData?.checkins.length ?? 0} registros</span>
+              <ClipboardList className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Check-ins semanais</h3>
+              <span className="ml-auto text-xs" style={{ color: 'var(--t3)' }}>{trackingData?.checkins.length ?? 0} registros</span>
             </div>
             {(trackingData?.checkins.length ?? 0) === 0 ? (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-6 text-center text-sm text-white/25">
+              <div className="rounded-2xl p-6 text-center text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t3)' }}>
                 Nenhum check-in enviado ainda
               </div>
             ) : (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {/* Header */}
-                <div className="flex items-center gap-4 px-4 py-2 border-b border-white/[0.04]">
-                  <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider w-20">Semana</p>
+                <div className="flex items-center gap-4 px-4 py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider w-20" style={{ color: 'var(--t3)' }}>Semana</p>
                   <div className="flex-1 grid grid-cols-4 gap-2 text-center">
                     {['🍽️ Fome', '⚡ Energia', '😴 Sono', '😊 Humor'].map(l => (
-                      <p key={l} className="text-[10px] font-semibold text-white/25">{l}</p>
+                      <p key={l} className="text-[10px] font-semibold" style={{ color: 'var(--t3)' }}>{l}</p>
                     ))}
                   </div>
-                  <p className="text-[10px] font-semibold text-white/25 w-12 text-center">Média</p>
+                  <p className="text-[10px] font-semibold w-12 text-center" style={{ color: 'var(--t3)' }}>Média</p>
                 </div>
-                <ul className="divide-y divide-white/[0.04]">
-                  {trackingData?.checkins.map(c => {
+                <ul>
+                  {trackingData?.checkins.map((c, i) => {
                     const avg = ((c.hunger_score + c.energy_score + c.sleep_score + c.mood_score) / 4)
                     return (
-                      <li key={c.id} className="flex items-center gap-4 px-4 py-3">
-                        <p className="text-sm text-white/40 w-20 flex-shrink-0">
+                      <li key={c.id} className="flex items-center gap-4 px-4 py-3"
+                        style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                        <p className="text-sm w-20 flex-shrink-0" style={{ color: 'var(--t3)' }}>
                           {format(parseISO(c.week_start), "dd/MM")}
                         </p>
                         <div className="flex-1 grid grid-cols-4 gap-2 text-center">
@@ -1065,7 +1100,7 @@ export default function ClientProfilePage() {
                           <span className={`text-sm font-bold ${scoreColor(Math.round(avg))}`}>{avg.toFixed(1)}</span>
                         </div>
                         {c.notes && (
-                          <p className="text-xs text-white/25 truncate max-w-[100px]" title={c.notes}>{c.notes}</p>
+                          <p className="text-xs truncate max-w-[100px]" title={c.notes} style={{ color: 'var(--t3)' }}>{c.notes}</p>
                         )}
                       </li>
                     )
@@ -1078,33 +1113,33 @@ export default function ClientProfilePage() {
           {/* Água (últimos 7 dias) */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Droplets className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold text-white/80">Água — últimos 7 dias</h3>
+              <Droplets className="w-4 h-4 text-cyan-500" />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Água — últimos 7 dias</h3>
             </div>
             {(trackingData?.waterStats.length ?? 0) === 0 ? (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-6 text-center text-sm text-white/25">
+              <div className="rounded-2xl p-6 text-center text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t3)' }}>
                 Nenhum registro de água ainda
               </div>
             ) : (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-4">
+              <div className="rounded-2xl p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div className="flex items-end gap-2 h-20">
                   {(trackingData?.waterStats ?? []).map(w => {
                     const pct = Math.min(w.total_ml / 2000, 1)
                     return (
                       <div key={w.logged_at} className="flex-1 flex flex-col items-center gap-1">
-                        <p className="text-[9px] text-white/30">{(w.total_ml / 1000).toFixed(1)}L</p>
-                        <div className="w-full bg-white/5 rounded-sm overflow-hidden" style={{ height: '48px' }}>
+                        <p className="text-[9px]" style={{ color: 'var(--t3)' }}>{(w.total_ml / 1000).toFixed(1)}L</p>
+                        <div className="w-full rounded-sm overflow-hidden" style={{ height: '48px', background: 'var(--raised)' }}>
                           <div
-                            className={`w-full rounded-sm transition-all ${pct >= 1 ? 'bg-emerald-500' : pct >= 0.6 ? 'bg-cyan-500' : 'bg-cyan-500/40'}`}
+                            className={`w-full rounded-sm transition-all ${pct >= 1 ? 'bg-emerald-500' : pct >= 0.6 ? 'bg-cyan-500' : 'bg-cyan-400/50'}`}
                             style={{ height: `${pct * 100}%`, marginTop: `${(1 - pct) * 100}%` }}
                           />
                         </div>
-                        <p className="text-[9px] text-white/25">{format(parseISO(w.logged_at), 'dd/MM')}</p>
+                        <p className="text-[9px]" style={{ color: 'var(--t3)' }}>{format(parseISO(w.logged_at), 'dd/MM')}</p>
                       </div>
                     )
                   })}
                 </div>
-                <p className="text-[10px] text-white/20 text-center mt-2">Meta: 2L/dia · Verde = atingiu a meta</p>
+                <p className="text-[10px] text-center mt-2" style={{ color: 'var(--t3)' }}>Meta: 2L/dia · Verde = atingiu a meta</p>
               </div>
             )}
           </section>
@@ -1112,21 +1147,22 @@ export default function ClientProfilePage() {
           {/* Atividades recentes */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Dumbbell className="w-4 h-4 text-violet-400" />
-              <h3 className="text-sm font-semibold text-white/80">Atividades físicas</h3>
+              <Dumbbell className="w-4 h-4 text-violet-500" />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Atividades físicas</h3>
             </div>
             {(trackingData?.activityLogs.length ?? 0) === 0 ? (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-6 text-center text-sm text-white/25">
+              <div className="rounded-2xl p-6 text-center text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t3)' }}>
                 Nenhuma atividade registrada ainda
               </div>
             ) : (
-              <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
-                <ul className="divide-y divide-white/[0.04]">
-                  {trackingData?.activityLogs.slice(0, 10).map(a => (
-                    <li key={a.id} className="flex items-center gap-4 px-4 py-3">
-                      <p className="text-xs text-white/35 w-16 flex-shrink-0">{format(parseISO(a.logged_at), 'dd/MM')}</p>
-                      <p className="flex-1 text-sm font-medium text-white/80">{a.activity_type}</p>
-                      {a.duration_minutes && <p className="text-xs text-white/30 flex-shrink-0">{a.duration_minutes} min</p>}
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <ul>
+                  {trackingData?.activityLogs.slice(0, 10).map((a, i) => (
+                    <li key={a.id} className="flex items-center gap-4 px-4 py-3"
+                      style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                      <p className="text-xs w-16 flex-shrink-0" style={{ color: 'var(--t3)' }}>{format(parseISO(a.logged_at), 'dd/MM')}</p>
+                      <p className="flex-1 text-sm font-medium" style={{ color: 'var(--t2)' }}>{a.activity_type}</p>
+                      {a.duration_minutes && <p className="text-xs flex-shrink-0" style={{ color: 'var(--t3)' }}>{a.duration_minutes} min</p>}
                     </li>
                   ))}
                 </ul>
@@ -1143,13 +1179,14 @@ export default function ClientProfilePage() {
       {tab === 'docs' && (
         <div className="space-y-4">
           {/* Upload area */}
-          <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-4 space-y-3">
-            <p className="text-sm font-semibold text-white/70">Enviar arquivo</p>
+          <div className="rounded-2xl p-4 space-y-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Enviar arquivo</p>
             <input
               value={docDesc}
               onChange={e => setDocDesc(e.target.value)}
               placeholder="Descrição (ex: Exame de sangue, Cardápio semana 1...)"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40"
+              className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+              style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
             />
             <input
               ref={fileInputRef}
@@ -1173,22 +1210,24 @@ export default function ClientProfilePage() {
 
           {/* Doc list */}
           {!docs || docs.length === 0 ? (
-            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
-              <FolderOpen className="w-8 h-8 text-white/10 mx-auto mb-3" />
-              <p className="text-sm text-white/25">Nenhum documento enviado ainda</p>
+            <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <FolderOpen className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--border)' }} />
+              <p className="text-sm" style={{ color: 'var(--t3)' }}>Nenhum documento enviado ainda</p>
             </div>
           ) : (
-            <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
-              <ul className="divide-y divide-white/[0.04]">
-                {docs.map(doc => (
-                  <li key={doc.id} className="flex items-center gap-3 px-4 py-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 text-base">
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <ul>
+                {docs.map((doc, i) => (
+                  <li key={doc.id} className="flex items-center gap-3 px-4 py-3.5"
+                    style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+                      style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
                       {doc.mimetype.includes('pdf') ? '📄' : doc.mimetype.includes('image') ? '🖼️' : '📎'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white/85 truncate">{doc.original_name}</p>
-                      {doc.description && <p className="text-xs text-white/35 truncate">{doc.description}</p>}
-                      <p className="text-[10px] text-white/20 mt-0.5">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--t1)' }}>{doc.original_name}</p>
+                      {doc.description && <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{doc.description}</p>}
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>
                         {format(new Date(doc.created_at), "d MMM yyyy", { locale: ptBR })} · {(doc.size_bytes / 1024).toFixed(0)} KB
                       </p>
                     </div>
@@ -1208,12 +1247,12 @@ export default function ClientProfilePage() {
       {tab === 'chat' && (
         <div className="flex flex-col" style={{ height: '500px' }}>
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3" style={{ background: 'var(--bg)' }}>
             {!chatMessages || chatMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <MessageCircle className="w-8 h-8 text-white/10 mb-3" />
-                <p className="text-sm text-white/25">Sem mensagens ainda</p>
-                <p className="text-xs text-white/15 mt-1">O paciente pode te enviar mensagens pelo app</p>
+                <MessageCircle className="w-8 h-8 mb-3" style={{ color: 'var(--border)' }} />
+                <p className="text-sm" style={{ color: 'var(--t3)' }}>Sem mensagens ainda</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>O paciente pode te enviar mensagens pelo app</p>
               </div>
             ) : (
               chatMessages.map(msg => {
@@ -1221,11 +1260,15 @@ export default function ClientProfilePage() {
                 return (
                   <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <div className="max-w-[75%]">
-                      {!isMe && <p className="text-[10px] text-white/25 mb-1 ml-1">Paciente</p>}
-                      <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? 'bg-brand-500 text-white rounded-br-md' : 'bg-white/[0.08] text-white/80 rounded-bl-md'}`}>
+                      {!isMe && <p className="text-[10px] mb-1 ml-1" style={{ color: 'var(--t3)' }}>Paciente</p>}
+                      <div className="px-4 py-2.5 rounded-2xl text-sm"
+                        style={isMe
+                          ? { background: 'var(--brand)', color: '#fff', borderRadius: '18px 18px 4px 18px' }
+                          : { background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)', borderRadius: '18px 18px 18px 4px' }
+                        }>
                         {msg.content}
                       </div>
-                      <p className={`text-[10px] text-white/20 mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
+                      <p className={`text-[10px] mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}`} style={{ color: 'var(--t3)' }}>
                         {format(new Date(msg.created_at), 'HH:mm')}
                         {isMe && msg.read_at && ' · Lida'}
                       </p>
@@ -1238,13 +1281,14 @@ export default function ClientProfilePage() {
           </div>
 
           {/* Input */}
-          <div className="flex gap-2 border-t border-white/[0.05] pt-3 flex-shrink-0">
+          <div className="flex gap-2 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <input
               value={chatText}
               onChange={e => setChatText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && chatText.trim()) { e.preventDefault(); sendChatMsg.mutate(chatText.trim()) } }}
               placeholder="Mensagem para o paciente..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-500/40"
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+              style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
             />
             <button
               onClick={() => { if (chatText.trim()) sendChatMsg.mutate(chatText.trim()) }}
@@ -1262,22 +1306,24 @@ export default function ClientProfilePage() {
         <div className="space-y-5">
 
           {/* Info card */}
-          <div className="flex items-start gap-3 bg-brand-500/5 border border-brand-500/15 rounded-2xl p-4">
-            <KeyRound className="w-4 h-4 text-brand-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-brand-300/80 leading-relaxed">
+          <div className="flex items-start gap-3 rounded-2xl p-4"
+            style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)' }}>
+            <KeyRound className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
+            <div className="text-xs leading-relaxed" style={{ color: 'var(--brand)' }}>
               Gere um <strong>código de acesso</strong> para este paciente criar a conta no portal. O código expira em 7 dias e só pode ser usado uma vez.
               <br />
-              <span className="text-white/35 mt-1 block">O paciente acessa o portal pelo link do site e usa o código para se cadastrar.</span>
+              <span className="mt-1 block" style={{ color: 'var(--t3)' }}>O paciente acessa o portal pelo link do site e usa o código para se cadastrar.</span>
             </div>
           </div>
 
           {/* Generate button */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white/80">Códigos de acesso</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--t2)' }}>Códigos de acesso</h3>
             <button
               onClick={() => generateCode.mutate()}
               disabled={generateCode.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg shadow-brand-500/20"
+              className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.97] disabled:opacity-50"
+              style={{ background: 'var(--brand)' }}
             >
               {generateCode.isPending
                 ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1288,44 +1334,45 @@ export default function ClientProfilePage() {
 
           {/* Codes list */}
           {!inviteCodes || inviteCodes.length === 0 ? (
-            <div className="bg-ui-card border border-white/[0.06] rounded-2xl p-8 text-center">
-              <KeyRound className="w-8 h-8 text-white/10 mx-auto mb-3" />
-              <p className="text-sm text-white/25">Nenhum código gerado ainda</p>
-              <p className="text-xs text-white/15 mt-1">Clique em "Gerar novo código" para liberar o acesso</p>
+            <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <KeyRound className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--border)' }} />
+              <p className="text-sm" style={{ color: 'var(--t3)' }}>Nenhum código gerado ainda</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Clique em "Gerar novo código" para liberar o acesso</p>
             </div>
           ) : (
-            <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
-              <ul className="divide-y divide-white/[0.04]">
-                {inviteCodes.map(ic => {
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <ul>
+                {inviteCodes.map((ic, i) => {
                   const expired = new Date(ic.expires_at) < new Date()
                   const used = !!ic.used_by
                   return (
-                    <li key={ic.id} className="flex items-center gap-4 px-5 py-4">
+                    <li key={ic.id} className="flex items-center gap-4 px-5 py-4"
+                      style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
                       {/* Code badge */}
-                      <div className={`font-mono text-lg font-bold tracking-widest px-3 py-1.5 rounded-xl border flex-shrink-0 ${
-                        used
-                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                      <div className="font-mono text-lg font-bold tracking-widest px-3 py-1.5 rounded-xl border flex-shrink-0"
+                        style={used
+                          ? { color: '#059669', background: '#ECFDF5', borderColor: '#A7F3D0' }
                           : expired
-                            ? 'text-white/20 bg-white/5 border-white/10 line-through'
-                            : 'text-brand-400 bg-brand-500/10 border-brand-500/20'
-                      }`}>
+                            ? { color: 'var(--t3)', background: 'var(--raised)', borderColor: 'var(--border)', textDecoration: 'line-through' }
+                            : { color: 'var(--brand)', background: 'var(--brand-s)', borderColor: 'rgba(0,194,124,0.25)' }
+                        }>
                         {ic.code}
                       </div>
 
                       {/* Status */}
                       <div className="flex-1 min-w-0">
                         {used ? (
-                          <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                          <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#059669' }}>
                             <CheckCircle2 className="w-3 h-3" /> Utilizado
                           </p>
                         ) : expired ? (
-                          <p className="text-xs text-white/25">Expirado</p>
+                          <p className="text-xs" style={{ color: 'var(--t3)' }}>Expirado</p>
                         ) : (
-                          <p className="text-xs text-white/50">
+                          <p className="text-xs" style={{ color: 'var(--t2)' }}>
                             Expira {formatDistanceToNow(new Date(ic.expires_at), { locale: ptBR, addSuffix: true })}
                           </p>
                         )}
-                        <p className="text-[10px] text-white/20 mt-0.5">
+                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>
                           Criado em {format(new Date(ic.created_at), "d 'de' MMM", { locale: ptBR })}
                         </p>
                       </div>
@@ -1334,11 +1381,11 @@ export default function ClientProfilePage() {
                       {!used && !expired && (
                         <button
                           onClick={() => copyCode(ic.code)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0 ${
-                            copiedCode === ic.code
-                              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                              : 'text-white/40 bg-white/5 border-white/10 hover:text-white/70 hover:border-white/20'
-                          }`}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0"
+                          style={copiedCode === ic.code
+                            ? { color: '#059669', background: '#ECFDF5', borderColor: '#A7F3D0' }
+                            : { color: 'var(--t3)', background: 'var(--raised)', borderColor: 'var(--border)' }
+                          }
                           title="Copiar código"
                         >
                           {copiedCode === ic.code
@@ -1355,7 +1402,7 @@ export default function ClientProfilePage() {
 
           {/* Quick share hint */}
           {inviteCodes && inviteCodes.some(c => !c.used_by && new Date(c.expires_at) > new Date()) && (
-            <p className="text-xs text-white/20 text-center">
+            <p className="text-xs text-center" style={{ color: 'var(--t3)' }}>
               Compartilhe o código com o paciente pelo WhatsApp. Ele acessa o site, clica em "Paciente → Criar conta" e insere o código.
             </p>
           )}

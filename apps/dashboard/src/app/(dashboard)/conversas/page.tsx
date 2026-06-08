@@ -7,10 +7,10 @@ import {
 } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
 
-// ─── Types ───────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
+
 interface Conversation {
   id: string
   client_name: string
@@ -28,85 +28,96 @@ interface Message {
   sent_at: string
 }
 
-// ─── Conversation List Item ───────────────────────────────────────
+// ── Status helpers ────────────────────────────────────────────────────────────
+
+const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  active:          { label: 'IA ativa',      color: '#059669', bg: '#ECFDF5' },
+  human_takeover:  { label: 'Você assumiu',  color: '#D97706', bg: '#FFFBEB' },
+  resolved:        { label: 'Resolvida',     color: '#6B7280', bg: '#F9FAFB' },
+}
+
+// ── Conversation Item ─────────────────────────────────────────────────────────
+
 function ConversationItem({
-  conversation,
-  active,
-  onClick,
+  conversation, active, onClick,
 }: {
-  conversation: Conversation
-  active: boolean
-  onClick: () => void
+  conversation: Conversation; active: boolean; onClick: () => void
 }) {
-  const statusVariant: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
-    active: 'success',
-    human_takeover: 'warning',
-    resolved: 'default',
-  }
-
-  const statusLabel: Record<string, string> = {
-    active: 'IA ativa',
-    human_takeover: 'Você assumiu',
-    resolved: 'Resolvida',
-  }
-
+  const badge = STATUS_BADGE[conversation.status]
   return (
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all duration-150 border-b border-ui-border',
-        active ? 'bg-brand-500/10' : 'hover:bg-white/3'
+        'w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all duration-150',
+        active ? 'bg-brand-500/8' : 'hover:bg-raised/60'
       )}
+      style={{ borderBottom: '1px solid var(--border)' }}
     >
-      <div className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <User className="w-4 h-4 text-white/30" />
+      {/* Avatar */}
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+      >
+        <User className="w-4 h-4" style={{ color: 'var(--t3)' }} />
       </div>
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className="text-sm font-semibold text-white/80 truncate">
+          <span className="text-sm font-semibold truncate" style={{ color: 'var(--t1)' }}>
             {conversation.client_name || conversation.client_phone}
           </span>
           {conversation.last_message_at && (
-            <span className="text-xs text-white/25 flex-shrink-0">
+            <span className="text-xs flex-shrink-0" style={{ color: 'var(--t3)' }}>
               {new Date(conversation.last_message_at).toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit',
+                hour: '2-digit', minute: '2-digit',
               })}
             </span>
           )}
         </div>
-        <p className="text-xs text-white/30 truncate mb-1.5">
+
+        <p className="text-xs truncate mb-1.5" style={{ color: 'var(--t3)' }}>
           {conversation.last_message || 'Sem mensagens'}
         </p>
-        <Badge variant={statusVariant[conversation.status]}>
-          {statusLabel[conversation.status]}
-        </Badge>
+
+        {badge && (
+          <span
+            className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ color: badge.color, background: badge.bg }}
+          >
+            {badge.label}
+          </span>
+        )}
       </div>
     </button>
   )
 }
 
-// ─── Chat Bubble ─────────────────────────────────────────────────
+// ── Message Bubble ────────────────────────────────────────────────────────────
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
-
   return (
     <div className={cn('flex gap-2', isUser ? 'justify-start' : 'justify-end')}>
       {isUser && (
-        <div className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center flex-shrink-0 mt-auto">
-          <User className="w-3.5 h-3.5 text-white/30" />
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-auto"
+          style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+        >
+          <User className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
         </div>
       )}
       <div
-        className={cn(
-          'max-w-[70%] rounded-2xl px-4 py-2.5 text-sm',
-          isUser
-            ? 'bg-ui-elevated border border-ui-border text-white/80 rounded-bl-sm'
-            : 'bg-brand-500 text-white rounded-br-sm shadow-sm shadow-brand-500/20'
-        )}
+        className="max-w-[70%] rounded-2xl px-4 py-2.5 text-sm"
+        style={isUser
+          ? { background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)', borderRadius: '18px 18px 18px 4px' }
+          : { background: 'var(--brand)', color: '#fff', borderRadius: '18px 18px 4px 18px' }
+        }
       >
         <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-        <p className={cn('text-xs mt-1', isUser ? 'text-white/25' : 'text-white/60')}>
+        <p
+          className="text-xs mt-1"
+          style={{ color: isUser ? 'var(--t3)' : 'rgba(255,255,255,0.65)' }}
+        >
           {message.sent_at
             ? new Date(message.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
             : ''}
@@ -116,7 +127,8 @@ function MessageBubble({ message }: { message: Message }) {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function ConversasPage() {
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -173,34 +185,50 @@ export default function ConversasPage() {
   }, [newMessage, selectedId])
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar: conversations list */}
-      <div className="w-80 border-r border-ui-border bg-ui-card flex flex-col flex-shrink-0">
-        <div className="px-4 py-4 border-b border-ui-border">
-          <h1 className="text-base font-bold text-white mb-3">Conversas</h1>
+    <div className="flex h-[calc(100vh-60px)]">
+
+      {/* ── Conversation list ─────────────────────────────────────── */}
+      <div
+        className="w-72 flex flex-col flex-shrink-0"
+        style={{
+          background: 'var(--surface)',
+          borderRight: '1px solid var(--border)',
+        }}
+      >
+        {/* Header + search */}
+        <div className="px-4 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <h1 className="text-[15px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>
+            Conversas
+          </h1>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
             <input
               type="text"
               placeholder="Buscar cliente..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 h-9 rounded-lg border border-ui-border bg-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+              className="w-full pl-9 pr-3 h-9 rounded-xl text-sm focus:outline-none transition-colors"
+              style={{
+                background: 'var(--raised)',
+                border: '1px solid var(--border)',
+                color: 'var(--t1)',
+              }}
             />
           </div>
         </div>
 
+        {/* List */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center px-4">
-              <MessageSquare className="w-9 h-9 text-white/10 mb-3" />
-              <p className="text-sm font-medium text-white/30">Nenhuma conversa</p>
-              <p className="text-xs text-white/20 mt-1">
-                As conversas aparecerão aqui quando clientes enviarem mensagens
+              <MessageSquare className="w-9 h-9 mb-3" style={{ color: 'var(--border)' }} />
+              <p className="text-sm font-medium" style={{ color: 'var(--t3)' }}>Nenhuma conversa</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>
+                As conversas aparecem quando clientes enviam mensagens
               </p>
             </div>
           ) : (
@@ -216,20 +244,32 @@ export default function ConversasPage() {
         </div>
       </div>
 
-      {/* Main: chat area */}
+      {/* ── Chat area ─────────────────────────────────────────────── */}
       {selectedId && selected ? (
         <div className="flex-1 flex flex-col min-w-0">
+
           {/* Chat header */}
-          <div className="px-6 py-4 border-b border-ui-border bg-ui-card flex items-center justify-between gap-4">
+          <div
+            className="px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0"
+            style={{
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-white/30" />
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+              >
+                <User className="w-4 h-4" style={{ color: 'var(--t3)' }} />
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-white truncate">
+                <p className="font-semibold truncate" style={{ color: 'var(--t1)' }}>
                   {selected.client_name || selected.client_phone}
                 </p>
-                <p className="text-xs text-white/30 truncate">{selected.client_phone}</p>
+                <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>
+                  {selected.client_phone}
+                </p>
               </div>
             </div>
 
@@ -243,21 +283,27 @@ export default function ConversasPage() {
               {selected.status === 'human_takeover' && (
                 <Button variant="secondary" size="sm" onClick={() => resolve.mutate()} loading={resolve.isPending}>
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Marcar como resolvida
+                  Marcar resolvida
                 </Button>
               )}
-              {selected.status !== 'resolved' && (
-                <Badge variant={selected.status === 'active' ? 'success' : 'warning'}>
-                  {selected.status === 'active' ? 'IA respondendo' : 'Modo humano'}
-                </Badge>
-              )}
+              {selected.status !== 'resolved' && (() => {
+                const b = STATUS_BADGE[selected.status]
+                return b ? (
+                  <span className="inline-flex text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ color: b.color, background: b.bg }}>
+                    {selected.status === 'active' ? 'IA respondendo' : 'Modo humano'}
+                  </span>
+                ) : null
+              })()}
             </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3 bg-ui-bg">
+          <div
+            className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3"
+            style={{ background: 'var(--bg)' }}
+          >
             {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-white/20 text-sm">
+              <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--t3)' }}>
                 Nenhuma mensagem ainda
               </div>
             ) : (
@@ -266,9 +312,12 @@ export default function ConversasPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input (human_takeover) */}
+          {/* Input — human_takeover */}
           {selected.status === 'human_takeover' && (
-            <div className="px-6 py-4 border-t border-ui-border bg-ui-card">
+            <div
+              className="px-6 py-4 flex-shrink-0"
+              style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}
+            >
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -276,23 +325,34 @@ export default function ConversasPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  className="flex-1 h-9 rounded-lg border border-ui-border bg-white/5 px-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+                  className="flex-1 h-9 rounded-xl px-4 text-sm focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--raised)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--t1)',
+                  }}
                 />
                 <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-xs text-white/20 mt-2">
-                Você está no controle. A IA não responderá enquanto você estiver ativo.
+              <p className="text-xs mt-2" style={{ color: 'var(--t3)' }}>
+                Você está no controle. A IA não responderá enquanto estiver ativo.
               </p>
             </div>
           )}
 
           {selected.status === 'active' && (
-            <div className="px-6 py-3 border-t border-ui-border bg-brand-500/5 text-center">
-              <p className="text-xs text-brand-400">
+            <div
+              className="px-6 py-3 text-center flex-shrink-0"
+              style={{ background: 'var(--brand-s)', borderTop: '1px solid var(--border)' }}
+            >
+              <p className="text-xs font-medium" style={{ color: 'var(--brand)' }}>
                 A assistente está respondendo automaticamente.{' '}
-                <button onClick={() => takeover.mutate()} className="font-medium underline hover:text-brand-300 transition-colors">
+                <button
+                  onClick={() => takeover.mutate()}
+                  className="underline font-semibold hover:opacity-70 transition-opacity"
+                >
                   Clique aqui para assumir
                 </button>
               </p>
@@ -300,11 +360,11 @@ export default function ConversasPage() {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-ui-bg">
+        <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--bg)' }}>
           <div className="text-center">
-            <MessageSquare className="w-11 h-11 text-white/10 mx-auto mb-4" />
-            <p className="text-white/30 font-medium">Selecione uma conversa</p>
-            <p className="text-sm text-white/20 mt-1">Escolha uma conversa na lista ao lado</p>
+            <MessageSquare className="w-11 h-11 mx-auto mb-4" style={{ color: 'var(--border)' }} />
+            <p className="font-medium" style={{ color: 'var(--t3)' }}>Selecione uma conversa</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>Escolha uma conversa na lista ao lado</p>
           </div>
         </div>
       )}

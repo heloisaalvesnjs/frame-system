@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { Search, Users, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone } from 'lucide-react'
+import {
+  Search, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
@@ -29,24 +31,23 @@ function formatPhone(phone: string) {
 }
 
 const AVATAR_COLORS = [
-  'bg-blue-500/15 border-blue-500/25 text-blue-400',
-  'bg-violet-500/15 border-violet-500/25 text-violet-400',
-  'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
-  'bg-amber-500/15 border-amber-500/25 text-amber-400',
-  'bg-pink-500/15 border-pink-500/25 text-pink-400',
+  '#5B6EF5', '#E84393', '#F5A623', '#27AE60',
+  '#9B59B6', '#E74C3C', '#1ABC9C', '#2980B9',
 ]
 
-function avatarColor(id: string) {
+function getAvatarColor(id: string) {
   const n = id.charCodeAt(0) + id.charCodeAt(id.length - 1)
   return AVATAR_COLORS[n % AVATAR_COLORS.length]
 }
 
-// ── Modal de novo cliente ───────────────────────────────────────────────────
+// ── Modal de novo cliente ─────────────────────────────────────────────────────
 
 function NovoClienteModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', phone: '', email: '', goal: '', notes: '', birthdate: '', gender: '', height_cm: '' })
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', goal: '', notes: '', birthdate: '', gender: '', height_cm: '',
+  })
   const [error, setError] = useState('')
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
@@ -57,9 +58,9 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
       phone:     form.phone.trim(),
       email:     form.email.trim() || undefined,
       goal:      form.goal.trim() || undefined,
-      notes:     form.notes.trim()    || undefined,
-      birthdate: form.birthdate        || undefined,
-      gender:    form.gender.trim()    || undefined,
+      notes:     form.notes.trim() || undefined,
+      birthdate: form.birthdate || undefined,
+      gender:    form.gender.trim() || undefined,
       height_cm: form.height_cm.trim() ? Number(form.height_cm) : undefined,
     }),
     onSuccess: (res) => {
@@ -68,82 +69,99 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
       onClose()
       router.push(`/clientes/${res.data.client.id}`)
     },
-    onError: (err: any) => {
-      setError(err?.response?.data?.error ?? 'Erro ao cadastrar cliente')
-    },
+    onError: (err: any) => setError(err?.response?.data?.error ?? 'Erro ao cadastrar cliente'),
   })
+
+  const inputCls = "w-full h-9 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 transition-all"
+  const inputStyle = {
+    background: 'var(--raised)',
+    border: '1px solid var(--border)',
+    color: 'var(--t1)',
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative bg-ui-sidebar border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl shadow-black/50 overflow-hidden">
+      <div
+        className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl z-10 flex flex-col"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center">
-              <UserPlus className="w-4 h-4 text-brand-400" />
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)' }}
+            >
+              <UserPlus className="w-4 h-4" style={{ color: 'var(--brand)' }} />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-white">Novo cliente</h2>
-              <p className="text-xs text-white/30">Cadastro manual</p>
+              <h2 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Novo cliente</h2>
+              <p className="text-xs" style={{ color: 'var(--t3)' }}>Cadastro manual</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-raised transition-colors"
+            style={{ color: 'var(--t3)' }}
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form */}
         <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
 
-          {/* Telefone — campo principal */}
           <div>
-            <label className="text-xs font-semibold text-white/50 block mb-1.5">
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>
               Telefone / WhatsApp <span className="text-red-400">*</span>
             </label>
             <div className="relative">
-              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
               <input
                 type="tel"
                 placeholder="(11) 99999-9999"
                 value={form.phone}
                 onChange={e => set('phone', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+                className="w-full h-9 rounded-lg pl-9 pr-3 text-sm focus:outline-none transition-all"
+                style={inputStyle}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/50 block mb-1.5">Nome completo</label>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Nome completo</label>
             <input
               type="text"
               placeholder="Maria Silva"
               value={form.name}
               onChange={e => set('name', e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-white/50 block mb-1.5">E-mail</label>
+              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>E-mail</label>
               <input type="email" placeholder="email@exemplo.com" value={form.email}
                 onChange={e => set('email', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors" />
+                className={inputCls} style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-white/50 block mb-1.5">Nascimento</label>
+              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Nascimento</label>
               <input type="date" value={form.birthdate}
                 onChange={e => set('birthdate', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors" />
+                className={inputCls} style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-white/50 block mb-1.5">Sexo</label>
+              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Sexo</label>
               <select value={form.gender} onChange={e => set('gender', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors">
+                className={inputCls + ' cursor-pointer'} style={inputStyle}>
                 <option value="">—</option>
                 <option value="F">Feminino</option>
                 <option value="M">Masculino</option>
@@ -151,54 +169,62 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-white/50 block mb-1.5">Altura (cm)</label>
+              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Altura (cm)</label>
               <input type="number" placeholder="Ex: 165" value={form.height_cm}
                 onChange={e => set('height_cm', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors" />
+                className={inputCls} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/50 block mb-1.5">Objetivo</label>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Objetivo</label>
             <input
               type="text"
-              placeholder="Ex: perda de peso, ganho de massa, reeducação alimentar…"
+              placeholder="Ex: perda de peso, ganho de massa…"
               value={form.goal}
               onChange={e => set('goal', e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/50 block mb-1.5">Anotações clínicas</label>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Anotações clínicas</label>
             <textarea
               rows={3}
               placeholder="Histórico, alergias, observações relevantes…"
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors resize-none"
+              className="w-full rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none transition-all"
+              style={{ ...inputStyle, height: 'auto' }}
             />
           </div>
 
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+            <div className="rounded-xl px-4 py-3 text-sm text-red-500"
+              style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
               {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.06]">
+        <div
+          className="flex gap-3 px-6 py-4"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors hover:bg-raised"
+            style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
           >
             Cancelar
           </button>
           <button
             onClick={() => { setError(''); create.mutate() }}
             disabled={!form.phone.trim() || create.isPending}
-            className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-brand-500/20"
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+            style={{ background: 'var(--brand)' }}
           >
             {create.isPending
               ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -210,7 +236,7 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Página principal ────────────────────────────────────────────────────────
+// ── Página principal ──────────────────────────────────────────────────────────
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
@@ -235,31 +261,39 @@ export default function ClientesPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Clientes</h1>
-          <p className="text-sm text-t2 mt-0.5">
-            {isLoading ? '…' : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
+          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
+            Clientes
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+            {isLoading
+              ? '…'
+              : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-brand-500/20"
-          >
-            <UserPlus className="w-4 h-4" />
-            Novo cliente
-          </button>
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] flex-shrink-0"
+          style={{ background: 'var(--brand)' }}
+        >
+          <UserPlus className="w-4 h-4" />
+          Novo cliente
+        </button>
       </div>
 
       {/* Search */}
       <div className="relative mb-5">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--t3)' }} />
         <input
           type="text"
           placeholder="Buscar por nome ou telefone…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-ui-card border border-white/[0.07] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/40 focus:bg-white/[0.03] transition-all duration-150"
+          className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--t1)',
+          }}
         />
       </div>
 
@@ -267,7 +301,15 @@ export default function ClientesPage() {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-[68px] bg-ui-card border border-white/5 rounded-xl animate-pulse" style={{ opacity: 1 - i * 0.12 }} />
+            <div
+              key={i}
+              className="h-[68px] rounded-xl animate-pulse"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                opacity: 1 - i * 0.12,
+              }}
+            />
           ))}
         </div>
       )}
@@ -275,72 +317,97 @@ export default function ClientesPage() {
       {/* Empty */}
       {!isLoading && clients.length === 0 && (
         <div className="text-center py-20">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mx-auto mb-4">
-            {search ? <Search className="w-6 h-6 text-white/15" /> : <UserPlus className="w-6 h-6 text-white/15" />}
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+          >
+            {search
+              ? <Search className="w-6 h-6" style={{ color: 'var(--t3)' }} />
+              : <UserPlus className="w-6 h-6" style={{ color: 'var(--t3)' }} />
+            }
           </div>
-          <p className="text-sm font-medium text-white/30">
+          <p className="text-sm font-medium" style={{ color: 'var(--t3)' }}>
             {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}
           </p>
           {!search && (
             <button
               onClick={() => setShowModal(true)}
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-medium rounded-xl mx-auto hover:bg-brand-500/15 transition-colors"
+              className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl mx-auto hover:opacity-80 transition-opacity"
+              style={{
+                background: 'var(--brand-s)',
+                border: '1px solid rgba(0,194,124,0.2)',
+                color: 'var(--brand)',
+              }}
             >
               <UserPlus className="w-4 h-4" /> Cadastrar primeiro cliente
             </button>
           )}
-          {search && <p className="text-xs text-white/20 mt-1">Tente outro nome ou número</p>}
+          {search && <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Tente outro nome ou número</p>}
         </div>
       )}
 
       {/* List */}
       {!isLoading && clients.length > 0 && (
-        <div className="bg-ui-card border border-white/[0.06] rounded-2xl overflow-hidden">
-          <ul className="divide-y divide-white/[0.04]">
-            {clients.map(client => {
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
+        >
+          <ul>
+            {clients.map((client, i) => {
               const name = (client.name && client.name !== 'Cliente') ? client.name : null
               const initials = name
                 ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
                 : '#'
-              const color = avatarColor(client.id)
+              const color = getAvatarColor(client.id)
 
               return (
                 <li key={client.id}>
                   <Link
                     href={`/clientes/${client.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.025] transition-colors group"
+                    className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised/50 group"
+                    style={{
+                      borderTop: i > 0 ? '1px solid var(--border)' : undefined,
+                    }}
                   >
-                    <div className={`w-9 h-9 rounded-full border flex items-center justify-center flex-shrink-0 ${color}`}>
-                      <span className="text-sm font-bold">{initials}</span>
+                    {/* Avatar */}
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold text-white"
+                      style={{ background: color }}
+                    >
+                      {initials}
                     </div>
 
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-white/90 truncate leading-snug">
+                      <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: 'var(--t1)' }}>
                         {name ?? formatPhone(client.phone)}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {name && (
-                          <span className="text-[11px] text-white/30 font-mono">{formatPhone(client.phone)}</span>
+                          <span className="text-[11px]" style={{ color: 'var(--t3)' }}>
+                            {formatPhone(client.phone)}
+                          </span>
                         )}
                         {client.goal && (
-                          <span className="text-[11px] text-white/20 truncate max-w-[180px]">
+                          <span className="text-[11px] truncate max-w-[180px]" style={{ color: 'var(--t3)' }}>
                             {name ? '· ' : ''}{client.goal}
                           </span>
                         )}
                       </div>
                     </div>
 
+                    {/* Meta */}
                     <div className="hidden md:flex items-center gap-5 flex-shrink-0">
-                      <div className="flex items-center gap-1.5 text-[12px] text-white/30">
-                        <Calendar className="w-3.5 h-3.5 text-white/20" />
+                      <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--t3)' }}>
+                        <Calendar className="w-3.5 h-3.5" />
                         <span>
                           {client.completed_count > 0
                             ? `${client.completed_count} de ${client.appointment_count}`
                             : `${client.appointment_count} consulta${client.appointment_count !== 1 ? 's' : ''}`}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[12px] text-white/30">
-                        <Clock className="w-3.5 h-3.5 text-white/20" />
+                      <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--t3)' }}>
+                        <Clock className="w-3.5 h-3.5" />
                         <span>
                           {client.last_contact
                             ? formatDistanceToNow(new Date(client.last_contact), { locale: ptBR, addSuffix: true })
@@ -349,7 +416,10 @@ export default function ClientesPage() {
                       </div>
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-white/15 flex-shrink-0 group-hover:text-white/35 transition-colors" />
+                    <ChevronRight
+                      className="w-4 h-4 flex-shrink-0 transition-colors group-hover:opacity-80"
+                      style={{ color: 'var(--t3)' }}
+                    />
                   </Link>
                 </li>
               )

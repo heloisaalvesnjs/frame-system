@@ -53,35 +53,41 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-white/50 uppercase tracking-wide mb-1.5 block">
+      <label className="text-xs font-medium uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--t3)' }}>
         {label}
       </label>
       {children}
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {error && <p className="text-xs mt-1" style={{ color: '#DC2626' }}>{error}</p>}
     </div>
   )
 }
 
-function DarkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+function LightInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={cn(
-        'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-500/50 transition-colors',
-        props.className
-      )}
+      className={cn('w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors', props.className)}
+      style={{
+        background: 'var(--raised)',
+        border: '1px solid var(--border)',
+        color: 'var(--t1)',
+        ...(props.style as React.CSSProperties),
+      }}
     />
   )
 }
 
-function DarkTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+function LightTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={cn(
-        'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-500/50 transition-colors resize-none',
-        props.className
-      )}
+      className={cn('w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors resize-none', props.className)}
+      style={{
+        background: 'var(--raised)',
+        border: '1px solid var(--border)',
+        color: 'var(--t1)',
+        ...(props.style as React.CSSProperties),
+      }}
     />
   )
 }
@@ -105,13 +111,13 @@ function StepProfile({ onNext }: { onNext: () => void }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
       <Field label="Especialidade" error={errors.specialty?.message}>
-        <DarkInput
+        <LightInput
           placeholder="Ex: Nutrição esportiva, emagrecimento, saúde feminina..."
           {...register('specialty')}
         />
       </Field>
       <Field label="Bio (opcional)">
-        <DarkTextarea
+        <LightTextarea
           rows={3}
           placeholder="Fale um pouco sobre você e sua abordagem..."
           {...register('bio')}
@@ -120,7 +126,8 @@ function StepProfile({ onNext }: { onNext: () => void }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        style={{ background: 'var(--brand)' }}
       >
         {isSubmitting ? 'Salvando...' : 'Continuar →'}
       </button>
@@ -165,11 +172,11 @@ function StepAssistant({ onNext }: { onNext: () => void }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
       <Field label="Nome da assistente" error={errors.name?.message}>
-        <DarkInput placeholder="Ex: Sofia, Lara, Ana..." {...register('name')} />
+        <LightInput placeholder="Ex: Sofia, Lara, Ana..." {...register('name')} />
       </Field>
 
       <Field label="Mensagem de boas-vindas" error={errors.greeting_message?.message}>
-        <DarkTextarea
+        <LightTextarea
           rows={3}
           placeholder="Mensagem que aparece no primeiro contato..."
           {...register('greeting_message')}
@@ -178,20 +185,19 @@ function StepAssistant({ onNext }: { onNext: () => void }) {
 
       {/* PDF upload */}
       <div>
-        <label className="text-xs font-medium text-white/50 uppercase tracking-wide mb-1.5 block">
+        <label className="text-xs font-medium uppercase tracking-wide mb-1.5 block" style={{ color: 'var(--t3)' }}>
           Protocolo de atendimento (PDF) — opcional
         </label>
         <label
           htmlFor="pdf-upload"
-          className={cn(
-            'flex items-center gap-3 border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition-colors',
-            pdfFile
-              ? 'border-brand-500/40 bg-brand-500/5'
-              : 'border-white/10 hover:border-white/20'
-          )}
+          className="flex items-center gap-3 border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition-colors"
+          style={pdfFile
+            ? { borderColor: 'rgba(0,194,124,0.40)', background: 'var(--brand-s)' }
+            : { borderColor: 'var(--border)', background: 'var(--raised)' }
+          }
         >
-          <Upload className="w-4 h-4 text-white/30 flex-shrink-0" />
-          <span className="text-sm text-white/40 truncate">
+          <Upload className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t3)' }} />
+          <span className="text-sm truncate" style={{ color: 'var(--t3)' }}>
             {pdfFile ? pdfFile.name : 'Clique para enviar PDF com seu protocolo'}
           </span>
           <input
@@ -202,7 +208,7 @@ function StepAssistant({ onNext }: { onNext: () => void }) {
             onChange={e => setPdfFile(e.target.files?.[0] ?? null)}
           />
         </label>
-        <p className="text-xs text-white/20 mt-1">
+        <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>
           Perguntas frequentes, como você atende, o que oferece
         </p>
       </div>
@@ -210,7 +216,8 @@ function StepAssistant({ onNext }: { onNext: () => void }) {
       <button
         type="submit"
         disabled={isSubmitting || uploading}
-        className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        style={{ background: 'var(--brand)' }}
       >
         {uploading ? 'Enviando PDF...' : isSubmitting ? 'Salvando...' : 'Continuar →'}
       </button>
@@ -258,23 +265,21 @@ function StepAvailability({ onNext }: { onNext: () => void }) {
         {DAYS.map(({ key, label }) => (
           <div
             key={key}
-            className={cn(
-              'flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
-              schedule[key].enabled
-                ? 'border-brand-500/20 bg-brand-500/5'
-                : 'border-white/5 bg-white/[0.02]'
-            )}
+            className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
+            style={schedule[key].enabled
+              ? { border: '1px solid rgba(0,194,124,0.25)', background: 'var(--brand-s)' }
+              : { border: '1px solid var(--border)', background: 'var(--raised)' }
+            }
           >
             {/* Toggle */}
             <button
               type="button"
               onClick={() => setSchedule(p => ({ ...p, [key]: { ...p[key], enabled: !p[key].enabled } }))}
-              className={cn(
-                'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                schedule[key].enabled
-                  ? 'border-brand-500 bg-brand-500'
-                  : 'border-white/20 bg-transparent'
-              )}
+              className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+              style={schedule[key].enabled
+                ? { background: 'var(--brand)', border: '2px solid var(--brand)' }
+                : { background: 'transparent', border: '2px solid var(--border)' }
+              }
             >
               {schedule[key].enabled && (
                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -283,7 +288,10 @@ function StepAvailability({ onNext }: { onNext: () => void }) {
               )}
             </button>
 
-            <span className={cn('text-sm font-medium w-8 flex-shrink-0', schedule[key].enabled ? 'text-white' : 'text-white/30')}>
+            <span
+              className="text-sm font-medium w-8 flex-shrink-0"
+              style={{ color: schedule[key].enabled ? 'var(--t1)' : 'var(--t3)' }}
+            >
               {label}
             </span>
 
@@ -293,18 +301,20 @@ function StepAvailability({ onNext }: { onNext: () => void }) {
                   type="time"
                   value={schedule[key].start}
                   onChange={e => setSchedule(p => ({ ...p, [key]: { ...p[key], start: e.target.value } }))}
-                  className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="rounded-md px-2 py-1 text-sm focus:outline-none"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                 />
-                <span className="text-white/30 text-xs">até</span>
+                <span className="text-xs" style={{ color: 'var(--t3)' }}>até</span>
                 <input
                   type="time"
                   value={schedule[key].end}
                   onChange={e => setSchedule(p => ({ ...p, [key]: { ...p[key], end: e.target.value } }))}
-                  className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="rounded-md px-2 py-1 text-sm focus:outline-none"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                 />
               </div>
             ) : (
-              <span className="ml-auto text-xs text-white/20">Fechado</span>
+              <span className="ml-auto text-xs" style={{ color: 'var(--t3)' }}>Fechado</span>
             )}
           </div>
         ))}
@@ -313,14 +323,16 @@ function StepAvailability({ onNext }: { onNext: () => void }) {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
+        style={{ background: 'var(--brand)' }}
       >
         {saving ? 'Salvando...' : 'Salvar horários →'}
       </button>
 
       <button
         onClick={onNext}
-        className="text-xs text-white/25 hover:text-white/50 text-center transition-colors"
+        className="text-xs text-center transition-colors hover:opacity-70"
+        style={{ color: 'var(--t3)' }}
       >
         Pular por agora
       </button>
@@ -366,16 +378,20 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
   if (connected) {
     return (
       <div className="flex flex-col items-center gap-5 py-4">
-        <div className="w-16 h-16 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
-          <CheckCircle className="w-8 h-8 text-brand-400" />
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center border"
+          style={{ background: 'var(--brand-s)', borderColor: 'rgba(0,194,124,0.25)' }}
+        >
+          <CheckCircle className="w-8 h-8" style={{ color: 'var(--brand)' }} />
         </div>
         <div className="text-center">
-          <p className="font-semibold text-white">WhatsApp conectado!</p>
-          <p className="text-sm text-white/40 mt-1">Sua assistente já pode atender clientes 🎉</p>
+          <p className="font-semibold" style={{ color: 'var(--t1)' }}>WhatsApp conectado!</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>Sua assistente já pode atender clientes 🎉</p>
         </div>
         <button
           onClick={onFinish}
-          className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors"
+          className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
+          style={{ background: 'var(--brand)' }}
         >
           Ir para o Dashboard →
         </button>
@@ -386,13 +402,13 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
   if (qrCode) {
     return (
       <div className="flex flex-col items-center gap-4">
-        <p className="text-sm text-white/50 text-center">
-          Abra o WhatsApp → <strong className="text-white">Dispositivos vinculados</strong> → Vincular dispositivo → Escaneie o QR
+        <p className="text-sm text-center" style={{ color: 'var(--t3)' }}>
+          Abra o WhatsApp → <strong style={{ color: 'var(--t1)' }}>Dispositivos vinculados</strong> → Vincular dispositivo → Escaneie o QR
         </p>
-        <div className="border border-white/10 rounded-2xl p-4 bg-white">
+        <div className="rounded-2xl p-4 bg-white" style={{ border: '1px solid var(--border)' }}>
           <img src={qrCode} alt="QR Code WhatsApp" className="w-52 h-52" />
         </div>
-        <p className="text-xs text-white/25 flex items-center gap-1.5">
+        <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--t3)' }}>
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
           Aguardando conexão...
         </p>
@@ -402,12 +418,18 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 text-sm text-blue-300">
+      <div
+        className="rounded-xl px-4 py-3 text-sm"
+        style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB' }}
+      >
         💡 Use um número exclusivo do consultório (não seu número pessoal).
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+        <div
+          className="rounded-xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}
+        >
           {error}
         </div>
       )}
@@ -415,14 +437,16 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
       <button
         onClick={handleConnect}
         disabled={connecting}
-        className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+        style={{ background: 'var(--brand)' }}
       >
         {connecting ? 'Gerando QR Code...' : 'Conectar WhatsApp'}
       </button>
 
       <button
         onClick={onFinish}
-        className="text-xs text-white/25 hover:text-white/50 text-center transition-colors"
+        className="text-xs text-center transition-colors hover:opacity-70"
+        style={{ color: 'var(--t3)' }}
       >
         Pular por agora (conectar depois em Configurações)
       </button>
@@ -446,16 +470,19 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ui-bg flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md">
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-500 mb-4 shadow-lg shadow-brand-500/30">
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
+            style={{ background: 'var(--brand)' }}
+          >
             <Bot className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Configuração inicial</h1>
-          <p className="text-white/40 mt-1 text-sm">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--t1)' }}>Configuração inicial</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--t3)' }}>
             Prepare sua assistente em {steps.length} passos rápidos
           </p>
         </div>
@@ -463,35 +490,37 @@ export default function OnboardingPage() {
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-1 mb-8">
           {steps.map((step, idx) => {
-            const done    = current > step.id
-            const active  = current === step.id
+            const done   = current > step.id
+            const active = current === step.id
             return (
               <div key={step.id} className="flex items-center gap-1">
                 <div className="flex flex-col items-center gap-1">
-                  <div className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200',
-                    done   ? 'bg-brand-500 text-white' :
-                    active ? 'bg-brand-500/20 border-2 border-brand-500 text-brand-400' :
-                             'bg-white/5 border border-white/10 text-white/20'
-                  )}>
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200"
+                    style={
+                      done   ? { background: 'var(--brand)', color: '#fff' } :
+                      active ? { background: 'var(--brand-s)', border: '2px solid var(--brand)', color: 'var(--brand)' } :
+                               { background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t3)' }
+                    }
+                  >
                     {done ? (
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : step.id}
                   </div>
-                  <span className={cn(
-                    'text-[10px] font-medium transition-colors',
-                    active ? 'text-brand-400' : 'text-white/20'
-                  )}>
+                  <span
+                    className="text-[10px] font-medium transition-colors"
+                    style={{ color: active ? 'var(--brand)' : 'var(--t3)' }}
+                  >
                     {step.label}
                   </span>
                 </div>
                 {idx < steps.length - 1 && (
-                  <div className={cn(
-                    'h-px w-10 mb-4 transition-colors',
-                    current > step.id + 1 ? 'bg-brand-500' : done ? 'bg-brand-500/30' : 'bg-white/10'
-                  )} />
+                  <div
+                    className="h-px w-10 mb-4 transition-colors"
+                    style={{ background: current > step.id + 1 ? 'var(--brand)' : done ? 'rgba(0,194,124,0.30)' : 'var(--border)' }}
+                  />
                 )}
               </div>
             )
@@ -499,13 +528,16 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-ui-card border border-white/5 rounded-2xl p-6">
+        <div
+          className="rounded-2xl p-6"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
+        >
           {/* Step header */}
           <div className="mb-6">
-            <h2 className="text-base font-semibold text-white">
+            <h2 className="text-base font-semibold" style={{ color: 'var(--t1)' }}>
               {steps[current - 1].label}
             </h2>
-            <p className="text-xs text-white/40 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
               {current === 1 && 'Vamos personalizar seu perfil'}
               {current === 2 && 'Configure sua recepcionista virtual'}
               {current === 3 && 'Defina seus horários de atendimento'}
@@ -520,7 +552,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Progress */}
-        <p className="text-center text-xs text-white/20 mt-4">
+        <p className="text-center text-xs mt-4" style={{ color: 'var(--t3)' }}>
           Passo {current} de {steps.length}
         </p>
       </div>
