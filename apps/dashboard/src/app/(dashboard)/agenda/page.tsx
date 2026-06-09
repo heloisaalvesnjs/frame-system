@@ -34,7 +34,7 @@ const STATUS: Record<string, { label:string; dot:string; badge:string; bg:string
   scheduled: { label:'Agendado',   dot:'bg-blue-500',     badge:'bg-blue-500/10 text-blue-600 border-blue-500/20',     bg:'bg-blue-500/[0.12]',   border:'border-blue-500',  text:'text-blue-700',    textSub:'text-blue-500/80'  },
   confirmed: { label:'Confirmado', dot:'bg-emerald-500',  badge:'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', bg:'bg-emerald-500/[0.12]', border:'border-emerald-500', text:'text-emerald-700', textSub:'text-emerald-500/80' },
   cancelled: { label:'Cancelado',  dot:'bg-red-400',      badge:'bg-red-500/10 text-red-500 border-red-500/20',        bg:'bg-red-500/[0.08]',    border:'border-red-400',   text:'text-red-600',     textSub:'text-red-400/70'   },
-  completed: { label:'Realizado',  dot:'bg-t3',           badge:'bg-t3/10 text-t3 border-t3/20',                       bg:'bg-t3/[0.08]',         border:'border-t3',        text:'text-t2',          textSub:'text-t3'           },
+  completed: { label:'Realizado',  dot:'bg-zinc-400',      badge:'bg-zinc-100 text-zinc-500 border-zinc-200',           bg:'bg-zinc-100',          border:'border-zinc-300',  text:'text-zinc-600',    textSub:'text-zinc-400'     },
 }
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7) // 07–20
 const HOUR_H = 64
@@ -57,8 +57,12 @@ function MiniCalendar({ currentMonth, selectedDate, appointments, onSelectDate, 
           {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
         </p>
         <div className="flex gap-0.5">
-          <button onClick={onPrevMonth} className="w-6 h-6 rounded flex items-center justify-center text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronLeft className="w-3.5 h-3.5" /></button>
-          <button onClick={onNextMonth} className="w-6 h-6 rounded flex items-center justify-center text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronRight className="w-3.5 h-3.5" /></button>
+          <button onClick={onPrevMonth} className="w-6 h-6 rounded flex items-center justify-center text-t3 hover:text-t1 transition-colors"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}><ChevronLeft className="w-3.5 h-3.5" /></button>
+          <button onClick={onNextMonth} className="w-6 h-6 rounded flex items-center justify-center text-t3 hover:text-t1 transition-colors"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}><ChevronRight className="w-3.5 h-3.5" /></button>
         </div>
       </div>
       <div className="grid grid-cols-7 mb-1">
@@ -74,9 +78,12 @@ function MiniCalendar({ currentMonth, selectedDate, appointments, onSelectDate, 
           return (
             <button key={key} onClick={() => onSelectDate(day)}
               className={cn('relative flex flex-col items-center py-0.5 rounded-lg transition-all',
-                isSelected ? 'bg-brand-500' : isTodayDay ? 'bg-brand-500/10' : 'hover:bg-raised')}>
+                isSelected ? 'bg-brand-500' : isTodayDay ? 'bg-brand-500/10' : '')}
+              onMouseEnter={e => { if (!isSelected && !isTodayDay) (e.currentTarget as HTMLElement).style.background = 'var(--raised)' }}
+              onMouseLeave={e => { if (!isSelected && !isTodayDay) (e.currentTarget as HTMLElement).style.background = '' }}>
               <span className={cn('font-mono text-[11px] leading-5',
-                isSelected ? 'text-white font-bold' : isTodayDay ? 'text-brand-500 font-semibold' : 'text-t2')}>
+                isSelected ? 'font-bold' : isTodayDay ? 'text-brand-500 font-semibold' : 'text-t2')}
+                style={{ color: isSelected ? '#fff' : undefined }}>
                 {format(day, 'd')}
               </span>
               {hasAppt && !isSelected && <span className="w-1 h-1 rounded-full bg-brand-500 mt-0.5" />}
@@ -251,7 +258,9 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
                       style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
                       {clientResults.slice(0, 5).map(c => (
                         <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setShowClientSearch(false) }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-raised text-left transition-colors">
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
                           <div>
                             <p className="text-sm text-t1">{c.name}</p>
                             <p className="text-xs text-t3">{c.phone}</p>
@@ -320,7 +329,11 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
 
         <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop:'1px solid var(--border)' }}>
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors" style={{ borderColor:'var(--border)' }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-sm font-semibold transition-all disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+            style={{ background: 'var(--brand)', color: '#fff' }}
+            onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLElement).style.background = '#00A86B' }}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
             {saving ? 'Salvando…' : 'Agendar consulta'}
           </button>
         </div>
@@ -522,7 +535,10 @@ function LocationsPanel() {
             <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
               className="w-7 h-7 rounded cursor-pointer" />
             <button onClick={() => form.name && create.mutate()}
-              className="flex-1 h-7 rounded text-[11px] font-semibold bg-brand-500 text-white hover:bg-brand-400 transition-colors">
+              className="flex-1 h-7 rounded text-[11px] font-semibold transition-colors"
+              style={{ background: 'var(--brand)', color: '#fff' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#00A86B'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
               Salvar
             </button>
           </div>
@@ -603,7 +619,8 @@ function WeekView({ weekStart, appointments, blocks, onClickAppt, onClickSlot }:
               style={{ borderLeft:'1px solid var(--border)' }}>
               <span className={cn('font-mono text-[10px] tracking-wider', isToday2 ? 'text-brand-500' : 'text-t3')}>{DAY_LABELS[i]}</span>
               <span className={cn('w-7 h-7 rounded-full flex items-center justify-center font-mono text-[13px] font-bold',
-                isToday2 ? 'bg-brand-500 text-white' : 'text-t1')}>{format(day, 'd')}</span>
+                isToday2 ? 'bg-brand-500' : '')}
+                style={{ color: isToday2 ? '#fff' : 'var(--t1)' }}>{format(day, 'd')}</span>
             </div>
           )
         })}
@@ -805,16 +822,22 @@ export default function AgendaPage() {
         <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
           style={{ borderBottom:'1px solid var(--border)' }}>
           <div className="flex items-center gap-2">
-            <button onClick={prevWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 hover:bg-raised transition-colors" style={{ border:'1px solid var(--border)' }}>
+            <button onClick={prevWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 transition-colors" style={{ border:'1px solid var(--border)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button onClick={goToday}
               className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                isCurrentWeek ? 'bg-brand-500/10 text-brand-500 border border-brand-500/20' : 'text-t2 hover:bg-raised')}
-              style={{ border: isCurrentWeek ? undefined : '1px solid var(--border)' }}>
+                isCurrentWeek ? 'bg-brand-500/10 text-brand-500 border border-brand-500/20' : 'text-t2')}
+              style={{ border: isCurrentWeek ? undefined : '1px solid var(--border)' }}
+              onMouseEnter={e => { if (!isCurrentWeek) (e.currentTarget as HTMLElement).style.background = 'var(--raised)' }}
+              onMouseLeave={e => { if (!isCurrentWeek) (e.currentTarget as HTMLElement).style.background = '' }}>
               Hoje
             </button>
-            <button onClick={nextWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 hover:bg-raised transition-colors" style={{ border:'1px solid var(--border)' }}>
+            <button onClick={nextWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 transition-colors" style={{ border:'1px solid var(--border)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -828,7 +851,10 @@ export default function AgendaPage() {
               <Ban className="w-3.5 h-3.5" /> Bloquear
             </button>
             <button onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-white hover:bg-brand-400 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              style={{ background: 'var(--brand)', color: '#fff' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#00A86B'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
               <Plus className="w-3.5 h-3.5" /> Nova consulta
             </button>
           </div>

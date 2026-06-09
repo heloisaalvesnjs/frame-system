@@ -279,7 +279,10 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
           className="flex-1 text-sm font-semibold bg-transparent focus:outline-none text-t1 placeholder:text-t3"
           placeholder="Título do plano" />
         <button onClick={() => savePlan.mutate()} disabled={savePlan.isPending}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50 flex-shrink-0">
+          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-50 flex-shrink-0"
+          style={{ background: 'var(--brand)', color: '#fff' }}
+          onMouseEnter={e => { if (!savePlan.isPending) (e.currentTarget as HTMLElement).style.background = '#00A86B' }}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
           <Save className="w-3.5 h-3.5" />{savePlan.isPending ? 'Salvando…' : 'Salvar plano'}
         </button>
       </div>
@@ -307,7 +310,10 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
           <UtensilsCrossed className="w-8 h-8 text-t3 mx-auto mb-3 opacity-30" />
           <p className="text-sm text-t3">Nenhuma refeição ainda</p>
           <button onClick={addMeal}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white text-xs font-semibold rounded-lg hover:bg-brand-400 transition-colors">
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-colors"
+            style={{ background: 'var(--brand)', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#00A86B'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
             <Plus className="w-3.5 h-3.5" />Adicionar refeição
           </button>
         </div>
@@ -514,14 +520,22 @@ function MealPlanEditor({ clientId }: { clientId: string }) {
               {/* Category pills */}
               <div className="flex gap-1.5 flex-wrap">
                 <button onClick={() => setSubCat(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!subCat ? 'bg-brand-500 text-white' : 'text-t2 hover:bg-raised'}`}
-                  style={!subCat ? {} : { border:'1px solid var(--border)' }}>
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                  style={!subCat
+                    ? { background: 'var(--brand)', color: '#fff' }
+                    : { border: '1px solid var(--border)', color: 'var(--t2)' }}
+                  onMouseEnter={e => { if (subCat) (e.currentTarget as HTMLElement).style.background = 'var(--raised)' }}
+                  onMouseLeave={e => { if (subCat) (e.currentTarget as HTMLElement).style.background = '' }}>
                   Todos
                 </button>
                 {CATEGORY_GROUPS.map(g => (
                   <button key={g.id} onClick={() => setSubCat(subCat === g.id ? null : g.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${subCat === g.id ? 'bg-brand-500 text-white' : 'text-t2 hover:bg-raised'}`}
-                    style={subCat === g.id ? {} : { border:'1px solid var(--border)' }}>
+                    className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                    style={subCat === g.id
+                      ? { background: 'var(--brand)', color: '#fff' }
+                      : { border: '1px solid var(--border)', color: 'var(--t2)' }}
+                    onMouseEnter={e => { if (subCat !== g.id) (e.currentTarget as HTMLElement).style.background = 'var(--raised)' }}
+                    onMouseLeave={e => { if (subCat !== g.id) (e.currentTarget as HTMLElement).style.background = '' }}>
                     {g.emoji} {g.label}
                   </button>
                 ))}
@@ -788,8 +802,8 @@ export default function ClientProfilePage() {
             </div>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                style={{ background: 'var(--brand)' }}>
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                style={{ background: 'var(--brand)', color: '#fff' }}>
                 <Save className="w-3.5 h-3.5" />{saveMutation.isPending ? 'Salvando...' : 'Salvar'}
               </button>
               <button onClick={() => setEditing(false)} className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors hover:bg-raised"
@@ -987,8 +1001,10 @@ export default function ClientProfilePage() {
           )}
           {conversations.map((conv: Conversation) => (
             <Link key={conv.id} href={`/conversas?id=${conv.id}`}
-              className="rounded-xl p-4 flex items-center gap-4 transition-colors hover:bg-raised/50 group block"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              className="rounded-xl p-4 flex items-center gap-4 transition-colors group block"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
                 <MessageSquare className="w-4 h-4" style={{ color: 'var(--t3)' }} />
@@ -1293,9 +1309,12 @@ export default function ClientProfilePage() {
             <button
               onClick={() => { if (chatText.trim()) sendChatMsg.mutate(chatText.trim()) }}
               disabled={!chatText.trim() || sendChatMsg.isPending}
-              className="w-10 h-10 rounded-xl bg-brand-500 hover:bg-brand-400 flex items-center justify-center transition-all disabled:opacity-40"
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all disabled:opacity-40"
+              style={{ background: 'var(--brand)' }}
+              onMouseEnter={e => { if (!(!chatText.trim() || sendChatMsg.isPending)) (e.currentTarget as HTMLElement).style.background = '#00A86B' }}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}
             >
-              {sendChatMsg.isPending ? <RefreshCw className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
+              {sendChatMsg.isPending ? <RefreshCw className="w-4 h-4 animate-spin" style={{ color: '#fff' }} /> : <Send className="w-4 h-4" style={{ color: '#fff' }} />}
             </button>
           </div>
         </div>
@@ -1322,8 +1341,10 @@ export default function ClientProfilePage() {
             <button
               onClick={() => generateCode.mutate()}
               disabled={generateCode.isPending}
-              className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.97] disabled:opacity-50"
-              style={{ background: 'var(--brand)' }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all active:scale-[0.97] disabled:opacity-50"
+              style={{ background: 'var(--brand)', color: '#fff' }}
+              onMouseEnter={e => { if (!generateCode.isPending) (e.currentTarget as HTMLElement).style.background = '#00A86B' }}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}
             >
               {generateCode.isPending
                 ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
