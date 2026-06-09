@@ -5,10 +5,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Shield, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Shield, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/Button'
-import { Card, CardContent } from '@/components/ui/Card'
 
 const schema = z.object({
   current_password: z.string().min(1, 'Informe a senha atual'),
@@ -20,27 +18,29 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-function PasswordInput({ label, error, ...props }: any) {
+function PasswordField({ label, error, ...props }: any) {
   const [show, setShow] = useState(false)
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-medium text-t2 font-mono tracking-wide">{label}</label>
+    <div>
+      <label className="field-label">{label}</label>
       <div className="relative">
         <input
           {...props}
           type={show ? 'text' : 'password'}
-          className="h-9 w-full rounded-lg px-3 pr-10 text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-all"
-          style={{ background: 'var(--raised)', border: `1px solid ${error ? 'rgba(239,68,68,.4)' : 'var(--border)'}` }}
+          className="input pr-10"
+          style={error ? { borderColor: '#EF4444' } : undefined}
         />
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => setShow(v => !v)}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-t3 hover:text-t2 transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+          style={{ color: 'var(--t3)' }}
         >
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-[12px] mt-1.5" style={{ color: '#EF4444' }}>{error}</p>}
     </div>
   )
 }
@@ -63,69 +63,85 @@ export default function SegurancaPage() {
       setDone(true)
       setTimeout(() => setDone(false), 4000)
     } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Erro ao alterar senha.'
-      toast.error(msg)
+      toast.error(err?.response?.data?.error || 'Erro ao alterar senha.')
     }
   }
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
+    <div className="p-6 md:p-8 max-w-lg">
+
       <div className="mb-8">
-        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Segurança</h1>
-        <p className="text-sm text-t2 mt-0.5">Gerencie sua senha de acesso</p>
+        <h1 className="text-[24px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
+          Segurança
+        </h1>
+        <p className="text-[14px] mt-1" style={{ color: 'var(--t3)' }}>
+          Gerencie sua senha de acesso
+        </p>
       </div>
 
-      <Card>
-        <CardContent className="py-6">
-
-          {/* Header do card */}
-          <div className="flex items-center gap-3 mb-6 pb-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+      >
+        <div className="card-header">
+          <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
             >
-              <Shield className="w-5 h-5 text-brand-500" />
+              <Shield className="w-4.5 h-4.5" style={{ color: 'var(--brand)' }} />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-t1">Alterar senha</p>
-              <p className="text-xs text-t2">Use uma senha forte com pelo menos 8 caracteres</p>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Alterar senha</p>
+              <p className="text-[12px]" style={{ color: 'var(--t3)' }}>Use uma senha forte com pelo menos 8 caracteres</p>
             </div>
           </div>
+        </div>
 
+        <div className="p-6">
           {done && (
-            <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-5">
-              <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <p className="text-sm text-emerald-400 font-medium">Senha alterada com sucesso!</p>
+            <div
+              className="flex items-center gap-2.5 px-4 py-3 rounded-xl mb-5"
+              style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}
+            >
+              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#059669' }} />
+              <p className="text-[13px] font-medium" style={{ color: '#059669' }}>
+                Senha alterada com sucesso!
+              </p>
             </div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <PasswordInput
+            <PasswordField
               label="Senha atual"
               error={errors.current_password?.message}
               placeholder="••••••••"
               {...register('current_password')}
             />
-            <PasswordInput
+            <PasswordField
               label="Nova senha"
               error={errors.new_password?.message}
               placeholder="Mínimo 8 caracteres"
               {...register('new_password')}
             />
-            <PasswordInput
+            <PasswordField
               label="Confirmar nova senha"
               error={errors.confirm_password?.message}
               placeholder="Repita a nova senha"
               {...register('confirm_password')}
             />
-            <div className="pt-1">
-              <Button type="submit" loading={isSubmitting} className="w-full">
-                Salvar nova senha
-              </Button>
-            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary w-full mt-2"
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+              Salvar nova senha
+            </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

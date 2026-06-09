@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Mail, CheckCircle } from 'lucide-react'
+import { Loader2, ArrowLeft, Mail, CheckCircle, ArrowRight } from 'lucide-react'
 
 export default function EsqueciSenhaPage() {
-  const [email, setEmail]     = useState('')
+  const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent]       = useState(false)
-  const [error, setError]     = useState('')
+  const [sent,    setSent]    = useState(false)
+  const [error,   setError]   = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,82 +26,101 @@ export default function EsqueciSenhaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ui-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--bg)' }}>
+      <div className="w-full max-w-[380px]">
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-500 mb-4 shadow-lg shadow-brand-500/30">
-            <span className="text-white text-xl font-bold">F</span>
+        <div className="flex items-center gap-3 mb-10">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-[13px]"
+            style={{ background: 'var(--brand)' }}
+          >
+            F
           </div>
-          <h1 className="text-2xl font-bold text-white">Frame</h1>
-          <p className="text-white/30 mt-1 text-sm">Recuperação de senha</p>
+          <span className="font-semibold" style={{ color: 'var(--t1)' }}>Frame System</span>
         </div>
 
-        <div className="bg-ui-card rounded-2xl border border-white/[0.07] p-7">
-          {sent ? (
-            <div className="text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-brand-500/15 flex items-center justify-center mx-auto">
-                <CheckCircle className="w-6 h-6 text-brand-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-white text-[15px]">E-mail enviado!</p>
-                <p className="text-sm text-white/40 mt-1.5 leading-relaxed">
-                  Se esse e-mail estiver cadastrado, você receberá as instruções em instantes. Verifique também a caixa de spam.
-                </p>
-              </div>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 text-sm text-brand-400 hover:text-brand-300 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Voltar para o login
-              </Link>
+        {sent ? (
+          /* ── Confirmação ── */
+          <div
+            className="rounded-2xl p-8 text-center"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)' }}
+          >
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+              style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
+            >
+              <CheckCircle className="w-7 h-7" style={{ color: 'var(--brand)' }} />
             </div>
-          ) : (
+            <h2 className="text-[20px] font-bold mb-2" style={{ color: 'var(--t1)' }}>E-mail enviado!</h2>
+            <p className="text-[14px] leading-relaxed mb-6" style={{ color: 'var(--t3)' }}>
+              Se esse e-mail estiver cadastrado, você receberá as instruções em instantes.
+              Verifique também a caixa de spam.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 text-[13px] font-semibold transition-opacity hover:opacity-70"
+              style={{ color: 'var(--brand)' }}
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Voltar para o login
+            </Link>
+          </div>
+        ) : (
+          /* ── Formulário ── */
+          <>
+            <div className="mb-8">
+              <h1 className="text-[26px] font-bold tracking-tight mb-1.5" style={{ color: 'var(--t1)' }}>
+                Esqueceu a senha?
+              </h1>
+              <p className="text-[14px]" style={{ color: 'var(--t3)' }}>
+                Informe seu e-mail e enviaremos um link para redefinir a senha.
+              </p>
+            </div>
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <p className="text-sm text-white/60 leading-relaxed mb-5">
-                  Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
-                </p>
-                <label className="text-xs text-white/40 font-medium block mb-1.5">E-mail</label>
+                <label className="field-label">E-mail</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--t3)' }} />
                   <input
                     type="email"
                     required
                     placeholder="voce@exemplo.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500/50 transition-colors"
+                    className="input pl-10"
                   />
                 </div>
               </div>
 
               {error && (
-                <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                <div
+                  className="rounded-xl px-4 py-3 text-[13px] font-medium"
+                  style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}
+                >
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-brand-500/20"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Enviar link de recuperação'}
+              <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
+                {loading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <><span>Enviar link</span><ArrowRight className="w-4 h-4" /></>
+                }
               </button>
 
               <Link
                 href="/login"
-                className="flex items-center justify-center gap-2 text-sm text-white/30 hover:text-white/60 transition-colors"
+                className="flex items-center justify-center gap-2 text-[13px] transition-opacity hover:opacity-70"
+                style={{ color: 'var(--t3)' }}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Voltar para o login
               </Link>
             </form>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   )

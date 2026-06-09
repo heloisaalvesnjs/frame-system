@@ -72,13 +72,6 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
     onError: (err: any) => setError(err?.response?.data?.error ?? 'Erro ao cadastrar cliente'),
   })
 
-  const inputCls = "w-full h-9 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 transition-all"
-  const inputStyle = {
-    background: 'var(--raised)',
-    border: '1px solid var(--border)',
-    color: 'var(--t1)',
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -127,41 +120,31 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
                 placeholder="(11) 99999-9999"
                 value={form.phone}
                 onChange={e => set('phone', e.target.value)}
-                className="w-full h-9 rounded-lg pl-9 pr-3 text-sm focus:outline-none transition-all"
-                style={inputStyle}
+                className="input pl-9"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Nome completo</label>
-            <input
-              type="text"
-              placeholder="Maria Silva"
-              value={form.name}
-              onChange={e => set('name', e.target.value)}
-              className={inputCls}
-              style={inputStyle}
-            />
+            <label className="field-label">Nome completo</label>
+            <input type="text" placeholder="Maria Silva" value={form.name}
+              onChange={e => set('name', e.target.value)} className="input" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>E-mail</label>
+              <label className="field-label">E-mail</label>
               <input type="email" placeholder="email@exemplo.com" value={form.email}
-                onChange={e => set('email', e.target.value)}
-                className={inputCls} style={inputStyle} />
+                onChange={e => set('email', e.target.value)} className="input" />
             </div>
             <div>
-              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Nascimento</label>
+              <label className="field-label">Nascimento</label>
               <input type="date" value={form.birthdate}
-                onChange={e => set('birthdate', e.target.value)}
-                className={inputCls} style={inputStyle} />
+                onChange={e => set('birthdate', e.target.value)} className="input" />
             </div>
             <div>
-              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Sexo</label>
-              <select value={form.gender} onChange={e => set('gender', e.target.value)}
-                className={inputCls + ' cursor-pointer'} style={inputStyle}>
+              <label className="field-label">Sexo</label>
+              <select value={form.gender} onChange={e => set('gender', e.target.value)} className="input cursor-pointer">
                 <option value="">—</option>
                 <option value="F">Feminino</option>
                 <option value="M">Masculino</option>
@@ -169,35 +152,23 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Altura (cm)</label>
-              <input type="number" placeholder="Ex: 165" value={form.height_cm}
-                onChange={e => set('height_cm', e.target.value)}
-                className={inputCls} style={inputStyle} />
+              <label className="field-label">Altura (cm)</label>
+              <input type="number" placeholder="165" value={form.height_cm}
+                onChange={e => set('height_cm', e.target.value)} className="input" />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Objetivo</label>
-            <input
-              type="text"
-              placeholder="Ex: perda de peso, ganho de massa…"
-              value={form.goal}
-              onChange={e => set('goal', e.target.value)}
-              className={inputCls}
-              style={inputStyle}
-            />
+            <label className="field-label">Objetivo</label>
+            <input type="text" placeholder="Ex: perda de peso, ganho de massa…" value={form.goal}
+              onChange={e => set('goal', e.target.value)} className="input" />
           </div>
 
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--t3)' }}>Anotações clínicas</label>
-            <textarea
-              rows={3}
-              placeholder="Histórico, alergias, observações relevantes…"
-              value={form.notes}
-              onChange={e => set('notes', e.target.value)}
-              className="w-full rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none transition-all"
-              style={{ ...inputStyle, height: 'auto' }}
-            />
+            <label className="field-label">Anotações clínicas</label>
+            <textarea rows={3} placeholder="Histórico, alergias, observações relevantes…"
+              value={form.notes} onChange={e => set('notes', e.target.value)}
+              className="textarea" />
           </div>
 
           {error && (
@@ -213,22 +184,15 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
           className="flex gap-3 px-6 py-4"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors hover:bg-raised"
-            style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
-          >
+          <button onClick={onClose} className="btn-secondary flex-1">
             Cancelar
           </button>
           <button
             onClick={() => { setError(''); create.mutate() }}
             disabled={!form.phone.trim() || create.isPending}
-            className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
-            style={{ background: 'var(--brand)' }}
+            className="btn-primary flex-1"
           >
-            {create.isPending
-              ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-              : 'Cadastrar cliente'}
+            {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cadastrar cliente'}
           </button>
         </div>
       </div>
@@ -270,11 +234,7 @@ export default function ClientesPage() {
               : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-semibold rounded-xl transition-all active:scale-[0.98] flex-shrink-0"
-          style={{ background: 'var(--brand)' }}
-        >
+        <button onClick={() => setShowModal(true)} className="btn-primary flex-shrink-0">
           <UserPlus className="w-4 h-4" />
           Novo cliente
         </button>
@@ -282,18 +242,13 @@ export default function ClientesPage() {
 
       {/* Search */}
       <div className="relative mb-5">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--t3)' }} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--t3)' }} />
         <input
           type="text"
           placeholder="Buscar por nome ou telefone…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--t1)',
-          }}
+          className="input pl-10"
         />
       </div>
 

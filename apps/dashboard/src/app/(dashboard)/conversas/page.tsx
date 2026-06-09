@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  MessageSquare, Search, User, UserCheck, CheckCircle, Send,
+  MessageSquare, Search, User, UserCheck, CheckCircle, Send, Loader2,
 } from 'lucide-react'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,11 +46,8 @@ function ConversationItem({
   return (
     <button
       onClick={onClick}
-      className={cn(
-        'w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all duration-150',
-        active ? 'bg-brand-500/8' : 'hover:bg-raised/60'
-      )}
-      style={{ borderBottom: '1px solid var(--border)' }}
+      className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all duration-150"
+      style={{ background: active ? 'var(--brand-s)' : undefined, borderBottom: '1px solid var(--border)' }}
     >
       {/* Avatar */}
       <div
@@ -207,12 +203,7 @@ export default function ConversasPage() {
               placeholder="Buscar cliente..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 h-9 rounded-xl text-sm focus:outline-none transition-colors"
-              style={{
-                background: 'var(--raised)',
-                border: '1px solid var(--border)',
-                color: 'var(--t1)',
-              }}
+              className="input pl-9"
             />
           </div>
         </div>
@@ -275,16 +266,24 @@ export default function ConversasPage() {
 
             <div className="flex items-center gap-2 flex-shrink-0">
               {selected.status === 'active' && (
-                <Button variant="outline" size="sm" onClick={() => takeover.mutate()} loading={takeover.isPending}>
-                  <UserCheck className="w-3.5 h-3.5" />
+                <button
+                  onClick={() => takeover.mutate()}
+                  disabled={takeover.isPending}
+                  className="btn-secondary text-[12px] px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  {takeover.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
                   Assumir conversa
-                </Button>
+                </button>
               )}
               {selected.status === 'human_takeover' && (
-                <Button variant="secondary" size="sm" onClick={() => resolve.mutate()} loading={resolve.isPending}>
-                  <CheckCircle className="w-3.5 h-3.5" />
+                <button
+                  onClick={() => resolve.mutate()}
+                  disabled={resolve.isPending}
+                  className="btn-primary text-[12px] px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  {resolve.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                   Marcar resolvida
-                </Button>
+                </button>
               )}
               {selected.status !== 'resolved' && (() => {
                 const b = STATUS_BADGE[selected.status]
@@ -325,16 +324,15 @@ export default function ConversasPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  className="flex-1 h-9 rounded-xl px-4 text-sm focus:outline-none transition-colors"
-                  style={{
-                    background: 'var(--raised)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--t1)',
-                  }}
+                  className="input flex-1"
                 />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  className="btn-primary px-3 py-2 flex-shrink-0"
+                >
                   <Send className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
               <p className="text-xs mt-2" style={{ color: 'var(--t3)' }}>
                 Você está no controle. A IA não responderá enquanto estiver ativo.

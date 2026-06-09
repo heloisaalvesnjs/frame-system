@@ -319,7 +319,9 @@ function IntegrationCard({
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
       <button
         onClick={onToggleOpen}
-        className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-raised/40 transition-colors"
+        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
+        onMouseLeave={e => (e.currentTarget.style.background = '')}
       >
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', iconBg)}>
           {icon}

@@ -5,23 +5,62 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Moon, MapPin, Plus, Trash2, ChevronDown, ChevronUp, Power } from 'lucide-react'
+import { Moon, MapPin, Plus, Trash2, ChevronDown, ChevronUp, Power, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 
-// ─── Types ───────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────
+
 interface Assistant {
   id: string; name: string; tone: string; greeting_message: string
   consultation_price?: string; consultation_modalities?: string
   specialties?: string; vacation_mode?: boolean; vacation_message?: string
 }
 
-// ─── IA Power Toggle ─────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function Field({ label, hint, error, children }: {
+  label: string; hint?: string; error?: string; children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="field-label">{label}</label>
+      {hint && <p className="text-[11px] mb-1.5" style={{ color: 'var(--t3)' }}>{hint}</p>}
+      {children}
+      {error && <p className="text-[12px] mt-1.5" style={{ color: '#EF4444' }}>{error}</p>}
+    </div>
+  )
+}
+
+// ─── Section Card ─────────────────────────────────────────────────
+
+function SectionCard({ title, subtitle, icon, children }: {
+  title: string; subtitle?: string; icon?: React.ReactNode; children: React.ReactNode
+}) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+    >
+      <div className="card-header">
+        <div className="flex items-center gap-2.5">
+          {icon}
+          <div>
+            <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
+            {subtitle && <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{subtitle}</p>}
+          </div>
+        </div>
+      </div>
+      <div className="p-6">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ─── IA Power Toggle ──────────────────────────────────────────────
+
 function AIPowerToggle() {
   const qc = useQueryClient()
   const [paused, setPaused] = useState(false)
@@ -50,21 +89,27 @@ function AIPowerToggle() {
   }
 
   return (
-    <div className={cn(
-      'flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors',
-      paused
-        ? 'bg-red-500/8 border border-red-500/25'
-        : 'bg-emerald-500/8 border border-emerald-500/20'
-    )}>
-      <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-        paused ? 'bg-red-500/15' : 'bg-emerald-500/15')}>
-        <Power className={cn('w-5 h-5', paused ? 'text-red-500' : 'text-emerald-500')} />
+    <div
+      className="flex items-center gap-4 rounded-xl px-5 py-4 transition-colors"
+      style={paused
+        ? { background: '#FEF2F2', border: '1px solid #FECACA' }
+        : { background: '#ECFDF5', border: '1px solid #A7F3D0' }
+      }
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={paused
+          ? { background: '#FEE2E2' }
+          : { background: '#D1FAE5' }
+        }
+      >
+        <Power className="w-5 h-5" style={{ color: paused ? '#DC2626' : '#059669' }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-semibold', paused ? 'text-red-500' : 'text-emerald-600')}>
+        <p className="text-[13px] font-semibold" style={{ color: paused ? '#DC2626' : '#059669' }}>
           {paused ? 'IA desativada' : 'IA ativa'}
         </p>
-        <p className="text-xs text-t3 mt-0.5">
+        <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
           {paused
             ? 'A assistente não está respondendo nenhuma mensagem no momento'
             : 'A assistente está respondendo normalmente'}
@@ -87,21 +132,21 @@ function AIPowerToggle() {
   )
 }
 
-// ─── Tab: Assistente ─────────────────────────────────────────────
+// ─── Tab: Assistente ──────────────────────────────────────────────
 
 const assistantSchema = z.object({
-  name: z.string().min(2, 'Nome obrigatório'),
-  tone: z.enum(['acolhedor', 'formal', 'descontraido']),
-  greeting_message: z.string().min(10, 'Mensagem muito curta'),
-  specialties: z.string().optional(),
+  name:                    z.string().min(2, 'Nome obrigatório'),
+  tone:                    z.enum(['acolhedor', 'formal', 'descontraido']),
+  greeting_message:        z.string().min(10, 'Mensagem muito curta'),
+  specialties:             z.string().optional(),
   consultation_modalities: z.string().optional(),
-  vacation_mode: z.boolean().optional(),
-  vacation_message: z.string().optional(),
-  nutri_display_name: z.string().optional(),
-  emoji_level: z.number().min(1).max(5).default(3),
-  func_prospeccao: z.boolean().default(true),
-  func_triagem: z.boolean().default(true),
-  func_agendamento: z.boolean().default(true),
+  vacation_mode:           z.boolean().optional(),
+  vacation_message:        z.string().optional(),
+  nutri_display_name:      z.string().optional(),
+  emoji_level:             z.number().min(1).max(5).default(3),
+  func_prospeccao:         z.boolean().default(true),
+  func_triagem:            z.boolean().default(true),
+  func_agendamento:        z.boolean().default(true),
 })
 type AssistantFormData = z.infer<typeof assistantSchema>
 
@@ -116,16 +161,32 @@ const FUNCOES = [
 ]
 
 const TONES = [
-  { value: 'acolhedor',    label: 'Acolhedor',     desc: 'Empático e próximo' },
-  { value: 'formal',       label: 'Formal',         desc: 'Profissional e direto' },
-  { value: 'descontraido', label: 'Descontraído',   desc: 'Leve e informal' },
+  { value: 'acolhedor',    label: 'Acolhedor',   desc: 'Empático e próximo' },
+  { value: 'formal',       label: 'Formal',       desc: 'Profissional e direto' },
+  { value: 'descontraido', label: 'Descontraído', desc: 'Leve e informal' },
 ]
 
 const MODALITIES = [
-  { value: 'online',             label: 'Online' },
-  { value: 'presencial',         label: 'Presencial' },
-  { value: 'online,presencial',  label: 'Ambos' },
+  { value: 'online',            label: 'Online' },
+  { value: 'presencial',        label: 'Presencial' },
+  { value: 'online,presencial', label: 'Ambos' },
 ]
+
+function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className={cn('relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0', enabled ? 'bg-brand-500' : '')}
+      style={enabled ? {} : { background: 'var(--raised)', border: '1px solid var(--border)' }}
+    >
+      <span className={cn(
+        'absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform',
+        enabled ? 'left-[20px]' : 'left-[2px]'
+      )} />
+    </button>
+  )
+}
 
 function TabAssistente() {
   const queryClient = useQueryClient()
@@ -148,18 +209,18 @@ function TabAssistente() {
   useEffect(() => {
     if (assistant) {
       reset({
-        name: assistant.name,
-        tone: (assistant.tone as any) || 'acolhedor',
-        greeting_message: assistant.greeting_message || '',
-        specialties: assistant.specialties || '',
+        name:                    assistant.name,
+        tone:                    (assistant.tone as any) || 'acolhedor',
+        greeting_message:        assistant.greeting_message || '',
+        specialties:             assistant.specialties || '',
         consultation_modalities: assistant.consultation_modalities || 'online',
-        vacation_mode: assistant.vacation_mode ?? false,
-        vacation_message: (assistant as any).vacation_message || '',
-        nutri_display_name: (assistant as any).nutri_display_name || '',
-        emoji_level: (assistant as any).emoji_level ?? 3,
-        func_prospeccao:  (assistant as any).func_prospeccao  ?? true,
-        func_triagem:     (assistant as any).func_triagem     ?? true,
-        func_agendamento: (assistant as any).func_agendamento ?? true,
+        vacation_mode:           assistant.vacation_mode ?? false,
+        vacation_message:        (assistant as any).vacation_message || '',
+        nutri_display_name:      (assistant as any).nutri_display_name || '',
+        emoji_level:             (assistant as any).emoji_level ?? 3,
+        func_prospeccao:         (assistant as any).func_prospeccao  ?? true,
+        func_triagem:            (assistant as any).func_triagem     ?? true,
+        func_agendamento:        (assistant as any).func_agendamento ?? true,
       })
     }
   }, [assistant, reset])
@@ -176,80 +237,74 @@ function TabAssistente() {
 
   const currentModality = watch('consultation_modalities')
   const currentTone     = watch('tone')
+  const emojiLevel      = watch('emoji_level') ?? 3
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
 
-      <Input
-        label="Nome da assistente"
-        placeholder="Ex: Sofia, Lara, Ana..."
-        error={errors.name?.message}
-        {...register('name')}
-      />
+      <Field label="Nome da assistente" error={errors.name?.message}>
+        <input {...register('name')} placeholder="Ex: Sofia, Lara, Ana..." className="input"
+          style={errors.name ? { borderColor: '#EF4444' } : undefined} />
+      </Field>
 
-      <Input
-        label="Como o nutricionista deve ser chamado no atendimento"
-        placeholder="Ex: Dr. David, Dra. Ana..."
-        hint="Se vazio, usa o nome da sua conta."
-        {...register('nutri_display_name')}
-      />
+      <Field label="Como o nutricionista deve ser chamado" hint="Se vazio, usa o nome da sua conta.">
+        <input {...register('nutri_display_name')} placeholder="Ex: Dr. David, Dra. Ana..." className="input" />
+      </Field>
 
-      {/* Tom */}
+      {/* Tom de voz */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-t2">Tom de voz</label>
+        <label className="field-label">Tom de voz</label>
         <div className="grid grid-cols-3 gap-2">
           {TONES.map(({ value, label, desc }) => (
             <button
               key={value}
               type="button"
               onClick={() => setValue('tone', value as any)}
-              className={cn(
-                'flex flex-col gap-0.5 px-3 py-2.5 rounded-lg border text-left transition-all',
-                currentTone === value
-                  ? 'border-brand-500 bg-brand-500/10'
-                  : 'hover:bg-raised'
-              )}
-              style={{ borderColor: currentTone === value ? undefined : 'var(--border)' }}
+              className="flex flex-col gap-0.5 px-3 py-2.5 rounded-xl text-left transition-all"
+              style={currentTone === value
+                ? { border: '1.5px solid var(--brand)', background: 'var(--brand-s)' }
+                : { border: '1px solid var(--border)', background: 'var(--raised)' }
+              }
             >
-              <span className={cn('text-sm font-medium', currentTone === value ? 'text-brand-400' : 'text-t2')}>{label}</span>
-              <span className="text-xs text-t3">{desc}</span>
+              <span className="text-[13px] font-medium" style={{ color: currentTone === value ? 'var(--brand)' : 'var(--t1)' }}>{label}</span>
+              <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{desc}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <Textarea
-        label="Mensagem de boas-vindas"
-        hint="Enviada no primeiro contato do cliente"
-        rows={3}
-        error={errors.greeting_message?.message}
-        {...register('greeting_message')}
-      />
+      <Field label="Mensagem de boas-vindas" hint="Enviada no primeiro contato do cliente" error={errors.greeting_message?.message}>
+        <textarea
+          {...register('greeting_message')}
+          rows={3}
+          className="textarea"
+          style={errors.greeting_message ? { borderColor: '#EF4444' } : undefined}
+        />
+      </Field>
 
-      <Textarea
-        label="Especialidades"
-        hint="A assistente usará isso para apresentar seu trabalho"
-        placeholder="Ex: Emagrecimento, nutrição esportiva, saúde feminina..."
-        rows={2}
-        {...register('specialties')}
-      />
+      <Field label="Especialidades" hint="A assistente usará isso para apresentar seu trabalho">
+        <textarea
+          {...register('specialties')}
+          rows={2}
+          placeholder="Ex: Emagrecimento, nutrição esportiva, saúde feminina..."
+          className="textarea"
+        />
+      </Field>
 
       {/* Modalidade */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-t2">Formato de consulta</label>
+        <label className="field-label">Formato de consulta</label>
         <div className="flex gap-2">
           {MODALITIES.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => setValue('consultation_modalities', value)}
-              className={cn(
-                'px-4 py-2 rounded-lg border text-sm font-medium transition-all',
-                currentModality === value
-                  ? 'border-brand-500 bg-brand-500/10 text-brand-400'
-                  : 'text-t3 hover:bg-raised'
-              )}
-              style={{ borderColor: currentModality === value ? undefined : 'var(--border)' }}
+              className="px-4 py-2 rounded-xl text-[13px] font-medium transition-all"
+              style={currentModality === value
+                ? { border: '1.5px solid var(--brand)', background: 'var(--brand-s)', color: 'var(--brand)' }
+                : { border: '1px solid var(--border)', color: 'var(--t3)' }
+              }
             >
               {label}
             </button>
@@ -258,101 +313,107 @@ function TabAssistente() {
       </div>
 
       {/* Modo férias */}
-      <div className={cn(
-        'flex flex-col gap-3 rounded-xl border p-4 transition-colors',
-        vacationMode ? 'border-amber-500/30 bg-amber-500/5' : ''
-      )} style={{ borderColor: vacationMode ? undefined : 'var(--border)' }}>
+      <div
+        className="flex flex-col gap-3 rounded-xl p-4 transition-colors"
+        style={vacationMode
+          ? { border: '1px solid #FDE68A', background: '#FFFBEB' }
+          : { border: '1px solid var(--border)' }
+        }
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Moon className={cn('w-4 h-4', vacationMode ? 'text-amber-400' : 'text-t3')} />
+            <Moon className="w-4 h-4" style={{ color: vacationMode ? '#D97706' : 'var(--t3)' }} />
             <div>
-              <p className={cn('text-sm font-medium', vacationMode ? 'text-amber-300' : 'text-t1')}>Modo férias</p>
-              <p className="text-xs text-t3">A assistente pausa o atendimento automático</p>
+              <p className="text-[13px] font-medium" style={{ color: vacationMode ? '#D97706' : 'var(--t1)' }}>
+                Modo férias
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--t3)' }}>
+                A assistente pausa o atendimento automático
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setValue('vacation_mode', !vacationMode)}
-            className={cn('relative w-11 h-6 rounded-full transition-colors flex-shrink-0', vacationMode ? 'bg-amber-500' : 'bg-raised')}
-            style={vacationMode ? {} : { border: '1px solid var(--border)' }}
+            className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+            style={{ background: vacationMode ? '#D97706' : 'var(--raised)', border: vacationMode ? 'none' : '1px solid var(--border)' }}
           >
-            <span className={cn('absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm', vacationMode ? 'translate-x-5' : 'translate-x-0')} />
+            <span className={cn(
+              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
+              vacationMode ? 'translate-x-5' : 'translate-x-0'
+            )} />
           </button>
         </div>
         {vacationMode && (
-          <Textarea
-            label="Mensagem de ausência"
-            hint="Enviada quando clientes tentam falar com a assistente"
-            placeholder="Ex: Estamos em férias! Retornamos no dia 10/02. Até breve!"
-            rows={2}
-            {...register('vacation_message')}
-          />
+          <Field label="Mensagem de ausência" hint="Enviada quando clientes tentam falar com a assistente">
+            <textarea
+              {...register('vacation_message')}
+              rows={2}
+              placeholder="Ex: Estamos em férias! Retornamos no dia 10/02. Até breve!"
+              className="textarea"
+            />
+          </Field>
         )}
       </div>
 
       {/* Slider de emoji */}
-      {(() => {
-        const level = watch('emoji_level') ?? 3
-        return (
-          <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-t1">Uso de emojis</p>
-                <p className="text-xs text-t3">Define a frequência de emojis nas respostas</p>
-              </div>
-              <span className="font-mono text-[11px] text-brand-500 px-2 py-0.5 rounded-full bg-brand-500/10">
-                {EMOJI_LABELS[level]}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] text-t3 w-14">Nenhum</span>
-              <input
-                type="range" min={1} max={5} step={1}
-                value={level}
-                onChange={e => setValue('emoji_level', Number(e.target.value))}
-                className="flex-1 accent-brand-500 h-1.5 cursor-pointer"
-              />
-              <span className="font-mono text-[10px] text-t3 w-8">Muito</span>
-            </div>
+      <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Uso de emojis</p>
+            <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Define a frequência de emojis nas respostas</p>
           </div>
-        )
-      })()}
+          <span
+            className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'var(--brand-s)', color: 'var(--brand)' }}
+          >
+            {EMOJI_LABELS[emojiLevel]}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] w-14" style={{ color: 'var(--t3)' }}>Nenhum</span>
+          <input
+            type="range" min={1} max={5} step={1}
+            value={emojiLevel}
+            onChange={e => setValue('emoji_level', Number(e.target.value))}
+            className="flex-1 accent-brand-500 h-1.5 cursor-pointer"
+          />
+          <span className="font-mono text-[10px] w-8" style={{ color: 'var(--t3)' }}>Muito</span>
+        </div>
+      </div>
 
       {/* Funções habilitadas */}
       <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
         <div>
-          <p className="text-sm font-medium text-t1">Funções habilitadas</p>
-          <p className="text-xs text-t3">Controle o que a assistente pode fazer</p>
+          <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Funções habilitadas</p>
+          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Controle o que a assistente pode fazer</p>
         </div>
         {FUNCOES.map(({ key, label, desc }) => {
           const enabled = watch(key) ?? true
           return (
             <div key={key} className="flex items-center justify-between">
               <div>
-                <p className={cn('text-sm font-medium', enabled ? 'text-t1' : 'text-t2')}>{label}</p>
-                <p className="text-xs text-t3">{desc}</p>
+                <p className="text-[13px] font-medium" style={{ color: enabled ? 'var(--t1)' : 'var(--t3)' }}>{label}</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{desc}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setValue(key, !enabled)}
-                className={cn('relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0', enabled ? 'bg-brand-500' : 'bg-raised')}
-                style={enabled ? {} : { border: '1px solid var(--border)' }}
-              >
-                <span className={cn('absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform', enabled ? 'left-[20px]' : 'left-[2px]')} />
-              </button>
+              <Toggle enabled={enabled} onChange={() => setValue(key, !enabled)} />
             </div>
           )
         })}
       </div>
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" loading={isSubmitting}>Salvar</Button>
+      <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+        <button type="submit" disabled={isSubmitting} className="btn-primary mt-4">
+          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar
+        </button>
       </div>
     </form>
   )
 }
 
 // ─── Tab: Horários ────────────────────────────────────────────────
+
 const DAYS = [
   { key: 'monday',    label: 'Segunda',  int: 1 },
   { key: 'tuesday',   label: 'Terça',    int: 2 },
@@ -375,8 +436,8 @@ const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: s
 
 function TabHorarios() {
   const [schedule, setSchedule] = useState(DEFAULT_SCHEDULE)
-  const [saving, setSaving] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [loaded,   setLoaded]   = useState(false)
 
   const { data: availabilityData } = useQuery<any[]>({
     queryKey: ['availability'],
@@ -423,9 +484,9 @@ function TabHorarios() {
       const entries = DAYS
         .filter(({ key }) => schedule[key].enabled)
         .map(({ key, int }) => ({
-          day_of_week: int,
-          start_time: schedule[key].start,
-          end_time: schedule[key].end,
+          day_of_week:   int,
+          start_time:    schedule[key].start,
+          end_time:      schedule[key].end,
           slot_duration: schedule[key].slot,
         }))
       await api.put('/api/nutritionists/availability', entries)
@@ -439,7 +500,7 @@ function TabHorarios() {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-t2">
+      <p className="text-[13px]" style={{ color: 'var(--t2)' }}>
         Defina quando a assistente pode agendar consultas. Fora deste horário ela não oferecerá agendamento automático.
       </p>
 
@@ -449,20 +510,21 @@ function TabHorarios() {
           return (
             <div
               key={key}
-              className={cn(
-                'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
-                day.enabled ? 'border-brand-500/20 bg-brand-500/5' : ''
-              )}
-              style={{ borderColor: day.enabled ? undefined : 'var(--border)' }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
+              style={day.enabled
+                ? { border: '1px solid rgba(0,194,124,.2)', background: 'var(--brand-s)' }
+                : { border: '1px solid var(--border)' }
+              }
             >
+              {/* Checkbox */}
               <button
                 type="button"
                 onClick={() => toggle(key)}
-                className={cn(
-                  'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  day.enabled ? 'border-brand-500 bg-brand-500' : 'bg-transparent'
-                )}
-                style={{ borderColor: day.enabled ? undefined : 'var(--border)' }}
+                className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors"
+                style={day.enabled
+                  ? { background: 'var(--brand)', border: '2px solid var(--brand)' }
+                  : { background: 'transparent', border: '2px solid var(--border)' }
+                }
               >
                 {day.enabled && (
                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -471,7 +533,7 @@ function TabHorarios() {
                 )}
               </button>
 
-              <span className={cn('text-sm font-medium w-20', day.enabled ? 'text-t1' : 'text-t3')}>
+              <span className="text-[13px] font-medium w-20" style={{ color: day.enabled ? 'var(--t1)' : 'var(--t3)' }}>
                 {label}
               </span>
 
@@ -480,22 +542,22 @@ function TabHorarios() {
                   <input
                     type="time"
                     value={day.start}
-                    onChange={(e) => setField(key, 'start', e.target.value)}
-                    className="text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    onChange={e => setField(key, 'start', e.target.value)}
+                    className="text-[13px] rounded-lg px-2 py-1.5 focus:outline-none"
                     style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)' }}
                   />
-                  <span className="text-t3 text-sm">até</span>
+                  <span className="text-[12px]" style={{ color: 'var(--t3)' }}>até</span>
                   <input
                     type="time"
                     value={day.end}
-                    onChange={(e) => setField(key, 'end', e.target.value)}
-                    className="text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    onChange={e => setField(key, 'end', e.target.value)}
+                    className="text-[13px] rounded-lg px-2 py-1.5 focus:outline-none"
                     style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)' }}
                   />
                   <select
                     value={day.slot}
-                    onChange={(e) => setField(key, 'slot', Number(e.target.value))}
-                    className="text-sm rounded-md px-2 py-1 focus:outline-none"
+                    onChange={e => setField(key, 'slot', Number(e.target.value))}
+                    className="text-[13px] rounded-lg px-2 py-1.5 focus:outline-none"
                     style={{ border: '1px solid var(--border)', background: 'var(--raised)', color: 'var(--t2)' }}
                   >
                     <option value={30}>30 min</option>
@@ -510,7 +572,15 @@ function TabHorarios() {
         })}
       </div>
 
-      <Button onClick={handleSave} loading={saving} className="w-fit">Salvar horários</Button>
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="btn-primary w-fit"
+      >
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        Salvar horários
+      </button>
     </div>
   )
 }
@@ -518,17 +588,9 @@ function TabHorarios() {
 // ─── Tab: Locais de Atendimento ───────────────────────────────────
 
 interface Location {
-  id: string
-  name: string
-  city?: string
-  address?: string
-  color?: string
-  modality?: string
-  price?: string
-  payment_info?: string
-  deposit_required?: boolean
-  deposit_amount?: string
-  confirmation_message?: string
+  id: string; name: string; city?: string; address?: string; color?: string
+  modality?: string; price?: string; payment_info?: string
+  deposit_required?: boolean; deposit_amount?: string; confirmation_message?: string
 }
 
 const LOCATION_MODALITIES = [
@@ -542,16 +604,14 @@ const LOCATION_COLORS = [
 ]
 
 function LocationCard({
-  loc,
-  onSave,
-  onDelete,
+  loc, onSave, onDelete,
 }: {
   loc: Partial<Location> & { _new?: boolean }
   onSave: (data: Partial<Location>) => Promise<void>
   onDelete?: () => void
 }) {
-  const [open, setOpen] = useState(loc._new ?? false)
-  const [form, setForm] = useState<Partial<Location>>({
+  const [open,   setOpen]   = useState(loc._new ?? false)
+  const [form,   setForm]   = useState<Partial<Location>>({
     name:                 loc.name                 ?? '',
     city:                 loc.city                 ?? '',
     address:              loc.address              ?? '',
@@ -572,145 +632,152 @@ function LocationCard({
   async function handleSave() {
     if (!form.name?.trim()) { toast.error('Nome obrigatório'); return }
     setSaving(true)
-    try {
-      await onSave({ ...loc, ...form })
-      setOpen(false)
-    } finally { setSaving(false) }
+    try { await onSave({ ...loc, ...form }); setOpen(false) }
+    finally { setSaving(false) }
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-      {/* Header row */}
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-raised transition-colors" onClick={() => setOpen(o => !o)}>
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      {/* Header */}
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+        onClick={() => setOpen(o => !o)}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
+        onMouseLeave={e => (e.currentTarget.style.background = '')}
+      >
         <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: form.color }} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-t1 truncate">{form.name || <span className="text-t3 italic">Novo local</span>}</p>
-          {form.city && <p className="text-xs text-t3 truncate">{form.city}{form.modality ? ` · ${form.modality}` : ''}</p>}
+          <p className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>
+            {form.name || <span className="italic" style={{ color: 'var(--t3)' }}>Novo local</span>}
+          </p>
+          {form.city && (
+            <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>
+              {form.city}{form.modality ? ` · ${form.modality}` : ''}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {onDelete && (
-            <button
-              type="button"
+            <span
+              role="button"
               onClick={e => { e.stopPropagation(); onDelete() }}
-              className="p-1.5 rounded-lg text-t3 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--t3)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.background = '#FEF2F2' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.background = '' }}
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </span>
           )}
-          {open ? <ChevronUp className="w-4 h-4 text-t3" /> : <ChevronDown className="w-4 h-4 text-t3" />}
+          {open ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--t3)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
         </div>
-      </div>
+      </button>
 
-      {/* Form (collapsible) */}
+      {/* Form */}
       {open && (
         <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
-
           <div className="grid grid-cols-2 gap-3 pt-3">
             <div className="col-span-2">
-              <Input
-                label="Nome do local"
-                placeholder="Ex: Consultório Centro SP, Clínica Online..."
-                value={form.name}
-                onChange={e => set('name', e.target.value)}
-              />
+              <Field label="Nome do local">
+                <input
+                  placeholder="Ex: Consultório Centro SP, Clínica Online..."
+                  value={form.name}
+                  onChange={e => set('name', e.target.value)}
+                  className="input"
+                />
+              </Field>
             </div>
 
-            <Input
-              label="Cidade"
-              placeholder="São Paulo"
-              value={form.city}
-              onChange={e => set('city', e.target.value)}
-            />
+            <Field label="Cidade">
+              <input
+                placeholder="São Paulo"
+                value={form.city}
+                onChange={e => set('city', e.target.value)}
+                className="input"
+              />
+            </Field>
 
-            {/* Modalidade */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-t2">Modalidade</label>
+            <Field label="Modalidade">
               <select
                 value={form.modality}
                 onChange={e => set('modality', e.target.value)}
-                className="rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
-                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+                className="input"
               >
                 {LOCATION_MODALITIES.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-            </div>
+            </Field>
 
             <div className="col-span-2">
-              <Input
-                label="Endereço completo"
-                placeholder="Rua das Flores, 100 — Sala 5 — Centro"
-                value={form.address}
-                onChange={e => set('address', e.target.value)}
-              />
+              <Field label="Endereço completo">
+                <input
+                  placeholder="Rua das Flores, 100 — Sala 5 — Centro"
+                  value={form.address}
+                  onChange={e => set('address', e.target.value)}
+                  className="input"
+                />
+              </Field>
             </div>
           </div>
 
-          {/* Valor + pagamento */}
-          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-xs font-semibold text-t2 uppercase tracking-wider">Valor & Pagamento</p>
+          {/* Valor & Pagamento */}
+          <div className="rounded-xl p-4 space-y-3" style={{ border: '1px solid var(--border)', background: 'var(--raised)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>Valor & Pagamento</p>
 
-            <Input
-              label="Valor da consulta"
-              placeholder="Ex: R$ 250,00 ou A partir de R$ 200"
-              value={form.price}
-              onChange={e => set('price', e.target.value)}
-            />
+            <Field label="Valor da consulta">
+              <input
+                placeholder="Ex: R$ 250,00 ou A partir de R$ 200"
+                value={form.price}
+                onChange={e => set('price', e.target.value)}
+                className="input"
+              />
+            </Field>
 
-            <Textarea
-              label="Instruções de pagamento"
-              placeholder="Ex: Pix: 11999999999 (João Silva) ou Cartão no local."
-              rows={2}
-              value={form.payment_info}
-              onChange={e => set('payment_info', e.target.value)}
-            />
+            <Field label="Instruções de pagamento">
+              <textarea
+                placeholder="Ex: Pix: 11999999999 (João Silva) ou Cartão no local."
+                rows={2}
+                value={form.payment_info}
+                onChange={e => set('payment_info', e.target.value)}
+                className="textarea"
+              />
+            </Field>
 
-            {/* Sinal / Depósito */}
             <div className="flex items-center justify-between pt-1">
               <div>
-                <p className="text-sm font-medium text-t1">Exige sinal para confirmar</p>
-                <p className="text-xs text-t3">Paciente precisa pagar antecipadamente</p>
+                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Exige sinal para confirmar</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Paciente precisa pagar antecipadamente</p>
               </div>
-              <button
-                type="button"
-                onClick={() => set('deposit_required', !form.deposit_required)}
-                className={cn(
-                  'relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0',
-                  form.deposit_required ? 'bg-brand-500' : 'bg-raised'
-                )}
-                style={form.deposit_required ? {} : { border: '1px solid var(--border)' }}
-              >
-                <span className={cn(
-                  'absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform',
-                  form.deposit_required ? 'left-[20px]' : 'left-[2px]'
-                )} />
-              </button>
+              <Toggle enabled={!!form.deposit_required} onChange={() => set('deposit_required', !form.deposit_required)} />
             </div>
 
             {form.deposit_required && (
-              <Input
-                label="Valor do sinal"
-                placeholder="Ex: R$ 50,00 (10% do valor total)"
-                value={form.deposit_amount}
-                onChange={e => set('deposit_amount', e.target.value)}
-              />
+              <Field label="Valor do sinal">
+                <input
+                  placeholder="Ex: R$ 50,00 (10% do valor total)"
+                  value={form.deposit_amount}
+                  onChange={e => set('deposit_amount', e.target.value)}
+                  className="input"
+                />
+              </Field>
             )}
           </div>
 
-          {/* Mensagem de confirmação */}
-          <Textarea
-            label="Mensagem de confirmação de agendamento"
-            hint="Enviada automaticamente após o paciente agendar — inclui endereço e instruções"
-            placeholder="Ex: Sua consulta está confirmada! 🎉 Aguardamos você no endereço abaixo..."
-            rows={3}
-            value={form.confirmation_message}
-            onChange={e => set('confirmation_message', e.target.value)}
-          />
+          <Field label="Mensagem de confirmação de agendamento" hint="Enviada automaticamente após o paciente agendar — inclui endereço e instruções">
+            <textarea
+              placeholder="Ex: Sua consulta está confirmada! Aguardamos você no endereço abaixo..."
+              rows={3}
+              value={form.confirmation_message}
+              onChange={e => set('confirmation_message', e.target.value)}
+              className="textarea"
+            />
+          </Field>
 
           {/* Cor */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-t2">Cor na agenda</label>
+            <label className="field-label">Cor na agenda</label>
             <div className="flex gap-2 flex-wrap">
               {LOCATION_COLORS.map(c => (
                 <button
@@ -721,15 +788,21 @@ function LocationCard({
                     'w-7 h-7 rounded-full border-2 transition-transform hover:scale-110',
                     form.color === c ? 'border-white scale-110' : 'border-transparent'
                   )}
-                  style={{ background: c }}
+                  style={{ background: c, outline: form.color === c ? `2px solid ${c}` : 'none', outlineOffset: '2px' }}
                 />
               ))}
             </div>
           </div>
 
-          <Button onClick={handleSave} loading={saving} className="w-full">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary w-full"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar local
-          </Button>
+          </button>
         </div>
       )}
     </div>
@@ -772,20 +845,22 @@ function TabLocais() {
     onError: () => toast.error('Erro ao remover'),
   })
 
-  function addNew() {
-    setNewItems(prev => [...prev, { id: `_new_${Date.now()}` }])
-  }
-
   if (isLoading) {
-    return <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
+    return (
+      <div className="flex justify-center py-8">
+        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-3">
       {locations.length === 0 && newItems.length === 0 && (
-        <div className="text-center py-8 text-sm text-t3">
-          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          Nenhum local cadastrado ainda. Adicione seu consultório ou cidade de atendimento.
+        <div className="text-center py-8">
+          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" style={{ color: 'var(--t3)' }} />
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
+            Nenhum local cadastrado. Adicione seu consultório ou cidade de atendimento.
+          </p>
         </div>
       )}
 
@@ -809,9 +884,11 @@ function TabLocais() {
 
       <button
         type="button"
-        onClick={addNew}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-sm text-t3 hover:text-brand-400 hover:border-brand-500/40 transition-colors"
-        style={{ borderColor: 'var(--border)' }}
+        onClick={() => setNewItems(prev => [...prev, { id: `_new_${Date.now()}` }])}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-[13px] transition-all"
+        style={{ borderColor: 'var(--border)', color: 'var(--t3)' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--brand)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,194,124,.4)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
       >
         <Plus className="w-4 h-4" />
         Adicionar local de atendimento
@@ -821,60 +898,34 @@ function TabLocais() {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────
+
 export default function ConfiguracoesPage() {
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight text-t1">Configurações</h1>
-        <p className="text-sm text-t2 mt-0.5">Configure sua assistente e horários de atendimento</p>
+        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Configurações</h1>
+        <p className="text-[14px] mt-0.5" style={{ color: 'var(--t2)' }}>Configure sua assistente e horários de atendimento</p>
       </div>
 
-      {/* Seção: Status da IA */}
-      <Card>
-        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <p className="text-sm font-semibold text-t1">Status da assistente</p>
-          <p className="text-xs text-t3 mt-0.5">Ative ou pause a IA em tempo real</p>
-        </div>
-        <CardContent className="py-5">
-          <AIPowerToggle />
-        </CardContent>
-      </Card>
+      <SectionCard title="Status da assistente" subtitle="Ative ou pause a IA em tempo real">
+        <AIPowerToggle />
+      </SectionCard>
 
-      {/* Seção: Assistente */}
-      <Card>
-        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <p className="text-sm font-semibold text-t1">Assistente</p>
-          <p className="text-xs text-t3 mt-0.5">Personalidade, tom de voz e mensagem de boas-vindas</p>
-        </div>
-        <CardContent className="py-6">
-          <TabAssistente />
-        </CardContent>
-      </Card>
+      <SectionCard title="Assistente" subtitle="Personalidade, tom de voz e mensagem de boas-vindas">
+        <TabAssistente />
+      </SectionCard>
 
-      {/* Seção: Horários */}
-      <Card>
-        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <p className="text-sm font-semibold text-t1">Horários de atendimento</p>
-          <p className="text-xs text-t3 mt-0.5">Dias e horários disponíveis para agendamento</p>
-        </div>
-        <CardContent className="py-6">
-          <TabHorarios />
-        </CardContent>
-      </Card>
+      <SectionCard title="Horários de atendimento" subtitle="Dias e horários disponíveis para agendamento">
+        <TabHorarios />
+      </SectionCard>
 
-      {/* Seção: Locais */}
-      <Card>
-        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-t3" />
-            <p className="text-sm font-semibold text-t1">Locais de atendimento</p>
-          </div>
-          <p className="text-xs text-t3 mt-0.5">Consultórios, cidades, modalidade, valor e mensagem de confirmação</p>
-        </div>
-        <CardContent className="py-6">
-          <TabLocais />
-        </CardContent>
-      </Card>
+      <SectionCard
+        title="Locais de atendimento"
+        subtitle="Consultórios, cidades, modalidade, valor e mensagem de confirmação"
+        icon={<MapPin className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
+      >
+        <TabLocais />
+      </SectionCard>
     </div>
   )
 }

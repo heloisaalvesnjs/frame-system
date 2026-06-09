@@ -5,7 +5,8 @@ import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   Users, Calendar, MessageSquare, TrendingUp,
-  ChevronRight, Activity,
+  ArrowUpRight, Bot, Zap, Clock,
+  Dot,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -59,7 +60,7 @@ function clientLabel(name: string | null, phone: string) {
 }
 
 const AVATAR_COLORS = [
-  '#5B6EF5', '#E84393', '#F5A623', '#27AE60',
+  '#5B6EF5', '#E84393', '#F59823', '#27AE60',
   '#9B59B6', '#E74C3C', '#1ABC9C', '#2980B9',
 ]
 
@@ -76,57 +77,84 @@ function getInitials(name: string | null, phone: string) {
   return phone.replace(/\D/g, '').slice(-2)
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  scheduled:  'Agendada',
-  confirmed:  'Confirmada',
-  cancelled:  'Cancelada',
-  completed:  'Realizada',
-  blocked:    'Bloqueada',
-}
-
-const STATUS_COLORS: Record<string, { text: string; bg: string }> = {
-  scheduled: { text: '#2563EB', bg: '#EFF6FF' },
-  confirmed: { text: '#059669', bg: '#ECFDF5' },
-  cancelled: { text: '#DC2626', bg: '#FEF2F2' },
-  completed: { text: '#6B7280', bg: '#F9FAFB' },
-  blocked:   { text: '#9CA3AF', bg: '#F3F4F6' },
+const APT_STATUS: Record<string, { label: string; color: string; bg: string; dot: string }> = {
+  scheduled:  { label: 'Agendada',   color: '#2563EB', bg: '#EFF6FF', dot: '#3B82F6' },
+  confirmed:  { label: 'Confirmada', color: '#059669', bg: '#ECFDF5', dot: '#10B981' },
+  cancelled:  { label: 'Cancelada',  color: '#DC2626', bg: '#FEF2F2', dot: '#EF4444' },
+  completed:  { label: 'Realizada',  color: '#6B7280', bg: '#F9FAFB', dot: '#9CA3AF' },
+  blocked:    { label: 'Bloqueado',  color: '#9CA3AF', bg: '#F3F4F6', dot: '#D1D5DB' },
 }
 
 // ── Metric Card ───────────────────────────────────────────────────────────────
 
 function MetricCard({
-  label, value, sub, icon: Icon, subColor,
+  label,
+  value,
+  sub,
+  icon: Icon,
+  accent,
+  subColor,
+  href,
 }: {
   label: string
   value: string | number
   sub?: string
   icon: React.ElementType
+  accent: string
   subColor?: string
+  href?: string
 }) {
-  return (
+  const inner = (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-3"
+      className="rounded-2xl p-5 relative overflow-hidden group transition-all duration-150 cursor-default"
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow)',
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
-      <div className="flex items-center gap-2">
-        <Icon className="w-[14px] h-[14px]" style={{ color: 'var(--t3)' }} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>
-          {label}
-        </span>
+      {/* Accent left bar */}
+      <div
+        className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full"
+        style={{ background: accent }}
+      />
+
+      {/* Icon */}
+      <div
+        className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-150 group-hover:scale-110"
+        style={{ background: `${accent}14` }}
+      >
+        <Icon className="w-4 h-4" style={{ color: accent }} />
       </div>
-      <p className="text-[38px] font-bold tracking-tight leading-none" style={{ color: 'var(--t1)' }}>
-        {value}
-      </p>
-      {sub && (
-        <p className="text-[12px] font-medium" style={{ color: subColor ?? 'var(--t3)' }}>
-          {sub}
+
+      <div className="pl-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.07em] mb-3" style={{ color: 'var(--t3)' }}>
+          {label}
         </p>
-      )}
+        <p className="text-[34px] font-bold tracking-tight leading-none mb-2" style={{ color: 'var(--t1)' }}>
+          {value}
+        </p>
+        {sub && (
+          <p className="text-[12px] font-medium flex items-center gap-1" style={{ color: subColor ?? 'var(--t3)' }}>
+            {subColor === 'var(--brand)' && <ArrowUpRight className="w-3 h-3" />}
+            {sub}
+          </p>
+        )}
+      </div>
     </div>
+  )
+
+  return href ? <Link href={href}>{inner}</Link> : inner
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function MetricSkeleton() {
+  return (
+    <div
+      className="rounded-2xl p-5 h-[118px] animate-pulse"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+    />
   )
 }
 
@@ -176,111 +204,139 @@ export default function DashboardPage() {
   })
   const dateStr = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
 
-  // Today's visible appointments
   const visibleApts = (todayAppointments ?? []).filter(a => a.status !== 'blocked')
   const nextApt = visibleApts.find(a => a.status === 'confirmed' || a.status === 'scheduled')
 
   return (
     <div className="p-6 md:p-8 max-w-[1400px]">
 
-      {/* Header */}
-      <div className="mb-7">
-        <h1 className="text-[22px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
-          {greeting}, {firstName}! 👋
-        </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>{dateStr}</p>
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1
+            className="text-[26px] font-bold tracking-tight leading-tight"
+            style={{ color: 'var(--t1)' }}
+          >
+            {greeting}, {firstName}
+          </h1>
+          <p className="text-[13px] mt-1 flex items-center gap-1.5" style={{ color: 'var(--t3)' }}>
+            <Clock className="w-3.5 h-3.5" />
+            {dateStr}
+          </p>
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex items-center gap-2">
+          <Link href="/agenda" className="btn-secondary text-[13px] h-9 px-4">
+            <Calendar className="w-3.5 h-3.5" />
+            Agenda
+          </Link>
+          <Link href="/conversas" className="btn-primary text-[13px] h-9 px-4">
+            <Zap className="w-3.5 h-3.5" />
+            Conversas
+          </Link>
+        </div>
       </div>
 
-      {/* Metrics row */}
-      {loadingMetrics ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl h-28 animate-pulse"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      {/* ── Metrics ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {loadingMetrics ? (
+          Array.from({ length: 4 }).map((_, i) => <MetricSkeleton key={i} />)
+        ) : (
+          <>
+            <MetricCard
+              label="Clientes ativos"
+              value={m?.total_clients ?? 0}
+              sub={`+${m?.new_leads_week ?? 0} esta semana`}
+              icon={Users}
+              accent="#00C27C"
+              subColor="var(--brand)"
+              href="/clientes"
             />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-          <MetricCard
-            label="Clientes ativos"
-            value={m?.total_clients ?? 0}
-            sub={`+${m?.new_leads_week ?? 0} esta semana`}
-            icon={Users}
-            subColor="var(--brand)"
-          />
-          <MetricCard
-            label="Consultas hoje"
-            value={visibleApts.length}
-            sub={nextApt
-              ? `Próxima às ${new Date(nextApt.scheduled_at).toLocaleTimeString('pt-BR', {
-                  hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
-                })}`
-              : 'Nenhuma próxima'
-            }
-            icon={Calendar}
-          />
-          <MetricCard
-            label="Mensagens"
-            value={m?.active_conversations ?? 0}
-            sub="conversas ativas"
-            icon={MessageSquare}
-          />
-          <MetricCard
-            label="Agendamentos"
-            value={m?.appointments_week ?? 0}
-            sub="nos últimos 7 dias"
-            icon={TrendingUp}
-          />
-        </div>
-      )}
+            <MetricCard
+              label="Consultas hoje"
+              value={visibleApts.length}
+              sub={nextApt
+                ? `Próxima às ${new Date(nextApt.scheduled_at).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+                  })}`
+                : 'Nenhuma próxima'
+              }
+              icon={Calendar}
+              accent="#3B82F6"
+              href="/agenda"
+            />
+            <MetricCard
+              label="Mensagens ativas"
+              value={m?.active_conversations ?? 0}
+              sub="conversas em aberto"
+              icon={MessageSquare}
+              accent="#8B5CF6"
+              href="/conversas"
+            />
+            <MetricCard
+              label="Esta semana"
+              value={m?.appointments_week ?? 0}
+              sub="agendamentos nos 7 dias"
+              icon={TrendingUp}
+              accent="#F59E0B"
+            />
+          </>
+        )}
+      </div>
 
-      {/* 2-column layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
+      {/* ── Two columns ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
 
-        {/* Atividade recente */}
+        {/* ── Atividade recente ───────────────────────────────────── */}
         <div
           className="rounded-2xl overflow-hidden"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow)',
-          }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
         >
-          <div
-            className="flex items-center justify-between px-6 py-4"
-            style={{ borderBottom: '1px solid var(--border)' }}
-          >
-            <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
-              Atividade recente
-            </h2>
+          <div className="card-header">
+            <div>
+              <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
+                Atividade recente
+              </h2>
+              <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                Últimas interações dos clientes
+              </p>
+            </div>
             <Link
               href="/conversas"
               className="flex items-center gap-1 text-[12px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: 'var(--brand)' }}
             >
-              Ver tudo <ChevronRight className="w-3.5 h-3.5" />
+              Ver tudo
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {!activityData || activityData.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <Activity className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--border)' }} />
-              <p className="text-sm" style={{ color: 'var(--t3)' }}>Nenhuma atividade recente</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
+              >
+                <MessageSquare className="w-5 h-5" style={{ color: 'var(--t3)' }} />
+              </div>
+              <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>Sem atividade ainda</p>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--t3)' }}>
+                As interações dos clientes aparecerão aqui
+              </p>
             </div>
           ) : (
             <ul>
-              {activityData.map((item, i) => {
+              {activityData.slice(0, 8).map((item, i) => {
                 const name = clientLabel(item.client_name, item.client_phone)
                 const initials = getInitials(item.client_name, item.client_phone)
                 const color = getAvatarColor(name)
                 const timeAgo = formatDistanceToNow(new Date(item.occurred_at), {
                   locale: ptBR, addSuffix: false,
                 })
-                const preview = item.type === 'new_lead'
-                  ? 'Novo lead iniciou conversa'
+                const isLead = item.type === 'new_lead'
+                const preview = isLead
+                  ? 'Novo lead iniciou conversa pelo WhatsApp'
                   : item.scheduled_at
                     ? `Consulta agendada para ${new Date(item.scheduled_at).toLocaleString('pt-BR', {
                         day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -291,26 +347,41 @@ export default function DashboardPage() {
                 return (
                   <li
                     key={i}
-                    className="flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-raised/40 cursor-default"
+                    className="flex items-center gap-4 px-5 py-3.5 transition-colors"
                     style={{
-                      borderBottom: i < activityData.length - 1 ? '1px solid var(--border)' : undefined,
+                      borderBottom: i < Math.min(activityData.length - 1, 7) ? '1px solid var(--border)' : undefined,
                     }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
+                    {/* Avatar */}
                     <div
-                      className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[12px] font-bold text-white"
+                      className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white shadow-sm"
                       style={{ background: color }}
                     >
                       {initials}
                     </div>
+
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>
-                        {name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>
+                          {name}
+                        </p>
+                        {isLead && (
+                          <span
+                            className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                            style={{ color: '#059669', background: '#ECFDF5' }}
+                          >
+                            Novo
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--t3)' }}>
                         {preview}
                       </p>
                     </div>
-                    <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--t3)' }}>
+
+                    <span className="text-[11px] flex-shrink-0 font-medium" style={{ color: 'var(--t3)' }}>
                       {timeAgo}
                     </span>
                   </li>
@@ -320,75 +391,86 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right column */}
+        {/* ── Right column ────────────────────────────────────────── */}
         <div className="flex flex-col gap-5">
 
           {/* Agenda de hoje */}
           <div
             className="rounded-2xl overflow-hidden"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow)',
-            }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <div
-              className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid var(--border)' }}
-            >
-              <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
-                Agenda de hoje
-              </h2>
+            <div className="card-header">
+              <div>
+                <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
+                  Hoje
+                </h2>
+                <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                  {visibleApts.length === 0 ? 'Sem consultas' : `${visibleApts.length} consulta${visibleApts.length !== 1 ? 's' : ''}`}
+                </p>
+              </div>
               <Link
                 href="/agenda"
-                className="text-[12px] font-semibold transition-opacity hover:opacity-70"
+                className="text-[12px] font-semibold flex items-center gap-1 transition-opacity hover:opacity-70"
                 style={{ color: 'var(--brand)' }}
               >
-                Ver agenda
+                Abrir
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {visibleApts.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <Calendar className="w-7 h-7 mx-auto mb-2" style={{ color: 'var(--border)' }} />
-                <p className="text-sm" style={{ color: 'var(--t3)' }}>Sem consultas hoje</p>
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                  style={{ background: 'var(--raised)' }}
+                >
+                  <Calendar className="w-4.5 h-4.5" style={{ color: 'var(--t3)' }} />
+                </div>
+                <p className="text-[13px]" style={{ color: 'var(--t3)' }}>Dia livre hoje</p>
               </div>
             ) : (
               <ul>
-                {visibleApts.slice(0, 4).map((apt, i, arr) => {
-                  const sc = STATUS_COLORS[apt.status] ?? STATUS_COLORS.scheduled
+                {visibleApts.slice(0, 5).map((apt, i, arr) => {
+                  const s = APT_STATUS[apt.status] ?? APT_STATUS.scheduled
                   const timeStr = new Date(apt.scheduled_at).toLocaleTimeString('pt-BR', {
                     hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
                   })
                   const name = clientLabel(apt.client_name, apt.client_phone)
+
                   return (
                     <li
                       key={apt.id}
-                      className="flex items-center gap-3 px-5 py-3.5"
-                      style={{
-                        borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : undefined,
-                      }}
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : undefined }}
                     >
+                      {/* Dot indicator */}
+                      <Dot className="w-5 h-5 flex-shrink-0 -ml-0.5" style={{ color: s.dot }} />
+
                       {/* Time */}
-                      <div className="flex-shrink-0 text-right" style={{ minWidth: 40 }}>
-                        <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>{timeStr}</p>
-                        <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{apt.duration_minutes}min</p>
+                      <div className="flex-shrink-0" style={{ minWidth: 38 }}>
+                        <p className="text-[13px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>
+                          {timeStr}
+                        </p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                          {apt.duration_minutes}min
+                        </p>
                       </div>
-                      {/* Color bar */}
-                      <div className="w-[3px] h-8 rounded-full flex-shrink-0" style={{ background: sc.text }} />
-                      {/* Info */}
+
+                      {/* Name + status */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{name}</p>
-                        <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--t3)' }}>
+                        <p className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>
+                          {name}
+                        </p>
+                        <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>
                           {apt.modality ?? 'Consulta'}
                         </p>
                       </div>
-                      {/* Badge */}
+
                       <span
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ color: sc.text, background: sc.bg }}
+                        style={{ color: s.color, background: s.bg }}
                       >
-                        {STATUS_LABELS[apt.status] ?? apt.status}
+                        {s.label}
                       </span>
                     </li>
                   )
@@ -397,43 +479,40 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Assistente IA */}
+          {/* Assistente IA — status card */}
           <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow)',
-            }}
+            className="rounded-2xl p-5 relative overflow-hidden"
+            style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.07)' }}
           >
+            {/* Glow */}
             <div
-              className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid var(--border)' }}
-            >
-              <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
-                Assistente IA
-              </h2>
-              <div className="flex items-center gap-1.5">
-                <span className="w-[7px] h-[7px] rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[12px] font-medium" style={{ color: '#10b981' }}>Ativo</span>
+              className="absolute -top-8 -right-8 w-40 h-40 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(0,194,124,0.18) 0%, transparent 70%)' }}
+            />
+
+            <div className="relative z-10 flex items-start gap-4">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(0,194,124,0.15)', border: '1px solid rgba(0,194,124,0.2)' }}
+              >
+                <Bot className="w-5 h-5" style={{ color: 'var(--brand)' }} />
               </div>
-            </div>
-            <div className="px-5 py-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--t2)' }}>Mensagens hoje</span>
-                <span className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>
-                  {m?.active_conversations ?? '—'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--t2)' }}>Taxa de conversão</span>
-                <span className="text-[13px] font-bold" style={{ color: 'var(--brand)' }}>
-                  {m?.conversion_rate != null ? `${m.conversion_rate}%` : '—'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--t2)' }}>Modo férias</span>
-                <span className="text-[13px]" style={{ color: 'var(--t3)' }}>Desativado</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[14px] font-semibold text-white">Assistente ativa</p>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--brand)' }} />
+                </div>
+                <p className="text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  Respondendo clientes automaticamente no WhatsApp
+                </p>
+                <Link
+                  href="/treinamento"
+                  className="inline-flex items-center gap-1.5 mt-3 text-[12px] font-semibold transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--brand)' }}
+                >
+                  Configurar assistente
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
           </div>
