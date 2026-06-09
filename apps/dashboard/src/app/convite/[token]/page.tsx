@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
@@ -127,9 +126,10 @@ export default function ConvitePage() {
               </div>
             )}
 
-            <Button onClick={handleJoin} loading={saving} className="w-full">
+            <button onClick={handleJoin} disabled={saving} className="btn-primary w-full justify-center">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Criar minha conta e entrar
-            </Button>
+            </button>
           </div>
         ) : (
           <div className="text-center text-t3 text-sm">Carregando convite...</div>

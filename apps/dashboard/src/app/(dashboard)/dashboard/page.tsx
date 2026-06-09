@@ -356,8 +356,8 @@ export default function DashboardPage() {
                   >
                     {/* Avatar */}
                     <div
-                      className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white shadow-sm"
-                      style={{ background: color }}
+                      className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold shadow-sm"
+                      style={{ background: color, color: '#fff' }}
                     >
                       {initials}
                     </div>

@@ -479,7 +479,7 @@ export default function OnboardingPage() {
             className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
             style={{ background: 'var(--brand)' }}
           >
-            <Bot className="w-6 h-6 text-white" />
+            <Bot className="w-6 h-6" style={{ color: '#fff' }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--t1)' }}>Configuração inicial</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--t3)' }}>

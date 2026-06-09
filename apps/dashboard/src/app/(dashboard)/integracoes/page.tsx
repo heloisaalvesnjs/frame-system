@@ -72,7 +72,10 @@ function WhatsAppCard() {
           </p>
           <a
             href="/integracoes"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+            style={{ background: '#10B981', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#059669'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#10B981'}
           >
             Conectar WhatsApp <ExternalLink className="w-3.5 h-3.5" />
           </a>
@@ -158,7 +161,10 @@ function GoogleCalendarCard() {
           <button
             onClick={handleConnect}
             disabled={connecting}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition-all disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
+            style={{ background: '#3B82F6', color: '#fff' }}
+            onMouseEnter={e => !connecting && ((e.currentTarget as HTMLElement).style.background = '#2563EB')}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#3B82F6'}
           >
             {connecting
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -241,9 +247,12 @@ function WebdietCard() {
           onClick={() => inputRef.current?.click()}
           className={cn(
             'border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all',
-            dragging ? 'border-brand-500/60 bg-brand-500/5' : 'hover:bg-raised'
+            dragging ? '' : ''
           )}
-          style={{ borderColor: dragging ? undefined : 'var(--border)' }}
+          style={{
+            borderColor: dragging ? 'var(--brand)' : 'var(--border)',
+            background: dragging ? 'rgba(0,194,124,0.05)' : undefined,
+          }}
         >
           <Upload className="w-5 h-5 text-t3 mx-auto mb-2" />
           {file ? (
@@ -267,7 +276,7 @@ function WebdietCard() {
           <button
             onClick={handleImport}
             disabled={uploading}
-            className="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn-primary w-full justify-center"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {uploading ? 'Importando...' : 'Importar pacientes'}
@@ -320,8 +329,8 @@ function IntegrationCard({
       <button
         onClick={onToggleOpen}
         className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
-        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
-        onMouseLeave={e => (e.currentTarget.style.background = '')}
+        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--raised)')}
+        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = '')}
       >
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', iconBg)}>
           {icon}

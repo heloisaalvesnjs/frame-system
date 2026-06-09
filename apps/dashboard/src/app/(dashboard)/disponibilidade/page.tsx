@@ -86,15 +86,13 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={cn(
-        'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-all duration-200',
-        checked ? 'bg-brand-500' : 'bg-zinc-600'
-      )}
+      className="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-all duration-200"
+      style={{ background: checked ? 'var(--brand)' : 'var(--raised)', border: checked ? 'none' : '1px solid var(--border)' }}
     >
-      <span className={cn(
-        'absolute top-0.5 inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200',
-        checked ? 'translate-x-[18px]' : 'translate-x-0.5'
-      )} />
+      <span
+        className="absolute top-0.5 inline-block h-4 w-4 transform rounded-full shadow transition-transform duration-200"
+        style={{ background: checked ? '#fff' : 'var(--t3)', transform: checked ? 'translateX(18px)' : 'translateX(2px)' }}
+      />
     </button>
   )
 }
@@ -121,12 +119,14 @@ function DayRow({ day, onChange }: {
   onChange: (patch: Partial<DayConfig>) => void
 }) {
   return (
-    <div className={cn(
-      'rounded-2xl border transition-all overflow-hidden',
-      day.is_active
-        ? 'border-border bg-surface'
-        : 'border-border/40 bg-surface/30'
-    )}>
+    <div
+      className="rounded-2xl transition-all overflow-hidden"
+      style={{
+        border: day.is_active ? '1px solid var(--border)' : '1px solid rgba(0,0,0,0.06)',
+        background: day.is_active ? 'var(--surface)' : 'var(--raised)',
+        opacity: day.is_active ? 1 : 0.7,
+      }}
+    >
       {/* Row header */}
       <div className="flex items-center gap-4 px-5 py-4">
         {/* Day badge */}
@@ -247,9 +247,15 @@ function BlockedCalendar() {
       {/* Calendar */}
       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <button onClick={prevMonth} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-          <span className="text-sm font-semibold text-t1">{MONTHS[month]} {year}</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-raised transition-colors"><ChevronRight className="w-4 h-4" /></button>
+          <button onClick={prevMonth} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--t3)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--raised)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--t3)' }}>
+            <ChevronLeft className="w-4 h-4" /></button>
+          <span className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>{MONTHS[month]} {year}</span>
+          <button onClick={nextMonth} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--t3)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--raised)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--t3)' }}>
+            <ChevronRight className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-7 px-3 pt-3">
           {WEEK_DAYS.map((d, i) => <div key={i} className="text-center text-[10px] font-mono text-t3 py-1">{d}</div>)}
@@ -266,8 +272,8 @@ function BlockedCalendar() {
                 className={cn(
                   'aspect-square flex items-center justify-center rounded-lg text-xs font-mono transition-all',
                   isPast && 'opacity-30 cursor-not-allowed text-t3',
-                  !isPast && !isBlocked && !isSelected && 'hover:bg-raised text-t2 cursor-pointer',
-                  dateStr === todayStr && !isBlocked && !isSelected && 'ring-1 ring-brand-500/40 text-brand-400',
+                  !isPast && !isBlocked && !isSelected && 'cursor-pointer',
+                  dateStr === todayStr && !isBlocked && !isSelected && 'ring-1 ring-brand-400',
                   isSelected && 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40',
                   isBlocked  && 'bg-red-500/15 text-red-400 line-through',
                 )}
@@ -291,7 +297,11 @@ function BlockedCalendar() {
             <div className="flex gap-2">
               <button onClick={() => setSelected(null)} className="flex-1 py-2 rounded-lg border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>Cancelar</button>
               <button onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
-                className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">Confirmar</button>
+                className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={{ background: '#F59E0B', color: '#fff' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#D97706'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#F59E0B'}
+              >Confirmar</button>
             </div>
           </div>
         ) : (
@@ -373,7 +383,7 @@ export default function DisponibilidadePage() {
 
   if (isLoading) return (
     <div className="p-8 flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
     </div>
   )
 
@@ -399,13 +409,14 @@ export default function DisponibilidadePage() {
         <button
           onClick={() => saveMut.mutate(days)}
           disabled={!dirty || saveMut.isPending}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0',
-            dirty ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm' : 'bg-raised text-t3 cursor-not-allowed',
-          )}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
+          style={dirty
+            ? { background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-sm)' }
+            : { background: 'var(--raised)', color: 'var(--t3)', cursor: 'not-allowed' }
+          }
         >
           {saveMut.isPending
-            ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            ? <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.4)', borderTopColor: '#fff' }} />
             : <CheckCircle className="w-4 h-4" />}
           {dirty ? 'Salvar' : 'Salvo'}
         </button>

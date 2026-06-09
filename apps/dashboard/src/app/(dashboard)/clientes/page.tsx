@@ -319,15 +319,17 @@ export default function ClientesPage() {
                 <li key={client.id}>
                   <Link
                     href={`/clientes/${client.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised/50 group"
+                    className="flex items-center gap-4 px-5 py-3.5 transition-colors group"
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
                     style={{
                       borderTop: i > 0 ? '1px solid var(--border)' : undefined,
                     }}
                   >
                     {/* Avatar */}
                     <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold text-white"
-                      style={{ background: color }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
+                      style={{ background: color, color: '#fff' }}
                     >
                       {initials}
                     </div>
