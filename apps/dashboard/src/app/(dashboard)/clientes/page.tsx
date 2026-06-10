@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import {
-  Search, Calendar, ChevronRight, Clock, UserPlus, X, Loader2, Phone,
+  Search, UserPlus, X, Loader2, Phone,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -38,6 +38,41 @@ const AVATAR_COLORS = [
 function getAvatarColor(id: string) {
   const n = id.charCodeAt(0) + id.charCodeAt(id.length - 1)
   return AVATAR_COLORS[n % AVATAR_COLORS.length]
+}
+
+// ── Status do paciente ────────────────────────────────────────────────────────
+
+const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
+
+type ClientStatus = 'ativa' | 'pendente' | 'inativa'
+
+function getStatus(client: Client): ClientStatus {
+  const now = Date.now()
+  if (client.last_contact && now - new Date(client.last_contact).getTime() < THIRTY_DAYS) return 'ativa'
+  if (now - new Date(client.created_at).getTime() < THIRTY_DAYS) return 'pendente'
+  return 'inativa'
+}
+
+function isNew(client: Client) {
+  return Date.now() - new Date(client.created_at).getTime() < THIRTY_DAYS
+}
+
+const STATUS_STYLE: Record<ClientStatus, { label: string; bg: string; color: string }> = {
+  ativa:    { label: 'Ativa',    bg: 'rgba(0,194,124,0.1)',  color: '#059669' },
+  pendente: { label: 'Pendente', bg: 'rgba(245,166,35,0.12)', color: '#B45309' },
+  inativa:  { label: 'Inativa',  bg: 'var(--raised)',         color: 'var(--t3)' },
+}
+
+function StatusTag({ status }: { status: ClientStatus }) {
+  const s = STATUS_STYLE[status]
+  return (
+    <span
+      className="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold"
+      style={{ background: s.bg, color: s.color }}
+    >
+      {s.label}
+    </span>
+  )
 }
 
 // ── Modal de novo cliente ─────────────────────────────────────────────────────
@@ -202,8 +237,28 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
+type Filter = 'todos' | 'ativos' | 'inativos' | 'novos'
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'todos',    label: 'Todos' },
+  { key: 'ativos',   label: 'Ativos' },
+  { key: 'inativos', label: 'Inativos' },
+  { key: 'novos',    label: 'Novos' },
+]
+
+const TH_STYLE: React.CSSProperties = {
+  textAlign: 'left',
+  padding: '11px 18px',
+  fontSize: '11px',
+  fontWeight: 600,
+  color: 'var(--t2)',
+  textTransform: 'uppercase',
+  letterSpacing: '.05em',
+}
+
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<Filter>('todos')
   const [showModal, setShowModal] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -218,6 +273,14 @@ export default function ClientesPage() {
 
   const clients = data ?? []
 
+  const filtered = clients.filter(c => {
+    if (filter === 'todos') return true
+    if (filter === 'novos') return isNew(c)
+    const status = getStatus(c)
+    if (filter === 'ativos') return status === 'ativa'
+    return status !== 'ativa'
+  })
+
   return (
     <div className="p-6 md:p-8 max-w-5xl">
       {showModal && <NovoClienteModal onClose={() => setShowModal(false)} />}
@@ -226,7 +289,7 @@ export default function ClientesPage() {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
-            Clientes
+            Pacientes
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
             {isLoading
@@ -240,16 +303,32 @@ export default function ClientesPage() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-5">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--t3)' }} />
-        <input
-          type="text"
-          placeholder="Buscar por nome ou telefone…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="input pl-10"
-        />
+      {/* Search + filtros */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--t3)' }} />
+          <input
+            type="text"
+            placeholder="Buscar por nome ou telefone…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={filter === f.key
+                ? { background: 'var(--brand-s)', color: 'var(--brand-h)', border: '1px solid rgba(0,194,124,0.25)' }
+                : { background: 'var(--surface)', color: 'var(--t2)', border: '1px solid var(--border)' }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Loading */}
@@ -258,7 +337,7 @@ export default function ClientesPage() {
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="h-[68px] rounded-xl animate-pulse"
+              className="h-[60px] rounded-xl animate-pulse"
               style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
@@ -270,21 +349,21 @@ export default function ClientesPage() {
       )}
 
       {/* Empty */}
-      {!isLoading && clients.length === 0 && (
+      {!isLoading && filtered.length === 0 && (
         <div className="text-center py-20">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
           >
-            {search
+            {search || filter !== 'todos'
               ? <Search className="w-6 h-6" style={{ color: 'var(--t3)' }} />
               : <UserPlus className="w-6 h-6" style={{ color: 'var(--t3)' }} />
             }
           </div>
           <p className="text-sm font-medium" style={{ color: 'var(--t3)' }}>
-            {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}
+            {search || filter !== 'todos' ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado ainda'}
           </p>
-          {!search && (
+          {!search && filter === 'todos' && (
             <button
               onClick={() => setShowModal(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl mx-auto hover:opacity-80 transition-opacity"
@@ -297,91 +376,98 @@ export default function ClientesPage() {
               <UserPlus className="w-4 h-4" /> Cadastrar primeiro cliente
             </button>
           )}
-          {search && <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Tente outro nome ou número</p>}
+          {(search || filter !== 'todos') && (
+            <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Tente outro nome, número ou filtro</p>
+          )}
         </div>
       )}
 
-      {/* List */}
-      {!isLoading && clients.length > 0 && (
+      {/* Tabela */}
+      {!isLoading && filtered.length > 0 && (
         <div
-          className="rounded-2xl overflow-hidden"
+          className="rounded-2xl overflow-hidden overflow-x-auto"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
         >
-          <ul>
-            {clients.map((client, i) => {
-              const name = (client.name && client.name !== 'Cliente') ? client.name : null
-              const initials = name
-                ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-                : '#'
-              const color = getAvatarColor(client.id)
+          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--raised)' }}>
+                <th style={TH_STYLE}>Paciente</th>
+                <th style={TH_STYLE} className="hidden md:table-cell">Contato</th>
+                <th style={TH_STYLE} className="hidden lg:table-cell">Consultas</th>
+                <th style={TH_STYLE} className="hidden lg:table-cell">Último contato</th>
+                <th style={TH_STYLE}>Status</th>
+                <th style={TH_STYLE} />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(client => {
+                const name = (client.name && client.name !== 'Cliente') ? client.name : null
+                const initials = name
+                  ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+                  : '#'
+                const color = getAvatarColor(client.id)
+                const status = getStatus(client)
 
-              return (
-                <li key={client.id}>
-                  <Link
-                    href={`/clientes/${client.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 transition-colors group"
+                return (
+                  <tr
+                    key={client.id}
+                    className="transition-colors"
+                    style={{ borderBottom: '1px solid var(--border)' }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
-                    style={{
-                      borderTop: i > 0 ? '1px solid var(--border)' : undefined,
-                    }}
                   >
-                    {/* Avatar */}
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
-                      style={{ background: color, color: '#fff' }}
-                    >
-                      {initials}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: 'var(--t1)' }}>
-                        {name ?? formatPhone(client.phone)}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {name && (
-                          <span className="text-[11px]" style={{ color: 'var(--t3)' }}>
-                            {formatPhone(client.phone)}
-                          </span>
-                        )}
-                        {client.goal && (
-                          <span className="text-[11px] truncate max-w-[180px]" style={{ color: 'var(--t3)' }}>
-                            {name ? '· ' : ''}{client.goal}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Meta */}
-                    <div className="hidden md:flex items-center gap-5 flex-shrink-0">
-                      <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--t3)' }}>
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>
-                          {client.completed_count > 0
-                            ? `${client.completed_count} de ${client.appointment_count}`
-                            : `${client.appointment_count} consulta${client.appointment_count !== 1 ? 's' : ''}`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--t3)' }}>
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>
-                          {client.last_contact
-                            ? formatDistanceToNow(new Date(client.last_contact), { locale: ptBR, addSuffix: true })
-                            : 'sem contato'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      className="w-4 h-4 flex-shrink-0 transition-colors group-hover:opacity-80"
-                      style={{ color: 'var(--t3)' }}
-                    />
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+                    <td style={{ padding: '13px 18px' }}>
+                      <Link href={`/clientes/${client.id}`} className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
+                          style={{ background: color, color: '#fff' }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: 'var(--t1)' }}>
+                            {name ?? formatPhone(client.phone)}
+                          </p>
+                          {client.goal && (
+                            <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--t2)' }}>
+                              {client.goal}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    </td>
+                    <td style={{ padding: '13px 18px' }} className="hidden md:table-cell">
+                      <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--t2)' }}>
+                        {formatPhone(client.phone)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '13px 18px' }} className="hidden lg:table-cell">
+                      <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--t2)' }}>
+                        {client.completed_count > 0
+                          ? `${client.completed_count} de ${client.appointment_count}`
+                          : `${client.appointment_count}`}
+                      </span>
+                    </td>
+                    <td style={{ padding: '13px 18px' }} className="hidden lg:table-cell">
+                      <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--t2)' }}>
+                        {client.last_contact
+                          ? formatDistanceToNow(new Date(client.last_contact), { locale: ptBR, addSuffix: true })
+                          : 'sem contato'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '13px 18px' }}>
+                      <StatusTag status={status} />
+                    </td>
+                    <td style={{ padding: '13px 18px', textAlign: 'right' }}>
+                      <Link href={`/clientes/${client.id}`} className="btn-secondary !px-3 !py-1.5 text-xs">
+                        Ver
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

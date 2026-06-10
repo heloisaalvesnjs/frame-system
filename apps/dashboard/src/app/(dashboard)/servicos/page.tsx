@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { MessageSquare, Info, Upload, FileImage, FileText, X as XIcon, Loader2 } from 'lucide-react'
+import { FileImage, FileText, X as XIcon, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -15,12 +15,12 @@ const DEFAULT_SERVICES_MSG =
 Qual dessas faz mais sentido pra você agora? Se tiver dúvida, me conta e te ajudo a escolher a melhor!`
 
 // ── Toggle ────────────────────────────────────────────────────────
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
-      className="relative inline-flex flex-shrink-0 cursor-pointer rounded-full transition-all duration-200 focus:outline-none"
+      onClick={() => !disabled && onChange(!checked)}
+      className={cn('relative inline-flex flex-shrink-0 rounded-full transition-all duration-200 focus:outline-none', disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
       style={{
         height: '24px',
         width: '44px',
@@ -43,8 +43,127 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
-// ── MsgCard ───────────────────────────────────────────────────────
-function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, variables, defaultMsg, onSave, saving, dirty, onReset }: {
+// ── Tag de status ─────────────────────────────────────────────────
+function StatusTag({ active }: { active: boolean }) {
+  return (
+    <span
+      className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider flex-shrink-0"
+      style={active
+        ? { background: 'var(--brand-s-solid)', color: 'var(--brand-h)' }
+        : { background: 'var(--raised)', color: 'var(--t3)' }
+      }
+    >
+      {active ? 'ATIVO' : 'INATIVO'}
+    </span>
+  )
+}
+
+// ── Card de modalidade (upload de arquivo) ────────────────────────
+type MediaVariant = 'geral' | 'online' | 'presencial'
+type MediaEntry = { type: string; name: string; enabled: boolean } | null
+
+function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload, onDelete, onToggle }: {
+  emoji: string; iconBg: string; title: string; subtitle: string
+  info: MediaEntry; loading: boolean
+  onUpload: (f: File) => void; onDelete: () => void; onToggle: (v: boolean) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const hasFile = !!info
+  const active = !!info?.enabled
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f) onUpload(f)
+  }
+
+  return (
+    <div className="card" style={{ padding: '18px' }}>
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-3.5">
+        <div
+          className="w-9 h-9 rounded-[10px] flex items-center justify-center text-lg flex-shrink-0"
+          style={{ background: iconBg }}
+        >
+          {emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold" style={{ color: 'var(--t1)' }}>{title}</p>
+          <p className="text-[11px]" style={{ color: 'var(--t2)' }}>{subtitle}</p>
+        </div>
+        <Toggle
+          checked={active}
+          disabled={!hasFile}
+          onChange={v => onToggle(v)}
+        />
+      </div>
+
+      {/* Área de upload */}
+      <div className="mb-2.5">
+        <p className="text-[11px] font-semibold mb-1.5 tracking-wide" style={{ color: 'var(--t2)' }}>ARQUIVO DO PLANO</p>
+        <div
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => !loading && inputRef.current?.click()}
+          className={cn('rounded-[10px] p-[18px] text-center cursor-pointer transition-colors', loading && 'opacity-50 pointer-events-none')}
+          style={{
+            border: '2px dashed',
+            borderColor: dragging ? 'var(--brand)' : 'var(--border)',
+            background: hasFile ? 'rgba(0,194,124,0.03)' : dragging ? 'rgba(0,194,124,0.05)' : undefined,
+            opacity: hasFile && !active ? 0.6 : undefined,
+          }}
+        >
+          {loading ? (
+            <Loader2 className="w-5 h-5 mx-auto animate-spin" style={{ color: 'var(--brand)' }} />
+          ) : hasFile ? (
+            <>
+              <div className="flex items-center justify-center mb-1.5">
+                {info!.type === 'pdf'
+                  ? <FileText className="w-5 h-5" style={{ color: 'var(--brand)' }} />
+                  : <FileImage className="w-5 h-5" style={{ color: 'var(--brand)' }} />}
+              </div>
+              <p className="text-xs font-semibold truncate px-1" style={{ color: 'var(--brand)' }}>{info!.name}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>1 arquivo carregado</p>
+              <div className="flex items-center justify-center gap-2 mt-2.5">
+                <span className="btn-secondary text-[11px] px-2.5 py-1">Trocar arquivo</span>
+                <button
+                  onClick={e => { e.stopPropagation(); onDelete() }}
+                  className="p-1 rounded transition-colors hover:text-red-500"
+                  style={{ color: 'var(--t3)' }}
+                  title="Remover arquivo"
+                >
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-xl mb-1.5">📄</div>
+              <p className="text-xs font-semibold" style={{ color: 'var(--t2)' }}>Arraste PDF ou imagem</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>ou clique para selecionar</p>
+              <span className="btn-secondary inline-block text-[11px] px-2.5 py-1 mt-2.5">Selecionar arquivo</span>
+            </>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/jpg,application/pdf"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }}
+          />
+        </div>
+      </div>
+
+      <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Aceita: PDF, JPG, PNG · Máx. 10MB</p>
+    </div>
+  )
+}
+
+// ── Grupo de mensagem (settings-group) ────────────────────────────
+function MsgGroup({ title, subtitle, enabled, onToggle, text, onTextChange, variables, defaultMsg, onSave, saving, dirty, onReset }: {
   title: string; subtitle: string; enabled: boolean; onToggle: (v: boolean) => void
   text: string; onTextChange: (v: string) => void; variables: string[]
   defaultMsg: string; onSave: () => void; saving: boolean; dirty: boolean
@@ -55,60 +174,37 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
       className="rounded-2xl overflow-hidden"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
-      <div className="px-5 py-5 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: 'var(--brand-s-solid)' }}
-            >
-              <MessageSquare className="w-4 h-4" style={{ color: 'var(--brand)' }} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>{subtitle}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span
-              className="font-mono text-[10px] tracking-wider transition-colors"
-              style={{ color: enabled ? 'var(--brand)' : 'var(--t3)' }}
-            >
-              {enabled ? 'ATIVO' : 'INATIVO'}
-            </span>
-            <Toggle checked={enabled} onChange={onToggle} />
-          </div>
+      {/* Linha principal */}
+      <div className="flex items-center justify-between gap-4 px-[18px] py-3.5">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--t2)' }}>{subtitle}</p>
         </div>
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <StatusTag active={enabled} />
+          <Toggle checked={enabled} onChange={onToggle} />
+        </div>
+      </div>
+
+      {/* Painel da mensagem */}
+      <div className="px-[18px] py-3" style={{ background: 'var(--raised)' }}>
+        <textarea
+          value={text}
+          onChange={e => enabled && onTextChange(e.target.value)}
+          rows={enabled ? 5 : 2}
+          disabled={!enabled}
+          placeholder={defaultMsg}
+          className="w-full rounded-xl px-3.5 py-2.5 text-xs resize-none focus:outline-none transition-all leading-relaxed"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--t1)',
+            opacity: enabled ? 1 : 0.5,
+          }}
+        />
 
         {enabled && (
-          <div className="space-y-3 pt-1">
-            <div
-              className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
-              style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,.15)' }}
-            >
-              <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
-              <div className="leading-relaxed" style={{ color: 'var(--t2)' }}>
-                A assistente vai enviar essa mensagem <strong style={{ color: 'var(--t1)' }}>exatamente como você escreveu</strong>. Use as variáveis abaixo para inserir os planos automaticamente.
-              </div>
-            </div>
-
-            <div className="relative">
-              <textarea
-                value={text}
-                onChange={e => onTextChange(e.target.value)}
-                rows={6}
-                placeholder={defaultMsg}
-                className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none transition-colors leading-relaxed"
-                style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
-              />
-              <span
-                className="absolute bottom-2.5 right-3 font-mono text-[10px]"
-                style={{ color: 'var(--t3)' }}
-              >
-                {text.length} chars
-              </span>
-            </div>
-
+          <div className="mt-2 space-y-2.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-mono" style={{ color: 'var(--t3)' }}>Variáveis:</span>
               {variables.map(v => (
@@ -117,26 +213,21 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
                   onClick={() => onTextChange(text + v)}
                   className="font-mono text-[11px] px-2 py-0.5 rounded-full transition-colors"
                   style={{ background: 'var(--brand-s)', color: 'var(--brand)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand-s-solid)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand-s)'}
                 >
                   {v}
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-2 pt-1">
-              <button onClick={onSave} disabled={saving || !dirty} className="btn-primary text-[12px] px-3 py-1.5">
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Salvar mensagens
+            <div className="flex items-center gap-2">
+              <button onClick={onSave} disabled={saving || !dirty} className="btn-primary text-[12px] px-3 py-1.5 disabled:opacity-50">
+                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Salvar mensagem
               </button>
               {onReset && (
                 <button
                   onClick={onReset}
                   className="text-xs px-2 py-1.5 transition-colors"
                   style={{ color: 'var(--t3)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--t2)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--t3)'}
                 >
                   Restaurar padrão
                 </button>
@@ -144,23 +235,15 @@ function MsgCard({ title, subtitle, enabled, onToggle, text, onTextChange, varia
             </div>
           </div>
         )}
-
-        {!enabled && (
-          <p className="text-xs leading-relaxed px-1" style={{ color: 'var(--t3)' }}>
-            Quando desativado, a assistente usa o padrão do sistema para esta modalidade.
-          </p>
-        )}
       </div>
     </div>
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────
+// ── Página ────────────────────────────────────────────────────────
 export default function PlanosPage() {
   const qc = useQueryClient()
 
-  type MediaVariant = 'geral' | 'online' | 'presencial'
-  type MediaEntry = { type: string; name: string; enabled: boolean } | null
   const [plansMedia, setPlansMedia] = useState<Record<MediaVariant, MediaEntry>>({ geral: null, online: null, presencial: null })
   const [uploadingVariant, setUploadingVariant] = useState<MediaVariant | null>(null)
 
@@ -289,163 +372,100 @@ export default function PlanosPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Planos</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>Configure a imagem e a mensagem que a assistente envia ao apresentar os planos</p>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>Configure os planos que você oferece e as mensagens automáticas de entrega</p>
       </div>
 
-      {/* ── Mídia dos Planos ──────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Imagem ou PDF dos planos</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
-            A IA envia automaticamente quando apresentar os planos — <strong style={{ color: 'var(--t2)' }}>sem listar preços em texto</strong>
-          </p>
+      {/* ── Modalidades de atendimento ─────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--t1)' }}>Modalidades de atendimento</h2>
+        <div className="grid md:grid-cols-3 gap-3.5">
+          <ModalityCard
+            emoji="🌐"
+            iconBg="rgba(10,132,255,0.1)"
+            title="Online"
+            subtitle="Teleconsulta / remoto"
+            info={plansMedia.online}
+            loading={uploadingVariant === 'online'}
+            onUpload={f => uploadMedia(f, 'online')}
+            onDelete={() => deleteMedia('online')}
+            onToggle={v => toggleMedia('online', v)}
+          />
+          <ModalityCard
+            emoji="📍"
+            iconBg="rgba(0,194,124,0.1)"
+            title="Presencial"
+            subtitle="Consultório / clínica"
+            info={plansMedia.presencial}
+            loading={uploadingVariant === 'presencial'}
+            onUpload={f => uploadMedia(f, 'presencial')}
+            onDelete={() => deleteMedia('presencial')}
+            onToggle={v => toggleMedia('presencial', v)}
+          />
+          <ModalityCard
+            emoji="✨"
+            iconBg="rgba(191,90,242,0.1)"
+            title="Geral"
+            subtitle="Ambas as modalidades"
+            info={plansMedia.geral}
+            loading={uploadingVariant === 'geral'}
+            onUpload={f => uploadMedia(f, 'geral')}
+            onDelete={() => deleteMedia('geral')}
+            onToggle={v => toggleMedia('geral', v)}
+          />
         </div>
-        {([
-          { variant: 'online'     as MediaVariant, label: '🌐 Online',    color: '#3B82F6',   bg: 'rgba(59,130,246,.1)' },
-          { variant: 'presencial' as MediaVariant, label: '📍 Presencial', color: '#8B5CF6',   bg: 'rgba(139,92,246,.1)' },
-          { variant: 'geral'      as MediaVariant, label: 'Geral (ambos)', color: 'var(--t2)', bg: 'var(--raised)' },
-        ]).map(({ variant, label, color, bg }) => {
-          const info    = plansMedia[variant]
-          const loading = uploadingVariant === variant
-          return (
-            <div
-              key={variant}
-              className="rounded-2xl overflow-hidden"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-            >
-              <div className="px-5 py-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold" style={{ color }}>{label}</span>
-                    {!info && <span className="text-[10px] font-mono" style={{ color: 'var(--t3)' }}>sem arquivo</span>}
-                  </div>
-                  {info && (
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="font-mono text-[10px] tracking-wider transition-colors"
-                        style={{ color: info.enabled ? 'var(--brand)' : 'var(--t3)' }}
-                      >
-                        {info.enabled ? 'ATIVO' : 'INATIVO'}
-                      </span>
-                      <Toggle checked={info.enabled} onChange={val => toggleMedia(variant, val)} />
-                    </div>
-                  )}
-                </div>
-
-                {info ? (
-                  <div
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                    style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: bg }}
-                    >
-                      {info.type === 'pdf'
-                        ? <FileText className="w-4 h-4" style={{ color: 'var(--t2)' }} />
-                        : <FileImage className="w-4 h-4" style={{ color: 'var(--t2)' }} />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate" style={{ color: 'var(--t1)' }}>{info.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--t3)' }}>
-                        {info.type === 'pdf' ? 'PDF' : 'Imagem'} · {info.enabled ? '✅ Ativa' : '⏸ Desativada'}
-                      </p>
-                    </div>
-                    <label
-                      className="cursor-pointer text-xs flex-shrink-0 transition-colors"
-                      style={{ color: 'var(--brand)' }}
-                    >
-                      Trocar
-                      <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
-                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f, variant); e.target.value = '' }} />
-                    </label>
-                    <button
-                      onClick={() => deleteMedia(variant)}
-                      className="p-1 flex-shrink-0 transition-colors"
-                      style={{ color: 'var(--t3)' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#EF4444'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--t3)'}
-                    >
-                      <XIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
-                      loading ? 'opacity-50 pointer-events-none' : ''
-                    )}
-                    style={{ borderColor: 'var(--border)' }}
-                    onMouseEnter={e => !loading && ((e.currentTarget as HTMLElement).style.background = 'var(--raised)')}
-                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = '')}
-                  >
-                    <Upload className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t3)' }} />
-                    <span className="text-sm" style={{ color: 'var(--t3)' }}>
-                      {loading ? 'Enviando…' : 'Clique para enviar imagem ou PDF'}
-                    </span>
-                    <input type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadMedia(f, variant); e.target.value = '' }} />
-                  </label>
-                )}
-              </div>
-            </div>
-          )
-        })}
+        <p className="text-[11px] mt-2.5" style={{ color: 'var(--t3)' }}>
+          A IA envia o arquivo automaticamente ao apresentar os planos
+        </p>
       </div>
 
-      {/* ── Mensagens dos Planos ──────────────────────────────────── */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Mensagens dos planos</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>Configure exatamente o que a assistente diz ao apresentar seus planos</p>
+      {/* ── Mensagens dos planos ───────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--t1)' }}>Mensagens dos planos</h2>
+        <div className="flex flex-col gap-2.5">
+          <MsgGroup
+            title="Mensagem planos Online"
+            subtitle="Enviada automaticamente quando o cliente pergunta sobre planos online"
+            enabled={msgOnlineEnabled}
+            onToggle={toggleMsgOnline}
+            text={msgOnlineText}
+            onTextChange={v => { setMsgOnlineText(v); setMsgDirty(true) }}
+            variables={['{planos_online}', '{planos}', '{nutri}']}
+            defaultMsg={`Temos essas opções de consultoria online:\n\n{planos_online}\n\nQual faz mais sentido pra você agora?`}
+            onSave={saveMsgConfig}
+            saving={savingMsg}
+            dirty={msgDirty}
+          />
+          <MsgGroup
+            title="Mensagem planos Presenciais"
+            subtitle="Enviada automaticamente quando o cliente pergunta sobre planos presenciais"
+            enabled={msgPresencialEnabled}
+            onToggle={toggleMsgPresencial}
+            text={msgPresencialText}
+            onTextChange={v => { setMsgPresencialText(v); setMsgDirty(true) }}
+            variables={['{planos_presencial}', '{planos}', '{nutri}']}
+            defaultMsg={`Para o atendimento presencial temos:\n\n{planos_presencial}\n\nQual faz mais sentido pra você?`}
+            onSave={saveMsgConfig}
+            saving={savingMsg}
+            dirty={msgDirty}
+          />
+          <MsgGroup
+            title="Mensagem geral (todos os planos)"
+            subtitle="Usada quando nenhuma mensagem específica acima estiver ativa"
+            enabled={msgEnabled}
+            onToggle={toggleMsg}
+            text={msgText}
+            onTextChange={v => { setMsgText(v); setMsgDirty(true) }}
+            variables={['{planos}', '{planos_online}', '{planos_presencial}', '{nutri}']}
+            defaultMsg={DEFAULT_SERVICES_MSG}
+            onSave={saveMsgConfig}
+            saving={savingMsg}
+            dirty={msgDirty}
+            onReset={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
+          />
         </div>
-
-        <MsgCard
-          title="🌐 Mensagem dos planos Online"
-          subtitle="Usada quando o cliente pergunta sobre planos online"
-          enabled={msgOnlineEnabled}
-          onToggle={toggleMsgOnline}
-          text={msgOnlineText}
-          onTextChange={v => { setMsgOnlineText(v); setMsgDirty(true) }}
-          variables={['{planos_online}', '{planos}', '{nutri}']}
-          defaultMsg={`Temos essas opções de consultoria online:\n\n{planos_online}\n\nQual faz mais sentido pra você agora?`}
-          onSave={saveMsgConfig}
-          saving={savingMsg}
-          dirty={msgDirty}
-        />
-
-        <MsgCard
-          title="📍 Mensagem dos planos Presenciais"
-          subtitle="Usada quando o cliente pergunta sobre planos presenciais"
-          enabled={msgPresencialEnabled}
-          onToggle={toggleMsgPresencial}
-          text={msgPresencialText}
-          onTextChange={v => { setMsgPresencialText(v); setMsgDirty(true) }}
-          variables={['{planos_presencial}', '{planos}', '{nutri}']}
-          defaultMsg={`Para o atendimento presencial temos:\n\n{planos_presencial}\n\nQual faz mais sentido pra você?`}
-          onSave={saveMsgConfig}
-          saving={savingMsg}
-          dirty={msgDirty}
-        />
-
-        <MsgCard
-          title="Mensagem geral (todos os planos)"
-          subtitle="Usada quando nenhuma mensagem específica acima estiver ativa"
-          enabled={msgEnabled}
-          onToggle={toggleMsg}
-          text={msgText}
-          onTextChange={v => { setMsgText(v); setMsgDirty(true) }}
-          variables={['{planos}', '{planos_online}', '{planos_presencial}', '{nutri}']}
-          defaultMsg={DEFAULT_SERVICES_MSG}
-          onSave={saveMsgConfig}
-          saving={savingMsg}
-          dirty={msgDirty}
-          onReset={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
-        />
       </div>
     </div>
   )

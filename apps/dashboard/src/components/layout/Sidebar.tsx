@@ -206,7 +206,7 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
   const pathname = usePathname()
 
   return (
-    <div className="flex flex-col h-full" style={{ background: '#1C1C1E' }}>
+    <div className="flex flex-col h-full" style={{ background: '#111113' }}>
 
       {/* Logo */}
       <div
