@@ -72,8 +72,8 @@ export default function EquipePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Equipe</h1>
-          <p className="text-[14px] mt-0.5" style={{ color: 'var(--t2)' }}>
+          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Equipe</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
             Adicione colaboradores e defina o que cada um pode fazer
           </p>
         </div>

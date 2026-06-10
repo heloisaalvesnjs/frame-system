@@ -396,9 +396,9 @@ export default function DisponibilidadePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-t1">Disponibilidade</h1>
-          <p className="text-sm text-t3 mt-0.5">
-            Configure os dias e horários. A assistente usa isso para agendar consultas.
+          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Disponibilidade</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+            Configure seus horários, pausas e dias sem atendimento
           </p>
           {activeDays > 0 && (
             <p className="text-sm text-brand-400 font-medium mt-2">

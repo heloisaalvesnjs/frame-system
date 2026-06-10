@@ -784,9 +784,22 @@ export default function AgendaPage() {
 
   const weekRangeLabel = `${format(weekStart, "d 'de' MMM", { locale: ptBR })} – ${format(weekEnd, "d 'de' MMM yyyy", { locale: ptBR })}`
   const isCurrentWeek = isSameDay(weekStart, startOfWeek(today, { weekStartsOn: 1 }))
+  const todayCount = appointments.filter(a => isToday(parseISO(a.scheduled_at)) && a.status !== 'cancelled').length
 
   return (
-    <div className="flex h-[calc(100vh-60px)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
+
+      {/* Header */}
+      <div className="flex items-start justify-between px-6 pt-6 pb-2 flex-shrink-0">
+        <div>
+          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Agenda</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+            {format(today, 'MMMM yyyy', { locale: ptBR })} · {todayCount} consulta{todayCount !== 1 ? 's' : ''} hoje
+          </p>
+        </div>
+      </div>
+
+    <div className="flex flex-1 overflow-hidden">
 
       {/* ── Left sidebar ──────────────────────────────────────────── */}
       <aside className="hidden lg:flex flex-col gap-5 w-[200px] flex-shrink-0 px-4 py-5 overflow-y-auto"
@@ -869,6 +882,7 @@ export default function AgendaPage() {
           onClickSlot={handleClickSlot}
         />
       </div>
+    </div>
 
       {/* Modals */}
       {selectedAppt && (

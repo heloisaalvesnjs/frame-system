@@ -93,7 +93,7 @@ export default function AdminPage() {
           <Shield className="w-5 h-5" style={{ color: 'var(--brand)' }} />
         </div>
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
+          <h1 className="font-display text-[22px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
             Painel Administrativo
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Conta mestre — Frame System</p>
