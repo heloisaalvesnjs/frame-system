@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-06-11 - Claude Code (commit/push do trabalho acumulado)
+
+A pedido da usuária ("PRIORIZE O 2"), todo o trabalho acumulado (plano de
+13 itens B.4-C.13 + redesign do dashboard + docs) foi commitado e enviado
+para `origin/main` (deploy automático no Vercel):
+- `2075f2f` feat(api): cérebro da IA - perfil da assistente, copiloto,
+  memória do paciente e logs de conversas (B.4-C.13)
+- `73019f5` feat(dashboard): UI para perfil da assistente, copiloto e
+  avaliação de conversas + ajustes de proxy/preview
+- `da8cdff` docs: instruções de projeto (AGENTS/CLAUDE), memória
+  compartilhada e script de dev
+
+`npm run build` em `apps/dashboard` validado antes do push (sem erros).
+`.gitignore` atualizado para ignorar `.agents/`, `.tmp-*` e
+`apps/dashboard/next-env.d.ts`. Mockups soltos na raiz não foram
+versionados (ver MEMORY.md).
+
 ## 2026-06-11 - Claude Code (C.13)
 
 - Implementou C.13 (logs/avaliacao de conversas) - ultimo item do plano

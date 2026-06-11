@@ -18,10 +18,11 @@
   `/conversas`: cards de metricas (Resolvidas/Agendamentos/Vendas/Sem
   retorno) + rodape de classificacao para conversas resolvidas. `tsc
   --noEmit` ok em api e dashboard. Detalhes completos em LOG.md.
-- **Em andamento**: Plano consolidado de 13 itens - **13/13 concluidos**.
-  A.3 ficou como decisao registrada (sem codigo, ver MEMORY.md). Sem
-  proximas tarefas definidas - aguardando novas prioridades da Heloisa/
-  Codex.
+- **Em andamento**: Plano consolidado de 13 itens - **13/13 concluidos** e
+  **commitado/pushado para origin/main** (3 commits, ver LOG.md), deploy
+  disparado no Vercel. A.3 ficou como decisao registrada (sem codigo, ver
+  MEMORY.md). Sem proximas tarefas definidas - aguardando novas prioridades
+  da Heloisa/Codex.
 - **Bloqueado/aguardando**: limite do Figma MCP liberado ou plano atualizado. Nota: nao ha credenciais de teste no
   repo para verificar UI no preview com login - mudancas validadas so por
   `tsc --noEmit`.

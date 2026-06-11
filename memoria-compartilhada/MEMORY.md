@@ -76,7 +76,16 @@ o Codex.
   como decisão registrada sem mudança de código (ver entrada de 2026-06-11
   sobre `ai_training_notes` acima) - pendência de produto a decidir com a
   Heloísa/Codex quando fizer sentido.
-- Sem commit/push feito - aguardando revisão da usuária.
+- (2026-06-11) Commit/push feito a pedido da usuária ("PRIORIZE O 2"): todo o
+  trabalho acumulado (B.4-C.13 + redesign do dashboard + docs) foi enviado
+  para `origin/main` em 3 commits (backend "cérebro da IA", UI do
+  dashboard/treinamento/conversas, e docs/memória compartilhada). Build de
+  `apps/dashboard` validado com `npm run build` antes do push. Deploy
+  disparado no Vercel. Arquivos `.tmp-*`, `.agents/` e `next-env.d.ts` foram
+  adicionados ao `.gitignore`. Mockups soltos na raiz (`logo_preview.html`,
+  `mockup-*.html`, `marketing/instagram-carousel-01.html`) ficaram de fora do
+  commit por não serem código/feature - avaliar com a Heloísa se devem ser
+  versionados ou descartados.
 
 ## PendÃªncias em aberto
 
