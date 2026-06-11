@@ -40,3 +40,8 @@ Thumbs.db
 .github/
 .aiox/
 Obsidian/
+
+# Agentes locais e arquivos temporarios
+.agents/
+.tmp-*
+apps/dashboard/next-env.d.ts
