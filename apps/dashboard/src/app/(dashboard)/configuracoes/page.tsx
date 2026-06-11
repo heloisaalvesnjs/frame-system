@@ -12,6 +12,7 @@ import {
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { Badge, Btn } from '@/components/ui/finance-primitives'
 
 // ─── Perfil ───────────────────────────────────────────────────────
 
@@ -74,14 +75,7 @@ function PerfilSection() {
           <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Perfil</p>
           <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Suas informações profissionais</p>
         </div>
-        {isDirty && (
-          <span
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-            style={{ background: '#FFFBEB', color: '#D97706' }}
-          >
-            Alterações pendentes
-          </span>
-        )}
+        {isDirty && <Badge variant="warning">Alterações pendentes</Badge>}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="p-6">
@@ -144,10 +138,10 @@ function PerfilSection() {
           className="flex items-center gap-3 pt-4"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          <button type="submit" disabled={isSubmitting || !isDirty} className="btn-primary">
+          <Btn type="submit" disabled={isSubmitting || !isDirty}>
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar perfil
-          </button>
+          </Btn>
           {!isDirty && (
             <span className="text-[12px] font-mono" style={{ color: 'var(--t3)' }}>
               Sem alterações pendentes
@@ -277,10 +271,10 @@ function SegurancaSection() {
               />
             </div>
             <div className="mt-4">
-              <button type="submit" disabled={isSubmitting} className="btn-primary">
+              <Btn type="submit" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                 Salvar nova senha
-              </button>
+              </Btn>
             </div>
           </form>
         </div>
@@ -329,12 +323,7 @@ function SegurancaSection() {
                 <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>MacBook Pro — Chrome</p>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>São Paulo, BR · Agora</p>
               </div>
-              <span
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
-                style={{ background: '#ECFDF5', color: '#059669' }}
-              >
-                Esta sessão
-              </span>
+              <Badge variant="success">Esta sessão</Badge>
             </div>
 
             {/* Other session */}
@@ -347,14 +336,9 @@ function SegurancaSection() {
                 <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>iPhone · Safari</p>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>São Paulo, BR · há 2 dias</p>
               </div>
-              <button
-                className="text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                style={{ background: '#FEF2F2', color: '#EF4444' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FEE2E2'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#FEF2F2'}
-              >
+              <Btn variant="outline" size="sm" className="!text-[var(--danger)] !border-[var(--danger)]/20 flex-shrink-0">
                 Encerrar
-              </button>
+              </Btn>
             </div>
           </div>
         </div>
@@ -451,10 +435,10 @@ export default function ConfiguracoesPage() {
   return (
     <div className="p-6 md:p-8 max-w-3xl space-y-6">
       <div>
-        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
           Configurações
         </h1>
-        <p className="text-[14px] mt-0.5" style={{ color: 'var(--t2)' }}>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
           Gerencie seu perfil, segurança e notificações
         </p>
       </div>

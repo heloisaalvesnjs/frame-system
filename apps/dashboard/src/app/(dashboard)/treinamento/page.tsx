@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Btn } from '@/components/ui/finance-primitives'
 
 // ═══════════════════════════════════════════════════════
 // Shared helpers
@@ -269,9 +270,9 @@ function InterviewMode({ onSaved }: { onSaved: () => void }) {
           5 perguntas para a assistente entender como você trabalha. Responda como você mesmo falaria.
         </p>
       </div>
-      <button onClick={() => setStage('q')} className="btn-primary">
+      <Btn onClick={() => setStage('q')}>
         Começar <ArrowRight className="w-3.5 h-3.5" />
-      </button>
+      </Btn>
     </div>
   )
 
@@ -293,12 +294,12 @@ function InterviewMode({ onSaved }: { onSaved: () => void }) {
         style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t2)' }}
       />
       <div className="flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="btn-primary">
+        <Btn onClick={save} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Salvar treinamento
-        </button>
-        <button className="btn-ghost gap-1.5" onClick={back}><ArrowLeft className="w-3.5 h-3.5" /> Ajustar</button>
-        <button className="btn-ghost" onClick={() => { setStage('intro'); setQi(0); setAns({}) }}>Refazer</button>
+        </Btn>
+        <Btn variant="ghost" size="sm" onClick={back}><ArrowLeft className="w-3.5 h-3.5" /> Ajustar</Btn>
+        <Btn variant="ghost" size="sm" onClick={() => { setStage('intro'); setQi(0); setAns({}) }}>Refazer</Btn>
       </div>
     </div>
   )
@@ -399,12 +400,12 @@ function InterviewMode({ onSaved }: { onSaved: () => void }) {
       )}
 
       <div className="flex items-center justify-between pt-1">
-        <button className="btn-ghost gap-1.5 text-sm" onClick={back}>
+        <Btn variant="ghost" size="sm" onClick={back}>
           <ArrowLeft className="w-3.5 h-3.5" /> Anterior
-        </button>
-        <button className="btn-primary" onClick={next} disabled={!canNext()}>
+        </Btn>
+        <Btn onClick={next} disabled={!canNext()}>
           {qi === total - 1 ? 'Ver resultado' : 'Próxima'} <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        </Btn>
       </div>
     </div>
   )
@@ -614,13 +615,13 @@ function ManualSection() {
         className="textarea font-mono text-[13px]"
       />
       <div className="flex items-center gap-3">
-        <button onClick={handleSaveManual} disabled={saving || !content.trim()} className="btn-primary">
+        <Btn onClick={handleSaveManual} disabled={saving || !content.trim()}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Salvar manual
-        </button>
-        <button className="btn-ghost gap-1.5 text-sm" onClick={() => setMode('pdf')}>
+        </Btn>
+        <Btn variant="ghost" size="sm" onClick={() => setMode('pdf')}>
           <Upload className="w-3.5 h-3.5" /> Ou enviar PDF
-        </button>
+        </Btn>
       </div>
     </div>
   )
@@ -649,9 +650,9 @@ function ManualSection() {
             <p className="text-sm font-medium truncate" style={{ color: 'var(--brand)' }}>{assistant.pdf_filename}</p>
             <p className="text-xs" style={{ color: 'var(--t3)' }}>PDF ativo</p>
           </div>
-          <button onClick={handleDelete} className="btn-secondary text-[12px] px-2.5 py-1.5">
+          <Btn variant="secondary" size="sm" onClick={handleDelete} className="!text-[12px]">
             <Trash2 className="w-3.5 h-3.5" /> Remover
-          </button>
+          </Btn>
         </div>
       ) : (
         <div
@@ -672,10 +673,10 @@ function ManualSection() {
       {pdfFile && (
         <div className="flex items-center gap-3">
           <p className="text-sm flex-1 truncate" style={{ color: 'var(--t2)' }}>{pdfFile.name}</p>
-          <button onClick={handleUploadPdf} disabled={uploading} className="btn-primary text-[12px] px-3 py-1.5">
+          <Btn size="sm" onClick={handleUploadPdf} disabled={uploading} className="!text-[12px]">
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Enviar
-          </button>
+          </Btn>
         </div>
       )}
     </div>
@@ -908,10 +909,10 @@ function AutomacoesSection() {
         />
       </div>
 
-      <button onClick={saveAssistantFields} disabled={savingAssist} className="btn-primary">
+      <Btn onClick={saveAssistantFields} disabled={savingAssist}>
         {savingAssist ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         Salvar automações
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -1258,10 +1259,10 @@ function TabAssistente() {
       </div>
 
       <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-        <button type="submit" disabled={isSubmitting} className="btn-primary mt-4">
+        <Btn type="submit" disabled={isSubmitting} className="mt-4">
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar configurações
-        </button>
+        </Btn>
       </div>
     </form>
   )
@@ -1493,15 +1494,16 @@ function HorarioFuncionamento() {
               </div>
             )
           })}
-          <button
+          <Btn
             type="button"
+            variant="secondary"
             onClick={saveSchedule}
             disabled={savingSched}
-            className="btn-secondary w-fit mt-1"
+            className="w-fit mt-1"
           >
             {savingSched ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar horários
-          </button>
+          </Btn>
         </div>
       )}
 
@@ -1525,15 +1527,15 @@ function HorarioFuncionamento() {
         />
       </div>
 
-      <button
+      <Btn
         type="button"
         onClick={save24hSettings}
         disabled={savingSettings}
-        className="btn-primary w-fit"
+        className="w-fit"
       >
         {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Salvar configurações de horário
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -1685,10 +1687,10 @@ function LocationCard({
             </div>
           </div>
 
-          <button type="button" onClick={handleSave} disabled={saving} className="btn-primary w-full">
+          <Btn type="button" onClick={handleSave} disabled={saving} className="w-full justify-center">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar local
-          </button>
+          </Btn>
         </div>
       )}
     </div>
@@ -1994,10 +1996,10 @@ export default function TreinamentoPage() {
 
       {/* Header */}
       <div>
-        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
           Assistente IA
         </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
           Configure o treinamento, personalidade e horários da sua assistente
         </p>
       </div>

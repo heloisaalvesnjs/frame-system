@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { Shield, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { Btn } from '@/components/ui/finance-primitives'
 
 const schema = z.object({
   current_password: z.string().min(1, 'Informe a senha atual'),
@@ -70,11 +71,11 @@ export default function SegurancaPage() {
   return (
     <div className="p-6 md:p-8 max-w-lg">
 
-      <div className="mb-8">
-        <h1 className="text-[24px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
+      <div className="mb-6">
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
           Segurança
         </h1>
-        <p className="text-[14px] mt-1" style={{ color: 'var(--t3)' }}>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
           Gerencie sua senha de acesso
         </p>
       </div>
@@ -131,14 +132,10 @@ export default function SegurancaPage() {
               {...register('confirm_password')}
             />
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary w-full mt-2"
-            >
+            <Btn type="submit" disabled={isSubmitting} className="w-full mt-2">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
               Salvar nova senha
-            </button>
+            </Btn>
           </form>
         </div>
       </div>

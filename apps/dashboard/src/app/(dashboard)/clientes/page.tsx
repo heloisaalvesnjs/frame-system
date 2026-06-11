@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { Badge, Btn, Avatar } from '@/components/ui/finance-primitives'
 
 interface Client {
   id: string
@@ -30,10 +31,7 @@ function formatPhone(phone: string) {
   return phone
 }
 
-const AVATAR_COLORS = [
-  '#5B6EF5', '#E84393', '#F5A623', '#27AE60',
-  '#9B59B6', '#E74C3C', '#1ABC9C', '#2980B9',
-]
+const AVATAR_COLORS = ['blue', 'green', 'purple', 'orange', 'pink'] as const
 
 function getAvatarColor(id: string) {
   const n = id.charCodeAt(0) + id.charCodeAt(id.length - 1)
@@ -57,22 +55,15 @@ function isNew(client: Client) {
   return Date.now() - new Date(client.created_at).getTime() < THIRTY_DAYS
 }
 
-const STATUS_STYLE: Record<ClientStatus, { label: string; bg: string; color: string }> = {
-  ativa:    { label: 'Ativa',    bg: 'rgba(0,194,124,0.1)',  color: '#059669' },
-  pendente: { label: 'Pendente', bg: 'rgba(245,166,35,0.12)', color: '#B45309' },
-  inativa:  { label: 'Inativa',  bg: 'var(--raised)',         color: 'var(--t3)' },
+const STATUS_BADGE: Record<ClientStatus, { label: string; variant: 'success' | 'warning' | 'default' }> = {
+  ativa:    { label: 'Ativa',    variant: 'success' },
+  pendente: { label: 'Pendente', variant: 'warning' },
+  inativa:  { label: 'Inativa',  variant: 'default' },
 }
 
 function StatusTag({ status }: { status: ClientStatus }) {
-  const s = STATUS_STYLE[status]
-  return (
-    <span
-      className="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold"
-      style={{ background: s.bg, color: s.color }}
-    >
-      {s.label}
-    </span>
-  )
+  const s = STATUS_BADGE[status]
+  return <Badge variant={s.variant}>{s.label}</Badge>
 }
 
 // ── Modal de novo cliente ─────────────────────────────────────────────────────
@@ -297,10 +288,10 @@ export default function ClientesPage() {
               : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex-shrink-0">
+        <Btn onClick={() => setShowModal(true)} className="flex-shrink-0">
           <UserPlus className="w-4 h-4" />
           Novo cliente
-        </button>
+        </Btn>
       </div>
 
       {/* Search + filtros */}
@@ -364,17 +355,9 @@ export default function ClientesPage() {
             {search || filter !== 'todos' ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado ainda'}
           </p>
           {!search && filter === 'todos' && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl mx-auto hover:opacity-80 transition-opacity"
-              style={{
-                background: 'var(--brand-s)',
-                border: '1px solid rgba(0,194,124,0.2)',
-                color: 'var(--brand)',
-              }}
-            >
+            <Btn onClick={() => setShowModal(true)} className="mt-4 mx-auto">
               <UserPlus className="w-4 h-4" /> Cadastrar primeiro cliente
-            </button>
+            </Btn>
           )}
           {(search || filter !== 'todos') && (
             <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Tente outro nome, número ou filtro</p>
@@ -402,9 +385,6 @@ export default function ClientesPage() {
             <tbody>
               {filtered.map(client => {
                 const name = (client.name && client.name !== 'Cliente') ? client.name : null
-                const initials = name
-                  ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-                  : '#'
                 const color = getAvatarColor(client.id)
                 const status = getStatus(client)
 
@@ -418,12 +398,7 @@ export default function ClientesPage() {
                   >
                     <td style={{ padding: '13px 18px' }}>
                       <Link href={`/clientes/${client.id}`} className="flex items-center gap-3">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
-                          style={{ background: color, color: '#fff' }}
-                        >
-                          {initials}
-                        </div>
+                        <Avatar name={name ?? '#'} color={color} size={32} />
                         <div className="min-w-0">
                           <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: 'var(--t1)' }}>
                             {name ?? formatPhone(client.phone)}
@@ -459,8 +434,8 @@ export default function ClientesPage() {
                       <StatusTag status={status} />
                     </td>
                     <td style={{ padding: '13px 18px', textAlign: 'right' }}>
-                      <Link href={`/clientes/${client.id}`} className="btn-secondary !px-3 !py-1.5 text-xs">
-                        Ver
+                      <Link href={`/clientes/${client.id}`}>
+                        <Btn variant="secondary" size="sm">Ver</Btn>
                       </Link>
                     </td>
                   </tr>

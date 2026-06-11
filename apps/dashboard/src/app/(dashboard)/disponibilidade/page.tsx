@@ -6,6 +6,7 @@ import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Btn } from '@/components/ui/finance-primitives'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface DayConfig {
@@ -247,15 +248,11 @@ function BlockedCalendar() {
       {/* Calendar */}
       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <button onClick={prevMonth} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--t3)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--raised)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--t3)' }}>
-            <ChevronLeft className="w-4 h-4" /></button>
+          <Btn variant="ghost" size="sm" onClick={prevMonth} className="!px-2">
+            <ChevronLeft className="w-4 h-4" /></Btn>
           <span className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>{MONTHS[month]} {year}</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--t3)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--raised)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--t3)' }}>
-            <ChevronRight className="w-4 h-4" /></button>
+          <Btn variant="ghost" size="sm" onClick={nextMonth} className="!px-2">
+            <ChevronRight className="w-4 h-4" /></Btn>
         </div>
         <div className="grid grid-cols-7 px-3 pt-3">
           {WEEK_DAYS.map((d, i) => <div key={i} className="text-center text-[10px] font-mono text-t3 py-1">{d}</div>)}
@@ -295,13 +292,11 @@ function BlockedCalendar() {
               className="w-full rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
               style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
             <div className="flex gap-2">
-              <button onClick={() => setSelected(null)} className="flex-1 py-2 rounded-lg border text-sm text-t2 hover:text-t1 transition-colors" style={{ borderColor: 'var(--border)' }}>Cancelar</button>
-              <button onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
-                style={{ background: '#F59E0B', color: '#fff' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#D97706'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#F59E0B'}
-              >Confirmar</button>
+              <Btn variant="outline" onClick={() => setSelected(null)} className="flex-1">Cancelar</Btn>
+              <Btn
+                onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
+                className="flex-1 !bg-[#F59E0B] hover:!bg-[#D97706]"
+              >Confirmar</Btn>
             </div>
           </div>
         ) : (
@@ -322,9 +317,9 @@ function BlockedCalendar() {
                   </span>
                   {b.reason && <span className="text-xs text-t3 ml-2">· {b.reason}</span>}
                 </div>
-                <button onClick={() => delMut.mutate(b.blocked_date.slice(0, 10))} className="p-1 rounded text-t3 hover:text-red-400 transition-colors">
+                <Btn variant="ghost" size="sm" onClick={() => delMut.mutate(b.blocked_date.slice(0, 10))} className="!px-1.5 !text-[var(--t3)] hover:!text-[var(--danger)]">
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Btn>
               </div>
             ))}
           </div>
@@ -406,20 +401,17 @@ export default function DisponibilidadePage() {
             </p>
           )}
         </div>
-        <button
+        <Btn
           onClick={() => saveMut.mutate(days)}
           disabled={!dirty || saveMut.isPending}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
-          style={dirty
-            ? { background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-sm)' }
-            : { background: 'var(--raised)', color: 'var(--t3)', cursor: 'not-allowed' }
-          }
+          variant={dirty ? 'primary' : 'secondary'}
+          className="whitespace-nowrap flex-shrink-0"
         >
           {saveMut.isPending
             ? <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.4)', borderTopColor: '#fff' }} />
             : <CheckCircle className="w-4 h-4" />}
           {dirty ? 'Salvar' : 'Salvo'}
-        </button>
+        </Btn>
       </div>
 
       {/* Dias úteis */}

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
 
 // ── Status checker (configuração da IA) ───────────────────────────
 interface StatusItem {
@@ -31,7 +32,7 @@ function AIStatusChecker() {
   ]
   const score = checks.filter(c => c.ok).length
   return (
-    <div className="card" style={{ padding: '18px' }}>
+    <Card className="!p-[18px]">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Configuração da IA</p>
         <span
@@ -54,7 +55,7 @@ function AIStatusChecker() {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -100,15 +101,9 @@ function VarTags({ vars }: { vars: string[] }) {
 // ── Tag de status ─────────────────────────────────────────────────
 function FlowTag({ active }: { active: boolean }) {
   return (
-    <span
-      className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide"
-      style={active
-        ? { background: 'var(--brand-s-solid)', color: 'var(--brand-h)' }
-        : { background: 'var(--raised)', color: 'var(--t3)' }
-      }
-    >
+    <Badge variant={active ? 'success' : 'default'}>
       {active ? 'Ativa' : 'Inativa'}
-    </span>
+    </Badge>
   )
 }
 
@@ -157,9 +152,9 @@ function AutoCard({ trigger, title, desc, enabled, onToggle, expanded, onEdit, c
         <span className="text-[11px]" style={{ color: 'var(--t3)' }}>
           {enabled ? 'Executada automaticamente pela IA' : 'Fluxo pausado'}
         </span>
-        <button onClick={onEdit} className="btn-secondary text-[11px] px-2.5 py-1 ml-auto">
+        <Btn variant="secondary" size="sm" onClick={onEdit} className="ml-auto">
           {expanded ? 'Fechar' : 'Editar'}
-        </button>
+        </Btn>
       </div>
 
       {expanded && (
@@ -173,10 +168,10 @@ function AutoCard({ trigger, title, desc, enabled, onToggle, expanded, onEdit, c
 
 function SaveBar({ saving, dirty, onSave }: { saving: boolean; dirty: boolean; onSave: () => void }) {
   return (
-    <button onClick={onSave} disabled={saving || !dirty} className="btn-primary text-[12px] px-3 py-1.5 disabled:opacity-50">
+    <Btn size="sm" onClick={onSave} disabled={saving || !dirty}>
       {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
       Salvar
-    </button>
+    </Btn>
   )
 }
 
@@ -501,8 +496,8 @@ export default function AutomacoesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Automações</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>Fluxos de atendimento automático via WhatsApp</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Automações</h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Fluxos de atendimento automático via WhatsApp</p>
       </div>
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
@@ -547,7 +542,7 @@ export default function AutomacoesPage() {
 
         {/* ── Sidebar ─────────────────────────────────────────────── */}
         <div className="space-y-4 lg:sticky lg:top-6">
-          <div className="card" style={{ padding: '18px' }}>
+          <Card className="!p-[18px]">
             <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Como funciona</p>
             <p className="text-xs mt-0.5 mb-4" style={{ color: 'var(--t2)' }}>Os fluxos são executados automaticamente pela IA via WhatsApp</p>
 
@@ -571,7 +566,7 @@ export default function AutomacoesPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           <AIStatusChecker />
 

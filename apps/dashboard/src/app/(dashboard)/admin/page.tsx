@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Card, Badge, Btn, Avatar } from '@/components/ui/finance-primitives'
 
 interface Nutritionist {
   id: string; name: string; email: string; phone: string | null
@@ -21,13 +22,10 @@ interface Stats {
   total_patients: number; total_clients: number
 }
 
-const STATUS_PILL: Record<string, { color: string; bg: string; border: string }> = {
-  active:    { color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  pending:   { color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  suspended: { color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-}
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Ativa', pending: 'Pendente', suspended: 'Suspensa'
+const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
+  active:    { label: 'Ativa',    variant: 'success' },
+  pending:   { label: 'Pendente', variant: 'warning' },
+  suspended: { label: 'Suspensa', variant: 'danger' },
 }
 
 export default function AdminPage() {
@@ -104,11 +102,7 @@ export default function AdminPage() {
       {statsCards.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
           {statsCards.map(s => (
-            <div
-              key={s.label}
-              className="rounded-2xl p-4 relative overflow-hidden"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
-            >
+            <Card key={s.label} className="p-4 relative overflow-hidden">
               <div
                 className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
                 style={{ background: s.accent }}
@@ -117,7 +111,7 @@ export default function AdminPage() {
                 {s.label}
               </p>
               <p className="text-2xl font-bold" style={{ color: s.iconColor }}>{s.value}</p>
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -135,10 +129,7 @@ export default function AdminPage() {
               {pending.length}
             </span>
           </div>
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
-          >
+          <Card className="!p-0 overflow-hidden">
             <ul>
               {pending.map((n, i) => (
                 <li
@@ -146,12 +137,7 @@ export default function AdminPage() {
                   className="flex items-center gap-4 px-5 py-4"
                   style={i > 0 ? { borderTop: '1px solid var(--border)' } : undefined}
                 >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border"
-                    style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}
-                  >
-                    <span className="text-sm font-bold" style={{ color: '#D97706' }}>{n.name.charAt(0)}</span>
-                  </div>
+                  <Avatar name={n.name} color="orange" size={36} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--t1)' }}>{n.name}</p>
                     <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{n.email}</p>
@@ -160,27 +146,27 @@ export default function AdminPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button
+                    <Btn
+                      size="sm"
                       onClick={() => changeStatus.mutate({ id: n.id, status: 'active' })}
                       disabled={changeStatus.isPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border"
-                      style={{ color: '#059669', background: '#ECFDF5', borderColor: '#A7F3D0' }}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar
-                    </button>
-                    <button
+                    </Btn>
+                    <Btn
+                      variant="outline"
+                      size="sm"
                       onClick={() => changeStatus.mutate({ id: n.id, status: 'suspended' })}
                       disabled={changeStatus.isPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border"
-                      style={{ color: '#DC2626', background: '#FEF2F2', borderColor: '#FECACA' }}
+                      className="!text-[var(--danger)] !border-[var(--danger)]/20"
                     >
                       <XCircle className="w-3.5 h-3.5" /> Recusar
-                    </button>
+                    </Btn>
                   </div>
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         </section>
       )}
 
@@ -195,57 +181,40 @@ export default function AdminPage() {
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--brand)' }} />
           </div>
         ) : active.length === 0 ? (
-          <div
-            className="rounded-2xl p-6 text-center text-sm"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t3)' }}
-          >
-            Nenhuma ainda
-          </div>
+          <Card className="text-center">
+            <span className="text-sm" style={{ color: 'var(--t3)' }}>Nenhuma ainda</span>
+          </Card>
         ) : (
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
-          >
+          <Card className="!p-0 overflow-hidden">
             <ul>
               {active.map((n, i) => {
-                const pill = STATUS_PILL[n.status]
+                const badge = STATUS_BADGE[n.status]
                 return (
                   <li
                     key={n.id}
                     className="flex items-center gap-4 px-5 py-3.5"
                     style={i > 0 ? { borderTop: '1px solid var(--border)' } : undefined}
                   >
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border"
-                      style={{ background: 'var(--brand-s)', borderColor: 'rgba(0,194,124,0.20)' }}
-                    >
-                      <span className="text-xs font-bold" style={{ color: 'var(--brand)' }}>{n.name.charAt(0)}</span>
-                    </div>
+                    <Avatar name={n.name} color="green" size={32} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: 'var(--t1)' }}>{n.name}</p>
                       <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{n.email}</p>
                     </div>
-                    {pill && (
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-md border font-semibold flex-shrink-0"
-                        style={{ color: pill.color, background: pill.bg, borderColor: pill.border }}
-                      >
-                        {STATUS_LABEL[n.status]}
-                      </span>
-                    )}
-                    <button
+                    {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
+                    <Btn
+                      variant="ghost"
+                      size="sm"
                       onClick={() => changeStatus.mutate({ id: n.id, status: 'suspended' })}
-                      className="flex-shrink-0 transition-opacity hover:opacity-70"
                       title="Suspender"
-                      style={{ color: '#DC2626' }}
+                      className="!px-2 !text-[var(--danger)]"
                     >
                       <XCircle className="w-4 h-4" />
-                    </button>
+                    </Btn>
                   </li>
                 )
               })}
             </ul>
-          </div>
+          </Card>
         )}
       </section>
 
@@ -256,10 +225,7 @@ export default function AdminPage() {
             <XCircle className="w-4 h-4" style={{ color: '#DC2626' }} />
             <h2 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Suspensas</h2>
           </div>
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
-          >
+          <Card className="!p-0 overflow-hidden">
             <ul>
               {suspended.map((n, i) => (
                 <li
@@ -271,18 +237,19 @@ export default function AdminPage() {
                     <p className="text-sm truncate" style={{ color: 'var(--t2)' }}>{n.name}</p>
                     <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{n.email}</p>
                   </div>
-                  <button
+                  <Btn
+                    variant="ghost"
+                    size="sm"
                     onClick={() => changeStatus.mutate({ id: n.id, status: 'active' })}
-                    className="flex-shrink-0 transition-opacity hover:opacity-80"
                     title="Reativar"
-                    style={{ color: '#059669' }}
+                    className="!px-2 !text-[var(--brand)]"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                  </button>
+                  </Btn>
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         </section>
       )}
     </div>

@@ -296,3 +296,19 @@ Arquivo Figma de referencia criado para continuar o redesign do Lovable a partir
   conversas) - sao features maiores que precisam de planejamento proprio
   (provavelmente novas tabelas + UI dedicada), recomendado tratar como
   proxima fase/projeto separado com a Heloisa e o Codex.
+
+## 2026-06-11 - Redesign "Calm Pro"/Lovable: todas as paginas concluidas
+
+A pedido da Heloisa ("vamos voltar ao design, faca todas as paginas da
+forma que te falei, copiar e colar" / resposta "tudo"), todas as paginas
+restantes do dashboard foram convertidas para o vocabulario de componentes
+`finance-primitives.tsx` (`Card`, `SectionTitle`, `Badge`, `KPI`, `Btn`,
+`Avatar`) + tokens "Calm Pro", preservando 100% da logica/queries/mutations
+existentes. Paginas concluidas nesta rodada (alem das ja feitas
+anteriormente): `clientes`, `perfil`, `equipe`, `admin`, `seguranca`,
+`servicos`, `configuracoes`, `disponibilidade`, `followup`, `integracoes`,
+`onboarding`, `agenda`, `treinamento`. `npx tsc --noEmit` em
+`apps/dashboard` sem erros apos cada pagina. Sidebar/TopBar/layout shell
+**nao** foram alterados (decisao 2026-06-10). Ainda sem commit/push -
+aguardando `npm run build` + confirmacao da Heloisa para deploy (push =
+Vercel).

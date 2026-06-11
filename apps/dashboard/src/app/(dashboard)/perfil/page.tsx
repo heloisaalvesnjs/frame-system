@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Loader2, Save } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { Card, Badge, Btn, Avatar } from '@/components/ui/finance-primitives'
 
 const schema = z.object({
   name:      z.string().min(2, 'Nome obrigatório'),
@@ -46,49 +47,34 @@ export default function PerfilPage() {
     }
   }
 
-  const initials = user?.name
-    ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'U'
-
   return (
     <div className="p-6 md:p-8 max-w-2xl">
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-[24px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>
+      <div className="mb-6">
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
           Meu Perfil
         </h1>
-        <p className="text-[14px] mt-1" style={{ color: 'var(--t3)' }}>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
           Suas informações pessoais e do consultório
         </p>
       </div>
 
       {/* Avatar section */}
-      <div
-        className="flex items-center gap-5 mb-6 p-5 rounded-2xl"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-      >
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-[22px] font-bold flex-shrink-0"
-          style={{ background: 'var(--brand-s-solid)', border: '1.5px solid rgba(0,194,124,.2)', color: 'var(--brand)' }}
-        >
-          {initials}
-        </div>
+      <Card className="flex items-center gap-5 mb-6">
+        <Avatar name={user?.name || 'U'} color="green" size={64} />
         <div>
           <p className="text-[18px] font-bold tracking-tight leading-tight" style={{ color: 'var(--t1)' }}>
             {user?.name || '—'}
           </p>
           <p className="text-[12px] font-mono mt-1" style={{ color: 'var(--t2)' }}>{user?.email}</p>
           {user?.specialty && (
-            <span
-              className="inline-flex items-center mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-              style={{ background: 'var(--brand-s)', color: 'var(--brand)' }}
-            >
-              {user.specialty}
+            <span className="inline-block mt-2">
+              <Badge variant="success">{user.specialty}</Badge>
             </span>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Form */}
       <div
@@ -100,14 +86,7 @@ export default function PerfilPage() {
             <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>Informações</h2>
             <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Dados do seu perfil profissional</p>
           </div>
-          {isDirty && (
-            <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: '#FFFBEB', color: '#D97706' }}
-            >
-              Alterações pendentes
-            </span>
-          )}
+          {isDirty && <Badge variant="warning">Alterações pendentes</Badge>}
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 flex flex-col gap-5">
@@ -143,14 +122,10 @@ export default function PerfilPage() {
           </div>
 
           <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-            <button
-              type="submit"
-              disabled={isSubmitting || !isDirty}
-              className="btn-primary mt-4"
-            >
+            <Btn type="submit" disabled={isSubmitting || !isDirty} className="mt-4">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Salvar alterações
-            </button>
+            </Btn>
             {!isDirty && (
               <span className="text-[12px] mt-4 font-mono" style={{ color: 'var(--t3)' }}>
                 Sem alterações pendentes

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { UserPlus, Copy, Trash2, Clock, CheckCircle, Shield, Eye, Pencil, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { Card, Badge, Btn, Avatar } from '@/components/ui/finance-primitives'
 
 interface TeamMember {
   id: string
@@ -77,22 +78,17 @@ export default function EquipePage() {
             Adicione colaboradores e defina o que cada um pode fazer
           </p>
         </div>
-        <button onClick={() => setShowForm(v => !v)} className="btn-primary flex-shrink-0">
+        <Btn onClick={() => setShowForm(v => !v)} className="flex-shrink-0">
           <UserPlus className="w-4 h-4" />
           Adicionar
-        </button>
+        </Btn>
       </div>
 
       {/* Form novo membro */}
       {showForm && (
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-        >
-          <div className="card-header">
-            <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Novo colaborador</p>
-          </div>
-          <div className="p-5 space-y-4">
+        <Card>
+          <p className="text-[14px] font-semibold mb-4" style={{ color: 'var(--t1)' }}>Novo colaborador</p>
+          <div className="space-y-4">
             <div>
               <label className="field-label">E-mail</label>
               <input
@@ -129,20 +125,16 @@ export default function EquipePage() {
             </div>
 
             <div className="flex gap-3">
-              <button
-                onClick={handleInvite}
-                disabled={adding || !email.trim()}
-                className="btn-primary"
-              >
+              <Btn onClick={handleInvite} disabled={adding || !email.trim()}>
                 {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 Gerar link de convite
-              </button>
-              <button onClick={() => setShowForm(false)} className="btn-secondary">
+              </Btn>
+              <Btn variant="secondary" onClick={() => setShowForm(false)}>
                 Cancelar
-              </button>
+              </Btn>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Lista de membros */}
@@ -154,35 +146,22 @@ export default function EquipePage() {
           />
         </div>
       ) : members.length === 0 ? (
-        <div
-          className="rounded-2xl py-12 text-center"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-        >
+        <Card className="py-12 text-center">
           <UserPlus className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--border)' }} />
           <p className="text-[14px] font-medium" style={{ color: 'var(--t1)' }}>Nenhum colaborador ainda</p>
           <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
             Adicione colaboradores para eles acessarem o sistema
           </p>
-        </div>
+        </Card>
       ) : (
         <div className="space-y-2">
           {members.map(member => {
             const info = roleInfo(member.role)
             const RoleIcon = info?.icon ?? Eye
             return (
-              <div
-                key={member.id}
-                className="rounded-xl px-5 py-4"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-              >
+              <Card key={member.id} className="px-5 py-4">
                 <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0"
-                    style={{ background: 'var(--brand-s-solid)', color: 'var(--brand)' }}
-                  >
-                    {(member.name || member.email)[0].toUpperCase()}
-                  </div>
+                  <Avatar name={member.name || member.email} color="green" size={36} />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -191,19 +170,9 @@ export default function EquipePage() {
                         {member.name || member.email}
                       </p>
                       {member.status === 'pending' ? (
-                        <span
-                          className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full"
-                          style={{ background: 'rgba(245,158,11,.1)', color: '#D97706' }}
-                        >
-                          <Clock className="w-2.5 h-2.5" /> pendente
-                        </span>
+                        <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> pendente</Badge>
                       ) : (
-                        <span
-                          className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full"
-                          style={{ background: 'rgba(16,185,129,.1)', color: '#059669' }}
-                        >
-                          <CheckCircle className="w-2.5 h-2.5" /> ativo
-                        </span>
+                        <Badge variant="success"><CheckCircle className="w-2.5 h-2.5" /> ativo</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -219,42 +188,23 @@ export default function EquipePage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {member.status === 'pending' && member.invite_link && (
-                      <button
-                        onClick={() => copyLink(member.invite_link!)}
-                        className="flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-colors"
-                        style={{ border: '1px solid var(--border)', color: 'var(--brand)' }}
-                      >
+                      <Btn variant="outline" size="sm" onClick={() => copyLink(member.invite_link!)}>
                         <Copy className="w-3.5 h-3.5" /> Copiar link
-                      </button>
+                      </Btn>
                     )}
-                    <button
-                      onClick={() => handleRemove(member.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-                      style={{ color: 'var(--t3)' }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.color = '#EF4444'
-                        ;(e.currentTarget as HTMLElement).style.background = '#FEF2F2'
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.color = 'var(--t3)'
-                        ;(e.currentTarget as HTMLElement).style.background = ''
-                      }}
-                    >
+                    <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </Btn>
                   </div>
                 </div>
-              </div>
+              </Card>
             )
           })}
         </div>
       )}
 
       {/* Info */}
-      <div
-        className="rounded-xl p-4 space-y-1.5"
-        style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}
-      >
+      <Card className="space-y-1.5">
         <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>Como funciona?</p>
         {[
           '1. Adicione o e-mail do colaborador e escolha o nível de acesso',
@@ -264,7 +214,7 @@ export default function EquipePage() {
         ].map((s, i) => (
           <p key={i} className="text-[12px]" style={{ color: 'var(--t2)' }}>{s}</p>
         ))}
-      </div>
+      </Card>
     </div>
   )
 }

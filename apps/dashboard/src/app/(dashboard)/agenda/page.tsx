@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Btn } from '@/components/ui/finance-primitives'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -328,14 +329,10 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
         </div>
 
         <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop:'1px solid var(--border)' }}>
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-t2 hover:text-t1 transition-colors" style={{ borderColor:'var(--border)' }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-            style={{ background: 'var(--brand)', color: '#fff' }}
-            onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLElement).style.background = '#00A86B' }}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
+          <Btn variant="outline" onClick={onClose} className="flex-1 justify-center">Cancelar</Btn>
+          <Btn onClick={handleSave} disabled={saving} className="flex-1 justify-center">
             {saving ? 'Salvando…' : 'Agendar consulta'}
-          </button>
+          </Btn>
         </div>
       </div>
     </div>
@@ -391,21 +388,21 @@ function AppointmentModal({ appt, onClose, onUpdate }: {
         {appt.status !== 'cancelled' && appt.status !== 'completed' && (
           <div className="px-5 pb-5 flex gap-2">
             {appt.status === 'scheduled' && (
-              <button onClick={() => { onUpdate(appt.id, 'confirmed'); onClose() }}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
+              <Btn variant="outline" onClick={() => { onUpdate(appt.id, 'confirmed'); onClose() }}
+                className="flex-1 justify-center !bg-emerald-500/10 !text-emerald-600 !border-emerald-500/20 hover:!bg-emerald-500/20">
                 <CheckCircle className="w-4 h-4" /> Confirmar
-              </button>
+              </Btn>
             )}
             {(appt.status === 'scheduled' || appt.status === 'confirmed') && (
-              <button onClick={() => { onUpdate(appt.id, 'completed'); onClose() }}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-brand-500/10 text-brand-500 border border-brand-500/20 hover:bg-brand-500/20 transition-colors">
+              <Btn variant="outline" onClick={() => { onUpdate(appt.id, 'completed'); onClose() }}
+                className="flex-1 justify-center !bg-brand-500/10 !text-brand-500 !border-brand-500/20 hover:!bg-brand-500/20">
                 <CheckCheck className="w-4 h-4" /> Realizado
-              </button>
+              </Btn>
             )}
-            <button onClick={() => { onUpdate(appt.id, 'cancelled'); onClose() }}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+            <Btn variant="outline" onClick={() => { onUpdate(appt.id, 'cancelled'); onClose() }}
+              className="justify-center !bg-red-500/10 !text-red-500 !border-red-500/20 hover:!bg-red-500/20">
               <XCircle className="w-4 h-4" /> Cancelar
-            </button>
+            </Btn>
           </div>
         )}
       </div>
@@ -480,11 +477,11 @@ function BlockTimeModal({ initialDate, onClose, onSaved }: {
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm text-t2 hover:text-t1" style={{ borderColor:'var(--border)' }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 text-sm font-semibold disabled:opacity-50">
+          <Btn variant="outline" onClick={onClose} className="flex-1 justify-center">Cancelar</Btn>
+          <Btn onClick={handleSave} disabled={saving}
+            className="flex-1 justify-center !bg-red-500/10 !text-red-500 !border !border-red-500/20 hover:!bg-red-500/20">
             {saving ? 'Salvando…' : 'Bloquear'}
-          </button>
+          </Btn>
         </div>
       </div>
     </div>
@@ -534,13 +531,9 @@ function LocationsPanel() {
           <div className="flex items-center gap-2">
             <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
               className="w-7 h-7 rounded cursor-pointer" />
-            <button onClick={() => form.name && create.mutate()}
-              className="flex-1 h-7 rounded text-[11px] font-semibold transition-colors"
-              style={{ background: 'var(--brand)', color: '#fff' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#00A86B'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
+            <Btn size="sm" onClick={() => form.name && create.mutate()} className="flex-1 !h-7 !px-2 justify-center !text-[11px]">
               Salvar
-            </button>
+            </Btn>
           </div>
         </div>
       )}
@@ -835,41 +828,32 @@ export default function AgendaPage() {
         <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
           style={{ borderBottom:'1px solid var(--border)' }}>
           <div className="flex items-center gap-2">
-            <button onClick={prevWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 transition-colors" style={{ border:'1px solid var(--border)' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
+            <Btn variant="outline" size="sm" onClick={prevWeek} className="!w-8 !h-8 !p-0 justify-center">
               <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button onClick={goToday}
-              className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                isCurrentWeek ? 'bg-brand-500/10 text-brand-500 border border-brand-500/20' : 'text-t2')}
-              style={{ border: isCurrentWeek ? undefined : '1px solid var(--border)' }}
-              onMouseEnter={e => { if (!isCurrentWeek) (e.currentTarget as HTMLElement).style.background = 'var(--raised)' }}
-              onMouseLeave={e => { if (!isCurrentWeek) (e.currentTarget as HTMLElement).style.background = '' }}>
+            </Btn>
+            <Btn
+              variant={isCurrentWeek ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={goToday}
+              className={isCurrentWeek ? '!bg-brand-500/10 !text-brand-500 !border-brand-500/20' : ''}
+            >
               Hoje
-            </button>
-            <button onClick={nextWeek} className="w-8 h-8 rounded-lg flex items-center justify-center text-t2 hover:text-t1 transition-colors" style={{ border:'1px solid var(--border)' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
+            </Btn>
+            <Btn variant="outline" size="sm" onClick={nextWeek} className="!w-8 !h-8 !p-0 justify-center">
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </Btn>
           </div>
 
           <p className="font-mono text-[12px] text-t2 tracking-wide hidden sm:block">{weekRangeLabel}</p>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => setBlockDate(new Date())}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-t2 hover:text-red-500 hover:bg-red-500/5 transition-colors"
-              style={{ border:'1px solid var(--border)' }}>
+            <Btn variant="outline" size="sm" onClick={() => setBlockDate(new Date())}
+              className="!text-[var(--t2)] hover:!text-[var(--danger)]">
               <Ban className="w-3.5 h-3.5" /> Bloquear
-            </button>
-            <button onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: 'var(--brand)', color: '#fff' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#00A86B'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--brand)'}>
+            </Btn>
+            <Btn size="sm" onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}>
               <Plus className="w-3.5 h-3.5" /> Nova consulta
-            </button>
+            </Btn>
           </div>
         </div>
 

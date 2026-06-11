@@ -9,6 +9,7 @@ import { CheckCircle, Bot, Clock, Smartphone, User, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Card, Btn } from '@/components/ui/finance-primitives'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -123,14 +124,9 @@ function StepProfile({ onNext }: { onNext: () => void }) {
           {...register('bio')}
         />
       </Field>
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
-        style={{ background: 'var(--brand)' }}
-      >
+      <Btn type="submit" disabled={isSubmitting} className="w-full justify-center mt-1">
         {isSubmitting ? 'Salvando...' : 'Continuar →'}
-      </button>
+      </Btn>
     </form>
   )
 }
@@ -213,14 +209,9 @@ function StepAssistant({ onNext }: { onNext: () => void }) {
         </p>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting || uploading}
-        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
-        style={{ background: 'var(--brand)' }}
-      >
+      <Btn type="submit" disabled={isSubmitting || uploading} className="w-full justify-center mt-1">
         {uploading ? 'Enviando PDF...' : isSubmitting ? 'Salvando...' : 'Continuar →'}
-      </button>
+      </Btn>
     </form>
   )
 }
@@ -320,22 +311,13 @@ function StepAvailability({ onNext }: { onNext: () => void }) {
         ))}
       </div>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
-        style={{ background: 'var(--brand)' }}
-      >
+      <Btn onClick={handleSave} disabled={saving} className="w-full justify-center mt-1">
         {saving ? 'Salvando...' : 'Salvar horários →'}
-      </button>
+      </Btn>
 
-      <button
-        onClick={onNext}
-        className="text-xs text-center transition-colors hover:opacity-70"
-        style={{ color: 'var(--t3)' }}
-      >
+      <Btn variant="ghost" size="sm" onClick={onNext} className="!text-[var(--t3)] justify-center hover:opacity-70">
         Pular por agora
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -388,13 +370,9 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
           <p className="font-semibold" style={{ color: 'var(--t1)' }}>WhatsApp conectado!</p>
           <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>Sua assistente já pode atender clientes 🎉</p>
         </div>
-        <button
-          onClick={onFinish}
-          className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
-          style={{ background: 'var(--brand)' }}
-        >
+        <Btn onClick={onFinish} className="w-full justify-center">
           Ir para o Dashboard →
-        </button>
+        </Btn>
       </div>
     )
   }
@@ -434,22 +412,13 @@ function StepWhatsApp({ onFinish }: { onFinish: () => void }) {
         </div>
       )}
 
-      <button
-        onClick={handleConnect}
-        disabled={connecting}
-        className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-        style={{ background: 'var(--brand)' }}
-      >
+      <Btn onClick={handleConnect} disabled={connecting} className="w-full justify-center">
         {connecting ? 'Gerando QR Code...' : 'Conectar WhatsApp'}
-      </button>
+      </Btn>
 
-      <button
-        onClick={onFinish}
-        className="text-xs text-center transition-colors hover:opacity-70"
-        style={{ color: 'var(--t3)' }}
-      >
+      <Btn variant="ghost" size="sm" onClick={onFinish} className="!text-[var(--t3)] justify-center hover:opacity-70">
         Pular por agora (conectar depois em Configurações)
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -528,10 +497,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div
-          className="rounded-2xl p-6"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
-        >
+        <Card className="!p-6">
           {/* Step header */}
           <div className="mb-6">
             <h2 className="text-base font-semibold" style={{ color: 'var(--t1)' }}>
@@ -549,7 +515,7 @@ export default function OnboardingPage() {
           {current === 2 && <StepAssistant onNext={next} />}
           {current === 3 && <StepAvailability onNext={next} />}
           {current === 4 && <StepWhatsApp onFinish={finish} />}
-        </div>
+        </Card>
 
         {/* Progress */}
         <p className="text-center text-xs mt-4" style={{ color: 'var(--t3)' }}>

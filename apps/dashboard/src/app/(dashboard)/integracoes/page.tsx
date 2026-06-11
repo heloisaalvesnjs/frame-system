@@ -6,22 +6,15 @@ import { CheckCircle, XCircle, Loader2, ExternalLink, Upload, AlertCircle } from
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
 
 type IntegrationId = 'whatsapp' | 'gcal' | 'import'
 
 // ── Badge de status ───────────────────────────────────────────────
 function StatusBadge({ loading, connected }: { loading?: boolean; connected?: boolean }) {
   if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--t3)' }} />
-  if (connected) return (
-    <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#059669' }}>
-      <CheckCircle className="w-3.5 h-3.5" /> Conectado
-    </span>
-  )
-  return (
-    <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--t3)' }}>
-      <XCircle className="w-3.5 h-3.5" /> Não conectado
-    </span>
-  )
+  if (connected) return <Badge variant="success">Conectado</Badge>
+  return <Badge variant="default">Não conectado</Badge>
 }
 
 // ── Tile da grade ─────────────────────────────────────────────────
@@ -87,25 +80,19 @@ function WhatsAppDetail({ data, isLoading }: { data: any; isLoading: boolean }) 
       <p className="text-xs" style={{ color: 'var(--t3)' }}>
         Para trocar o número ou reconectar, desconecte e leia o QR code novamente.
       </p>
-      <button
-        onClick={handleDisconnect}
-        className="text-xs transition-colors hover:text-red-500"
-        style={{ color: '#EF4444', opacity: 0.8 }}
-      >
+      <Btn variant="ghost" size="sm" onClick={handleDisconnect} className="!text-[var(--danger)] !px-0 hover:!text-[var(--danger)]">
         Desconectar
-      </button>
+      </Btn>
     </div>
   ) : (
     <div className="space-y-3">
       <p className="text-sm" style={{ color: 'var(--t2)' }}>
         Conecte seu WhatsApp para que a IA possa atender seus pacientes automaticamente.
       </p>
-      <a
-        href="/integracoes"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-        style={{ background: 'var(--brand)', color: '#fff' }}
-      >
-        Conectar WhatsApp <ExternalLink className="w-3.5 h-3.5" />
+      <a href="/integracoes">
+        <Btn>
+          Conectar WhatsApp <ExternalLink className="w-3.5 h-3.5" />
+        </Btn>
       </a>
     </div>
   )
@@ -159,30 +146,25 @@ function GoogleCalendarDetail({ data, isLoading }: { data: any; isLoading: boole
       <p className="text-xs leading-relaxed" style={{ color: 'var(--t2)' }}>
         Consultas agendadas pela IA são adicionadas automaticamente à sua agenda.
       </p>
-      <button
-        onClick={handleDisconnect}
-        className="text-xs transition-colors hover:text-red-500"
-        style={{ color: '#EF4444', opacity: 0.8 }}
-      >
+      <Btn variant="ghost" size="sm" onClick={handleDisconnect} className="!text-[var(--danger)] !px-0 hover:!text-[var(--danger)]">
         Desconectar
-      </button>
+      </Btn>
     </div>
   ) : (
     <div className="space-y-3">
       <p className="text-sm leading-relaxed" style={{ color: 'var(--t2)' }}>
         Quando conectado, toda consulta agendada pela IA cria automaticamente um evento no Google Calendar.
       </p>
-      <button
+      <Btn
         onClick={handleConnect}
         disabled={connecting}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
-        style={{ background: '#3B82F6', color: '#fff' }}
+        className="!bg-[#3B82F6] hover:!bg-[#2563EB]"
       >
         {connecting
           ? <Loader2 className="w-4 h-4 animate-spin" />
           : <ExternalLink className="w-3.5 h-3.5" />}
         Conectar com Google
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -283,14 +265,14 @@ function ImportDetail() {
         </div>
 
         {file && (
-          <button
+          <Btn
             onClick={handleImport}
             disabled={uploading}
-            className="btn-primary w-full justify-center"
+            className="w-full justify-center"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {uploading ? 'Importando...' : 'Importar pacientes'}
-          </button>
+          </Btn>
         )}
 
         {result && (
@@ -339,8 +321,8 @@ export default function IntegracoesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Integrações</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>Conecte suas ferramentas favoritas</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Integrações</h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Conecte suas ferramentas favoritas</p>
       </div>
 
       {/* Grade de integrações */}
@@ -379,12 +361,12 @@ export default function IntegracoesPage() {
       </div>
 
       {/* Painel de detalhe */}
-      <div className="card" style={{ padding: '20px' }}>
+      <Card>
         <p className="text-sm font-bold mb-4" style={{ color: 'var(--t1)' }}>{DETAIL_TITLES[selected]}</p>
         {selected === 'whatsapp' && <WhatsAppDetail data={waData} isLoading={waLoading} />}
         {selected === 'gcal'     && <GoogleCalendarDetail data={gcData} isLoading={gcLoading} />}
         {selected === 'import'   && <ImportDetail />}
-      </div>
+      </Card>
     </div>
   )
 }

@@ -9,20 +9,17 @@
 
 ## Claude Code
 
-- **Ultima atividade**: 2026-06-11 - Concluiu C.13 (logs/avaliacao de
-  conversas), ultimo item do plano de 13. Schema: `conversations.outcome`,
-  `outcome_notes`, `closed_at`. Novas rotas `POST /:id/outcome` e `GET
-  /api/conversations/stats`. `POST /:id/resolve` aceita `{outcome,
-  outcome_notes}` opcional. `detectAndCreateAppointment()` agora classifica
-  automaticamente `outcome='agendou'` ao confirmar agendamento. UI
-  `/conversas`: cards de metricas (Resolvidas/Agendamentos/Vendas/Sem
-  retorno) + rodape de classificacao para conversas resolvidas. `tsc
-  --noEmit` ok em api e dashboard. Detalhes completos em LOG.md.
-- **Em andamento**: Plano consolidado de 13 itens - **13/13 concluidos** e
-  **commitado/pushado para origin/main** (3 commits, ver LOG.md), deploy
-  disparado no Vercel. A.3 ficou como decisao registrada (sem codigo, ver
-  MEMORY.md). Sem proximas tarefas definidas - aguardando novas prioridades
-  da Heloisa/Codex.
+- **Ultima atividade**: 2026-06-11 - Concluiu o redesign "Calm Pro"/Lovable
+  das duas ultimas paginas pendentes (`agenda` e `treinamento`), encerrando
+  o pedido "faca todas as paginas... copiar e colar". `tsc --noEmit` ok em
+  apps/dashboard. Detalhes completos em LOG.md.
+- **Em andamento**: Redesign de TODAS as paginas do dashboard concluido
+  (clientes, perfil, equipe, admin, seguranca, servicos, configuracoes,
+  disponibilidade, followup, integracoes, onboarding, agenda, treinamento).
+  Ainda sem commit/push - falta validar com `npm run build` e confirmar com
+  a Heloisa antes de comitar/dar push (deploy Vercel). Sidebar/TopBar nao
+  foram alterados (decisao 2026-06-10). Sem proximas tarefas definidas apos
+  o deploy - aguardando novas prioridades da Heloisa/Codex.
 - **Bloqueado/aguardando**: limite do Figma MCP liberado ou plano atualizado. Nota: nao ha credenciais de teste no
   repo para verificar UI no preview com login - mudancas validadas so por
   `tsc --noEmit`.

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { FileImage, FileText, X as XIcon, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
 
 const DEFAULT_SERVICES_MSG =
 `Tenho algumas opções para você 😊
@@ -45,17 +46,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 
 // ── Tag de status ─────────────────────────────────────────────────
 function StatusTag({ active }: { active: boolean }) {
-  return (
-    <span
-      className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider flex-shrink-0"
-      style={active
-        ? { background: 'var(--brand-s-solid)', color: 'var(--brand-h)' }
-        : { background: 'var(--raised)', color: 'var(--t3)' }
-      }
-    >
-      {active ? 'ATIVO' : 'INATIVO'}
-    </span>
-  )
+  return <Badge variant={active ? 'success' : 'default'}>{active ? 'ATIVO' : 'INATIVO'}</Badge>
 }
 
 // ── Card de modalidade (upload de arquivo) ────────────────────────
@@ -80,7 +71,7 @@ function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload,
   }
 
   return (
-    <div className="card" style={{ padding: '18px' }}>
+    <Card className="!p-[18px]">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-3.5">
         <div
@@ -128,15 +119,16 @@ function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload,
               <p className="text-xs font-semibold truncate px-1" style={{ color: 'var(--brand)' }}>{info!.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>1 arquivo carregado</p>
               <div className="flex items-center justify-center gap-2 mt-2.5">
-                <span className="btn-secondary text-[11px] px-2.5 py-1">Trocar arquivo</span>
-                <button
+                <Btn variant="secondary" size="sm" className="!text-[11px]">Trocar arquivo</Btn>
+                <Btn
+                  variant="ghost"
+                  size="sm"
                   onClick={e => { e.stopPropagation(); onDelete() }}
-                  className="p-1 rounded transition-colors hover:text-red-500"
-                  style={{ color: 'var(--t3)' }}
+                  className="!px-1.5 !text-[var(--t3)] hover:!text-[var(--danger)]"
                   title="Remover arquivo"
                 >
                   <XIcon className="w-3.5 h-3.5" />
-                </button>
+                </Btn>
               </div>
             </>
           ) : (
@@ -144,7 +136,9 @@ function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload,
               <div className="text-xl mb-1.5">📄</div>
               <p className="text-xs font-semibold" style={{ color: 'var(--t2)' }}>Arraste PDF ou imagem</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>ou clique para selecionar</p>
-              <span className="btn-secondary inline-block text-[11px] px-2.5 py-1 mt-2.5">Selecionar arquivo</span>
+              <span className="inline-block mt-2.5">
+                <Btn variant="secondary" size="sm" className="!text-[11px]">Selecionar arquivo</Btn>
+              </span>
             </>
           )}
           <input
@@ -158,7 +152,7 @@ function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload,
       </div>
 
       <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Aceita: PDF, JPG, PNG · Máx. 10MB</p>
-    </div>
+    </Card>
   )
 }
 
@@ -170,10 +164,7 @@ function MsgGroup({ title, subtitle, enabled, onToggle, text, onTextChange, vari
   onReset?: () => void
 }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-    >
+    <Card className="!p-0 overflow-hidden">
       {/* Linha principal */}
       <div className="flex items-center justify-between gap-4 px-[18px] py-3.5">
         <div className="min-w-0">
@@ -219,24 +210,20 @@ function MsgGroup({ title, subtitle, enabled, onToggle, text, onTextChange, vari
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={onSave} disabled={saving || !dirty} className="btn-primary text-[12px] px-3 py-1.5 disabled:opacity-50">
+              <Btn onClick={onSave} disabled={saving || !dirty} size="sm">
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Salvar mensagem
-              </button>
+              </Btn>
               {onReset && (
-                <button
-                  onClick={onReset}
-                  className="text-xs px-2 py-1.5 transition-colors"
-                  style={{ color: 'var(--t3)' }}
-                >
+                <Btn variant="ghost" size="sm" onClick={onReset} className="!text-[var(--t3)]">
                   Restaurar padrão
-                </button>
+                </Btn>
               )}
             </div>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -374,8 +361,8 @@ export default function PlanosPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Planos</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t2)' }}>Configure os planos que você oferece e as mensagens automáticas de entrega</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Planos</h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Configure os planos que você oferece e as mensagens automáticas de entrega</p>
       </div>
 
       {/* ── Modalidades de atendimento ─────────────────────────────── */}

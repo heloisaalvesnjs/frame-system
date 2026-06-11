@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-06-11 - Claude Code (redesign "tudo": agenda + treinamento, fim do ciclo de páginas)
+
+Concluído o pedido "vamos voltar ao design, faça todas as páginas... copiar e
+colar" (DNA visual Lovable / Calm Pro) para as duas últimas páginas
+pendentes:
+
+- `agenda/page.tsx`: toolbar (prev/hoje/próxima semana, "Bloquear", "Nova
+  consulta"), rodapés dos modais `NewAppointmentModal`/`AppointmentModal`/
+  `BlockTimeModal` (ações confirmar/realizado/cancelar/bloquear) e botão
+  "Salvar" do `LocationsPanel` convertidos para `<Btn>`. Calendário
+  (`MiniCalendar`, `WeekView`, `GoogleCalendarCard`, pills de consulta) e o
+  grid com posicionamento absoluto foram mantidos como estavam.
+- `treinamento/page.tsx`: header padronizado (`font-display` + `var(--t3)`
+  no subtítulo). Todos os ~11 botões `.btn-primary`/`.btn-secondary`/
+  `.btn-ghost` restantes (entrevista guiada, manual, automações, horários de
+  funcionamento, fora do horário, modal de local) convertidos para `<Btn>`.
+  Componentes locais já existentes (`SectionCard`, `Field`, `Toggle`,
+  `AIPowerToggle`) mantidos sem alteração - já usavam tokens Calm Pro.
+
+`npx tsc --noEmit` em `apps/dashboard` → sem erros.
+
+**Com isso, o redesign "Calm Pro"/Lovable de todas as páginas do dashboard
+está concluído**: clientes, perfil, equipe, admin, segurança, servicos
+(Planos), configurações, disponibilidade, followup, integrações,
+onboarding, agenda e treinamento. Ainda sem commit/push - aguardando
+confirmação da usuária antes do deploy (workflow: build → commit → push =
+deploy Vercel).
+
 ## 2026-06-11 - Claude Code (commit/push do trabalho acumulado)
 
 A pedido da usuária ("PRIORIZE O 2"), todo o trabalho acumulado (plano de
