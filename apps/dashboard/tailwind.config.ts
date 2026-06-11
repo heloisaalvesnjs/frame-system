@@ -10,13 +10,21 @@ const config: Config = {
     extend: {
       colors: {
         // ── Semantic tokens (CSS vars, theme-aware) ──────────────
-        bg:      'var(--bg)',
-        surface: 'var(--surface)',
-        raised:  'var(--raised)',
-        border:  'var(--border)',
-        t1:      'var(--t1)',
-        t2:      'var(--t2)',
-        t3:      'var(--t3)',
+        bg:       'var(--bg)',
+        surface:  'var(--surface)',
+        raised:   'var(--raised)',
+        raised2:  'var(--raised-2)',
+        border:   'var(--border)',
+        t1:       'var(--t1)',
+        t2:       'var(--t2)',
+        t3:       'var(--t3)',
+        t4:       'var(--t4)',
+
+        // ── Semantic status colors ───────────────────────────────
+        danger:  'var(--danger)',
+        warning: 'var(--warning)',
+        info:    'var(--info)',
+        purple:  'var(--purple)',
 
         // ── Brand (hex — suporta Tailwind opacity modifiers) ─────
         brand: {

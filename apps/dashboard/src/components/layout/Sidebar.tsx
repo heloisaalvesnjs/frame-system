@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, MessageSquare, CalendarDays, Users,
   LogOut, Shield, User, Settings, Lock, CreditCard,
-  Sparkles, Clock, Plug, Building2, Layers,
+  Sparkles, Clock, Plug, Building2, Layers, Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ const navInteligencia = [
 
 const navWorkspace = [
   { href: '/servicos',        label: 'Planos',          icon: CreditCard },
+  { href: '/financeiro',      label: 'Financeiro',      icon: Wallet },
   { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
   { href: '/equipe',          label: 'Equipe',          icon: Building2 },
   { href: '/integracoes',     label: 'Integrações',     icon: Plug },

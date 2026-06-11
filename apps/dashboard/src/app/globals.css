@@ -27,6 +27,20 @@
   --brand-h:        #009A62;
   --brand-s:        rgba(0, 194, 124, 0.10);
   --brand-s-solid:  #E8FBF4;
+  --brand-ring:     rgba(0, 194, 124, 0.24);
+
+  /* Extra surface step + hairline borders (Frame Vision) */
+  --raised-2: #EBEBEF;
+  --t4:       #C4C4CB;
+  --line-1:   rgba(0,0,0,0.04);
+  --line-2:   rgba(0,0,0,0.08);
+  --line-3:   rgba(0,0,0,0.14);
+
+  /* Semantic status colors */
+  --danger:  #E5484D;
+  --warning: #F5A524;
+  --info:    #3B82F6;
+  --purple:  #8B5CF6;
 
   /* Shadows — multi-layer Apple-style */
   --shadow-xs:  0 1px 2px rgba(0,0,0,.04);
@@ -61,6 +75,20 @@
   --brand-h:       #00E892;
   --brand-s:       rgba(0, 194, 124, 0.12);
   --brand-s-solid: #0B2E1E;
+  --brand-ring:    rgba(0, 194, 124, 0.32);
+
+  /* Extra surface step + hairline borders (Frame Vision) */
+  --raised-2: #25282C;
+  --t4:       #4A5159;
+  --line-1:   rgba(255,255,255,0.06);
+  --line-2:   rgba(255,255,255,0.10);
+  --line-3:   rgba(255,255,255,0.16);
+
+  /* Semantic status colors */
+  --danger:  #FF5C5C;
+  --warning: #FFB454;
+  --info:    #6AA9FF;
+  --purple:  #B69CFF;
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,.30);
   --shadow-sm: 0 1px 3px rgba(0,0,0,.40), 0 1px 2px rgba(0,0,0,.30);
@@ -239,6 +267,41 @@ input:-webkit-autofill:focus {
                       linear-gradient(90deg, var(--border-s) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+
+  /* Surface steps (Frame Vision) */
+  .surface {
+    background-color: var(--surface);
+    border: 1px solid var(--line-1);
+    border-radius: 16px;
+  }
+  .surface-2 {
+    background-color: var(--raised-2);
+    border: 1px solid var(--line-1);
+    border-radius: 16px;
+  }
+
+  /* Hairline divider */
+  .hairline { border-color: var(--line-1); }
+
+  /* Fade-in entrance */
+  .fade-in { animation: fs-fade-in 0.4s ease-out; }
+
+  /* Skeleton loading shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, var(--raised) 25%, var(--raised-2) 50%, var(--raised) 75%);
+    background-size: 200% 100%;
+    animation: fs-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes fs-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fs-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* ── Light mode: compatibility overrides ────────────────────── */
