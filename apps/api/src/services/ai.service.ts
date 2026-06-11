@@ -113,6 +113,7 @@ interface ProcessMessageOutput {
   planMediaName?: string
   planMessageText?: string
   bookingConfirmationMessage?: string
+  pendingApproval?: boolean
 }
 
 // ── Serviço principal ──────────────────────────────────────
@@ -136,19 +137,22 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   // 2. Garante que existe uma conversa aberta
   let convId = conversation_id
   let contextData: any = {}
+  let conversationMode = 'auto'
 
   if (!convId) {
     const [conv] = await query(
       `INSERT INTO conversations (nutritionist_id, client_phone, status, last_message_at)
        VALUES ($1, $2, 'active', NOW())
-       RETURNING id, context`,
+       RETURNING id, context, mode`,
       [nutritionist_id, client_phone]
     )
     convId = conv.id
     contextData = {}
+    conversationMode = conv.mode || 'auto'
   } else {
-    const conv = await queryOne<any>('SELECT context FROM conversations WHERE id = $1', [convId])
+    const conv = await queryOne<any>('SELECT context, mode FROM conversations WHERE id = $1', [convId])
     contextData = conv?.context ?? {}
+    conversationMode = conv?.mode || 'auto'
     // Atualiza timestamp
     await query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [convId])
   }
@@ -237,6 +241,18 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     []
   )
 
+  // 5d. Busca memória estruturada deste paciente (C.11)
+  let clientMemory: any = null
+  try {
+    const clientRow = await queryOne<any>(
+      `SELECT ai_memory FROM clients WHERE nutritionist_id = $1 AND phone = $2`,
+      [nutritionist_id, client_phone]
+    )
+    clientMemory = clientRow?.ai_memory ?? null
+  } catch (err) {
+    console.error('[AI] Erro ao buscar memória do paciente:', err)
+  }
+
   // 6. Resolve mídia dos planos (JSONB) — precisa estar em processMessage para o retorno
   const plansMediaCfg = assistant.plans_media ?? {}
   const mediaGeral      = plansMediaCfg.geral?.enabled      && plansMediaCfg.geral?.path      ? plansMediaCfg.geral      : null
@@ -259,6 +275,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     trainingNotes,
     services,
     hasAnyMedia,
+    clientMemory,
   })
 
   // 7. Chama a IA
@@ -275,9 +292,12 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   }
 
   // 8. Salva a resposta da assistente
+  // Em modo copiloto, a resposta fica marcada como rascunho (pending_send) e
+  // não é enviada automaticamente — a nutri precisa aprovar antes do envio.
+  const pendingApproval = conversationMode === 'copilot'
   await query(
-    'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
-    [convId, 'assistant', responseText]
+    'INSERT INTO messages (conversation_id, role, content, pending_send) VALUES ($1, $2, $3, $4)',
+    [convId, 'assistant', responseText, pendingApproval]
   )
 
   // 8b. Atualiza contextData com informações extraídas da conversa
@@ -377,11 +397,11 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     else if (customMsgOnline2)                   planMessageText = customMsgOnline2
   }
 
-  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName, planMessageText, bookingConfirmationMessage }
+  return { text: responseText, action, planMediaUrl, planMediaType, planMediaName, planMessageText, bookingConfirmationMessage, pendingApproval }
 }
 
 // ── Monta o system prompt da assistente ───────────────────
-function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia }: any): string {
+function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia, clientMemory }: any): string {
   const aiName    = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone      = assistant.tone || 'acolhedor'
@@ -473,6 +493,57 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     contextData.goal        ? `Objetivo mencionado: ${contextData.goal}` : '',
   ].filter(Boolean).join(' | ')
 
+  // Memória estruturada do paciente (C.11)
+  const memRestricoes: string[] = Array.isArray(clientMemory?.restricoes) ? clientMemory.restricoes.filter(Boolean) : []
+  const memPreferencias: string[] = Array.isArray(clientMemory?.preferencias) ? clientMemory.preferencias.filter(Boolean) : []
+  const memObservacoes: string = clientMemory?.observacoes?.trim() || ''
+  const hasClientMemory = memRestricoes.length > 0 || memPreferencias.length > 0 || !!memObservacoes
+  const clientMemorySection = hasClientMemory
+    ? `\nMEMÓRIA DESTE PACIENTE (use para personalizar, sem repetir como script):\n${[
+        memRestricoes.length > 0 ? `- Restrições: ${memRestricoes.join(', ')}` : '',
+        memPreferencias.length > 0 ? `- Preferências: ${memPreferencias.join(', ')}` : '',
+        memObservacoes ? `- Observações: ${memObservacoes}` : '',
+      ].filter(Boolean).join('\n')}\n`
+    : ''
+
+  // Despedida e frases proibidas/preferidas (Perfil da atendente)
+  const farewellMsg = assistant.farewell_message?.trim() || null
+  const farewellSection = farewellMsg
+    ? `\nAO ENCERRAR A CONVERSA: use algo como "${farewellMsg}" (adapte naturalmente ao contexto).\n`
+    : ''
+
+  const frasesProibidas: string[] = Array.isArray(assistant.frases_proibidas) ? assistant.frases_proibidas.filter(Boolean) : []
+  const frasesPreferidas: string[] = Array.isArray(assistant.frases_preferidas) ? assistant.frases_preferidas.filter(Boolean) : []
+
+  const frasesProibidasSection = frasesProibidas.length > 0
+    ? `\nFRASES PROIBIDAS — nunca use estas palavras/expressões: ${frasesProibidas.join(', ')}.\n`
+    : ''
+  const frasesPreferidasSection = frasesPreferidas.length > 0
+    ? `\nFRASES/EXPRESSÕES PREFERIDAS — use quando fizer sentido: ${frasesPreferidas.join(', ')}.\n`
+    : ''
+
+  // Roteiro de venda — objeções personalizadas (B.7)
+  const customObjections: { gatilho: string; resposta: string }[] = Array.isArray(assistant.custom_objections)
+    ? assistant.custom_objections.filter((o: any) => o?.gatilho?.trim() && o?.resposta?.trim())
+    : []
+  const customObjectionsSection = customObjections.length > 0
+    ? `\nOBJEÇÕES PERSONALIZADAS DESTE CONSULTÓRIO (priorize estas respostas quando o assunto aparecer):\n${customObjections.map(o => `- "${o.gatilho}": ${o.resposta}`).join('\n')}\n`
+    : ''
+
+  // Exemplos de conversas (B.8)
+  const conversationExamples: { situacao: string; resposta: string }[] = Array.isArray(assistant.conversation_examples)
+    ? assistant.conversation_examples.filter((e: any) => e?.situacao?.trim() && e?.resposta?.trim())
+    : []
+  const conversationExamplesSection = conversationExamples.length > 0
+    ? `\nEXEMPLOS DE BOAS RESPOSTAS (siga este estilo em situações parecidas):\n${conversationExamples.map(e => `- Situação: ${e.situacao}\n  Resposta ideal: ${e.resposta}`).join('\n')}\n`
+    : ''
+
+  // Regras clínicas / limites adicionais (B.9)
+  const clinicalRules: string[] = Array.isArray(assistant.clinical_rules) ? assistant.clinical_rules.filter(Boolean) : []
+  const clinicalRulesSection = clinicalRules.length > 0
+    ? `\nLIMITES CLÍNICOS ADICIONAIS DESTE CONSULTÓRIO:\n${clinicalRules.map(r => `- ${r}`).join('\n')}\n`
+    : ''
+
   // ── Instrução de apresentação dos planos ────────────────
   const plansPresentation = hasAnyMedia
     ? `Uma imagem com os planos será enviada automaticamente após sua mensagem. Escreva apenas 1 frase curta de apresentação (ex: "Deixa eu te mostrar as opções 👇"). NÃO liste planos nem preços. Termine com: "Me fala qual chamou mais atenção e eu já abro a agenda pra você."`
@@ -498,7 +569,7 @@ QUEM VOCÊ É:
 Você é uma recepcionista humana, experiente, que gosta do que faz. Sua função é receber a pessoa com calor, entender rapidamente o que ela busca e marcar a consulta. Você não é nutricionista — não dá conselhos alimentares. Você é a pessoa que abre a porta do consultório.
 
 ${toneGuide} ${emojiRule} Escreva como se fosse uma mensagem de WhatsApp real: frases curtas, sem listas, sem asterisco, sem markdown. Máximo 2 frases por mensagem. 1 pergunta por vez. Nunca use "Claro!", "Com certeza!", "Certamente" — soa robótico.
-${assistant.pdf_content ? `\nSOBRE O CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}
+${assistant.pdf_content ? `\nSOBRE O CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}${frasesProibidasSection}${frasesPreferidasSection}${farewellSection}
 FLUXO DA CONVERSA:
 
 1. ENTENDER O OBJETIVO
@@ -521,7 +592,7 @@ OBJEÇÕES (responda de forma natural, sem script óbvio):
 - "Já tentei dieta antes e não funcionou": Valide e diferencione. Ex: "Entendo, a maioria das pessoas que chegam até nós passaram pela mesma coisa. O acompanhamento do ${nutriName} é diferente justamente por isso — o que chamou mais atenção nos planos?"
 - Pergunta técnica de nutrição: "Isso é uma ótima pergunta pra levar direto pro ${nutriName} na consulta — ele vai conseguir te responder com muito mais precisão do que eu."
 - Condição de saúde sensível (diabetes, transtorno alimentar, etc): Acolha com cuidado. "Que bom que você está buscando apoio nisso. O ${nutriName} tem experiência com esse perfil — uma consulta já clareia muito o caminho."
-
+${customObjectionsSection}${conversationExamplesSection}${clinicalRulesSection}${clientMemorySection}
 NUNCA: inventar horários | confirmar consulta sem data e hora reais | pedir telefone | dar conselho alimentar | prometer resultado | repetir saudação.${clientCtx ? `\n\nCONTEXTO DO CLIENTE: ${clientCtx}` : ''}
 `
 }
@@ -534,7 +605,16 @@ async function detectAndCreateAppointment({
   const confirmationPattern = /✅ Consulta confirmada para (.+) às (\d{2}:\d{2})/i
   const match = responseText.match(confirmationPattern)
 
-  if (!match) return null
+  if (!match) {
+    // A IA pode ter tentado confirmar em um formato diferente do esperado —
+    // loga para diagnosticar drift no prompt sem bloquear a conversa.
+    if (/consulta confirmada/i.test(responseText)) {
+      console.warn(
+        `[appointment] Possível confirmação fora do formato esperado (nutri ${nutritionist_id}, tel ${client_phone}): "${responseText.slice(0, 200)}"`
+      )
+    }
+    return null
+  }
 
   try {
     // Tenta extrair data e hora da confirmação
@@ -584,7 +664,7 @@ async function detectAndCreateAppointment({
 
     // Atualiza conversa
     await query(
-      `UPDATE conversations SET status = 'resolved' WHERE id = $1`,
+      `UPDATE conversations SET status = 'resolved', outcome = 'agendou', closed_at = NOW() WHERE id = $1`,
       [convId]
     )
 

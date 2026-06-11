@@ -275,7 +275,16 @@ export async function webhookRoutes(app: FastifyInstance) {
           })
 
           if (!response?.text) {
-            app.log.error('[webhook] processMessage retornou sem texto — sem resposta enviada')
+            app.log.error('[webhook] processMessage retornou sem texto — enviando fallback')
+            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeInstance)
+              .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar fallback de resposta vazia'))
+            return
+          }
+
+          // Modo copiloto: a resposta da IA fica como rascunho aguardando
+          // aprovação da nutri em /conversas — nada é enviado ao paciente agora.
+          if (response.pendingApproval) {
+            app.log.info('[webhook] Conversa em modo copiloto — resposta salva como rascunho, aguardando aprovação')
             return
           }
 

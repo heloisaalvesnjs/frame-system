@@ -408,7 +408,12 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       name:      z.string().min(1).optional(),
       goal:      z.string().optional(),
       notes:     z.string().optional(),
-      birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+      birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      ai_memory: z.object({
+        restricoes: z.array(z.string()).optional(),
+        preferencias: z.array(z.string()).optional(),
+        observacoes: z.string().optional(),
+      }).optional()
     })
     const body = schema.parse(request.body)
 
@@ -418,10 +423,11 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
          goal      = COALESCE($4, goal),
          notes     = COALESCE($5, notes),
          birthdate = COALESCE($6::DATE, birthdate),
+         ai_memory = COALESCE($7::JSONB, ai_memory),
          updated_at = NOW()
        WHERE id = $1 AND nutritionist_id = $2
        RETURNING *`,
-      [clientId, nutritionistId, body.name, body.goal, body.notes, body.birthdate ?? null]
+      [clientId, nutritionistId, body.name, body.goal, body.notes, body.birthdate ?? null, body.ai_memory ? JSON.stringify(body.ai_memory) : null]
     )
     if (!updated) return reply.code(404).send({ error: 'Cliente não encontrado' })
     return reply.send(updated)

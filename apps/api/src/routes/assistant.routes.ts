@@ -35,7 +35,9 @@ export async function assistantRoutes(app: FastifyInstance) {
                 plans_media_enabled, plans_media_type, plans_media_original_name,
                 CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
                 plans_media,
-                CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename
+                CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename,
+                farewell_message, frases_proibidas, frases_preferidas, custom_objections,
+                conversation_examples, clinical_rules
          FROM assistants WHERE nutritionist_id = $1`,
         [id]
       )
@@ -108,6 +110,22 @@ export async function assistantRoutes(app: FastifyInstance) {
       pos_consulta_message: z.string().nullish().transform(v => v ?? undefined),
       retorno_message: z.string().nullish().transform(v => v ?? undefined),
       retorno_days: z.number().int().min(1).max(365).nullish().transform(v => v ?? undefined),
+      // Perfil da atendente (B.4)
+      farewell_message: z.string().nullish().transform(v => v ?? undefined),
+      frases_proibidas: z.array(z.string()).nullish().transform(v => v ?? undefined),
+      frases_preferidas: z.array(z.string()).nullish().transform(v => v ?? undefined),
+      // Roteiros de venda — objeções personalizadas (B.7)
+      custom_objections: z.array(z.object({
+        gatilho: z.string(),
+        resposta: z.string(),
+      })).nullish().transform(v => v ?? undefined),
+      // Exemplos de conversas (B.8)
+      conversation_examples: z.array(z.object({
+        situacao: z.string(),
+        resposta: z.string(),
+      })).nullish().transform(v => v ?? undefined),
+      // Regras clínicas / limites (B.9)
+      clinical_rules: z.array(z.string()).nullish().transform(v => v ?? undefined),
     }).passthrough()
 
     const body = schema.parse(request.body)
@@ -173,6 +191,12 @@ export async function assistantRoutes(app: FastifyInstance) {
         if (body.pos_consulta_message !== undefined)       { autoUpdates.push(`pos_consulta_message = $${p++}`);       autoParams.push(body.pos_consulta_message) }
         if (body.retorno_message !== undefined)            { autoUpdates.push(`retorno_message = $${p++}`);            autoParams.push(body.retorno_message) }
         if (body.retorno_days !== undefined)               { autoUpdates.push(`retorno_days = $${p++}`);               autoParams.push(body.retorno_days) }
+        if (body.farewell_message !== undefined)           { autoUpdates.push(`farewell_message = $${p++}`);           autoParams.push(body.farewell_message) }
+        if (body.frases_proibidas !== undefined)           { autoUpdates.push(`frases_proibidas = $${p++}`);           autoParams.push(JSON.stringify(body.frases_proibidas)) }
+        if (body.frases_preferidas !== undefined)          { autoUpdates.push(`frases_preferidas = $${p++}`);          autoParams.push(JSON.stringify(body.frases_preferidas)) }
+        if (body.custom_objections !== undefined)          { autoUpdates.push(`custom_objections = $${p++}`);          autoParams.push(JSON.stringify(body.custom_objections)) }
+        if (body.conversation_examples !== undefined)      { autoUpdates.push(`conversation_examples = $${p++}`);      autoParams.push(JSON.stringify(body.conversation_examples)) }
+        if (body.clinical_rules !== undefined)             { autoUpdates.push(`clinical_rules = $${p++}`);             autoParams.push(JSON.stringify(body.clinical_rules)) }
         if (autoUpdates.length > 0) {
           await query(`UPDATE assistants SET ${autoUpdates.join(', ')} WHERE nutritionist_id = $1`, autoParams)
         }

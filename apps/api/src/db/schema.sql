@@ -409,6 +409,12 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_online_enabled BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS services_message_presencial_enabled BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS farewell_message TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS frases_proibidas JSONB DEFAULT '[]';
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS frases_preferidas JSONB DEFAULT '[]';
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS custom_objections JSONB DEFAULT '[]';
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS conversation_examples JSONB DEFAULT '[]';
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS clinical_rules JSONB DEFAULT '[]';
 ALTER TABLE services ADD COLUMN IF NOT EXISTS modality TEXT DEFAULT 'presencial';
 
 -- ── Locais de atendimento ────────────────────────────────────────
@@ -517,6 +523,21 @@ CREATE TABLE IF NOT EXISTS webhook_integrations (
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ── Memória estruturada por paciente (C.11) ──
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_memory JSONB DEFAULT '{}';
+
+-- ── Modo copiloto (C.12) ──
+-- mode: 'auto' (IA responde direto) | 'copilot' (IA gera rascunho para aprovação da nutri)
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'auto';
+-- pending_send: true quando a mensagem é um rascunho da IA aguardando aprovação (modo copiloto)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pending_send BOOLEAN DEFAULT false;
+
+-- ── Avaliação/outcome de conversas (C.13) ──
+-- outcome: resultado da conversa: 'agendou' | 'comprou' | 'nao_avancou' | 'sem_resposta' | 'outro'
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS outcome TEXT;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS outcome_notes TEXT;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 
 -- Google Calendar integration
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
