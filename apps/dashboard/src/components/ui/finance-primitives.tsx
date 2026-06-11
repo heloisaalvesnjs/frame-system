@@ -99,7 +99,7 @@ export function Btn({
 }) {
   const variants: Record<string, string> = {
     primary:
-      'bg-[var(--brand)] text-white hover:bg-[var(--brand-h)] shadow-[0_0_0_1px_var(--brand-ring),0_8px_24px_-12px_rgba(0,194,124,0.5)]',
+      'bg-[var(--brand)] text-[#02140C] hover:bg-[var(--brand-h)] shadow-[0_0_0_1px_var(--brand-ring),0_8px_24px_-12px_rgba(0,194,124,0.5)]',
     secondary: 'bg-[var(--raised)] text-t1 hover:bg-[var(--raised-2)] border border-[var(--line-2)]',
     ghost: 'text-t2 hover:bg-[var(--raised)] hover:text-t1',
     outline: 'border border-[var(--line-2)] text-t1 hover:bg-[var(--raised)] hover:border-[var(--line-3)]',

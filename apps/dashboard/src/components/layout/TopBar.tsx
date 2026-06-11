@@ -1,22 +1,25 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Bell, Settings } from 'lucide-react'
+import { Bell, HelpCircle, Menu, Search, Settings, Sparkles } from 'lucide-react'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':     'Dashboard',
-  '/conversas':     'Conversas',
-  '/agenda':        'Agenda',
-  '/clientes':      'Pacientes',
-  '/servicos':      'Planos',
-  '/followup':      'Automações',
-  '/treinamento':   'Frame AI',
+  '/dashboard': 'Dashboard',
+  '/conversas': 'Conversas',
+  '/agenda': 'Agenda',
+  '/clientes': 'Pacientes',
+  '/servicos': 'Planos',
+  '/financeiro': 'Financeiro',
+  '/followup': 'Automações',
+  '/treinamento': 'Frame AI',
   '/disponibilidade': 'Disponibilidade',
-  '/equipe':        'Equipe',
-  '/integracoes':   'Integrações',
+  '/equipe': 'Equipe',
+  '/integracoes': 'Integrações',
   '/configuracoes': 'Configurações',
-  '/onboarding':    'Configuração inicial',
-  '/admin':         'Admin',
+  '/onboarding': 'Configuração inicial',
+  '/seguranca': 'Segurança',
+  '/perfil': 'Perfil',
+  '/admin': 'Admin',
 }
 
 function getTitle(pathname: string): string {
@@ -32,55 +35,75 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 md:left-[220px] h-[60px] flex items-center px-5 gap-4 z-10"
+      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-4 px-4 backdrop-blur-xl md:left-[220px] md:px-6"
       style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        boxShadow: '0 1px 0 var(--border)',
+        background: 'color-mix(in oklab, var(--bg) 82%, transparent)',
+        borderBottom: '1px solid var(--line-1)',
       }}
     >
-      {/* Hamburger (mobile) */}
       <button
         onClick={onMenuClick}
-        className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+        className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)] md:hidden"
         style={{ color: 'var(--t2)' }}
         aria-label="Menu"
       >
-        <Menu className="w-4 h-4" />
+        <Menu className="h-4 w-4" strokeWidth={1.75} />
       </button>
 
-      {/* Title */}
-      <h1
-        className="font-display font-bold text-[18px] tracking-tight flex-1 leading-none"
-        style={{ color: 'var(--t1)' }}
-      >
-        {title}
-      </h1>
+      <div className="min-w-0 flex-1 md:w-[220px] md:flex-none">
+        <h1 className="truncate text-[14px] font-semibold leading-tight" style={{ color: 'var(--t1)' }}>
+          {title}
+        </h1>
+        <p className="hidden truncate text-[11.5px] md:block" style={{ color: 'var(--t3)' }}>
+          Operação do consultório
+        </p>
+      </div>
 
-      {/* Right actions */}
-      <div className="flex items-center gap-1">
-        {/* Notification bell */}
+      <button
+        className="group mx-auto hidden h-9 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border px-3 text-left transition-all hover:border-[var(--line-3)] hover:bg-white/[0.04] md:flex"
+        style={{ borderColor: 'var(--line-2)', background: 'rgba(255,255,255,0.02)' }}
+        aria-label="Buscar"
+      >
+        <Search className="h-3.5 w-3.5" style={{ color: 'var(--t3)' }} />
+        <span className="flex-1 text-[13px]" style={{ color: 'var(--t3)' }}>
+          Buscar pacientes, conversas, ações...
+        </span>
+        <kbd className="font-mono text-[10.5px]" style={{ color: 'var(--t3)' }}>Ctrl K</kbd>
+      </button>
+
+      <div className="flex items-center gap-1.5">
         <button
-          className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-raised"
+          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
+          style={{ color: 'var(--t2)' }}
+          aria-label="Frame AI"
+        >
+          <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+        <button
+          className="hidden h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)] sm:grid"
+          style={{ color: 'var(--t2)' }}
+          aria-label="Ajuda"
+        >
+          <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+        <button
+          className="relative grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
           style={{ color: 'var(--t2)' }}
           aria-label="Notificações"
         >
-          <Bell className="w-[18px] h-[18px]" />
-          {/* Red dot indicator */}
+          <Bell className="h-4 w-4" strokeWidth={1.75} />
           <span
-            className="absolute top-2 right-2 w-2 h-2 rounded-full border-2"
-            style={{ background: '#EF4444', borderColor: 'var(--surface)' }}
+            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full"
+            style={{ background: 'var(--brand)', boxShadow: '0 0 6px var(--brand)' }}
           />
         </button>
-
-        {/* Settings shortcut */}
         <button
           onClick={() => router.push('/configuracoes')}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-raised"
+          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
           style={{ color: 'var(--t2)' }}
           aria-label="Configurações"
         >
-          <Settings className="w-[18px] h-[18px]" />
+          <Settings className="h-4 w-4" strokeWidth={1.75} />
         </button>
       </div>
     </header>

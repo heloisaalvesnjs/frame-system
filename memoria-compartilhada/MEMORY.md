@@ -89,6 +89,17 @@ o Codex.
 
 ## PendÃªncias em aberto
 
+- (2026-06-11) Decisao Codex/Heloisa sobre Lovable: usar o Lovable como
+  laboratorio de design/UI, nao como substituto do sistema principal. Para
+  transferir telas criadas no Lovable, copiar/adaptar apenas a camada visual
+  (layout, componentes, estilos, textos, spacing, estados e assets) para o
+  Next.js atual em `apps/dashboard`, preservando auth, chamadas `api`, backend
+  Fastify/Postgres, Evolution API, Claude, webhooks e deploy existentes.
+  Caminho recomendado: exportar/sincronizar Lovable em branch separada
+  (`lovable/design-lab` ou equivalente), comparar componentes e portar tela a
+  tela. Evitar migracao para Supabase/Lovable full-stack neste momento, pois
+  isso exigiria reescrever backend, autenticacao, WhatsApp, IA e webhooks.
+
 - (2026-06-11) Gap analysis do produto "assistente IA" feito pelo Claude Code
   a partir de checklist enviado pelo Codex. Levantamento tÃ©cnico completo no
   histÃ³rico da conversa do Claude Code. Resumo do que falta, dividido por

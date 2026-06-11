@@ -26,9 +26,9 @@
 
 ## Codex
 
-- **Ultima atividade**: 2026-06-11 - criou rota publica /preview-dashboard para visualizar redesign sem login.
-- **Em andamento**: carrossel do Instagram no Figma iniciado, mas bloqueado pelo limite do Figma MCP do plano Starter.
-- **Bloqueado/aguardando**: limite do Figma MCP liberado ou plano atualizado.
+- **Ultima atividade**: 2026-06-11 - analisou `Frame Vision.zip` e portou ajustes visuais faltantes do shell/design system (TopBar, Sidebar, tokens, botao primario). Build do dashboard passou.
+- **Em andamento**: nada no momento.
+- **Bloqueado/aguardando**: nada no momento.
 
 ---
 
@@ -37,5 +37,3 @@
 Substitua os campos da sua secao. Seja breve (1-3 linhas por campo). Se
 terminar uma tarefa, mova um resumo para `LOG.md` com a data e limpe o
 "Em andamento" daqui.
-
-

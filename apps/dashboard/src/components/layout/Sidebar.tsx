@@ -7,8 +7,10 @@ import {
   LayoutDashboard, MessageSquare, CalendarDays, Users,
   LogOut, Shield, User, Settings, Lock, CreditCard,
   Sparkles, Clock, Plug, Building2, Layers, Wallet,
+  Moon, Plus, Sun,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
 // ── Nav items ─────────────────────────────────────────────────────
@@ -47,10 +49,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function FrameMark({ size = 28 }: { size?: number }) {
   return (
     <div
-      className="flex items-center justify-center rounded-[8px] font-bold text-white flex-shrink-0"
+      className="flex items-center justify-center rounded-[8px] font-bold flex-shrink-0"
       style={{
         width: size, height: size,
         background: 'var(--brand)',
+        color: '#02140C',
         fontSize: size * 0.5,
         letterSpacing: '-0.02em',
       }}
@@ -215,10 +218,11 @@ function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => vo
 
 function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: () => void }) {
   const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
 
   return (
-    <div className="flex flex-col h-full" style={{ background: '#111113' }}>
+    <div className="flex flex-col h-full" style={{ background: '#0E0F11' }}>
 
       {/* Logo */}
       <div
@@ -242,6 +246,29 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
             SYSTEM
           </p>
         </div>
+      </div>
+
+      <div className={cn('pb-3 transition-all duration-200', expanded ? 'px-3' : 'px-2')}>
+        <button
+          type="button"
+          className={cn(
+            'flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition-colors',
+            expanded ? 'justify-start' : 'justify-center',
+          )}
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            borderColor: 'rgba(255,255,255,0.10)',
+            color: 'rgba(255,255,255,0.64)',
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {expanded && (
+            <>
+              <span>Novo</span>
+              <kbd className="ml-auto font-mono text-[10px] text-white/30">Ctrl N</kbd>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Nav */}
@@ -298,6 +325,37 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
           </>
         )}
       </nav>
+
+      {expanded && (
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+            <button
+              type="button"
+              onClick={() => theme === 'light' && toggleTheme()}
+              className={cn(
+                'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
+                theme === 'dark' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+              )}
+              aria-label="Tema escuro"
+            >
+              <Moon className="h-3 w-3" />
+              Dark
+            </button>
+            <button
+              type="button"
+              onClick={() => theme === 'dark' && toggleTheme()}
+              className={cn(
+                'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
+                theme === 'light' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+              )}
+              aria-label="Tema claro"
+            >
+              <Sun className="h-3 w-3" />
+              Light
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* User menu */}
       <UserMenu expanded={expanded} onClose={onClose} />

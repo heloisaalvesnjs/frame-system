@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-06-11 - Codex
+
+- Analisou `C:\Users\Heloisa\Downloads\Frame Vision.zip` (export do Lovable)
+  contra o dashboard atual. O sistema ja tinha varias telas portadas,
+  inclusive `/financeiro`, mas ainda faltavam detalhes do shell/design system.
+- Portou ajustes visuais faltantes sem alterar funcionamento/API:
+  - `TopBar.tsx`: visual Lovable com topbar translúcida de 56px, busca
+    central, icones Frame AI/ajuda/notificacoes/configuracoes e titulo
+    compacto.
+  - `(dashboard)/layout.tsx`: padding superior ajustado para a nova topbar.
+  - `Sidebar.tsx`: botao rapido "Novo", seletor Dark/Light no rodape,
+    fundo `#0E0F11` e marca verde com texto escuro.
+  - `globals.css`: tokens escuros aproximados do Frame Vision e surfaces com
+    raios 14/12.
+  - `finance-primitives.tsx`: botao primario verde com texto escuro como no
+    Lovable.
+- Validacao: `npm.cmd run build` em `apps/dashboard` passou. Servidor local
+  iniciado; `http://localhost:3000/dashboard` e `/financeiro` responderam 200.
+
+## 2026-06-11 - Codex
+
+- Registrou em `MEMORY.md` a decisao sobre Lovable: usar como laboratorio de
+  design/UI e portar apenas a camada visual para `apps/dashboard`, mantendo o
+  funcionamento atual do Frame System (auth, API, Fastify/Postgres, Evolution
+  API, Claude, webhooks e deploy). Recomendado trabalhar via branch/export
+  separada, evitando migracao full-stack para Supabase/Lovable neste momento.
+
 ## 2026-06-11 - Claude Code (redesign "tudo": agenda + treinamento, fim do ciclo de páginas)
 
 Concluído o pedido "vamos voltar ao design, faça todas as páginas... copiar e
@@ -304,6 +331,4 @@ versionados (ver MEMORY.md).
   `mockup-sistema.html` â€” manter shell de navegaÃ§Ã£o atual.
 - PendÃªncia aberta: usuÃ¡ria reportou que "todas as pÃ¡ginas" ainda nÃ£o batem
   com o mockup, sem detalhe especÃ­fico. Aguardando print.
-
-
 
