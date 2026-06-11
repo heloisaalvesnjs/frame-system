@@ -19,9 +19,13 @@ import { toast } from 'sonner'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ClientAiMemory {
+  restricoes?: string[]; preferencias?: string[]; observacoes?: string
+}
 interface Client {
   id: string; name: string | null; phone: string; goal: string | null
   notes: string | null; birthdate: string | null; created_at: string; updated_at: string
+  ai_memory: ClientAiMemory | null
 }
 interface Appointment {
   id: string; scheduled_at: string; duration: number; modality: string
@@ -617,7 +621,7 @@ export default function ClientProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [docDesc, setDocDesc] = useState('')
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ name: '', goal: '', notes: '', birthdate: '' })
+  const [form, setForm] = useState({ name: '', goal: '', notes: '', birthdate: '', memRestricoes: '', memPreferencias: '', memObservacoes: '' })
 
   const { data, isLoading } = useQuery<ProfileData>({
     queryKey: ['client', id],
@@ -715,7 +719,12 @@ export default function ClientProfilePage() {
   useEffect(() => {
     if (data?.client) {
       const c = data.client
-      setForm({ name: c.name ?? '', goal: c.goal ?? '', notes: c.notes ?? '', birthdate: c.birthdate ? c.birthdate.slice(0, 10) : '' })
+      setForm({
+        name: c.name ?? '', goal: c.goal ?? '', notes: c.notes ?? '', birthdate: c.birthdate ? c.birthdate.slice(0, 10) : '',
+        memRestricoes: (c.ai_memory?.restricoes ?? []).join('\n'),
+        memPreferencias: (c.ai_memory?.preferencias ?? []).join('\n'),
+        memObservacoes: c.ai_memory?.observacoes ?? '',
+      })
     }
   }, [data])
 
@@ -731,7 +740,14 @@ export default function ClientProfilePage() {
 
   const saveMutation = useMutation({
     mutationFn: async (body: typeof form) => {
-      await api.patch(`/api/clients/${id}`, { name: body.name || undefined, goal: body.goal || undefined, notes: body.notes || undefined, birthdate: body.birthdate || undefined })
+      await api.patch(`/api/clients/${id}`, {
+        name: body.name || undefined, goal: body.goal || undefined, notes: body.notes || undefined, birthdate: body.birthdate || undefined,
+        ai_memory: {
+          restricoes: body.memRestricoes.split('\n').map(s => s.trim()).filter(Boolean),
+          preferencias: body.memPreferencias.split('\n').map(s => s.trim()).filter(Boolean),
+          observacoes: body.memObservacoes.trim(),
+        },
+      })
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['client', id] }); qc.invalidateQueries({ queryKey: ['clients'] }); setEditing(false); toast.success('Dados salvos!') },
     onError: () => toast.error('Erro ao salvar'),
@@ -799,6 +815,30 @@ export default function ClientProfilePage() {
               <textarea rows={3} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
                 style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
                 value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Anotações clínicas, observações..." />
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--t3)' }}>Memória da IA — para a assistente lembrar deste paciente</label>
+              <p className="text-xs mb-2" style={{ color: 'var(--t3)' }}>Esses dados são usados pela IA para personalizar as respostas ao falar com este paciente.</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[11px] mb-1 block" style={{ color: 'var(--t3)' }}>Restrições (uma por linha)</label>
+                  <textarea rows={3} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                    style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
+                    value={form.memRestricoes} onChange={e => setForm(f => ({ ...f, memRestricoes: e.target.value }))} placeholder="Ex: lactose&#10;Ex: glúten" />
+                </div>
+                <div>
+                  <label className="text-[11px] mb-1 block" style={{ color: 'var(--t3)' }}>Preferências (uma por linha)</label>
+                  <textarea rows={3} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                    style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
+                    value={form.memPreferencias} onChange={e => setForm(f => ({ ...f, memPreferencias: e.target.value }))} placeholder="Ex: prefere treino à noite&#10;Ex: gosta de receitas doces" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] mb-1 block" style={{ color: 'var(--t3)' }}>Observações gerais</label>
+                <textarea rows={2} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                  style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t1)' }}
+                  value={form.memObservacoes} onChange={e => setForm(f => ({ ...f, memObservacoes: e.target.value }))} placeholder="Outros pontos importantes para a IA considerar" />
+              </div>
             </div>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
@@ -929,6 +969,37 @@ export default function ClientProfilePage() {
           </div>
           <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--t2)' }}>{client.notes}</p>
         </div>
+      )}
+
+      {/* Memória da IA */}
+      {!editing && client.ai_memory && (
+        ((client.ai_memory.restricoes?.length ?? 0) > 0 || (client.ai_memory.preferencias?.length ?? 0) > 0 || client.ai_memory.observacoes) && (
+          <div className="rounded-2xl p-4 mb-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <ClipboardList className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--t3)' }}>Memória da IA</span>
+            </div>
+            <div className="space-y-2">
+              {(client.ai_memory.restricoes?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {client.ai_memory.restricoes!.map((r, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)', color: 'var(--brand)' }}>{r}</span>
+                  ))}
+                </div>
+              )}
+              {(client.ai_memory.preferencias?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {client.ai_memory.preferencias!.map((p, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t2)' }}>{p}</span>
+                  ))}
+                </div>
+              )}
+              {client.ai_memory.observacoes && (
+                <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--t2)' }}>{client.ai_memory.observacoes}</p>
+              )}
+            </div>
+          </div>
+        )
       )}
 
       {/* Tabs */}

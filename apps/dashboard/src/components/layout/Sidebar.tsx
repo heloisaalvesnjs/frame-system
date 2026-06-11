@@ -14,21 +14,32 @@ import { cn } from '@/lib/utils'
 // ── Nav items ─────────────────────────────────────────────────────
 
 const navMain = [
-  { href: '/dashboard',     label: 'Painel',          icon: LayoutDashboard },
-  { href: '/conversas',     label: 'Conversas',        icon: MessageSquare },
-  { href: '/agenda',        label: 'Agenda',           icon: CalendarDays },
-  { href: '/clientes',      label: 'Clientes',         icon: Users },
-  { href: '/servicos',      label: 'Planos',           icon: CreditCard },
-  { href: '/followup',      label: 'Automações',       icon: Layers },
+  { href: '/dashboard',     label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/conversas',     label: 'Conversas',  icon: MessageSquare },
+  { href: '/agenda',        label: 'Agenda',     icon: CalendarDays },
+  { href: '/clientes',      label: 'Pacientes',  icon: Users },
 ]
 
-const navConfig = [
-  { href: '/treinamento',     label: 'Assistente',      icon: Sparkles },
+const navInteligencia = [
+  { href: '/followup',      label: 'Automações',       icon: Layers },
+  { href: '/treinamento',   label: 'Frame AI',         icon: Sparkles },
+]
+
+const navWorkspace = [
+  { href: '/servicos',        label: 'Planos',          icon: CreditCard },
   { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
   { href: '/equipe',          label: 'Equipe',          icon: Building2 },
   { href: '/integracoes',     label: 'Integrações',     icon: Plug },
   { href: '/configuracoes',   label: 'Configurações',   icon: Settings },
 ]
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
+      {children}
+    </p>
+  )
+}
 
 // ── Frame mark logo ───────────────────────────────────────────────
 
@@ -234,16 +245,22 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
 
       {/* Nav */}
       <nav className={cn(
-        'flex-1 flex flex-col gap-0.5 py-4 overflow-y-auto transition-all duration-200',
+        'flex-1 flex flex-col gap-0.5 py-2 overflow-y-auto transition-all duration-200',
         expanded ? 'px-3' : 'px-2'
       )}>
         {navMain.map(item => (
           <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
         ))}
 
-        <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+        {expanded && <SectionLabel>Inteligência</SectionLabel>}
+        {!expanded && <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />}
+        {navInteligencia.map(item => (
+          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
+        ))}
 
-        {navConfig.map(item => (
+        {expanded && <SectionLabel>Workspace</SectionLabel>}
+        {!expanded && <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />}
+        {navWorkspace.map(item => (
           <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
         ))}
 
@@ -290,20 +307,11 @@ function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: ()
 // ── Export ────────────────────────────────────────────────────────
 
 export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
-  const [hovered, setHovered] = useState(false)
-
   return (
     <>
-      {/* Desktop — slim with hover expand */}
-      <aside
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className={cn(
-          'hidden md:flex fixed left-0 top-0 h-screen flex-col z-20 transition-all duration-200 ease-in-out',
-          hovered ? 'w-[210px]' : 'w-[64px]'
-        )}
-      >
-        <SidebarContent expanded={hovered} />
+      {/* Desktop — fixed 220px, sempre expandida */}
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[220px] flex-col z-20">
+        <SidebarContent expanded={true} />
       </aside>
 
       {/* Mobile overlay */}

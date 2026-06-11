@@ -4,13 +4,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Bell, Settings } from 'lucide-react'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':     'Painel',
+  '/dashboard':     'Dashboard',
   '/conversas':     'Conversas',
   '/agenda':        'Agenda',
-  '/clientes':      'Clientes',
-  '/servicos':      'Serviços',
+  '/clientes':      'Pacientes',
+  '/servicos':      'Planos',
   '/followup':      'Automações',
-  '/treinamento':   'Assistente',
+  '/treinamento':   'Frame AI',
   '/disponibilidade': 'Disponibilidade',
   '/equipe':        'Equipe',
   '/integracoes':   'Integrações',
@@ -32,7 +32,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 md:left-[64px] h-[60px] flex items-center px-5 gap-4 z-10"
+      className="fixed top-0 left-0 right-0 md:left-[220px] h-[60px] flex items-center px-5 gap-4 z-10"
       style={{
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',

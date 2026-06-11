@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Search, Send, Loader2 } from 'lucide-react'
+import { MessageSquare, Search, Send, Loader2, Bot, Pencil, Check, X } from 'lucide-react'
 import api from '@/lib/api'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -12,9 +12,24 @@ interface Conversation {
   client_name: string
   client_phone: string
   status: 'active' | 'human_takeover' | 'resolved'
+  mode?: 'auto' | 'copilot'
+  outcome?: string | null
+  outcome_notes?: string | null
   last_message?: string
   last_message_at?: string
   unread_count?: number
+}
+
+interface Stats {
+  active: number
+  human_takeover: number
+  resolved: number
+  agendou: number
+  comprou: number
+  nao_avancou: number
+  sem_resposta: number
+  outro: number
+  sem_classificacao: number
 }
 
 interface Message {
@@ -22,6 +37,7 @@ interface Message {
   content: string
   role: 'user' | 'assistant'
   sent_at: string
+  pending_send?: boolean
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -48,6 +64,14 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
   active:          { label: 'IA ativa',     color: '#059669', bg: 'rgba(0,194,124,0.1)' },
   human_takeover:  { label: 'Você assumiu', color: '#B45309', bg: 'rgba(245,166,35,0.12)' },
   resolved:        { label: 'Resolvida',    color: 'var(--t3)', bg: 'var(--raised)' },
+}
+
+const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  agendou:        { label: 'Agendou consulta', color: '#059669', bg: 'rgba(0,194,124,0.1)' },
+  comprou:        { label: 'Comprou plano',    color: '#059669', bg: 'rgba(0,194,124,0.1)' },
+  nao_avancou:    { label: 'Não avançou',      color: '#DC2626', bg: 'rgba(220,38,38,0.08)' },
+  sem_resposta:   { label: 'Sem resposta',     color: 'var(--t3)', bg: 'var(--raised)' },
+  outro:          { label: 'Outro',            color: 'var(--t2)', bg: 'var(--raised)' },
 }
 
 const FILTERS = [
@@ -78,6 +102,15 @@ export default function ConversasPage() {
     refetchInterval: 5000,
   })
 
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['conversations-stats'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/conversations/stats')
+      return data.stats
+    },
+    refetchInterval: 30000,
+  })
+
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['messages', selectedId],
     queryFn: async () => {
@@ -92,6 +125,10 @@ export default function ConversasPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    setEditingOutcome(false)
+  }, [selectedId])
+
   const takeover = useMutation({
     mutationFn: () => api.post(`/api/conversations/${selectedId}/takeover`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
@@ -99,8 +136,49 @@ export default function ConversasPage() {
 
   const resolve = useMutation({
     mutationFn: () => api.post(`/api/conversations/${selectedId}/resolve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['conversations-stats'] })
+    },
+  })
+
+  const setOutcome = useMutation({
+    mutationFn: (outcome: string) => api.post(`/api/conversations/${selectedId}/outcome`, { outcome }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['conversations-stats'] })
+      setEditingOutcome(false)
+    },
+  })
+
+  const [editingOutcome, setEditingOutcome] = useState(false)
+
+  const toggleMode = useMutation({
+    mutationFn: (mode: 'auto' | 'copilot') => api.post(`/api/conversations/${selectedId}/mode`, { mode }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
   })
+
+  const approveDraft = useMutation({
+    mutationFn: (messageId: string) => api.post(`/api/conversations/${selectedId}/messages/${messageId}/approve`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['messages', selectedId] }),
+  })
+
+  const discardDraft = useMutation({
+    mutationFn: (messageId: string) => api.post(`/api/conversations/${selectedId}/messages/${messageId}/discard`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['messages', selectedId] }),
+  })
+
+  const editDraft = useMutation({
+    mutationFn: ({ messageId, content }: { messageId: string; content: string }) =>
+      api.patch(`/api/conversations/${selectedId}/messages/${messageId}`, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', selectedId] })
+      setEditingDraftId(null)
+    },
+  })
+
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
+  const [editingDraftText, setEditingDraftText] = useState('')
 
   const selected = conversations.find((c) => c.id === selectedId)
 
@@ -133,6 +211,27 @@ export default function ConversasPage() {
           Acompanhe as conversas da assistente com seus pacientes
         </p>
       </div>
+
+      {/* ── Stats row ──────────────────────────────────────────────── */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Resolvidas', value: stats.resolved, color: 'var(--t1)' },
+            { label: 'Agendamentos', value: stats.agendou, color: '#059669' },
+            { label: 'Vendas', value: stats.comprou, color: '#059669' },
+            { label: 'Sem retorno', value: stats.sem_resposta + stats.nao_avancou, color: '#DC2626' },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className="px-4 py-3 rounded-2xl"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            >
+              <p className="text-[20px] font-bold" style={{ color: card.color }}>{card.value}</p>
+              <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>{card.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Filter pills ───────────────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -300,6 +399,24 @@ export default function ConversasPage() {
                   })()}
                   {selected.status === 'active' && (
                     <button
+                      onClick={() => toggleMode.mutate(selected.mode === 'copilot' ? 'auto' : 'copilot')}
+                      disabled={toggleMode.isPending}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all duration-150"
+                      style={selected.mode === 'copilot'
+                        ? { color: '#B45309', background: 'rgba(245,166,35,0.12)' }
+                        : { color: 'var(--t2)', background: 'var(--raised)' }
+                      }
+                      title={selected.mode === 'copilot'
+                        ? 'Modo copiloto: a IA gera rascunhos para você aprovar'
+                        : 'Modo automático: a IA responde direto'
+                      }
+                    >
+                      <Bot className="w-3 h-3" />
+                      {selected.mode === 'copilot' ? 'Modo copiloto' : 'Modo automático'}
+                    </button>
+                  )}
+                  {selected.status === 'active' && (
+                    <button
                       onClick={() => takeover.mutate()}
                       disabled={takeover.isPending}
                       className="btn-secondary text-[12px] !px-3 !py-1.5 flex items-center gap-1.5"
@@ -336,6 +453,86 @@ export default function ConversasPage() {
                     const time = msg.sent_at
                       ? new Date(msg.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
                       : ''
+
+                    if (msg.pending_send) {
+                      const isEditing = editingDraftId === msg.id
+                      return (
+                        <div key={msg.id} className="flex justify-end">
+                          <div
+                            className="max-w-[70%] px-3.5 py-2.5"
+                            style={{
+                              background: 'var(--surface)',
+                              color: 'var(--t1)',
+                              borderRadius: '14px 14px 4px 14px',
+                              border: '1px dashed var(--brand)',
+                            }}
+                          >
+                            <p className="text-[11px] font-semibold mb-1" style={{ color: 'var(--brand)' }}>
+                              Rascunho — aguardando aprovação
+                            </p>
+                            {isEditing ? (
+                              <textarea
+                                value={editingDraftText}
+                                onChange={(e) => setEditingDraftText(e.target.value)}
+                                className="input w-full text-[13px]"
+                                rows={3}
+                              />
+                            ) : (
+                              <p className="text-[13px] whitespace-pre-wrap break-words leading-relaxed">
+                                {msg.content}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    onClick={() => editDraft.mutate({ messageId: msg.id, content: editingDraftText })}
+                                    disabled={editDraft.isPending || !editingDraftText.trim()}
+                                    className="btn-primary text-[11px] !px-2.5 !py-1 flex items-center gap-1"
+                                  >
+                                    <Check className="w-3 h-3" /> Salvar
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingDraftId(null)}
+                                    className="btn-secondary text-[11px] !px-2.5 !py-1"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => approveDraft.mutate(msg.id)}
+                                    disabled={approveDraft.isPending}
+                                    className="btn-primary text-[11px] !px-2.5 !py-1 flex items-center gap-1"
+                                  >
+                                    <Check className="w-3 h-3" /> Aprovar e enviar
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditingDraftId(msg.id); setEditingDraftText(msg.content) }}
+                                    className="btn-secondary text-[11px] !px-2.5 !py-1 flex items-center gap-1"
+                                  >
+                                    <Pencil className="w-3 h-3" /> Editar
+                                  </button>
+                                  <button
+                                    onClick={() => discardDraft.mutate(msg.id)}
+                                    disabled={discardDraft.isPending}
+                                    className="text-[11px] flex items-center gap-1 px-2.5 py-1 rounded-lg"
+                                    style={{ color: '#DC2626' }}
+                                  >
+                                    <X className="w-3 h-3" /> Descartar
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-[10px] mt-1.5" style={{ color: 'var(--t3)' }}>
+                              {time} · Rascunho da IA
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+
                     return (
                       <div key={msg.id} className={isUser ? 'flex justify-start' : 'flex justify-end'}>
                         <div
@@ -410,6 +607,53 @@ export default function ConversasPage() {
                       Clique aqui para assumir
                     </button>
                   </p>
+                </div>
+              )}
+
+              {selected.status === 'resolved' && (
+                <div
+                  className="px-5 py-3 flex-shrink-0"
+                  style={{ borderTop: '1px solid var(--border)', background: 'var(--raised)' }}
+                >
+                  {selected.outcome && !editingOutcome ? (
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span
+                        className="inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                        style={{
+                          color: OUTCOME_LABELS[selected.outcome]?.color ?? 'var(--t2)',
+                          background: OUTCOME_LABELS[selected.outcome]?.bg ?? 'var(--surface)',
+                        }}
+                      >
+                        {OUTCOME_LABELS[selected.outcome]?.label ?? selected.outcome}
+                      </span>
+                      <button
+                        onClick={() => setEditingOutcome(true)}
+                        className="text-[11px] font-medium hover:opacity-70 transition-opacity"
+                        style={{ color: 'var(--t3)' }}
+                      >
+                        Alterar classificação
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--t2)' }}>
+                        Como terminou essa conversa?
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(OUTCOME_LABELS).map(([key, cfg]) => (
+                          <button
+                            key={key}
+                            onClick={() => setOutcome.mutate(key)}
+                            disabled={setOutcome.isPending}
+                            className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all duration-150"
+                            style={{ color: cfg.color, background: cfg.bg, border: '1px solid var(--border)' }}
+                          >
+                            {cfg.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>

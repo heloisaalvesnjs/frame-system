@@ -10,6 +10,7 @@ import {
   ArrowRight, ArrowLeft, FileText, Edit3,
   Plus, GripVertical, Clock, Loader2, Save,
   Power, Moon, MapPin, ChevronDown, ChevronUp, Sun,
+  Send, RotateCcw, Bot, User, PlayCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -451,7 +452,7 @@ R: "[Descreva o processo...]"
 
 function ManualSection() {
   const queryClient = useQueryClient()
-  const [mode, setMode] = useState<'choose' | 'editor' | 'pdf'>('choose')
+  const [mode, setMode] = useState<'choose' | 'editor' | 'pdf' | 'interview'>('choose')
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [pdfFile, setPdfFile] = useState<File | null>(null)
@@ -517,12 +518,35 @@ function ManualSection() {
     }
   }
 
+  if (mode === 'interview') return (
+    <InterviewMode onSaved={() => {
+      queryClient.invalidateQueries({ queryKey: ['assistant'] })
+      queryClient.invalidateQueries({ queryKey: ['manual-content'] })
+      setMode('editor')
+    }} />
+  )
+
   if (mode === 'choose') return (
     <div className="space-y-4">
       <p className="text-xs" style={{ color: 'var(--t2)' }}>
         Ensine a assistente como você trabalha, seus diferenciais e como responder clientes.
       </p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+          onClick={() => setMode('interview')}
+          className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-colors"
+          style={{ border: '1px solid var(--border)' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--raised)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+        >
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--brand-s-solid)' }}>
+            <MessageSquare className="w-4 h-4" style={{ color: 'var(--brand)' }} />
+          </div>
+          <div>
+            <p className="text-sm font-medium" style={{ color: 'var(--t1)' }}>Entrevista guiada</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>5 perguntas rápidas para começar</p>
+          </div>
+        </button>
         <button
           onClick={() => { setContent(TEMPLATE_DEFAULT); setMode('editor') }}
           className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-colors"
@@ -900,6 +924,10 @@ interface Assistant {
   id: string; name: string; tone: string; greeting_message: string
   consultation_price?: string; consultation_modalities?: string
   specialties?: string; vacation_mode?: boolean; vacation_message?: string
+  farewell_message?: string; frases_proibidas?: string[]; frases_preferidas?: string[]
+  custom_objections?: { gatilho: string; resposta: string }[]
+  conversation_examples?: { situacao: string; resposta: string }[]
+  clinical_rules?: string[]
 }
 
 const assistantSchema = z.object({
@@ -910,6 +938,12 @@ const assistantSchema = z.object({
   consultation_modalities: z.string().optional(),
   vacation_mode:           z.boolean().optional(),
   vacation_message:        z.string().optional(),
+  farewell_message:        z.string().optional(),
+  frases_proibidas:        z.string().optional(),
+  frases_preferidas:       z.string().optional(),
+  custom_objections:       z.string().optional(),
+  conversation_examples:   z.string().optional(),
+  clinical_rules:          z.string().optional(),
   nutri_display_name:      z.string().optional(),
   emoji_level:             z.number().min(1).max(5).default(3),
   func_prospeccao:         z.boolean().default(true),
@@ -965,6 +999,12 @@ function TabAssistente() {
         consultation_modalities: assistant.consultation_modalities || 'online',
         vacation_mode:           assistant.vacation_mode ?? false,
         vacation_message:        (assistant as any).vacation_message || '',
+        farewell_message:        assistant.farewell_message || '',
+        frases_proibidas:        (assistant.frases_proibidas || []).join('\n'),
+        frases_preferidas:       (assistant.frases_preferidas || []).join('\n'),
+        custom_objections:       (assistant.custom_objections || []).map(o => `${o.gatilho} :: ${o.resposta}`).join('\n'),
+        conversation_examples:   (assistant.conversation_examples || []).map(e => `${e.situacao} :: ${e.resposta}`).join('\n'),
+        clinical_rules:          (assistant.clinical_rules || []).join('\n'),
         nutri_display_name:      (assistant as any).nutri_display_name || '',
         emoji_level:             (assistant as any).emoji_level ?? 3,
         func_prospeccao:         (assistant as any).func_prospeccao  ?? true,
@@ -976,7 +1016,20 @@ function TabAssistente() {
 
   async function onSubmit(data: AssistantFormData) {
     try {
-      await api.post('/api/assistants', data)
+      await api.post('/api/assistants', {
+        ...data,
+        frases_proibidas:  (data.frases_proibidas  || '').split('\n').map(s => s.trim()).filter(Boolean),
+        frases_preferidas: (data.frases_preferidas || '').split('\n').map(s => s.trim()).filter(Boolean),
+        custom_objections: (data.custom_objections || '').split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+          const [gatilho, ...rest] = line.split('::')
+          return { gatilho: gatilho.trim(), resposta: rest.join('::').trim() }
+        }).filter(o => o.gatilho && o.resposta),
+        conversation_examples: (data.conversation_examples || '').split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+          const [situacao, ...rest] = line.split('::')
+          return { situacao: situacao.trim(), resposta: rest.join('::').trim() }
+        }).filter(e => e.situacao && e.resposta),
+        clinical_rules: (data.clinical_rules || '').split('\n').map(s => s.trim()).filter(Boolean),
+      })
       toast.success('Assistente salva com sucesso!')
       queryClient.invalidateQueries({ queryKey: ['assistant'] })
     } catch {
@@ -1028,6 +1081,60 @@ function TabAssistente() {
           rows={3}
           className="textarea"
           style={errors.greeting_message ? { borderColor: '#EF4444' } : undefined}
+        />
+      </Field>
+
+      <Field label="Mensagem de despedida" hint="Sugestão de como a assistente encerra a conversa">
+        <textarea
+          {...register('farewell_message')}
+          rows={2}
+          placeholder="Ex: Foi um prazer falar com você! Qualquer coisa é só chamar 😊"
+          className="textarea"
+        />
+      </Field>
+
+      <Field label="Frases proibidas" hint="Uma por linha — palavras ou expressões que a assistente nunca deve usar">
+        <textarea
+          {...register('frases_proibidas')}
+          rows={3}
+          placeholder={'Ex: garantimos resultado\nbarato'}
+          className="textarea"
+        />
+      </Field>
+
+      <Field label="Frases preferidas" hint="Uma por linha — expressões que combinam com o tom da sua marca">
+        <textarea
+          {...register('frases_preferidas')}
+          rows={3}
+          placeholder={'Ex: vamos juntas nessa\nbeleza!'}
+          className="textarea"
+        />
+      </Field>
+
+      <Field label="Objeções personalizadas" hint="Uma por linha, no formato: situação :: resposta. A assistente já tem respostas padrão para preço, hesitação, etc — use isto para casos específicos do seu consultório.">
+        <textarea
+          {...register('custom_objections')}
+          rows={3}
+          placeholder={'Ex: Atende plano de saúde? :: Não trabalhamos com convênio, mas emitimos nota para reembolso.'}
+          className="textarea"
+        />
+      </Field>
+
+      <Field label="Exemplos de conversas" hint="Uma por linha, no formato: situação :: resposta ideal. Use para ensinar a assistente a responder do jeito que você prefere em casos específicos.">
+        <textarea
+          {...register('conversation_examples')}
+          rows={3}
+          placeholder={'Ex: Paciente pergunta se emagrece rápido :: Cada corpo responde de um jeito, mas com acompanhamento certo os resultados aparecem com consistência. Vamos conversar sobre seu caso?'}
+          className="textarea"
+        />
+      </Field>
+
+      <Field label="Regras clínicas / limites adicionais" hint="Uma por linha — temas ou condutas extras que a assistente deve evitar ou encaminhar para você">
+        <textarea
+          {...register('clinical_rules')}
+          rows={3}
+          placeholder={'Ex: Não comentar sobre uso de medicamentos sem indicação médica\nNão sugerir jejum prolongado'}
+          className="textarea"
         />
       </Field>
 
@@ -1661,17 +1768,226 @@ function TabLocais() {
 }
 
 // ═══════════════════════════════════════════════════════
+// Testar Atendimento
+// ═══════════════════════════════════════════════════════
+
+type TestMessage = { role: 'user' | 'assistant'; content: string; action?: any }
+
+const SUGGESTED_MESSAGES = [
+  'Oi, quero saber mais sobre a consulta',
+  'Quero emagrecer',
+  'Quanto custa?',
+  'Achei caro',
+  'Me passa uma dieta?',
+  'Tenho um exame alterado',
+  'Quero remarcar minha consulta',
+  'Pode atender online?',
+]
+
+function TestarAtendimentoSection() {
+  const [messages, setMessages] = useState<TestMessage[]>([])
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  async function sendMessage(text: string) {
+    const content = text.trim()
+    if (!content || sending) return
+
+    const history = messages.map(({ role, content }) => ({ role, content }))
+    setMessages(m => [...m, { role: 'user', content }])
+    setInput('')
+    setSending(true)
+    try {
+      const { data } = await api.post('/api/assistants/test', {
+        message: content,
+        history,
+      })
+      setMessages(m => [...m, { role: 'assistant', content: data.response, action: data.action }])
+    } catch {
+      toast.error('Erro ao testar atendimento. Tente novamente.')
+      setMessages(m => m.slice(0, -1))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleReset() {
+    setResetting(true)
+    try {
+      await api.post('/api/assistants/test', { message: 'reset', reset: true })
+      setMessages([])
+      toast.success('Conversa de teste reiniciada.')
+    } catch {
+      toast.error('Erro ao reiniciar conversa de teste.')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
+          >
+            <PlayCircle className="w-4.5 h-4.5" style={{ color: 'var(--brand)' }} />
+          </div>
+          <div>
+            <h3 className="font-bold text-[15px] tracking-tight" style={{ color: 'var(--t1)' }}>
+              Simule uma conversa
+            </h3>
+            <p className="text-[12px] mt-0.5 max-w-md" style={{ color: 'var(--t3)' }}>
+              Converse com a sua assistente como se fosse um paciente, usando o
+              treinamento e as configurações salvas. Nada aqui é enviado pelo WhatsApp.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={resetting || messages.length === 0}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-colors flex-shrink-0 disabled:opacity-50"
+          style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
+        >
+          {resetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+          Reiniciar
+        </button>
+      </div>
+
+      {/* Mensagens sugeridas */}
+      {messages.length === 0 && (
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_MESSAGES.map(msg => (
+            <button
+              key={msg}
+              type="button"
+              onClick={() => sendMessage(msg)}
+              className="px-3 py-1.5 rounded-full text-[12px] transition-colors"
+              style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
+            >
+              {msg}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Janela de chat */}
+      <div
+        className="rounded-xl flex flex-col"
+        style={{ background: 'var(--raised)', border: '1px solid var(--border)', minHeight: 320 }}
+      >
+        <div className="flex-1 p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 420 }}>
+          {messages.length === 0 && !sending && (
+            <div className="h-full flex flex-col items-center justify-center text-center py-10 gap-2">
+              <Bot className="w-7 h-7" style={{ color: 'var(--t3)' }} />
+              <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+                Envie uma mensagem para começar a simulação
+              </p>
+            </div>
+          )}
+
+          {messages.map((m, i) => (
+            <div key={i} className={cn('flex gap-2', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+              {m.role === 'assistant' && (
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--brand-s-solid)' }}
+                >
+                  <Bot className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
+                </div>
+              )}
+              <div className="max-w-[75%] space-y-1">
+                <div
+                  className="px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    background: m.role === 'user' ? 'var(--brand)' : 'var(--surface)',
+                    color: m.role === 'user' ? '#fff' : 'var(--t1)',
+                    border: m.role === 'user' ? 'none' : '1px solid var(--border)',
+                  }}
+                >
+                  {m.content}
+                </div>
+                {m.action && (
+                  <div
+                    className="px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1.5"
+                    style={{ background: 'var(--brand-s-solid)', color: 'var(--brand)' }}
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    Ação detectada: {typeof m.action === 'string' ? m.action : JSON.stringify(m.action)}
+                  </div>
+                )}
+              </div>
+              {m.role === 'user' && (
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                >
+                  <User className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {sending && (
+            <div className="flex gap-2 justify-start">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--brand-s-solid)' }}
+              >
+                <Bot className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
+              </div>
+              <div
+                className="px-3.5 py-2.5 rounded-2xl flex items-center"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+              >
+                <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--t3)' }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="flex items-center gap-2 p-3" style={{ borderTop: '1px solid var(--border)' }}>
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) } }}
+            placeholder="Digite como se fosse o paciente..."
+            disabled={sending}
+            className="flex-1 px-3.5 py-2.5 rounded-lg text-[13px] outline-none"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--t1)' }}
+          />
+          <button
+            type="button"
+            onClick={() => sendMessage(input)}
+            disabled={sending || !input.trim()}
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-opacity disabled:opacity-40"
+            style={{ background: 'var(--brand)' }}
+          >
+            <Send className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════
 // Main Page
 // ═══════════════════════════════════════════════════════
 
 const TRAINING_TABS = [
-  { id: 'interview', label: 'Entrevista',  icon: MessageSquare },
   { id: 'manual',    label: 'Manual',      icon: FileText },
   { id: 'automacoes',label: 'Automações',  icon: Clock },
+  { id: 'testar',    label: 'Testar atendimento', icon: PlayCircle },
 ]
 
 export default function TreinamentoPage() {
-  const [trainingTab, setTrainingTab] = useState('interview')
+  const [trainingTab, setTrainingTab] = useState('manual')
 
   return (
     <div className="p-6 md:p-8 max-w-3xl space-y-6">
@@ -1713,9 +2029,9 @@ export default function TreinamentoPage() {
           </div>
         </div>
         <div className="px-6 py-6">
-          {trainingTab === 'interview'  && <InterviewMode onSaved={() => setTrainingTab('manual')} />}
           {trainingTab === 'manual'     && <ManualSection />}
           {trainingTab === 'automacoes' && <AutomacoesSection />}
+          {trainingTab === 'testar'     && <TestarAtendimentoSection />}
         </div>
       </div>
 
