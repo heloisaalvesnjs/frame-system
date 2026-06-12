@@ -273,17 +273,9 @@ export default function IntegracoesPage() {
           {integrations.map(item => (
             <IntegrationCard key={item.id} {...item} />
           ))}
-          <Card className="!p-4 flex items-center gap-4 transition-colors hover:border-[var(--line-2)]">
-            <LogoMark type="import" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="truncate text-[13px] font-semibold text-t1">Importar pacientes</h3>
-                <Badge variant="default">CSV / Excel</Badge>
-              </div>
-              <p className="mt-0.5 truncate text-[11.5px] text-t3">Webdiet, Nutrium ou planilha CSV</p>
-            </div>
+          <div className="hidden">
             <ImportHiddenInput />
-          </Card>
+          </div>
         </div>
       </div>
     </main>

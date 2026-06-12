@@ -91,13 +91,13 @@ function NavLink({
       onClick={onClick}
       className={cn(
         'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-all duration-150',
-        active ? 'bg-white/[0.06] text-white' : 'text-white/55 hover:bg-white/[0.04] hover:text-white',
+        active ? 'bg-white/[0.06] text-t1' : 'text-t2 hover:bg-white/[0.04] hover:text-t1',
       )}
     >
       <Icon
         className={cn(
           'h-[15px] w-[15px] shrink-0 transition-colors',
-          active ? 'text-[var(--brand)]' : 'text-white/35 group-hover:text-white/65',
+          active ? 'text-[var(--brand)]' : 'text-t3 group-hover:text-t2',
         )}
         strokeWidth={1.75}
       />
@@ -134,7 +134,7 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div ref={ref} className="relative px-3 py-3 border-t border-white/[0.06]">
+    <div ref={ref} className="relative border-t border-[var(--line-1)] px-3 py-3">
       {open && (
         <div className="absolute bottom-full left-3 right-3 mb-2 overflow-hidden rounded-xl border border-[var(--line-2)] bg-[var(--surface)] shadow-2xl">
           <div className="flex items-center gap-3 border-b border-[var(--line-1)] px-4 py-3">
@@ -184,8 +184,8 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
           {initials}
         </div>
         <div className="min-w-0 flex-1 text-left">
-          <div className="truncate text-[12.5px] font-medium text-white">{user?.name || 'Frame System'}</div>
-          <div className="mt-0.5 truncate text-[11px] text-white/35">{user?.email || 'Nutricionista'}</div>
+          <div className="truncate text-[12.5px] font-medium text-t1">{user?.name || 'Frame System'}</div>
+          <div className="mt-0.5 truncate text-[11px] text-t3">{user?.email || 'Nutricionista'}</div>
         </div>
         <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
       </button>
@@ -199,28 +199,28 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full flex-col bg-[#0E0F11]">
+    <div className="flex h-full flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)]">
       <div className="px-3 pb-3 pt-4">
         <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04]">
           <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[11px] font-bold text-[#02140C]">
             FS
           </div>
           <div className="min-w-0 flex-1 text-left">
-            <div className="truncate text-[13px] font-medium text-white">Frame System</div>
-            <div className="truncate text-[11px] text-white/35">{user?.name || 'Clínica Nutri Plus'}</div>
+            <div className="truncate text-[13px] font-medium text-t1">Frame System</div>
+            <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
           </div>
-          <ChevronsLeft className="h-3.5 w-3.5 text-white/35 opacity-0 transition-opacity group-hover:opacity-100" />
+          <ChevronsLeft className="h-3.5 w-3.5 text-t3 opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
       </div>
 
       <div className="px-3 pb-3">
         <button
-          className="flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.02] px-2.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white"
+          className="flex h-8 w-full items-center gap-2 rounded-lg border border-[var(--line-2)] bg-white/[0.02] px-2.5 text-[12px] font-medium text-t2 transition-colors hover:bg-white/[0.04] hover:text-t1"
           type="button"
         >
           <Plus className="h-3.5 w-3.5" />
           <span>Novo</span>
-          <kbd className="ml-auto font-mono text-[10px] text-white/30">Ctrl N</kbd>
+          <kbd className="ml-auto font-mono text-[10px] text-t3">Ctrl N</kbd>
         </button>
       </div>
 
@@ -228,7 +228,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {groups.map((group, index) => (
           <div key={group.label || index} className="mb-1">
             {group.label && (
-              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-white/35">
+              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-t3">
                 {group.label}
               </div>
             )}
@@ -243,13 +243,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </nav>
 
       <div className="px-3 pb-3">
-        <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--line-1)] bg-white/[0.03] p-0.5">
           <button
             type="button"
             onClick={() => theme === 'light' && toggleTheme()}
             className={cn(
               'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
-              theme === 'dark' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+              theme === 'dark' ? 'bg-white/[0.07] text-t1 shadow-sm' : 'text-t3 hover:text-t2',
             )}
             aria-label="Tema escuro"
           >
@@ -261,7 +261,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             onClick={() => theme === 'dark' && toggleTheme()}
             className={cn(
               'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
-              theme === 'light' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+              theme === 'light' ? 'bg-white/[0.07] text-t1 shadow-sm' : 'text-t3 hover:text-t2',
             )}
             aria-label="Tema claro"
           >

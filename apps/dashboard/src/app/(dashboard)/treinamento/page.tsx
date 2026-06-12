@@ -10,7 +10,7 @@ import {
   ArrowRight, ArrowLeft, FileText, Edit3,
   Plus, GripVertical, Clock, Loader2, Save,
   Power, Moon, MapPin, ChevronDown, ChevronUp, Sun,
-  Send, RotateCcw, Bot, User, PlayCircle,
+  Send, RotateCcw, Bot, User, PlayCircle, Brain,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
@@ -2000,7 +2000,7 @@ export default function TreinamentoPage() {
   })
 
   return (
-    <div className="p-6 md:p-8 max-w-3xl space-y-6">
+    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-6">
 
       {/* Header */}
       <div>
@@ -2012,8 +2012,35 @@ export default function TreinamentoPage() {
         </p>
       </div>
 
+      <div
+        className="relative overflow-hidden rounded-2xl border border-[var(--line-1)] p-6"
+        style={{ background: 'radial-gradient(120% 80% at 90% 0%, rgba(0,194,124,0.10) 0%, rgba(0,194,124,0) 50%), var(--bg-elevated)' }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#00C27C] to-[#00E892] shadow-[0_8px_24px_-8px_rgba(0,194,124,0.6)]">
+              <Brain className="h-6 w-6 text-[#02140C]" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-[20px] font-semibold tracking-tight text-t1">Modelo Frame · v3.2</h2>
+                <span className="inline-flex items-center gap-1 rounded-md border border-[var(--brand-ring)] bg-[var(--brand-s)] px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--brand)]">
+                  <CheckCircle className="h-2.5 w-2.5" /> Em produção
+                </span>
+              </div>
+              <p className="mt-1 max-w-2xl text-[13px] text-t2">
+                Treinado com o manual do consultorio, regras de atendimento, conversas de teste e automacoes reais. Ultima atualizacao sincronizada com a sua configuracao atual.
+              </p>
+            </div>
+          </div>
+          <Btn variant="secondary" size="sm" onClick={() => setTrainingTab('testar')}>
+            Testar no playground
+          </Btn>
+        </div>
+      </div>
+
       {/* Performance da IA */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <KPI label="Conversas ativas" value={String(convStats?.active ?? 0)} hint="aguardando resposta" />
         <KPI label="Agendamentos via IA" value={String(convStats?.agendou ?? 0)} hint="total" />
         <KPI label="Vendas via IA" value={String(convStats?.comprou ?? 0)} hint="total" />

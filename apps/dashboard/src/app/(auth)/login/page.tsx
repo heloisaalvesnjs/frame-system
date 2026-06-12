@@ -53,7 +53,7 @@ function BrandPanel() {
 
   return (
     <div
-      className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden"
+      className="login-brand-panel relative hidden lg:flex flex-col justify-between p-12 overflow-hidden"
       style={{ background: '#111113', width: '420px', flexShrink: 0 }}
     >
       {/* Subtle grid */}

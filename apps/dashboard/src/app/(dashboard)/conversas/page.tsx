@@ -179,6 +179,12 @@ export default function ConversasPage() {
 
   const selected = conversations.find((c) => c.id === selectedId)
 
+  useEffect(() => {
+    if (!selectedId && conversations.length > 0) {
+      setSelectedId(conversations[0].id)
+    }
+  }, [conversations, selectedId])
+
   const filtered = conversations.filter((c) => {
     const q = search.toLowerCase()
     const matchesSearch =
@@ -197,10 +203,10 @@ export default function ConversasPage() {
   }, [newMessage, selectedId])
 
   return (
-    <main className="px-6 py-6">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-4">
+    <main className="h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex h-full flex-col">
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div>
+        <div className="hidden">
           <h1 className="text-[22px] font-semibold tracking-tight text-t1">Conversas</h1>
           <p className="mt-0.5 text-sm text-t3">
             Acompanhe as conversas da assistente com seus pacientes
@@ -208,13 +214,13 @@ export default function ConversasPage() {
         </div>
 
         {/* ── Stats row ──────────────────────────────────────────────── */}
-        {stats && (
+        {false && stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Resolvidas', value: stats.resolved, color: 'var(--t1)' },
-              { label: 'Agendamentos', value: stats.agendou, color: 'var(--brand)' },
-              { label: 'Vendas', value: stats.comprou, color: 'var(--brand)' },
-              { label: 'Sem retorno', value: stats.sem_resposta + stats.nao_avancou, color: 'var(--danger)' },
+              { label: 'Resolvidas', value: stats?.resolved ?? 0, color: 'var(--t1)' },
+              { label: 'Agendamentos', value: stats?.agendou ?? 0, color: 'var(--brand)' },
+              { label: 'Vendas', value: stats?.comprou ?? 0, color: 'var(--brand)' },
+              { label: 'Sem retorno', value: (stats?.sem_resposta ?? 0) + (stats?.nao_avancou ?? 0), color: 'var(--danger)' },
             ].map((card) => (
               <div key={card.label} className="surface p-4">
                 <p className="text-[20px] font-bold tabular-nums" style={{ color: card.color }}>{card.value}</p>
@@ -225,7 +231,7 @@ export default function ConversasPage() {
         )}
 
         {/* ── Filter pills ───────────────────────────────────────────── */}
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className="hidden">
           {FILTERS.map((f) => (
             <Btn
               key={f.key}
@@ -240,27 +246,37 @@ export default function ConversasPage() {
 
         {/* ── Split pane ─────────────────────────────────────────────── */}
         <div
-          className="grid surface overflow-hidden p-0"
+          className="grid flex-1 overflow-hidden border-t border-[var(--line-1)] bg-[var(--bg-elevated)]/40 p-0"
           style={{
-            gridTemplateColumns: selected ? '320px minmax(0,1fr) 280px' : '320px minmax(0,1fr)',
-            height: 'calc(100vh - 260px)',
-            minHeight: 420,
+            gridTemplateColumns: selected ? '320px minmax(0,1fr) 320px' : '320px minmax(0,1fr)',
           }}
         >
           {/* ── Conversation list ─────────────────────────────────── */}
           <div className="flex flex-col overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
             {/* Search */}
-            <div className="p-3 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="border-b p-3" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2 rounded-lg px-3 h-9" style={{ background: 'var(--raised)' }}>
                 <Search className="size-3.5 shrink-0" style={{ color: 'var(--t3)' }} />
                 <input
                   type="text"
-                  placeholder="Buscar paciente..."
+                  placeholder="Buscar conversas..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="bg-transparent text-[13px] outline-none flex-1"
                   style={{ color: 'var(--t1)' }}
                 />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1">
+                {FILTERS.map((f) => (
+                  <Btn
+                    key={f.key}
+                    variant={filter === f.key ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilter(f.key)}
+                  >
+                    {f.label}
+                  </Btn>
+                ))}
               </div>
             </div>
 

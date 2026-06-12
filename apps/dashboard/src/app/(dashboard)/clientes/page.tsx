@@ -198,8 +198,8 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {error && (
-            <div className="rounded-xl px-4 py-3 text-sm text-red-500"
-              style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <div className="rounded-xl px-4 py-3 text-sm"
+              style={{ background: 'color-mix(in srgb, var(--danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 24%, transparent)', color: 'var(--danger)' }}>
               {error}
             </div>
           )}

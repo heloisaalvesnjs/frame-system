@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-06-12 - Claude Code (auditoria modo claro)
+
+- A Heloisa enviou print do dashboard em modo claro classificando como
+  "horrivel, nada a ver com o Lovable" e pediu para resolver de forma
+  definitiva, sem aceitar mais erros antes do push.
+- Auditoria visual completa (preview em modo claro) de todas as paginas do
+  dashboard: Painel, Conversas, Agenda, Clientes, Financeiro, Automacoes,
+  Assistente IA, Disponibilidade, Equipe, Integracoes, Configuracoes,
+  Admin, Servicos, Perfil, Seguranca.
+- Correcoes aplicadas:
+  - `treinamento/page.tsx`: mojibake "Modelo Frame Â· v3.2" / "Em
+    produÃ§Ã£o" -> "Modelo Frame · v3.2" / "Em produção".
+  - `followup/page.tsx`: mojibake "ExecuÃ§Ãµes (7d)" / "ConversÃ£o mÃ©dia"
+    -> "Execuções (7d)" / "Conversão média".
+  - `conversas/page.tsx`: linha de filtros (Todas/IA ativa/Aguardando
+    você/Resolvidas) estava truncando "Resolvidas" em "Resolvic" com
+    scrollbar horizontal no painel de ~280px; trocado
+    `overflow-x-auto`+`shrink-0` por `flex flex-wrap`, agora os 4 filtros
+    aparecem completos em 2 linhas sem scroll.
+- Revertidos os 3 edits temporarios de debug/mock-auth (AuthContext.tsx,
+  layout.tsx, lib/api.ts) usados apenas para navegar no preview sem login.
+- `npx tsc --noEmit` e `npm run build` ok (39 rotas). Sem commit/push -
+  aguardando a Heloisa revisar os screenshots e confirmar.
+
 ## 2026-06-12 - Claude Code
 
 - Concluido o port 100% Lovable de `followup` (Automacoes) e `treinamento`

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, type LucideIcon } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, Plus, Zap, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { Card, Badge, Btn, KPI } from '@/components/ui/finance-primitives'
 
@@ -513,14 +513,17 @@ export default function AutomacoesPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-6">
       <div>
         <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Automações</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Fluxos de atendimento automático via WhatsApp</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KPI label="Fluxos ativos" value={`${activeCount}/${FLOWS.length}`} hint="configurados nesta conta" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <KPI label="Fluxos ativos" value={`${activeCount}`} hint={`${FLOWS.length} configurados`} />
+        <KPI label="Execuções (7d)" value="0" hint="aguardando eventos reais" />
+        <KPI label="Conversão média" value="0%" hint="sem dados suficientes" />
+        <KPI label="Tempo economizado" value={`${activeCount * 4}h`} hint="estimativa operacional" />
       </div>
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
@@ -566,6 +569,26 @@ export default function AutomacoesPage() {
           <FeedbackCard    assistant={assistant} onSave={handleSave} expanded={expandedCard === 'feedback'}     onEdit={() => toggleExpand('feedback')} />
           <LembreteCard    assistant={assistant} onSave={handleSave} expanded={expandedCard === 'lembrete'}     onEdit={() => toggleExpand('lembrete')} />
           <RetornoCard     assistant={assistant} onSave={handleSave} expanded={expandedCard === 'retorno'}      onEdit={() => toggleExpand('retorno')} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {[
+              { t: 'Lead -> Consulta', d: 'Qualifica WhatsApp em 4 mensagens', c: 'var(--brand)' },
+              { t: 'Carrinho abandonado', d: 'Recupera vendas em ate 24h', c: '#6AA9FF' },
+              { t: 'Reativacao inteligente', d: 'IA segmenta e personaliza copy', c: '#B69CFF' },
+            ].map((template) => (
+              <Card key={template.t}>
+                <div className="flex items-start gap-3">
+                  <div className="surface-2 grid h-9 w-9 place-items-center rounded-lg" style={{ color: template.c }}>
+                    <Zap className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-semibold text-t1">{template.t}</div>
+                    <div className="mt-0.5 text-[11.5px] text-t3">{template.d}</div>
+                  </div>
+                  <Btn variant="outline" size="sm">Usar</Btn>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {/* ── Sidebar ─────────────────────────────────────────────── */}

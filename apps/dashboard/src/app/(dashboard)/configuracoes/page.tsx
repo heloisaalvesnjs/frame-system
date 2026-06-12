@@ -13,9 +13,11 @@ import {
   Globe,
   KeyRound,
   Lock,
+  LogOut,
   Mail,
   MessageSquare,
   Palette,
+  Search,
   SlidersHorizontal,
   Trash2,
   Upload,
@@ -432,10 +434,23 @@ function Content({ section }: { section: SectionId }) {
 
 export default function ConfiguracoesPage() {
   const [section, setSection] = useState<SectionId>('workspace')
+  const { logout } = useAuth()
+  const sectionLabels: Record<SectionId, string> = {
+    workspace: 'Workspace',
+    perfil: 'Perfil',
+    aparencia: 'Aparencia',
+    notificacoes: 'Notificacoes',
+    integracoes: 'Integracoes',
+    plano: 'Faturamento',
+    equipe: 'Equipe',
+    seguranca: 'Seguranca',
+    api: 'API & Webhooks',
+    dados: 'Dados & Privacidade',
+  }
 
   return (
     <main className="px-6 py-6">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-[1180px]">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-semibold tracking-tight text-t1">Configurações</h1>
@@ -444,8 +459,15 @@ export default function ConfiguracoesPage() {
           <Badge variant="purple"><WalletCards className="size-3" /> Premium</Badge>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
           <Card className="h-max !p-2 lg:sticky lg:top-20">
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t3" />
+              <input
+                placeholder="Buscar nas configuracoes..."
+                className="h-8 w-full rounded-lg border border-[var(--line-1)] bg-[var(--raised)] pl-8 pr-2 text-[12px] text-t1 outline-none transition focus:ring-2 focus:ring-[var(--brand-ring)]"
+              />
+            </div>
             {sections.map(item => {
               const Icon = item.icon
               const active = section === item.id
@@ -459,11 +481,21 @@ export default function ConfiguracoesPage() {
                   )}
                 >
                   <Icon className="size-3.5" />
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1">{sectionLabels[item.id]}</span>
                   <ChevronRight className={cn('size-3 transition', active ? 'opacity-100' : 'opacity-0')} />
                 </button>
               )
             })}
+            <div className="mt-3 border-t border-[var(--line-1)] pt-3">
+              <button
+                type="button"
+                onClick={logout}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--danger)] transition hover:bg-[var(--danger)]/10"
+              >
+                <LogOut className="size-3.5" />
+                Sair da conta
+              </button>
+            </div>
           </Card>
 
           <Content section={section} />
