@@ -43,8 +43,12 @@ function SectionCard({ title, subtitle, icon, children }: {
       style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
     >
       <div className="card-header">
-        <div className="flex items-center gap-2.5">
-          {icon}
+        <div className="flex items-center gap-3">
+          {icon && (
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--raised)' }}>
+              {icon}
+            </div>
+          )}
           <div>
             <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
             {subtitle && <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{subtitle}</p>}
@@ -110,18 +114,18 @@ function AIPowerToggle() {
     <div
       className="flex items-center gap-4 rounded-xl px-5 py-4 transition-colors"
       style={paused
-        ? { background: '#FEF2F2', border: '1px solid #FECACA' }
-        : { background: '#ECFDF5', border: '1px solid #A7F3D0' }
+        ? { background: 'color-mix(in srgb, var(--danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }
+        : { background: 'var(--brand-s)', border: '1px solid var(--brand-ring)' }
       }
     >
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={paused ? { background: '#FEE2E2' } : { background: '#D1FAE5' }}
+        style={{ background: 'var(--raised)', color: paused ? 'var(--danger)' : 'var(--brand)' }}
       >
-        <Power className="w-5 h-5" style={{ color: paused ? '#DC2626' : '#059669' }} />
+        <Power className="w-5 h-5" strokeWidth={1.75} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold" style={{ color: paused ? '#DC2626' : '#059669' }}>
+        <p className="text-[13px] font-semibold" style={{ color: paused ? 'var(--danger)' : 'var(--brand)' }}>
           {paused ? 'IA desativada' : 'IA ativa'}
         </p>
         <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
@@ -133,10 +137,8 @@ function AIPowerToggle() {
       <button
         onClick={toggle}
         disabled={saving}
-        className={cn(
-          'relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 disabled:opacity-60',
-          paused ? 'bg-red-500' : 'bg-emerald-500'
-        )}
+        className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 disabled:opacity-60"
+        style={{ background: paused ? 'var(--danger)' : 'var(--brand)' }}
       >
         <span className={cn(
           'inline-block h-5 w-5 m-1 transform rounded-full bg-white shadow transition-transform duration-200',
@@ -2055,6 +2057,7 @@ export default function TreinamentoPage() {
       <SectionCard
         title="Configurações da assistente"
         subtitle="Personalidade, tom de voz e comportamento"
+        icon={<Bot className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />}
       >
         <TabAssistente />
       </SectionCard>
@@ -2063,7 +2066,7 @@ export default function TreinamentoPage() {
       <SectionCard
         title="Horário de funcionamento da IA"
         subtitle="Quando a assistente responde e o que dizer fora do horário"
-        icon={<Clock className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
+        icon={<Clock className="w-4 h-4" strokeWidth={1.75} style={{ color: '#6AA9FF' }} />}
       >
         <HorarioFuncionamento />
       </SectionCard>
@@ -2072,7 +2075,7 @@ export default function TreinamentoPage() {
       <SectionCard
         title="Locais de atendimento"
         subtitle="Consultórios, cidades, valor e mensagem de confirmação"
-        icon={<MapPin className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
+        icon={<MapPin className="w-4 h-4" strokeWidth={1.75} style={{ color: '#FFB454' }} />}
       >
         <TabLocais />
       </SectionCard>

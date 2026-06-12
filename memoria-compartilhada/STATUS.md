@@ -14,15 +14,12 @@
   `equipe`, `agenda`, `conversas`, remocao de `/design-system`, ajustes em
   `Sidebar`/`TopBar`/`globals.css`). Validado `npx tsc --noEmit` (ok) em
   `apps/dashboard`. Commit + push feitos a pedido da Heloisa.
-- **Em andamento**: nada no momento. O escopo do "NOVO PEDIDO" de 2026-06-11
-  (tema claro/escuro, remover `/design-system`, `integracoes` com logos,
-  port Lovable de `configuracoes`/`equipe`/`clientes`/`agenda`/`conversas`)
-  foi assumido e concluido pelo Codex - ver entradas de 2026-06-11 (Codex)
-  no LOG.md. Ainda pendentes (nao cobertos pelo Codex): `treinamento`
-  (assistente) e `followup` (automacoes), citados no pedido original da
-  Heloisa mas nao mencionados no resumo do Codex - confirmar com a Heloisa
-  se ainda sao necessarios.
-- **Bloqueado/aguardando**: nada no momento.
+- **Em andamento**: nada no momento (ver LOG.md - port `treinamento`/
+  `followup` concluido em 2026-06-12).
+- **Bloqueado/aguardando**: 2026-06-12 - alteracoes em `followup/page.tsx`
+  e `treinamento/page.tsx` feitas e validadas (`npx tsc --noEmit` +
+  `npm run build`, 40 rotas ok), mas **sem commit/push** - aguardando
+  confirmacao da Heloisa para deploy.
 
 ## Codex
 

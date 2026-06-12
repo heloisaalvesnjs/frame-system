@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-06-12 - Claude Code
+
+- Concluido o port 100% Lovable de `followup` (Automacoes) e `treinamento`
+  (Assistente IA), itens do escopo original de 2026-06-11 que o Codex nao
+  cobriu, com autorizacao da Heloisa ("Sim, faca as duas").
+- **`followup/page.tsx`**: substituido o badge `FlowTag` (Ativa/Inativa)
+  por `FlowStatusDot` (dot + glow + label "Ativo - automatico"/"Pausado",
+  padrao Lovable). `AutoCard` ganhou icon box (36px, `var(--raised)`) +
+  `Badge` com o trigger ao lado do titulo. Cards de automacao (Sem
+  resposta/Pos-consulta/Lembrete/Retorno) ganharam icones e cores
+  (`MessageSquare`/`Mail`/`Calendar`/`RotateCcw`). O antigo bloco "Status da
+  IA" foi substituido por um card "Todos os fluxos" (`Card !p-0`) com lista
+  `divide-y` de icone+nome+status-dot, no padrao
+  `.tmp-frame-vision/src/routes/automacoes.tsx`. Nao foram portados os
+  "template cards" do Lovable nem KPIs fabricados (Execucoes/Conversao/
+  Tempo economizado) - sem dados reais no backend para isso.
+- **`treinamento/page.tsx`**: `AIPowerToggle` deixou de usar hex fixos
+  (`#ECFDF5`/`#FEF2F2`/etc., que so funcionavam no tema claro) e passou a
+  usar tokens (`var(--brand-s)`, `var(--brand-ring)`, `var(--danger)`,
+  `var(--raised)`) - agora funciona corretamente no tema escuro (padrao
+  Lovable). `SectionCard` ganhou icon box de 36px (`var(--raised)`) para o
+  icone do cabecalho; as 3 secoes (Configuracoes da assistente/Horario de
+  funcionamento/Locais de atendimento) ganharam icones coloridos (`Bot`
+  verde, `Clock` azul, `MapPin` laranja). Layout `max-w-3xl` de uma coluna
+  mantido - o hero "Modelo Frame v3.2" e KPIs/chart de `ia.tsx` nao foram
+  portados por dependerem de dados fabricados sem suporte no backend.
+- Correcao de tipo: trocado `React.ComponentType<{...}>` por `LucideIcon`
+  (de `lucide-react`) na prop `icon` do `AutoCard` em `followup/page.tsx` -
+  o tipo customizado nao era compativel com os componentes do lucide.
+- `npx tsc --noEmit` ok e `npm run build` ok (40 rotas, incluindo
+  `/followup` e `/treinamento`). **Sem commit/push** - aguardando
+  confirmacao da Heloisa.
+
 ## 2026-06-11 - Codex
 
 - Heloisa autorizou o Codex a assumir o escopo Lovable/PDF que estava

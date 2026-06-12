@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { Card, Badge, Btn, KPI } from '@/components/ui/finance-primitives'
 
@@ -98,12 +98,16 @@ function VarTags({ vars }: { vars: string[] }) {
   )
 }
 
-// ── Tag de status ─────────────────────────────────────────────────
-function FlowTag({ active }: { active: boolean }) {
+// ── Indicador de status (estilo Lovable) ───────────────────────────
+function FlowStatusDot({ active }: { active: boolean }) {
   return (
-    <Badge variant={active ? 'success' : 'default'}>
-      {active ? 'Ativa' : 'Inativa'}
-    </Badge>
+    <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--t2)' }}>
+      <span
+        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: active ? 'var(--brand)' : 'var(--t3)', boxShadow: active ? '0 0 6px var(--brand)' : 'none' }}
+      />
+      {active ? 'Ativo · automático' : 'Pausado'}
+    </span>
   )
 }
 
@@ -130,7 +134,9 @@ function OptionPills({ options, value, onChange, format }: {
 }
 
 // ── Shell do auto-card ────────────────────────────────────────────
-function AutoCard({ trigger, title, desc, enabled, onToggle, expanded, onEdit, children }: {
+function AutoCard({ icon: Icon, iconColor, trigger, title, desc, enabled, onToggle, expanded, onEdit, children }: {
+  icon: LucideIcon
+  iconColor: string
   trigger: string; title: string; desc: string
   enabled: boolean; onToggle: (v: boolean) => void
   expanded: boolean; onEdit: () => void
@@ -138,20 +144,25 @@ function AutoCard({ trigger, title, desc, enabled, onToggle, expanded, onEdit, c
 }) {
   return (
     <div className="card" style={{ padding: '16px 18px', opacity: enabled ? 1 : 0.75 }}>
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: 'var(--raised)', color: iconColor }}
+        >
+          <Icon className="w-4 h-4" strokeWidth={1.75} />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-mono mb-1" style={{ color: 'var(--t3)' }}>Gatilho: {trigger}</p>
-          <p className="text-sm font-bold" style={{ color: 'var(--t1)' }}>{title}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-bold" style={{ color: 'var(--t1)' }}>{title}</p>
+            <Badge variant="default">{trigger}</Badge>
+          </div>
           <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--t2)' }}>{desc}</p>
         </div>
         <Toggle value={enabled} onChange={onToggle} />
       </div>
 
       <div className="flex items-center gap-2.5 mt-3 pt-2.5" style={{ borderTop: '1px solid var(--border)' }}>
-        <FlowTag active={enabled} />
-        <span className="text-[11px]" style={{ color: 'var(--t3)' }}>
-          {enabled ? 'Executada automaticamente pela IA' : 'Fluxo pausado'}
-        </span>
+        <FlowStatusDot active={enabled} />
         <Btn variant="secondary" size="sm" onClick={onEdit} className="ml-auto">
           {expanded ? 'Fechar' : 'Editar'}
         </Btn>
@@ -234,6 +245,8 @@ function SemRespostaCard({ assistant, onSave, expanded, onEdit }: {
 
   return (
     <AutoCard
+      icon={MessageSquare}
+      iconColor="var(--brand)"
       trigger={`${delay}h sem resposta`}
       title="Sem resposta"
       desc="Recontata automaticamente leads que pararam de responder, com até 2 toques."
@@ -307,6 +320,8 @@ function FeedbackCard({ assistant, onSave, expanded, onEdit }: {
 
   return (
     <AutoCard
+      icon={Mail}
+      iconColor="#B69CFF"
       trigger="Após a consulta"
       title="Pós-consulta"
       desc="Coleta feedback do paciente automaticamente após cada atendimento concluído."
@@ -370,6 +385,8 @@ function LembreteCard({ assistant, onSave, expanded, onEdit }: {
 
   return (
     <AutoCard
+      icon={Calendar}
+      iconColor="#6AA9FF"
       trigger={`${hours < 24 ? `${hours}h` : `${hours / 24} dia(s)`} antes da consulta`}
       title="Lembrete"
       desc="Reduz faltas com lembrete automático antes da consulta agendada."
@@ -433,6 +450,8 @@ function RetornoCard({ assistant, onSave, expanded, onEdit }: {
 
   return (
     <AutoCard
+      icon={RotateCcw}
+      iconColor="#FFB454"
       trigger={`Paciente inativo há ${days}+ dias`}
       title="Retorno"
       desc="Reativa pacientes que não agendam há muito tempo com um convite de retorno."
@@ -463,10 +482,10 @@ function RetornoCard({ assistant, onSave, expanded, onEdit }: {
 
 // ── Página ────────────────────────────────────────────────────────
 const FLOWS = [
-  { key: 'followup_enabled',      def: true,  label: 'Sem resposta' },
-  { key: 'auto_feedback_enabled', def: false, label: 'Pós-consulta' },
-  { key: 'auto_reminder_enabled', def: false, label: 'Lembrete' },
-  { key: 'auto_return_enabled',   def: false, label: 'Retorno' },
+  { key: 'followup_enabled',      def: true,  label: 'Sem resposta',  icon: MessageSquare, color: 'var(--brand)' },
+  { key: 'auto_feedback_enabled', def: false, label: 'Pós-consulta',  icon: Mail,          color: '#B69CFF' },
+  { key: 'auto_reminder_enabled', def: false, label: 'Lembrete',      icon: Calendar,      color: '#6AA9FF' },
+  { key: 'auto_return_enabled',   def: false, label: 'Retorno',       icon: RotateCcw,     color: '#FFB454' },
 ]
 
 export default function AutomacoesPage() {
@@ -507,36 +526,41 @@ export default function AutomacoesPage() {
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
         {/* ── Coluna esquerda ─────────────────────────────────────── */}
         <div className="space-y-2.5">
-          {/* Status da IA */}
-          <div
-            className="rounded-2xl p-[18px]"
-            style={{ background: 'rgba(0,194,124,0.04)', border: '1px solid rgba(0,194,124,0.2)' }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>Status da IA</p>
+          {/* Todos os fluxos */}
+          <Card className="!p-0 overflow-hidden">
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>Todos os fluxos</p>
+                <p className="text-[11.5px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                  {FLOWS.length} fluxos · {activeCount} ativo(s) · {FLOWS.length - activeCount} pausado(s)
+                </p>
+              </div>
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                 style={{ background: 'var(--brand-s-solid)', color: 'var(--brand-h)' }}
               >
                 {activeCount}/{FLOWS.length} ativos
               </span>
             </div>
-            <div className="space-y-1.5">
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {FLOWS.map(f => {
                 const on = assistant?.[f.key] ?? f.def
+                const Icon = f.icon
                 return (
-                  <div key={f.key} className="flex items-center gap-2">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: on ? 'var(--brand)' : 'var(--t3)' }}
-                    />
-                    <p className="text-xs" style={{ color: 'var(--t1)' }}>{f.label}</p>
-                    <p className="text-[11px] ml-auto" style={{ color: 'var(--t2)' }}>{on ? '✓ ativo' : 'inativo'}</p>
+                  <div key={f.key} className="flex items-center gap-3 px-5 py-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'var(--raised)', color: f.color }}
+                    >
+                      <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    </div>
+                    <p className="text-xs flex-1" style={{ color: 'var(--t1)' }}>{f.label}</p>
+                    <FlowStatusDot active={on} />
                   </div>
                 )
               })}
             </div>
-          </div>
+          </Card>
 
           <SemRespostaCard assistant={assistant} onSave={handleSave} expanded={expandedCard === 'sem_resposta'} onEdit={() => toggleExpand('sem_resposta')} />
           <FeedbackCard    assistant={assistant} onSave={handleSave} expanded={expandedCard === 'feedback'}     onEdit={() => toggleExpand('feedback')} />
