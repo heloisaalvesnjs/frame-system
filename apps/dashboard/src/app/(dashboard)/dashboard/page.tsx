@@ -17,6 +17,7 @@ import {
   CartesianGrid,
 } from 'recharts'
 import {
+  AlertCircle,
   ArrowRight,
   Bot,
   CalendarDays,
@@ -138,16 +139,13 @@ function formatSaoPauloDateTime(value: string) {
   })
 }
 
-function Hero({ userName }: { userName?: string }) {
+function Hero({ userName, metrics }: { userName?: string; metrics?: Metrics | null }) {
   const hour = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getHours()
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
-  const dateLabel = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'America/Sao_Paulo',
-  })
-  const displayDate = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
+
+  const newLeads = metrics?.new_leads_week ?? 0
+  const openConversations = metrics?.active_conversations ?? 0
+  const appointmentsWeek = metrics?.appointments_week ?? 0
 
   return (
     <div
@@ -161,27 +159,37 @@ function Hero({ userName }: { userName?: string }) {
         <div>
           <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--t3)' }}>
             <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--brand)' }} />
-            Frame AI &middot; {displayDate}
+            Frame AI &middot; Resumo do dia
           </div>
           <h1 className="font-display mt-2 text-[22px] font-bold tracking-tight md:text-[26px]" style={{ color: 'var(--t1)' }}>
-            {greeting}, {userName || 'Heloisa'}.
+            {greeting}, {userName || 'Heloisa'}.{' '}
+            {newLeads > 0 ? (
+              <>
+                Sua clinica recebeu{' '}
+                <span style={{ color: 'var(--brand)' }}>{newLeads} {newLeads === 1 ? 'novo lead' : 'novos leads'}</span>{' '}
+                esta semana.
+              </>
+            ) : (
+              'Acompanhe leads, agenda e performance da assistente.'
+            )}
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-5" style={{ color: 'var(--t2)' }}>
-            Acompanhe leads, agenda e performance da assistente sem perder o controle do consultorio.
+            {openConversations > 0
+              ? `${openConversations} ${openConversations === 1 ? 'conversa aberta aguarda resposta' : 'conversas abertas aguardam resposta'} e ${appointmentsWeek} ${appointmentsWeek === 1 ? 'consulta agendada' : 'consultas agendadas'} nos proximos 7 dias.`
+              : 'Acompanhe leads, agenda e performance da assistente sem perder o controle do consultorio.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/agenda">
+          <Link href="#insights">
             <Btn variant="secondary" size="sm">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Agenda
+              Ver insights
             </Btn>
           </Link>
-          <Link href="/conversas">
+          <Link href="/followup">
             <Btn variant="primary" size="sm">
-              <MessageCircle className="h-3.5 w-3.5" />
-              Conversas
+              <Zap className="h-3.5 w-3.5" />
+              Executar follow-up
             </Btn>
           </Link>
         </div>
@@ -270,6 +278,71 @@ function TodayAgenda({ appointments }: { appointments?: Appointment[] }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function InsightsList({ metrics }: { metrics?: Metrics | null }) {
+  const newLeads = metrics?.new_leads_week ?? 0
+  const openConversations = metrics?.active_conversations ?? 0
+  const conversionRate = metrics?.conversion_rate
+
+  const items: { icon: typeof MessageCircle; title: string; desc: string; href: string; suggested: boolean }[] = []
+
+  if (openConversations > 0) {
+    items.push({
+      icon: MessageCircle,
+      title: `${openConversations} ${openConversations === 1 ? 'conversa aberta pode' : 'conversas abertas podem'} virar consulta`,
+      desc: 'Responda agora para nao perder o momento com o lead.',
+      href: '/conversas',
+      suggested: true,
+    })
+  }
+
+  if (newLeads > 0) {
+    items.push({
+      icon: TrendingUp,
+      title: `${newLeads} ${newLeads === 1 ? 'novo lead chegou' : 'novos leads chegaram'} esta semana`,
+      desc: 'Configure um follow-up para acompanhar quem ainda nao respondeu.',
+      href: '/followup',
+      suggested: true,
+    })
+  }
+
+  if (conversionRate != null) {
+    items.push({
+      icon: AlertCircle,
+      title: `Taxa de conversao de ${Math.round(conversionRate)}%`,
+      desc: `${metrics?.appointments_week ?? 0} agendamentos nos ultimos 7 dias.`,
+      href: '/agenda',
+      suggested: false,
+    })
+  }
+
+  if (items.length === 0) {
+    return <EmptyState title="Sem insights por enquanto" description="Conforme leads, conversas e agendamentos forem chegando, a Frame AI vai sugerir acoes aqui." />
+  }
+
+  return (
+    <div className="space-y-1">
+      {items.map(item => (
+        <Link
+          key={item.title}
+          href={item.href}
+          className="flex items-start gap-3 rounded-xl border border-transparent p-3 transition-all duration-200 hover:bg-white/[0.015] hover:border-[var(--line-1)]"
+        >
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg surface-2" style={{ color: 'var(--brand)' }}>
+            <item.icon className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{item.title}</p>
+              {item.suggested && <Badge variant="info">Acao sugerida</Badge>}
+            </div>
+            <p className="mt-0.5 text-[12px] leading-5" style={{ color: 'var(--t3)' }}>{item.desc}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   )
 }
@@ -395,7 +468,7 @@ export default function DashboardPage() {
     <main className="px-6 py-6">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
         <PageHeader />
-        <Hero userName={user?.name?.split(' ')[0]} />
+        <Hero userName={user?.name?.split(' ')[0]} metrics={metrics} />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {loadingMetrics ? (
@@ -458,6 +531,13 @@ export default function DashboardPage() {
             </div>
           </Card>
         </section>
+
+        <div id="insights">
+          <Card>
+            <SectionTitle title="Insights inteligentes" hint="Sugestoes da Frame AI com base nos seus dados" />
+            <InsightsList metrics={metrics} />
+          </Card>
+        </div>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

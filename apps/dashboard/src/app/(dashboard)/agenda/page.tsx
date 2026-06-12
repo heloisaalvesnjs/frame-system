@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Btn, KPI } from '@/components/ui/finance-primitives'
+import { Btn, KPI, Card, SectionTitle, Badge, Avatar } from '@/components/ui/finance-primitives'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -689,8 +689,13 @@ function WeekView({ weekStart, appointments, blocks, onClickAppt, onClickSlot }:
                       className={cn('absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 text-left overflow-hidden transition-all hover:opacity-80 hover:shadow-md border-l-[3px]', s.bg, s.border)}
                       style={{ top, height, zIndex: ai + 1 }}>
                       <p className={cn('text-[11px] font-semibold leading-tight truncate', s.text)}>{a.client_name}</p>
-                      {height > 38 && <p className={cn('text-[9px] truncate mt-0.5', s.textSub)}>{format(dt,'HH:mm')} – {format(endDt,'HH:mm')}</p>}
-                      {height > 52 && a.location_name && <p className={cn('text-[9px] truncate mt-0.5', s.textSub)}>📍 {a.location_name}</p>}
+                      {height > 38 && (
+                        <p className={cn('flex items-center gap-1 text-[9px] truncate mt-0.5', s.textSub)}>
+                          {a.modality === 'online' ? <Video className="w-2.5 h-2.5 flex-shrink-0" /> : <MapPin className="w-2.5 h-2.5 flex-shrink-0" />}
+                          {format(dt,'HH:mm')} – {format(endDt,'HH:mm')}
+                        </p>
+                      )}
+                      {height > 52 && a.location_name && <p className={cn('text-[9px] truncate mt-0.5', s.textSub)}>{a.location_name}</p>}
                     </button>
                   )
                 })}
@@ -783,16 +788,54 @@ export default function AgendaPage() {
   const weekCancelled = appointments.filter(a => a.status === 'cancelled').length
   const weekCompleted = appointments.filter(a => a.status === 'completed').length
 
+  const next24h = appointments
+    .filter(a => {
+      const dt = parseISO(a.scheduled_at)
+      return a.status !== 'cancelled' && dt >= today && dt.getTime() <= today.getTime() + 24 * 60 * 60 * 1000
+    })
+    .sort((a, b) => parseISO(a.scheduled_at).getTime() - parseISO(b.scheduled_at).getTime())
+
+  const sortedBlocks = [...blocks].sort((a, b) => parseISO(a.starts_at).getTime() - parseISO(b.starts_at).getTime())
+  function isFullDayBlock(b: CalendarBlock) {
+    const s = parseISO(b.starts_at)
+    const e = parseISO(b.ends_at)
+    return (e.getTime() - s.getTime()) >= 12 * 60 * 60 * 1000
+  }
+
   return (
-    <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden">
+    <div className="flex h-[calc(100vh-56px)] flex-col overflow-y-auto">
 
       {/* Header */}
-      <div className="flex flex-shrink-0 items-start justify-between px-6 pb-2 pt-6">
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 px-6 pb-2 pt-6">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight text-t1">Agenda</h1>
           <p className="mt-0.5 text-sm text-t3">
-            {format(today, 'MMMM yyyy', { locale: ptBR })} · {todayCount} consulta{todayCount !== 1 ? 's' : ''} hoje
+            Semana de {format(weekStart, 'd')} a {format(weekEnd, "d 'de' MMMM", { locale: ptBR })} · {todayCount} consulta{todayCount !== 1 ? 's' : ''} hoje
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Btn variant="outline" size="sm" onClick={prevWeek} className="!w-8 !h-8 !p-0 justify-center">
+            <ChevronLeft className="w-4 h-4" />
+          </Btn>
+          <Btn
+            variant={isCurrentWeek ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={goToday}
+            className={isCurrentWeek ? '!bg-brand-500/10 !text-brand-500 !border-brand-500/20' : ''}
+          >
+            Hoje
+          </Btn>
+          <Btn variant="outline" size="sm" onClick={nextWeek} className="!w-8 !h-8 !p-0 justify-center">
+            <ChevronRight className="w-4 h-4" />
+          </Btn>
+          <Btn variant="outline" size="sm" onClick={() => setBlockDate(new Date())}
+            className="!text-[var(--t2)] hover:!text-[var(--danger)]">
+            <Ban className="w-3.5 h-3.5" /> Bloquear
+          </Btn>
+          <Btn size="sm" onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}>
+            <Plus className="w-3.5 h-3.5" /> Nova consulta
+          </Btn>
         </div>
       </div>
 
@@ -804,7 +847,7 @@ export default function AgendaPage() {
         <KPI label="Canceladas" value={String(weekCancelled)} hint="nesta semana" />
       </div>
 
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-shrink-0 overflow-hidden" style={{ height: '600px' }}>
 
       {/* ── Left sidebar ──────────────────────────────────────────── */}
       <aside className="hidden lg:flex flex-col gap-5 w-[200px] flex-shrink-0 px-4 py-5 overflow-y-auto"
@@ -835,40 +878,6 @@ export default function AgendaPage() {
 
       {/* ── Main area ─────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
-          style={{ borderBottom:'1px solid var(--border)' }}>
-          <div className="flex items-center gap-2">
-            <Btn variant="outline" size="sm" onClick={prevWeek} className="!w-8 !h-8 !p-0 justify-center">
-              <ChevronLeft className="w-4 h-4" />
-            </Btn>
-            <Btn
-              variant={isCurrentWeek ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={goToday}
-              className={isCurrentWeek ? '!bg-brand-500/10 !text-brand-500 !border-brand-500/20' : ''}
-            >
-              Hoje
-            </Btn>
-            <Btn variant="outline" size="sm" onClick={nextWeek} className="!w-8 !h-8 !p-0 justify-center">
-              <ChevronRight className="w-4 h-4" />
-            </Btn>
-          </div>
-
-          <p className="font-mono text-[12px] text-t2 tracking-wide hidden sm:block">{weekRangeLabel}</p>
-
-          <div className="flex items-center gap-2">
-            <Btn variant="outline" size="sm" onClick={() => setBlockDate(new Date())}
-              className="!text-[var(--t2)] hover:!text-[var(--danger)]">
-              <Ban className="w-3.5 h-3.5" /> Bloquear
-            </Btn>
-            <Btn size="sm" onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}>
-              <Plus className="w-3.5 h-3.5" /> Nova consulta
-            </Btn>
-          </div>
-        </div>
-
         {/* Week grid */}
         <WeekView
           weekStart={weekStart}
@@ -879,6 +888,59 @@ export default function AgendaPage() {
         />
       </div>
     </div>
+
+      {/* ── Próximas 24h + Bloqueios ──────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 px-6 py-4 flex-shrink-0">
+        <Card>
+          <SectionTitle title="Próximas 24 horas" hint={`${next24h.length} consulta${next24h.length !== 1 ? 's' : ''}`} />
+          <div className="space-y-1">
+            {next24h.length === 0 && (
+              <p className="py-2 text-[12px] text-t3">Nenhuma consulta nas próximas 24 horas.</p>
+            )}
+            {next24h.map(a => {
+              const s = STATUS[a.status] || STATUS.scheduled
+              return (
+                <div key={a.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/[0.03]">
+                  <Avatar name={a.client_name} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-t1">{a.client_name}</p>
+                    <p className="flex items-center gap-1 text-[11px] text-t3">
+                      {a.modality === 'online' ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+                      {a.modality === 'online' ? 'Online' : (a.location_name || 'Presencial')}
+                    </p>
+                  </div>
+                  <Badge variant={a.status === 'confirmed' ? 'success' : a.status === 'cancelled' ? 'danger' : 'info'}>{s.label}</Badge>
+                  <span className="flex-shrink-0 font-mono text-[12px] tabular-nums text-t2">{format(parseISO(a.scheduled_at), 'HH:mm')}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle title="Bloqueios" hint={`${sortedBlocks.length} ${sortedBlocks.length !== 1 ? 'nesta semana' : 'nesta semana'}`} />
+          <div className="space-y-1">
+            {sortedBlocks.length === 0 && (
+              <p className="py-2 text-[12px] text-t3">Nenhum bloqueio nesta semana.</p>
+            )}
+            {sortedBlocks.map(b => {
+              const s = parseISO(b.starts_at)
+              const e = parseISO(b.ends_at)
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-white/[0.03]">
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium text-t1 capitalize">{format(s, "EEEE, d 'de' MMM", { locale: ptBR })}</p>
+                    {b.reason && <p className="truncate text-[11px] text-t3">{b.reason}</p>}
+                  </div>
+                  <span className="flex-shrink-0 font-mono text-[12px] tabular-nums text-t2">
+                    {isFullDayBlock(b) ? 'Dia todo' : `${format(s, 'HH:mm')}–${format(e, 'HH:mm')}`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
 
       {/* Modals */}
       {selectedAppt && (

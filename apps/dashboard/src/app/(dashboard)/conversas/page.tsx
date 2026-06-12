@@ -214,13 +214,13 @@ export default function ConversasPage() {
         </div>
 
         {/* ── Stats row ──────────────────────────────────────────────── */}
-        {false && stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 border-b" style={{ borderColor: 'var(--border)' }}>
             {[
-              { label: 'Resolvidas', value: stats?.resolved ?? 0, color: 'var(--t1)' },
-              { label: 'Agendamentos', value: stats?.agendou ?? 0, color: 'var(--brand)' },
-              { label: 'Vendas', value: stats?.comprou ?? 0, color: 'var(--brand)' },
-              { label: 'Sem retorno', value: (stats?.sem_resposta ?? 0) + (stats?.nao_avancou ?? 0), color: 'var(--danger)' },
+              { label: 'Em aberto', value: stats.active + stats.human_takeover, color: 'var(--t1)' },
+              { label: 'Aguardando você', value: stats.human_takeover, color: 'var(--warning)' },
+              { label: 'Agendamentos', value: stats.agendou, color: 'var(--brand)' },
+              { label: 'Sem retorno', value: stats.sem_resposta + stats.nao_avancou, color: 'var(--danger)' },
             ].map((card) => (
               <div key={card.label} className="surface p-4">
                 <p className="text-[20px] font-bold tabular-nums" style={{ color: card.color }}>{card.value}</p>
@@ -354,6 +354,24 @@ export default function ConversasPage() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={`tel:${selected.client_phone}`}
+                      title="Ligar"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/[0.04]"
+                      style={{ color: 'var(--t3)' }}
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                    <a
+                      href={`https://wa.me/${selected.client_phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir no WhatsApp"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/[0.04]"
+                      style={{ color: 'var(--t3)' }}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </a>
                     {(() => {
                       const b = STATUS_BADGE[selected.status]
                       return b ? <Badge variant={b.variant}>{b.label}</Badge> : null
@@ -505,41 +523,44 @@ export default function ConversasPage() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Footer */}
-                {selected.status === 'human_takeover' && (
-                  <div className="p-4 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
-                    <div className="rounded-xl p-2.5" style={{ background: 'var(--raised)' }}>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="Digite sua mensagem..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                          className="bg-transparent text-[13px] outline-none flex-1"
-                          style={{ color: 'var(--t1)' }}
-                        />
-                        <Btn variant="primary" size="sm" onClick={handleSendMessage} disabled={!newMessage.trim()}>
-                          <Send className="w-3.5 h-3.5" /> Enviar
-                        </Btn>
-                      </div>
+                {/* Composer - sempre visível, habilitado quando você está no controle */}
+                <div className="p-4 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+                  <div className="rounded-xl p-2.5" style={{ background: 'var(--raised)' }}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={
+                          selected.status === 'human_takeover'
+                            ? 'Digite sua mensagem...'
+                            : selected.status === 'active'
+                              ? 'A assistente está respondendo automaticamente...'
+                              : 'Conversa resolvida'
+                        }
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        disabled={selected.status !== 'human_takeover'}
+                        className="bg-transparent text-[13px] outline-none flex-1 disabled:cursor-not-allowed"
+                        style={{ color: 'var(--t1)' }}
+                      />
+                      <Btn variant="primary" size="sm" onClick={handleSendMessage} disabled={!newMessage.trim() || selected.status !== 'human_takeover'}>
+                        <Send className="w-3.5 h-3.5" /> Enviar
+                      </Btn>
                     </div>
-                    <p className="text-[11px] mt-2" style={{ color: 'var(--t3)' }}>
-                      Você está no controle. A IA não responderá enquanto estiver ativo.
-                    </p>
                   </div>
-                )}
-
-                {selected.status === 'active' && (
-                  <div className="px-5 py-3 text-center flex-shrink-0 border-t" style={{ background: 'var(--brand-s)', borderColor: 'var(--border)' }}>
-                    <p className="text-[12px] font-medium" style={{ color: 'var(--brand-h)' }}>
-                      A assistente está respondendo automaticamente.{' '}
-                      <button onClick={() => takeover.mutate()} className="underline font-semibold hover:opacity-70 transition-opacity">
-                        Clique aqui para assumir
-                      </button>
-                    </p>
-                  </div>
-                )}
+                  <p className="text-[11px] mt-2" style={{ color: 'var(--t3)' }}>
+                    {selected.status === 'human_takeover' && 'Você está no controle. A IA não responderá enquanto estiver ativo.'}
+                    {selected.status === 'active' && (
+                      <>
+                        A assistente está respondendo automaticamente.{' '}
+                        <button onClick={() => takeover.mutate()} className="underline font-semibold hover:opacity-70 transition-opacity">
+                          Clique aqui para assumir
+                        </button>
+                      </>
+                    )}
+                    {selected.status === 'resolved' && 'Esta conversa foi marcada como resolvida.'}
+                  </p>
+                </div>
 
                 {selected.status === 'resolved' && (
                   <div className="px-5 py-3 flex-shrink-0 border-t" style={{ borderColor: 'var(--border)', background: 'var(--raised)' }}>

@@ -9,7 +9,7 @@ import {
   Upload, Trash2, CheckCircle, MessageSquare,
   ArrowRight, ArrowLeft, FileText, Edit3,
   Plus, GripVertical, Clock, Loader2, Save,
-  Power, Moon, MapPin, ChevronDown, ChevronUp, Sun,
+  Power, Moon, Sun, BookOpen,
   Send, RotateCcw, Bot, User, PlayCircle, Brain,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -1543,235 +1543,6 @@ function HorarioFuncionamento() {
 }
 
 // ═══════════════════════════════════════════════════════
-// Locais de Atendimento
-// ═══════════════════════════════════════════════════════
-
-interface Location {
-  id: string; name: string; city?: string; address?: string; color?: string
-  modality?: string; price?: string; payment_info?: string
-  deposit_required?: boolean; deposit_amount?: string; confirmation_message?: string
-}
-
-const LOCATION_MODALITIES = [
-  { value: 'presencial', label: 'Presencial' },
-  { value: 'online',     label: 'Online'     },
-  { value: 'ambos',      label: 'Ambos'      },
-]
-
-const LOCATION_COLORS = ['#00c27c', '#6366f1', '#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#f97316']
-
-function LocationCard({
-  loc, onSave, onDelete,
-}: {
-  loc: Partial<Location> & { _new?: boolean }
-  onSave: (data: Partial<Location>) => Promise<void>
-  onDelete?: () => void
-}) {
-  const [open,   setOpen]   = useState(loc._new ?? false)
-  const [form,   setForm]   = useState<Partial<Location>>({
-    name: loc.name ?? '', city: loc.city ?? '', address: loc.address ?? '',
-    color: loc.color ?? '#00c27c', modality: loc.modality ?? 'presencial',
-    price: loc.price ?? '', payment_info: loc.payment_info ?? '',
-    deposit_required: loc.deposit_required ?? false, deposit_amount: loc.deposit_amount ?? '',
-    confirmation_message: loc.confirmation_message ?? '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  function set(field: keyof Location, value: any) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
-
-  async function handleSave() {
-    if (!form.name?.trim()) { toast.error('Nome obrigatório'); return }
-    setSaving(true)
-    try { await onSave({ ...loc, ...form }); setOpen(false) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
-      <button
-        type="button"
-        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-        onClick={() => setOpen(o => !o)}
-        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
-        onMouseLeave={e => (e.currentTarget.style.background = '')}
-      >
-        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: form.color }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>
-            {form.name || <span className="italic" style={{ color: 'var(--t3)' }}>Novo local</span>}
-          </p>
-          {form.city && (
-            <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>
-              {form.city}{form.modality ? ` · ${form.modality}` : ''}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {onDelete && (
-            <span
-              role="button"
-              onClick={e => { e.stopPropagation(); onDelete() }}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--t3)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.background = '#FEF2F2' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.background = '' }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </span>
-          )}
-          {open ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--t3)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
-        </div>
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <div className="grid grid-cols-2 gap-3 pt-3">
-            <div className="col-span-2">
-              <Field label="Nome do local">
-                <input placeholder="Ex: Consultório Centro SP, Clínica Online..." value={form.name} onChange={e => set('name', e.target.value)} className="input" />
-              </Field>
-            </div>
-            <Field label="Cidade">
-              <input placeholder="São Paulo" value={form.city} onChange={e => set('city', e.target.value)} className="input" />
-            </Field>
-            <Field label="Modalidade">
-              <select value={form.modality} onChange={e => set('modality', e.target.value)} className="input">
-                {LOCATION_MODALITIES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </Field>
-            <div className="col-span-2">
-              <Field label="Endereço completo">
-                <input placeholder="Rua das Flores, 100 — Sala 5 — Centro" value={form.address} onChange={e => set('address', e.target.value)} className="input" />
-              </Field>
-            </div>
-          </div>
-
-          <div className="rounded-xl p-4 space-y-3" style={{ border: '1px solid var(--border)', background: 'var(--raised)' }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>Valor & Pagamento</p>
-            <Field label="Valor da consulta">
-              <input placeholder="Ex: R$ 250,00" value={form.price} onChange={e => set('price', e.target.value)} className="input" />
-            </Field>
-            <Field label="Instruções de pagamento">
-              <textarea placeholder="Ex: Pix: 11999999999..." rows={2} value={form.payment_info} onChange={e => set('payment_info', e.target.value)} className="textarea" />
-            </Field>
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Exige sinal para confirmar</p>
-                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Paciente precisa pagar antecipadamente</p>
-              </div>
-              <Toggle enabled={!!form.deposit_required} onChange={() => set('deposit_required', !form.deposit_required)} />
-            </div>
-            {form.deposit_required && (
-              <Field label="Valor do sinal">
-                <input placeholder="Ex: R$ 50,00" value={form.deposit_amount} onChange={e => set('deposit_amount', e.target.value)} className="input" />
-              </Field>
-            )}
-          </div>
-
-          <Field label="Mensagem de confirmação de agendamento" hint="Enviada automaticamente após o paciente agendar">
-            <textarea placeholder="Ex: Sua consulta está confirmada! Aguardamos você..." rows={3} value={form.confirmation_message} onChange={e => set('confirmation_message', e.target.value)} className="textarea" />
-          </Field>
-
-          <div className="flex flex-col gap-2">
-            <label className="field-label">Cor na agenda</label>
-            <div className="flex gap-2 flex-wrap">
-              {LOCATION_COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => set('color', c)}
-                  className={cn('w-7 h-7 rounded-full border-2 transition-transform hover:scale-110', form.color === c ? 'border-white scale-110' : 'border-transparent')}
-                  style={{ background: c, outline: form.color === c ? `2px solid ${c}` : 'none', outlineOffset: '2px' }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <Btn type="button" onClick={handleSave} disabled={saving} className="w-full justify-center">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar local
-          </Btn>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TabLocais() {
-  const qc = useQueryClient()
-
-  const { data: locations = [], isLoading } = useQuery<Location[]>({
-    queryKey: ['locations'],
-    queryFn: () => api.get('/api/locations').then(r => r.data.locations ?? r.data),
-  })
-
-  const [newItems, setNewItems] = useState<{ id: string }[]>([])
-
-  const saveMut = useMutation({
-    mutationFn: async (data: Partial<Location>) => {
-      if (data.id && !String(data.id).startsWith('_new')) {
-        await api.put(`/api/locations/${data.id}`, data)
-      } else {
-        const { id: _i, _new: _j, ...rest } = data as any
-        await api.post('/api/locations', rest)
-      }
-    },
-    onSuccess: () => { toast.success('Local salvo!'); qc.invalidateQueries({ queryKey: ['locations'] }); setNewItems([]) },
-    onError: () => toast.error('Erro ao salvar local'),
-  })
-
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => api.delete(`/api/locations/${id}`),
-    onSuccess: () => { toast.success('Local removido'); qc.invalidateQueries({ queryKey: ['locations'] }) },
-    onError: () => toast.error('Erro ao remover'),
-  })
-
-  if (isLoading) return (
-    <div className="flex justify-center py-8">
-      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
-    </div>
-  )
-
-  return (
-    <div className="space-y-3">
-      {locations.length === 0 && newItems.length === 0 && (
-        <div className="text-center py-8">
-          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" style={{ color: 'var(--t3)' }} />
-          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
-            Nenhum local cadastrado. Adicione seu consultório ou cidade de atendimento.
-          </p>
-        </div>
-      )}
-      {locations.map(loc => (
-        <LocationCard key={loc.id} loc={loc}
-          onSave={data => saveMut.mutateAsync(data)}
-          onDelete={() => deleteMut.mutate(loc.id)}
-        />
-      ))}
-      {newItems.map(item => (
-        <LocationCard key={item.id} loc={{ _new: true } as any}
-          onSave={data => saveMut.mutateAsync(data)}
-          onDelete={() => setNewItems(prev => prev.filter(n => n.id !== item.id))}
-        />
-      ))}
-      <button
-        type="button"
-        onClick={() => setNewItems(prev => [...prev, { id: `_new_${Date.now()}` }])}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-[13px] transition-all"
-        style={{ borderColor: 'var(--border)', color: 'var(--t3)' }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--brand)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,194,124,.4)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
-      >
-        <Plus className="w-4 h-4" />
-        Adicionar local de atendimento
-      </button>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════
 // Testar Atendimento
 // ═══════════════════════════════════════════════════════
 
@@ -2044,50 +1815,60 @@ export default function TreinamentoPage() {
         <KPI label="Conversas ativas" value={String(convStats?.active ?? 0)} hint="aguardando resposta" />
         <KPI label="Agendamentos via IA" value={String(convStats?.agendou ?? 0)} hint="total" />
         <KPI label="Vendas via IA" value={String(convStats?.comprou ?? 0)} hint="total" />
-        <KPI label="Atendimento humano" value={String(convStats?.human_takeover ?? 0)} hint="conversas assumidas" />
+        <KPI label="Mensagens enviadas pela IA" value={String(convStats?.ai_messages ?? 0)} hint="total" />
       </div>
 
       {/* IA Power */}
       <AIPowerToggle />
 
-      {/* Treinamento */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-      >
-        <div className="px-6" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex gap-0.5 overflow-x-auto">
-            {TRAINING_TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setTrainingTab(id)}
-                className="flex items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-mono border-b-2 transition-all duration-150 -mb-px whitespace-nowrap tracking-wide"
-                style={{
-                  borderColor: trainingTab === id ? 'var(--brand)' : 'transparent',
-                  color: trainingTab === id ? 'var(--brand)' : 'var(--t3)',
-                }}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
+      {/* Base de conhecimento + Configurações da assistente */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Base de conhecimento */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+        >
+          <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-2.5 mb-3">
+              <BookOpen className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />
+              <div>
+                <h3 className="text-[14px] font-semibold text-t1">Base de conhecimento</h3>
+                <p className="text-[12px] text-t3">Treinamento, automações e teste de atendimento</p>
+              </div>
+            </div>
+            <div className="flex gap-0.5 overflow-x-auto -mb-3">
+              {TRAINING_TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setTrainingTab(id)}
+                  className="flex items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-mono border-b-2 transition-all duration-150 -mb-px whitespace-nowrap tracking-wide"
+                  style={{
+                    borderColor: trainingTab === id ? 'var(--brand)' : 'transparent',
+                    color: trainingTab === id ? 'var(--brand)' : 'var(--t3)',
+                  }}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-6 py-6">
+            {trainingTab === 'manual'     && <ManualSection />}
+            {trainingTab === 'automacoes' && <AutomacoesSection />}
+            {trainingTab === 'testar'     && <TestarAtendimentoSection />}
           </div>
         </div>
-        <div className="px-6 py-6">
-          {trainingTab === 'manual'     && <ManualSection />}
-          {trainingTab === 'automacoes' && <AutomacoesSection />}
-          {trainingTab === 'testar'     && <TestarAtendimentoSection />}
-        </div>
-      </div>
 
-      {/* Configurações da Assistente */}
-      <SectionCard
-        title="Configurações da assistente"
-        subtitle="Personalidade, tom de voz e comportamento"
-        icon={<Bot className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />}
-      >
-        <TabAssistente />
-      </SectionCard>
+        {/* Configurações da Assistente */}
+        <SectionCard
+          title="Configurações da assistente"
+          subtitle="Personalidade, tom de voz e comportamento"
+          icon={<Bot className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />}
+        >
+          <TabAssistente />
+        </SectionCard>
+      </div>
 
       {/* Horário de Funcionamento */}
       <SectionCard
@@ -2096,15 +1877,6 @@ export default function TreinamentoPage() {
         icon={<Clock className="w-4 h-4" strokeWidth={1.75} style={{ color: '#6AA9FF' }} />}
       >
         <HorarioFuncionamento />
-      </SectionCard>
-
-      {/* Locais de Atendimento */}
-      <SectionCard
-        title="Locais de atendimento"
-        subtitle="Consultórios, cidades, valor e mensagem de confirmação"
-        icon={<MapPin className="w-4 h-4" strokeWidth={1.75} style={{ color: '#FFB454' }} />}
-      >
-        <TabLocais />
       </SectionCard>
 
     </div>

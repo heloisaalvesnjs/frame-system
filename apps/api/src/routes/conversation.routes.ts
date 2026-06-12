@@ -123,7 +123,10 @@ export async function conversationRoutes(app: FastifyInstance) {
          COUNT(*) FILTER (WHERE outcome = 'nao_avancou') as nao_avancou,
          COUNT(*) FILTER (WHERE outcome = 'sem_resposta') as sem_resposta,
          COUNT(*) FILTER (WHERE outcome = 'outro') as outro,
-         COUNT(*) FILTER (WHERE status = 'resolved' AND outcome IS NULL) as sem_classificacao
+         COUNT(*) FILTER (WHERE status = 'resolved' AND outcome IS NULL) as sem_classificacao,
+         (SELECT COUNT(*) FROM messages m
+            JOIN conversations c2 ON c2.id = m.conversation_id
+           WHERE c2.nutritionist_id = $1 AND m.role = 'assistant') as ai_messages
        FROM conversations
        WHERE nutritionist_id = $1`,
       [nutritionistId]

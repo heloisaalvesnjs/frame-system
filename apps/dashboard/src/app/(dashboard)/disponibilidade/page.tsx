@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee } from 'lucide-react'
+import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee, Trash2, ChevronDown, ChevronUp, Plus, Save, Loader2, MapPin, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -95,6 +95,246 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         style={{ background: checked ? '#fff' : 'var(--t3)', transform: checked ? 'translateX(18px)' : 'translateX(2px)' }}
       />
     </button>
+  )
+}
+
+// ── Field ──────────────────────────────────────────────────────────────────────
+function Field({ label, hint, error, children }: {
+  label: string; hint?: string; error?: string; children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="field-label">{label}</label>
+      {hint && <p className="text-[11px] mb-1.5" style={{ color: 'var(--t3)' }}>{hint}</p>}
+      {children}
+      {error && <p className="text-[12px] mt-1.5" style={{ color: '#EF4444' }}>{error}</p>}
+    </div>
+  )
+}
+
+// ── Locais de atendimento ────────────────────────────────────────────────────
+interface Location {
+  id: string; name: string; city?: string; address?: string; color?: string
+  modality?: string; price?: string; payment_info?: string
+  deposit_required?: boolean; deposit_amount?: string; confirmation_message?: string
+}
+
+const LOCATION_MODALITIES = [
+  { value: 'presencial', label: 'Presencial' },
+  { value: 'online',     label: 'Online'     },
+  { value: 'ambos',      label: 'Ambos'      },
+]
+
+const LOCATION_COLORS = ['#00c27c', '#6366f1', '#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#f97316']
+
+function LocationCard({
+  loc, onSave, onDelete,
+}: {
+  loc: Partial<Location> & { _new?: boolean }
+  onSave: (data: Partial<Location>) => Promise<void>
+  onDelete?: () => void
+}) {
+  const [open,   setOpen]   = useState(loc._new ?? false)
+  const [form,   setForm]   = useState<Partial<Location>>({
+    name: loc.name ?? '', city: loc.city ?? '', address: loc.address ?? '',
+    color: loc.color ?? '#00c27c', modality: loc.modality ?? 'presencial',
+    price: loc.price ?? '', payment_info: loc.payment_info ?? '',
+    deposit_required: loc.deposit_required ?? false, deposit_amount: loc.deposit_amount ?? '',
+    confirmation_message: loc.confirmation_message ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  function set(field: keyof Location, value: any) {
+    setForm(f => ({ ...f, [field]: value }))
+  }
+
+  async function handleSave() {
+    if (!form.name?.trim()) { toast.error('Nome obrigatório'); return }
+    setSaving(true)
+    try { await onSave({ ...loc, ...form }); setOpen(false) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+        onClick={() => setOpen(o => !o)}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
+        onMouseLeave={e => (e.currentTarget.style.background = '')}
+      >
+        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: form.color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>
+            {form.name || <span className="italic" style={{ color: 'var(--t3)' }}>Novo local</span>}
+          </p>
+          {form.city && (
+            <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>
+              {form.city}{form.modality ? ` · ${form.modality}` : ''}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <span
+              role="button"
+              onClick={e => { e.stopPropagation(); onDelete() }}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--t3)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.background = '#FEF2F2' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.background = '' }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </span>
+          )}
+          {open ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--t3)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--t3)' }} />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="grid grid-cols-2 gap-3 pt-3">
+            <div className="col-span-2">
+              <Field label="Nome do local">
+                <input placeholder="Ex: Consultório Centro SP, Clínica Online..." value={form.name} onChange={e => set('name', e.target.value)} className="input" />
+              </Field>
+            </div>
+            <Field label="Cidade">
+              <input placeholder="São Paulo" value={form.city} onChange={e => set('city', e.target.value)} className="input" />
+            </Field>
+            <Field label="Modalidade">
+              <select value={form.modality} onChange={e => set('modality', e.target.value)} className="input">
+                {LOCATION_MODALITIES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </Field>
+            <div className="col-span-2">
+              <Field label="Endereço completo">
+                <input placeholder="Rua das Flores, 100 — Sala 5 — Centro" value={form.address} onChange={e => set('address', e.target.value)} className="input" />
+              </Field>
+            </div>
+          </div>
+
+          <div className="rounded-xl p-4 space-y-3" style={{ border: '1px solid var(--border)', background: 'var(--raised)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>Valor & Pagamento</p>
+            <Field label="Valor da consulta">
+              <input placeholder="Ex: R$ 250,00" value={form.price} onChange={e => set('price', e.target.value)} className="input" />
+            </Field>
+            <Field label="Instruções de pagamento">
+              <textarea placeholder="Ex: Pix: 11999999999..." rows={2} value={form.payment_info} onChange={e => set('payment_info', e.target.value)} className="textarea" />
+            </Field>
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Exige sinal para confirmar</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Paciente precisa pagar antecipadamente</p>
+              </div>
+              <Toggle checked={!!form.deposit_required} onChange={() => set('deposit_required', !form.deposit_required)} />
+            </div>
+            {form.deposit_required && (
+              <Field label="Valor do sinal">
+                <input placeholder="Ex: R$ 50,00" value={form.deposit_amount} onChange={e => set('deposit_amount', e.target.value)} className="input" />
+              </Field>
+            )}
+          </div>
+
+          <Field label="Mensagem de confirmação de agendamento" hint="Enviada automaticamente após o paciente agendar">
+            <textarea placeholder="Ex: Sua consulta está confirmada! Aguardamos você..." rows={3} value={form.confirmation_message} onChange={e => set('confirmation_message', e.target.value)} className="textarea" />
+          </Field>
+
+          <div className="flex flex-col gap-2">
+            <label className="field-label">Cor na agenda</label>
+            <div className="flex gap-2 flex-wrap">
+              {LOCATION_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => set('color', c)}
+                  className={cn('w-7 h-7 rounded-full border-2 transition-transform hover:scale-110', form.color === c ? 'border-white scale-110' : 'border-transparent')}
+                  style={{ background: c, outline: form.color === c ? `2px solid ${c}` : 'none', outlineOffset: '2px' }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <Btn type="button" onClick={handleSave} disabled={saving} className="w-full justify-center">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar local
+          </Btn>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TabLocais() {
+  const qc = useQueryClient()
+
+  const { data: locations = [], isLoading } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: () => api.get('/api/locations').then(r => r.data.locations ?? r.data),
+  })
+
+  const [newItems, setNewItems] = useState<{ id: string }[]>([])
+
+  const saveMut = useMutation({
+    mutationFn: async (data: Partial<Location>) => {
+      if (data.id && !String(data.id).startsWith('_new')) {
+        await api.put(`/api/locations/${data.id}`, data)
+      } else {
+        const { id: _i, _new: _j, ...rest } = data as any
+        await api.post('/api/locations', rest)
+      }
+    },
+    onSuccess: () => { toast.success('Local salvo!'); qc.invalidateQueries({ queryKey: ['locations'] }); setNewItems([]) },
+    onError: () => toast.error('Erro ao salvar local'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/locations/${id}`),
+    onSuccess: () => { toast.success('Local removido'); qc.invalidateQueries({ queryKey: ['locations'] }) },
+    onError: () => toast.error('Erro ao remover'),
+  })
+
+  if (isLoading) return (
+    <div className="flex justify-center py-8">
+      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      {locations.length === 0 && newItems.length === 0 && (
+        <div className="text-center py-8">
+          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" style={{ color: 'var(--t3)' }} />
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
+            Nenhum local cadastrado. Adicione seu consultório ou cidade de atendimento.
+          </p>
+        </div>
+      )}
+      {locations.map(loc => (
+        <LocationCard key={loc.id} loc={loc}
+          onSave={data => saveMut.mutateAsync(data)}
+          onDelete={() => deleteMut.mutate(loc.id)}
+        />
+      ))}
+      {newItems.map(item => (
+        <LocationCard key={item.id} loc={{ _new: true } as any}
+          onSave={data => saveMut.mutateAsync(data)}
+          onDelete={() => setNewItems(prev => prev.filter(n => n.id !== item.id))}
+        />
+      ))}
+      <button
+        type="button"
+        onClick={() => setNewItems(prev => [...prev, { id: `_new_${Date.now()}` }])}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-[13px] transition-all"
+        style={{ borderColor: 'var(--border)', color: 'var(--t3)' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--brand)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,194,124,.4)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--t3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+      >
+        <Plus className="w-4 h-4" />
+        Adicionar local de atendimento
+      </button>
+    </div>
   )
 }
 
@@ -199,6 +439,143 @@ function DayRow({ day, onChange }: {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Compact Day Row ────────────────────────────────────────────────────────────
+function timeRanges(day: DayConfig): string[] {
+  if (!day.is_active) return []
+  if (day.has_break) return [`${day.start_time} – ${day.break_start}`, `${day.break_end} – ${day.end_time}`]
+  return [`${day.start_time} – ${day.end_time}`]
+}
+
+function CompactDayRow({ day, onChange }: {
+  day: DayConfig
+  onChange: (patch: Partial<DayConfig>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ranges = timeRanges(day)
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors"
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--raised)')}
+        onMouseLeave={e => (e.currentTarget.style.background = '')}
+      >
+        <div className="w-28 flex-shrink-0">
+          <p className="text-sm font-medium" style={{ color: 'var(--t1)' }}>{day.label}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap flex-1">
+          {ranges.length > 0 ? ranges.map((r, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono" style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t2)' }}>
+              <Clock className="w-3 h-3" style={{ color: 'var(--t3)' }} />
+              {r}
+            </span>
+          )) : (
+            <span className="text-xs" style={{ color: 'var(--t3)' }}>Sem horários</span>
+          )}
+        </div>
+        <span
+          className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+          style={day.is_active
+            ? { background: 'rgba(0,194,124,.12)', color: 'var(--brand)' }
+            : { background: 'var(--raised)', color: 'var(--t3)' }}
+        >
+          {day.is_active ? 'Ativo' : 'Pausado'}
+        </span>
+        {open
+          ? <ChevronUp className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t3)' }} />
+          : <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t3)' }} />}
+      </button>
+      {open && (
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          <DayRow day={day} onChange={onChange} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Regras & Exceções ──────────────────────────────────────────────────────────
+function mostCommonDuration(days: DayConfig[]): string {
+  const active = days.filter(d => d.is_active)
+  if (active.length === 0) return '—'
+  const counts = new Map<number, number>()
+  for (const d of active) counts.set(d.slot_duration, (counts.get(d.slot_duration) ?? 0) + 1)
+  let best = active[0].slot_duration
+  let bestCount = 0
+  counts.forEach((count, val) => { if (count > bestCount) { best = val; bestCount = count } })
+  return SLOT_OPTIONS.find(o => o.value === best)?.label ?? '—'
+}
+
+function RulesCard({ days }: { days: DayConfig[] }) {
+  const rows = [
+    { label: 'Duração padrão',         value: mostCommonDuration(days) },
+    { label: 'Buffer entre consultas', value: '—' },
+    { label: 'Antecedência mínima',    value: '—' },
+    { label: 'Limite por dia',         value: '—' },
+  ]
+  return (
+    <div className="rounded-2xl p-5 space-y-3" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <h3 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Regras</h3>
+      <div className="space-y-2">
+        {rows.map(r => (
+          <div key={r.label} className="flex items-center justify-between text-sm">
+            <span style={{ color: 'var(--t3)' }}>{r.label}</span>
+            <span className="font-mono" style={{ color: 'var(--t1)' }}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ExceptionsCard() {
+  const { data } = useQuery({
+    queryKey: ['blocked-dates'],
+    queryFn: () => api.get('/api/availability/blocked').then(r => r.data.blocked as { id: string; blocked_date: string; reason?: string }[]),
+  })
+  const blocked = data ?? []
+
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const limit = new Date(today)
+  limit.setDate(limit.getDate() + 60)
+  const limitStr = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`
+
+  const upcoming = blocked
+    .filter(b => { const d = b.blocked_date.slice(0, 10); return d >= todayStr && d <= limitStr })
+    .sort((a, b) => a.blocked_date.localeCompare(b.blocked_date))
+
+  return (
+    <div className="rounded-2xl p-5 space-y-3" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Exceções</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>Próximos 60 dias</p>
+      </div>
+      {upcoming.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--t3)' }}>Nenhum bloqueio nos próximos 60 dias.</p>
+      ) : (
+        <div className="space-y-2">
+          {upcoming.map(b => (
+            <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
+              <div className="min-w-0">
+                <p className="font-mono text-xs" style={{ color: 'var(--t1)' }}>
+                  {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+                {b.reason && <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{b.reason}</p>}
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(245,158,11,.12)', color: '#F59E0B' }}>
+                Bloqueio total
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -382,11 +759,8 @@ export default function DisponibilidadePage() {
     </div>
   )
 
-  const workDays    = days.filter(d => d.day_of_week >= 1 && d.day_of_week <= 5)
-  const weekendDays = days.filter(d => d.day_of_week === 0 || d.day_of_week === 6)
-
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-10">
+    <div className="p-6 max-w-6xl mx-auto space-y-10">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -414,22 +788,25 @@ export default function DisponibilidadePage() {
         </Btn>
       </div>
 
-      {/* Dias úteis */}
-      <div className="space-y-3">
-        <p className="text-xs font-mono text-t3 uppercase tracking-wider">Dias úteis</p>
-        {workDays.map(day => {
-          const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
-          return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
-        })}
-      </div>
+      {/* Horário semanal padrão + Regras/Exceções */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-t1">Horário semanal padrão</h2>
+            <p className="text-sm text-t3 mt-0.5">Slots utilizados pela IA para sugerir agendamentos.</p>
+          </div>
+          <div className="space-y-3">
+            {days.map(day => {
+              const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
+              return <CompactDayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
+            })}
+          </div>
+        </div>
 
-      {/* Fim de semana */}
-      <div className="space-y-3">
-        <p className="text-xs font-mono text-t3 uppercase tracking-wider">Fim de semana</p>
-        {weekendDays.map(day => {
-          const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
-          return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
-        })}
+        <div className="space-y-6">
+          <RulesCard days={days} />
+          <ExceptionsCard />
+        </div>
       </div>
 
       {/* Datas bloqueadas */}
@@ -442,6 +819,15 @@ export default function DisponibilidadePage() {
         <p className="text-xs text-t3">
           Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
         </p>
+      </div>
+
+      {/* Locais de atendimento */}
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-base font-semibold text-t1">Locais de atendimento</h2>
+          <p className="text-sm text-t3 mt-0.5">Consultórios, cidades, valor e mensagem de confirmação.</p>
+        </div>
+        <TabLocais />
       </div>
 
     </div>

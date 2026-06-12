@@ -488,9 +488,16 @@ const FLOWS = [
   { key: 'auto_return_enabled',   def: false, label: 'Retorno',       icon: RotateCcw,     color: '#FFB454' },
 ]
 
+const FLOW_FILTERS: { key: 'all' | 'active' | 'paused'; label: string }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'active', label: 'Ativos' },
+  { key: 'paused', label: 'Pausados' },
+]
+
 export default function AutomacoesPage() {
   const qc = useQueryClient()
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [flowFilter, setFlowFilter] = useState<'all' | 'active' | 'paused'>('all')
 
   const { data: assistant, isLoading } = useQuery<any>({
     queryKey: ['assistant'],
@@ -531,37 +538,76 @@ export default function AutomacoesPage() {
         <div className="space-y-2.5">
           {/* Todos os fluxos */}
           <Card className="!p-0 overflow-hidden">
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
               <div>
                 <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>Todos os fluxos</p>
                 <p className="text-[11.5px] mt-0.5" style={{ color: 'var(--t3)' }}>
                   {FLOWS.length} fluxos · {activeCount} ativo(s) · {FLOWS.length - activeCount} pausado(s)
                 </p>
               </div>
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                style={{ background: 'var(--brand-s-solid)', color: 'var(--brand-h)' }}
-              >
-                {activeCount}/{FLOWS.length} ativos
-              </span>
+              <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: 'var(--raised)' }}>
+                {FLOW_FILTERS.map(f => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFlowFilter(f.key)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-md transition-colors"
+                    style={flowFilter === f.key
+                      ? { background: 'var(--surface)', color: 'var(--t1)' }
+                      : { color: 'var(--t3)' }
+                    }
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="px-5 py-2 flex items-center gap-3 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: 'var(--t3)', borderBottom: '1px solid var(--border)' }}>
+              <span className="flex-1">Fluxo</span>
+              <span className="w-20 text-right">Execuções</span>
+              <span className="w-20 text-right">Conversão</span>
+              <span className="w-28 text-right">Status</span>
             </div>
             <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-              {FLOWS.map(f => {
-                const on = assistant?.[f.key] ?? f.def
-                const Icon = f.icon
-                return (
-                  <div key={f.key} className="flex items-center gap-3 px-5 py-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--raised)', color: f.color }}
-                    >
-                      <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+              {FLOWS
+                .filter(f => {
+                  const on = assistant?.[f.key] ?? f.def
+                  if (flowFilter === 'active') return on
+                  if (flowFilter === 'paused') return !on
+                  return true
+                })
+                .map(f => {
+                  const on = assistant?.[f.key] ?? f.def
+                  const Icon = f.icon
+                  return (
+                    <div key={f.key} className="flex items-center gap-3 px-5 py-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'var(--raised)', color: f.color }}
+                        >
+                          <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--t1)' }}>{f.label}</p>
+                      </div>
+                      <span className="w-20 text-right text-xs" style={{ color: 'var(--t3)' }}>—</span>
+                      <span className="w-20 text-right text-xs" style={{ color: 'var(--t3)' }}>—</span>
+                      <span className="w-28 flex justify-end">
+                        <Badge variant={on ? 'success' : 'default'}>{on ? 'Ativo' : 'Pausado'}</Badge>
+                      </span>
                     </div>
-                    <p className="text-xs flex-1" style={{ color: 'var(--t1)' }}>{f.label}</p>
-                    <FlowStatusDot active={on} />
-                  </div>
-                )
-              })}
+                  )
+                })}
+              {FLOWS.every(f => {
+                const on = assistant?.[f.key] ?? f.def
+                if (flowFilter === 'active') return !on
+                if (flowFilter === 'paused') return on
+                return false
+              }) && (
+                <div className="px-5 py-6 text-center text-xs" style={{ color: 'var(--t3)' }}>
+                  Nenhum fluxo {flowFilter === 'active' ? 'ativo' : 'pausado'}.
+                </div>
+              )}
             </div>
           </Card>
 
