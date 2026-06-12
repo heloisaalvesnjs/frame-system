@@ -784,13 +784,13 @@ export default function AgendaPage() {
   const weekCompleted = appointments.filter(a => a.status === 'completed').length
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
+    <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="flex items-start justify-between px-6 pt-6 pb-2 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-start justify-between px-6 pb-2 pt-6">
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Agenda</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+          <h1 className="text-[22px] font-semibold tracking-tight text-t1">Agenda</h1>
+          <p className="mt-0.5 text-sm text-t3">
             {format(today, 'MMMM yyyy', { locale: ptBR })} · {todayCount} consulta{todayCount !== 1 ? 's' : ''} hoje
           </p>
         </div>

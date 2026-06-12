@@ -9,23 +9,26 @@
 
 ## Claude Code
 
-- **Ultima atividade**: 2026-06-11 - Concluiu o plano "Replicar telas novas
-  do Lovable (PDF) no dashboard real": sidebar reorganizada, nova pagina
-  `/design-system`, e ajustes nas 13 paginas (ultimos desta rodada:
-  `integracoes` restilizado + `configuracoes`/`admin` como decisoes no-op
-  por falta de dados reais). `npm run build` passou (40 rotas). Detalhes em
-  LOG.md.
-- **Em andamento**: Nada. Plano do Lovable 100% concluido. Ainda sem
-  commit/push - `npm run build` ja validado, falta confirmacao da Heloisa
-  para comitar/dar push (deploy Vercel). Sem proximas tarefas definidas -
-  aguardando novas prioridades da Heloisa/Codex.
-- **Bloqueado/aguardando**: nada no momento. Nota: nao ha credenciais de
-  teste no repo para verificar UI no preview com login - mudancas
-  validadas so por `tsc --noEmit` + `npm run build`.
+- **Ultima atividade**: 2026-06-12 - Conferido o trabalho que o Codex
+  concluiu (port Lovable de `configuracoes`, `integracoes`, `clientes`,
+  `equipe`, `agenda`, `conversas`, remocao de `/design-system`, ajustes em
+  `Sidebar`/`TopBar`/`globals.css`). Validado `npx tsc --noEmit` (ok) em
+  `apps/dashboard`. Commit + push feitos a pedido da Heloisa.
+- **Em andamento**: nada no momento. O escopo do "NOVO PEDIDO" de 2026-06-11
+  (tema claro/escuro, remover `/design-system`, `integracoes` com logos,
+  port Lovable de `configuracoes`/`equipe`/`clientes`/`agenda`/`conversas`)
+  foi assumido e concluido pelo Codex - ver entradas de 2026-06-11 (Codex)
+  no LOG.md. Ainda pendentes (nao cobertos pelo Codex): `treinamento`
+  (assistente) e `followup` (automacoes), citados no pedido original da
+  Heloisa mas nao mencionados no resumo do Codex - confirmar com a Heloisa
+  se ainda sao necessarios.
+- **Bloqueado/aguardando**: nada no momento.
 
 ## Codex
 
-- **Ultima atividade**: 2026-06-11 - reforcou a copia literal do Lovable/Frame Vision no shell e primitivos (sidebar 240px, topbar, tokens, white-alpha, botao primario). Build passou e rotas locais responderam 200.
+- **Ultima atividade**: 2026-06-11 - assumiu o port Lovable/PDF apos
+  autorizacao da Heloisa e aplicou ajustes finais em configuracoes,
+  integracoes, clientes, equipe, agenda e conversas; build passou (39 rotas).
 - **Em andamento**: nada no momento.
 - **Bloqueado/aguardando**: nada no momento.
 

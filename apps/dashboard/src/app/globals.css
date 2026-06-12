@@ -370,13 +370,29 @@ input:-webkit-autofill:focus {
 [data-theme="light"] .bg-white\/5   { background-color: var(--raised)  !important; }
 [data-theme="light"] .bg-white\/8   { background-color: var(--raised)  !important; }
 [data-theme="light"] .bg-white\/10  { background-color: var(--border)  !important; }
+[data-theme="light"] .bg-white\/\[0\.02\] { background-color: var(--raised) !important; }
+[data-theme="light"] .bg-white\/\[0\.03\] { background-color: var(--raised) !important; }
 [data-theme="light"] .bg-white\/\[0\.05\] { background-color: var(--raised) !important; }
+[data-theme="light"] .bg-white\/\[0\.06\] { background-color: var(--raised) !important; }
 [data-theme="light"] .bg-white\/\[0\.07\] { background-color: var(--raised) !important; }
 [data-theme="light"] .bg-white\/\[0\.08\] { background-color: var(--raised) !important; }
+[data-theme="light"] .bg-white\/\[0\.09\] { background-color: var(--raised-2) !important; }
+[data-theme="light"] .bg-white\/\[0\.015\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.015\]:hover { background-color: var(--raised) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover { background-color: var(--raised) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover { background-color: var(--raised) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.09\]:hover { background-color: var(--raised-2) !important; }
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: var(--border) !important; }
+
 [data-theme="light"] .border-white\/5  { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/10 { border-color: var(--border) !important; }
+[data-theme="light"] .border-white\/\[0\.02\] { border-color: var(--line-1) !important; }
 [data-theme="light"] .border-white\/\[0\.06\] { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/\[0\.07\] { border-color: var(--border) !important; }
+[data-theme="light"] .border-white\/\[0\.10\] { border-color: var(--border) !important; }
+
+/* Gradient "shine" stops used by KPI/Card top hairlines */
+[data-theme="light"] .via-white\/10 { --tw-gradient-via-color: rgba(0,0,0,0.06) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via-color), var(--tw-gradient-to) !important; }
 
 [data-theme="light"] .bg-ui-card { background-color: var(--surface) !important; }
 [data-theme="light"] .bg-ui-bg   { background-color: var(--bg) !important; }

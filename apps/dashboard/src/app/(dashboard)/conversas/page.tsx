@@ -198,13 +198,11 @@ export default function ConversasPage() {
 
   return (
     <main className="px-6 py-6">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
-            Conversas
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+          <h1 className="text-[22px] font-semibold tracking-tight text-t1">Conversas</h1>
+          <p className="mt-0.5 text-sm text-t3">
             Acompanhe as conversas da assistente com seus pacientes
           </p>
         </div>
@@ -245,7 +243,7 @@ export default function ConversasPage() {
           className="grid surface overflow-hidden p-0"
           style={{
             gridTemplateColumns: selected ? '320px minmax(0,1fr) 280px' : '320px minmax(0,1fr)',
-            height: 'calc(100vh - 280px)',
+            height: 'calc(100vh - 260px)',
             minHeight: 420,
           }}
         >

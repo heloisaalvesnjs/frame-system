@@ -1,451 +1,474 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { toast } from 'sonner'
+import type { ReactNode } from 'react'
+import { useState } from 'react'
 import {
-  Save, Loader2, Eye, EyeOff, Shield,
-  Laptop, Smartphone, Copy, Bell, Check, Lock,
+  AlertTriangle,
+  Bell,
+  ChevronRight,
+  Copy,
+  CreditCard,
+  Database,
+  Download,
+  Globe,
+  KeyRound,
+  Lock,
+  Mail,
+  MessageSquare,
+  Palette,
+  SlidersHorizontal,
+  Trash2,
+  Upload,
+  User,
+  Users,
+  WalletCards,
 } from 'lucide-react'
-import api from '@/lib/api'
+import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { Avatar, Badge, Btn, Card, SectionTitle } from '@/components/ui/finance-primitives'
 import { cn } from '@/lib/utils'
-import { Badge, Btn } from '@/components/ui/finance-primitives'
 
-// ─── Perfil ───────────────────────────────────────────────────────
+type SectionId =
+  | 'workspace'
+  | 'perfil'
+  | 'aparencia'
+  | 'notificacoes'
+  | 'integracoes'
+  | 'plano'
+  | 'equipe'
+  | 'seguranca'
+  | 'api'
+  | 'dados'
 
-const profileSchema = z.object({
-  name:        z.string().min(2, 'Nome obrigatório'),
-  email:       z.string().email('E-mail inválido'),
-  crn:         z.string().optional(),
-  phone:       z.string().optional(),
-  public_link: z.string().optional(),
-})
-type ProfileData = z.infer<typeof profileSchema>
-
-function PerfilSection() {
-  const { user, refreshUser } = useAuth()
-
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = useForm<ProfileData>({
-    resolver: zodResolver(profileSchema),
-  })
-
-  useEffect(() => {
-    if (user) reset({
-      name:        user.name              || '',
-      email:       user.email             || '',
-      crn:         (user as any).crn      || '',
-      phone:       (user as any).phone    || '',
-      public_link: (user as any).public_link || '',
-    })
-  }, [user, reset])
-
-  const initials = user?.name
-    ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'U'
-
-  async function onSubmit(data: ProfileData) {
-    try {
-      await api.put('/api/nutritionists/profile', data)
-      await refreshUser()
-      toast.success('Perfil salvo!')
-    } catch {
-      toast.error('Erro ao salvar. Tente novamente.')
-    }
-  }
-
-  const publicLink = watch('public_link')
-
-  function copyLink() {
-    if (publicLink) {
-      navigator.clipboard.writeText(publicLink)
-      toast.success('Link copiado!')
-    }
-  }
-
-  return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-    >
-      <div className="card-header">
-        <div>
-          <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Perfil</p>
-          <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Suas informações profissionais</p>
-        </div>
-        {isDirty && <Badge variant="warning">Alterações pendentes</Badge>}
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="p-6">
-        {/* Avatar */}
-        <div className="flex items-center gap-4 mb-6">
-          <div
-            className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-[26px] font-bold flex-shrink-0"
-            style={{ background: 'var(--brand-s-solid)', border: '2px solid rgba(0,194,124,.2)', color: 'var(--brand)' }}
-          >
-            {initials}
-          </div>
-          <div>
-            <p className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--t1)' }}>{user?.name || '—'}</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>{user?.email}</p>
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="field-label">Nome completo</label>
-            <input {...register('name')} className="input" placeholder="Seu nome" />
-            {errors.name && <p className="text-[12px] mt-1.5 text-red-500">{errors.name.message}</p>}
-          </div>
-          <div>
-            <label className="field-label">E-mail</label>
-            <input {...register('email')} type="email" className="input" placeholder="voce@exemplo.com" />
-            {errors.email && <p className="text-[12px] mt-1.5 text-red-500">{errors.email.message}</p>}
-          </div>
-          <div>
-            <label className="field-label">CRN</label>
-            <input {...register('crn')} className="input" placeholder="CRN-X 000000" />
-          </div>
-          <div>
-            <label className="field-label">WhatsApp pessoal</label>
-            <input {...register('phone')} type="tel" className="input" placeholder="(11) 99999-9999" />
-          </div>
-          <div className="col-span-2">
-            <label className="field-label">Link da agenda</label>
-            <div className="relative">
-              <input
-                {...register('public_link')}
-                className="input pr-10"
-                placeholder="https://agenda.exemplo.com/seu-nome"
-              />
-              <button
-                type="button"
-                onClick={copyLink}
-                className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-                style={{ color: 'var(--t3)' }}
-                title="Copiar link"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="flex items-center gap-3 pt-4"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          <Btn type="submit" disabled={isSubmitting || !isDirty}>
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar perfil
-          </Btn>
-          {!isDirty && (
-            <span className="text-[12px] font-mono" style={{ color: 'var(--t3)' }}>
-              Sem alterações pendentes
-            </span>
-          )}
-        </div>
-      </form>
-    </div>
-  )
-}
-
-// ─── Segurança ────────────────────────────────────────────────────
-
-function PasswordField({ label, error, ...props }: any) {
-  const [show, setShow] = useState(false)
-  return (
-    <div>
-      <label className="field-label">{label}</label>
-      <div className="relative">
-        <input
-          {...props}
-          type={show ? 'text' : 'password'}
-          className="input pr-10"
-          style={error ? { borderColor: '#EF4444' } : undefined}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={() => setShow(v => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-          style={{ color: 'var(--t3)' }}
-        >
-          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-      {error && <p className="text-[12px] mt-1.5" style={{ color: '#EF4444' }}>{error}</p>}
-    </div>
-  )
-}
-
-const passwordSchema = z.object({
-  current_password: z.string().min(1, 'Informe a senha atual'),
-  new_password:     z.string().min(8, 'Mínimo 8 caracteres'),
-  confirm_password: z.string().min(1, 'Confirme a nova senha'),
-}).refine(d => d.new_password === d.confirm_password, {
-  message: 'As senhas não coincidem',
-  path: ['confirm_password'],
-})
-type PasswordData = z.infer<typeof passwordSchema>
-
-function SegurancaSection() {
-  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
-  const [done, setDone] = useState(false)
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PasswordData>({
-    resolver: zodResolver(passwordSchema),
-  })
-
-  async function onSubmit(data: PasswordData) {
-    try {
-      await api.post('/api/nutritionists/change-password', {
-        current_password: data.current_password,
-        new_password:     data.new_password,
-      })
-      toast.success('Senha alterada com sucesso!')
-      reset()
-      setDone(true)
-      setTimeout(() => setDone(false), 4000)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erro ao alterar senha.')
-    }
-  }
-
-  return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-    >
-      <div className="card-header">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
-          >
-            <Shield className="w-4 h-4" style={{ color: 'var(--brand)' }} />
-          </div>
-          <div>
-            <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Segurança</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Senha e autenticação</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-6">
-
-        {/* Alterar senha */}
-        <div>
-          <p className="text-[13px] font-semibold mb-4" style={{ color: 'var(--t1)' }}>Alterar senha</p>
-          {done && (
-            <div
-              className="flex items-center gap-2.5 px-4 py-3 rounded-xl mb-4"
-              style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}
-            >
-              <Check className="w-4 h-4 flex-shrink-0" style={{ color: '#059669' }} />
-              <p className="text-[13px] font-medium" style={{ color: '#059669' }}>Senha alterada com sucesso!</p>
-            </div>
-          )}
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-3 gap-3">
-              <PasswordField
-                label="Senha atual"
-                error={errors.current_password?.message}
-                placeholder="••••••••"
-                {...register('current_password')}
-              />
-              <PasswordField
-                label="Nova senha"
-                error={errors.new_password?.message}
-                placeholder="Mínimo 8 caracteres"
-                {...register('new_password')}
-              />
-              <PasswordField
-                label="Confirmar nova senha"
-                error={errors.confirm_password?.message}
-                placeholder="Repita a nova senha"
-                {...register('confirm_password')}
-              />
-            </div>
-            <div className="mt-4">
-              <Btn type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                Salvar nova senha
-              </Btn>
-            </div>
-          </form>
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)' }} />
-
-        {/* 2FA */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
-              Autenticação em dois fatores
-            </p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
-              {twoFaEnabled ? 'Ativado — conta protegida com verificação extra' : 'Desativado'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setTwoFaEnabled(v => !v)}
-            className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
-            style={{
-              background: twoFaEnabled ? 'var(--brand)' : 'var(--raised)',
-              border:     twoFaEnabled ? 'none' : '1px solid var(--border)',
-            }}
-          >
-            <span className={cn(
-              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
-              twoFaEnabled ? 'translate-x-5' : 'translate-x-0'
-            )} />
-          </button>
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)' }} />
-
-        {/* Sessões ativas */}
-        <div>
-          <p className="text-[13px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>Sessões ativas</p>
-          <div className="space-y-2">
-            {/* Current session */}
-            <div
-              className="flex items-center gap-3 px-4 py-3 rounded-xl"
-              style={{ border: '1px solid var(--border)' }}
-            >
-              <Laptop className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t2)' }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>MacBook Pro — Chrome</p>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>São Paulo, BR · Agora</p>
-              </div>
-              <Badge variant="success">Esta sessão</Badge>
-            </div>
-
-            {/* Other session */}
-            <div
-              className="flex items-center gap-3 px-4 py-3 rounded-xl"
-              style={{ border: '1px solid var(--border)' }}
-            >
-              <Smartphone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--t2)' }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>iPhone · Safari</p>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>São Paulo, BR · há 2 dias</p>
-              </div>
-              <Btn variant="outline" size="sm" className="!text-[var(--danger)] !border-[var(--danger)]/20 flex-shrink-0">
-                Encerrar
-              </Btn>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-// ─── Notificações ─────────────────────────────────────────────────
-
-const NOTIF_ITEMS = [
-  { key: 'new_conversation', label: 'Nova conversa iniciada', desc: 'Quando um novo paciente mandar mensagem' },
-  { key: 'new_appointment',  label: 'Consulta agendada',      desc: 'Quando a IA confirmar um agendamento' },
-  { key: 'followup',         label: 'Follow-up enviado',      desc: 'Quando a IA enviar mensagem de retorno' },
-  { key: 'weekly_report',    label: 'Relatório semanal',      desc: 'Resumo de atividades toda segunda-feira' },
+const sections: Array<{ id: SectionId; label: string; icon: any }> = [
+  { id: 'workspace', label: 'Workspace', icon: SlidersHorizontal },
+  { id: 'perfil', label: 'Perfil', icon: User },
+  { id: 'aparencia', label: 'Aparência', icon: Palette },
+  { id: 'notificacoes', label: 'Notificações', icon: Bell },
+  { id: 'integracoes', label: 'Integrações', icon: Globe },
+  { id: 'plano', label: 'Plano e cobrança', icon: CreditCard },
+  { id: 'equipe', label: 'Equipe', icon: Users },
+  { id: 'seguranca', label: 'Segurança', icon: Lock },
+  { id: 'api', label: 'API e webhooks', icon: KeyRound },
+  { id: 'dados', label: 'Dados e LGPD', icon: Database },
 ]
 
-function NotificacoesSection() {
-  const [notifs, setNotifs] = useState<Record<string, boolean>>({
-    new_conversation: true,
-    new_appointment:  true,
-    followup:         false,
-    weekly_report:    true,
-  })
-
-  function toggle(key: string) {
-    setNotifs(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
+function Field({ label, value, placeholder }: { label: string; value?: string; placeholder?: string }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-    >
-      <div className="card-header">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--brand-s-solid)', border: '1px solid rgba(0,194,124,.2)' }}
-          >
-            <Bell className="w-4 h-4" style={{ color: 'var(--brand)' }} />
-          </div>
-          <div>
-            <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Notificações</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Alertas por e-mail e WhatsApp</p>
-          </div>
-        </div>
-      </div>
+    <label className="block">
+      <span className="mb-1.5 block text-[11.5px] font-medium text-t3">{label}</span>
+      <input
+        defaultValue={value}
+        placeholder={placeholder}
+        className="h-9 w-full rounded-lg border border-[var(--line-2)] bg-white/[0.03] px-3 text-[13px] text-t1 outline-none transition focus:border-[var(--brand-ring)]"
+      />
+    </label>
+  )
+}
 
-      <div className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
-        {NOTIF_ITEMS.map(({ key, label, desc }) => {
-          const enabled = notifs[key]
-          return (
-            <div
-              key={key}
-              className="flex items-center justify-between px-6 py-4"
-              style={{ borderBottom: '1px solid var(--border-s)' }}
-            >
-              <div>
-                <p
-                  className="text-[13px] font-medium"
-                  style={{ color: enabled ? 'var(--t1)' : 'var(--t2)' }}
-                >
-                  {label}
-                </p>
-                <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>{desc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle(key)}
-                className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-6"
-                style={{
-                  background: enabled ? 'var(--brand)' : 'var(--raised)',
-                  border:     enabled ? 'none' : '1px solid var(--border)',
-                }}
-              >
-                <span className={cn(
-                  'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
-                  enabled ? 'translate-x-5' : 'translate-x-0'
-                )} />
-              </button>
-            </div>
-          )
-        })}
+function SelectField({ label, value, options }: { label: string; value: string; options: string[] }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11.5px] font-medium text-t3">{label}</span>
+      <select
+        defaultValue={value}
+        className="h-9 w-full rounded-lg border border-[var(--line-2)] bg-white/[0.03] px-3 text-[13px] text-t1 outline-none transition focus:border-[var(--brand-ring)]"
+      >
+        {options.map(option => <option key={option}>{option}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function Toggle({ on = true }: { on?: boolean }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'relative h-5 w-9 rounded-full transition-colors',
+        on ? 'bg-[var(--brand)]' : 'border border-[var(--line-2)] bg-white/[0.04]',
+      )}
+    >
+      <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform', on ? 'left-[18px]' : 'left-0.5')} />
+    </button>
+  )
+}
+
+function Row({
+  title,
+  desc,
+  right,
+  on = true,
+}: {
+  title: string
+  desc?: string
+  right?: ReactNode
+  on?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 transition hover:bg-white/[0.03]">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-t1">{title}</div>
+        {desc && <div className="mt-0.5 text-[11.5px] text-t3">{desc}</div>}
       </div>
+      {right ?? <Toggle on={on} />}
     </div>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────
+function WorkspaceSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle
+          title="Identidade do workspace"
+          hint="Como sua clínica aparece para pacientes e equipe."
+          action={<Btn size="sm" onClick={() => toast.success('Identidade salva')}>Salvar</Btn>}
+        />
+        <div className="mb-5 flex items-center gap-4">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[18px] font-bold text-[#02140C]">
+            FS
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Btn size="sm" variant="secondary"><Upload className="size-3.5" /> Enviar logo</Btn>
+            <Btn size="sm" variant="ghost">Remover</Btn>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Nome da clínica" value="Clínica Nutri Plus" />
+          <Field label="CNPJ" placeholder="00.000.000/0001-00" />
+          <Field label="Subdomínio" value="nutriplus.framesystem.com.br" />
+          <SelectField label="Fuso horário" value="America/Sao_Paulo" options={['America/Sao_Paulo', 'America/Fortaleza', 'America/Manaus']} />
+          <SelectField label="Moeda" value="BRL - Real brasileiro" options={['BRL - Real brasileiro', 'USD - Dólar']} />
+          <Field label="Telefone comercial" placeholder="+55 11 99999-0001" />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle title="Endereço comercial" hint="Aparece em notas fiscais e comprovantes." />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Endereço" value="Av. Paulista, 1000" />
+          <Field label="Complemento" value="Sala 1402" />
+          <Field label="Cidade" value="São Paulo" />
+          <Field label="Estado" value="SP" />
+        </div>
+      </Card>
+
+      <Card className="border-[#FF5C5C]/20 bg-[#FF5C5C]/[0.04]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex gap-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#FF5C5C]" />
+            <div>
+              <div className="text-[13px] font-semibold text-t1">Zona perigosa</div>
+              <div className="mt-0.5 text-[12px] text-t3">Remove dados, conversas e pacientes permanentemente.</div>
+            </div>
+          </div>
+          <Btn size="sm" variant="outline" className="border-[#FF5C5C]/40 text-[#FF5C5C] hover:bg-[#FF5C5C]/10">Excluir</Btn>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+function PerfilSection() {
+  const { user } = useAuth()
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Perfil pessoal" hint="Suas informações como usuário do Frame." action={<Btn size="sm">Salvar</Btn>} />
+        <div className="mb-5 flex items-center gap-4">
+          <Avatar name={user?.name || 'Frame System'} color="green" size={48} />
+          <div>
+            <div className="text-[13px] font-semibold text-t1">{user?.name || 'Heloisa'}</div>
+            <div className="text-[11.5px] text-t3">{user?.email || 'usuario@framesystem.com.br'}</div>
+          </div>
+          <Btn size="sm" variant="secondary" className="ml-auto"><Upload className="size-3.5" /> Alterar foto</Btn>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Nome completo" value={user?.name || ''} />
+          <Field label="E-mail" value={user?.email || ''} />
+          <Field label="Telefone" placeholder="+55 11 99999-9999" />
+          <Field label="Cargo" value="Nutricionista" />
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="Assinatura de e-mail" hint="Usada em mensagens automáticas enviadas em seu nome." />
+        <textarea
+          defaultValue={`Abraços,\n${user?.name || 'Equipe Frame System'}`}
+          className="min-h-24 w-full resize-none rounded-lg border border-[var(--line-2)] bg-white/[0.03] px-3 py-2.5 text-[13px] text-t1 outline-none"
+        />
+      </Card>
+    </div>
+  )
+}
+
+function AparenciaSection() {
+  const { theme, toggleTheme } = useTheme()
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Aparência" hint="Tema, densidade e preferências visuais." />
+        <div className="grid gap-3 md:grid-cols-3">
+          {['dark', 'light', 'system'].map(option => (
+            <button
+              key={option}
+              onClick={() => {
+                if ((option === 'dark' && theme !== 'dark') || (option === 'light' && theme !== 'light')) toggleTheme()
+              }}
+              className={cn(
+                'rounded-xl border p-3 text-left transition',
+                theme === option ? 'border-[var(--brand-ring)] bg-[var(--brand-s)]' : 'border-[var(--line-2)] bg-white/[0.02] hover:bg-white/[0.04]',
+              )}
+            >
+              <div className="mb-3 h-20 rounded-lg border border-white/[0.08] bg-gradient-to-br from-[#0E0F11] to-[#1B1D20]" />
+              <div className="text-[13px] font-semibold capitalize text-t1">{option === 'dark' ? 'Escuro' : option === 'light' ? 'Claro' : 'Sistema'}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="Preferências de interface" />
+        <div className="space-y-1">
+          <Row title="Modo compacto" desc="Reduz espaçamentos em tabelas e listas" on={false} />
+          <Row title="Animações sutis" desc="Transições e hover states do Lovable" on />
+          <Row title="Alto contraste" desc="Melhora legibilidade em ambientes claros" on={false} />
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+function NotificacoesSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Canais" hint="Onde você quer receber alertas do sistema." />
+        <div className="space-y-1">
+          <Row title="E-mail" desc="Resumo diário e alertas importantes" right={<div className="flex items-center gap-2"><Mail className="size-3.5 text-t3" /><Toggle /></div>} />
+          <Row title="WhatsApp interno" desc="Resumo operacional pelo WhatsApp" right={<div className="flex items-center gap-2"><MessageSquare className="size-3.5 text-t3" /><Toggle /></div>} />
+          <Row title="Push no navegador" desc="Avisos enquanto o painel estiver aberto" />
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="Eventos" />
+        <div className="space-y-1">
+          <Row title="Nova conversa" desc="Quando um paciente inicia uma conversa" />
+          <Row title="Consulta agendada" desc="Quando a IA confirma um horário" />
+          <Row title="Pagamento recebido" desc="Confirmação automática via gateway" />
+          <Row title="Paciente sem resposta" desc="Lead parado por mais de 48 horas" />
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+function IntegracoesSection() {
+  const apps = [
+    ['WhatsApp Business', 'Mensagens via Cloud API', 'success', '#25D366'],
+    ['Instagram Direct', 'DMs e respostas a stories', 'default', '#DD2A7B'],
+    ['Google Calendar', 'Sincronização de agenda', 'success', '#4285F4'],
+    ['Stripe', 'Pagamentos recorrentes', 'default', '#635BFF'],
+  ] as const
+  return (
+    <Card>
+      <SectionTitle title="Integrações conectadas" hint="Gerencie integrações ativas no workspace." action={<Btn size="sm" variant="secondary">Ver marketplace</Btn>} />
+      <div className="space-y-2">
+        {apps.map(([name, desc, status, color]) => (
+          <div key={name} className="flex items-center gap-3 rounded-lg p-2.5 transition hover:bg-white/[0.03]">
+            <div className="size-9 rounded-lg" style={{ background: color }} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-t1">{name}</div>
+              <div className="text-[11.5px] text-t3">{desc}</div>
+            </div>
+            {status === 'success' ? <Badge variant="success">Conectado</Badge> : <Btn size="sm" variant="ghost">Conectar</Btn>}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function PlanoSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Plano atual" action={<Badge variant="success">Ativo</Badge>} />
+        <div className="rounded-xl border border-[var(--brand-ring)] bg-[var(--brand-s)] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[20px] font-semibold text-t1">Frame Scale</div>
+              <div className="mt-1 text-[12px] text-t3">Até 5 usuários, automações ilimitadas e integrações premium.</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[22px] font-semibold text-t1">R$ 1.997</div>
+              <div className="text-[11px] text-t3">/mês</div>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Btn size="sm">Fazer upgrade</Btn>
+            <Btn size="sm" variant="ghost">Alterar plano</Btn>
+          </div>
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="Forma de pagamento" action={<Btn size="sm" variant="secondary">Adicionar cartão</Btn>} />
+        <Row title="•••• •••• •••• 4242" desc="Visa · vence 08/2028" right={<Badge variant="default">Padrão</Badge>} />
+      </Card>
+    </div>
+  )
+}
+
+function EquipeSection() {
+  const members = [
+    ['Heloisa', 'Owner', 'success'],
+    ['Bianca Reis', 'Admin', 'info'],
+    ['Júlia Andrade', 'Operador', 'default'],
+  ] as const
+  return (
+    <Card>
+      <SectionTitle title="Membros" hint="3 de 5 usuários incluídos no plano." action={<Btn size="sm">Convidar membro</Btn>} />
+      <div className="space-y-2">
+        {members.map(([name, role, variant]) => (
+          <div key={name} className="flex items-center gap-3 rounded-lg p-2.5 hover:bg-white/[0.03]">
+            <Avatar name={name} color={role === 'Owner' ? 'green' : 'blue'} size={34} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-t1">{name}</div>
+              <div className="text-[11.5px] text-t3">{name.toLowerCase().split(' ')[0]}@framesystem.com.br</div>
+            </div>
+            <Badge variant={variant as any}>{role}</Badge>
+            <Btn size="sm" variant="ghost">Gerenciar</Btn>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function SegurancaSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Senha" hint="Recomendamos atualizar a cada 90 dias." action={<Btn size="sm">Atualizar</Btn>} />
+        <div className="grid gap-3 md:grid-cols-3">
+          <Field label="Senha atual" placeholder="••••••••" />
+          <Field label="Nova senha" placeholder="Mínimo 8 caracteres" />
+          <Field label="Confirmar nova senha" placeholder="Repita a nova senha" />
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="Autenticação em dois fatores" hint="Camada extra de proteção no login." action={<Badge variant="success">Ativo</Badge>} />
+        <Row title="App autenticador" desc="Código temporário via aplicativo" />
+        <Row title="SMS" desc="Código enviado para +55 11 ••••-4321" on={false} />
+      </Card>
+      <Card>
+        <SectionTitle title="Sessões ativas" action={<Btn size="sm" variant="outline">Encerrar todas</Btn>} />
+        <Row title="Windows · Edge" desc="Rio de Janeiro, BR · há 3 dias" right={<Btn size="sm" variant="ghost">Encerrar</Btn>} />
+        <Row title="MacBook · Chrome" desc="São Paulo, BR · agora" right={<Badge variant="success">Esta sessão</Badge>} />
+      </Card>
+    </div>
+  )
+}
+
+function ApiSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Chaves de API" hint="Use para integrar o Frame com seus sistemas." action={<Btn size="sm">Nova chave</Btn>} />
+        {['Produção', 'Sandbox'].map(name => (
+          <Row
+            key={name}
+            title={name}
+            desc={`fk_${name === 'Produção' ? 'live' : 'test'}_••••••••••••••••7c2e · criada em 08 jan 2026`}
+            right={<div className="flex gap-1"><Btn size="sm" variant="ghost"><Copy className="size-3" /></Btn><Btn size="sm" variant="ghost"><Trash2 className="size-3" /></Btn></div>}
+          />
+        ))}
+      </Card>
+      <Card>
+        <SectionTitle title="Webhooks" hint="Receba eventos em tempo real nos seus endpoints." action={<Btn size="sm" variant="secondary">Novo endpoint</Btn>} />
+        <Row title="https://api.clinica.com/frame" desc="conversation.created, appointment.created" right={<Badge variant="success">200 OK</Badge>} />
+        <Row title="https://n8n.framesystem.com.br/webhook" desc="assistant.message.sent" right={<Badge variant="danger">Falha</Badge>} />
+      </Card>
+    </div>
+  )
+}
+
+function DadosSection() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle title="Exportação de dados" hint="Receba todos os seus dados em um arquivo ZIP." action={<Btn size="sm" variant="secondary"><Download className="size-3.5" /> Solicitar export</Btn>} />
+        <Row title="Último export" desc="Solicitado há 18 dias · disponível por 7 dias" right={<Btn size="sm" variant="ghost">Baixar</Btn>} />
+      </Card>
+      <Card>
+        <SectionTitle title="Retenção de dados" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <SelectField label="Conversas" value="2 anos" options={['6 meses', '1 ano', '2 anos', 'Indefinido']} />
+          <SelectField label="Logs de auditoria" value="1 ano" options={['3 meses', '6 meses', '1 ano', '2 anos']} />
+        </div>
+      </Card>
+      <Card>
+        <SectionTitle title="LGPD & Compliance" hint="Conformidade com regulamentações de dados." />
+        <Row title="Anonimizar pacientes inativos" desc="Após 24 meses sem atividade" />
+        <Row title="Consentimento explícito no opt-in" desc="Exigir aceite antes de enviar mensagens" />
+        <Row title="Direito ao esquecimento automatizado" desc="Processa solicitações em até 15 dias" />
+      </Card>
+    </div>
+  )
+}
+
+function Content({ section }: { section: SectionId }) {
+  if (section === 'workspace') return <WorkspaceSection />
+  if (section === 'perfil') return <PerfilSection />
+  if (section === 'aparencia') return <AparenciaSection />
+  if (section === 'notificacoes') return <NotificacoesSection />
+  if (section === 'integracoes') return <IntegracoesSection />
+  if (section === 'plano') return <PlanoSection />
+  if (section === 'equipe') return <EquipeSection />
+  if (section === 'seguranca') return <SegurancaSection />
+  if (section === 'api') return <ApiSection />
+  return <DadosSection />
+}
 
 export default function ConfiguracoesPage() {
-  return (
-    <div className="p-6 md:p-8 max-w-3xl space-y-6">
-      <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
-          Configurações
-        </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
-          Gerencie seu perfil, segurança e notificações
-        </p>
-      </div>
+  const [section, setSection] = useState<SectionId>('workspace')
 
-      <PerfilSection />
-      <SegurancaSection />
-      <NotificacoesSection />
-    </div>
+  return (
+    <main className="px-6 py-6">
+      <div className="mx-auto max-w-[1280px]">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold tracking-tight text-t1">Configurações</h1>
+            <p className="mt-0.5 text-sm text-t3">Workspace, segurança, cobrança e preferências avançadas.</p>
+          </div>
+          <Badge variant="purple"><WalletCards className="size-3" /> Premium</Badge>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <Card className="h-max !p-2 lg:sticky lg:top-20">
+            {sections.map(item => {
+              const Icon = item.icon
+              const active = section === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSection(item.id)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition',
+                    active ? 'bg-[var(--brand-s)] text-[var(--brand)]' : 'text-t2 hover:bg-white/[0.04] hover:text-t1',
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  <span className="flex-1">{item.label}</span>
+                  <ChevronRight className={cn('size-3 transition', active ? 'opacity-100' : 'opacity-0')} />
+                </button>
+              )
+            })}
+          </Card>
+
+          <Content section={section} />
+        </div>
+      </div>
+    </main>
   )
 }

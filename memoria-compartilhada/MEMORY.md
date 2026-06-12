@@ -15,16 +15,16 @@
 - Header padrÃ£o de pÃ¡gina:
   `<h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>`
   + `<p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>`.
-- (SUPERSEDE 2026-06-11) Nova referÃªncia visual completa: prints do "Lovable"
-  (tema escuro, sidebar fixa 220px com seÃ§Ãµes "INTELIGÃŠNCIA"/"WORKSPACE",
-  headers de pÃ¡gina integrados ao conteÃºdo). UsuÃ¡ria confirmou: "Sim, Ã© a nova
-  referÃªncia completa". Tema escuro agora Ã© o padrÃ£o (`ThemeContext.tsx`).
-  `Sidebar.tsx` redesenhada: fixa 220px, sempre expandida, com seÃ§Ãµes. Nav:
-  principal = Dashboard/Conversas/Agenda/Pacientes; INTELIGÃŠNCIA =
-  AutomaÃ§Ãµes/Frame AI; WORKSPACE = Planos/Disponibilidade/Equipe/
-  IntegraÃ§Ãµes/ConfiguraÃ§Ãµes. `TopBar.tsx` ajustada para offset 220px (ainda
-  nÃ£o removida â€” Lovable integra header ao conteÃºdo da pÃ¡gina, repensar
-  pÃ¡gina a pÃ¡gina). `(dashboard)/layout.tsx` ajustado para `ml-[220px]`.
+- (SUPERSEDE 2026-06-11) Referencia visual oficial atual: `Frame Vision.zip`
+  exportado do Lovable. A usuaria reforcou que o objetivo nao e apenas
+  "inspirar", e sim copiar com fidelidade o acabamento do Lovable, incluindo
+  microdetalhes. Manter o funcionamento real do sistema por baixo (auth, API,
+  backend, Evolution, Claude, webhooks), mas priorizar equivalencia visual:
+  tema escuro como padrao (`ThemeContext.tsx`), sidebar desktop fixa de 240px,
+  topbar de 56px, busca central, white-alpha surfaces/hover states, verde como
+  acento principal e grupos de navegacao no padrao Lovable/Frame Vision. Se
+  houver conflito com convencoes antigas de sidebar 220px/topbar anterior,
+  vence esta referencia mais nova.
 - Workflow de deploy: editar â†’ `npm run build` (em `apps/dashboard`) â†’ commit
   com `Co-Authored-By: <agente> <noreply@anthropic.com>` â†’ `git push origin main`
   (push = deploy no Vercel).

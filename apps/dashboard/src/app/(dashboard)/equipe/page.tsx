@@ -70,13 +70,14 @@ export default function EquipePage() {
   const pendingMembers = members.filter(m => m.status === 'pending')
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="px-6 py-6">
+      <div className="mx-auto max-w-[1120px] space-y-6">
 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Equipe</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+          <h1 className="text-[22px] font-semibold tracking-tight text-t1">Equipe</h1>
+          <p className="mt-0.5 text-sm text-t3">
             Adicione colaboradores e defina o que cada um pode fazer
           </p>
         </div>
@@ -85,6 +86,23 @@ export default function EquipePage() {
           Adicionar
         </Btn>
       </div>
+
+      {!isLoading && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { label: 'Membros', value: activeMembers.length, hint: 'ativos no workspace' },
+            { label: 'Convites', value: pendingMembers.length, hint: 'aguardando aceite' },
+            { label: 'Limite do plano', value: 5, hint: 'usuários incluídos' },
+            { label: 'Disponíveis', value: Math.max(5 - members.length, 0), hint: 'assentos restantes' },
+          ].map(item => (
+            <div key={item.label} className="surface p-4">
+              <div className="text-[22px] font-semibold tabular-nums text-t1">{item.value}</div>
+              <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-t3">{item.label}</div>
+              <div className="mt-1 text-[11.5px] text-t3">{item.hint}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Form novo membro */}
       {showForm && (
@@ -262,6 +280,7 @@ export default function EquipePage() {
           <p key={i} className="text-[12px]" style={{ color: 'var(--t2)' }}>{s}</p>
         ))}
       </Card>
+      </div>
     </div>
   )
 }

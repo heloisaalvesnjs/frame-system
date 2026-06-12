@@ -272,20 +272,23 @@ export default function ClientesPage() {
     return status !== 'ativa'
   })
 
+  const activeCount = clients.filter(c => getStatus(c) === 'ativa').length
+  const newCount = clients.filter(isNew).length
+  const appointmentCount = clients.reduce((sum, client) => sum + (client.appointment_count || 0), 0)
+
   return (
-    <div className="p-6 md:p-8 max-w-5xl">
+    <div className="px-6 py-6">
       {showModal && <NovoClienteModal onClose={() => setShowModal(false)} />}
+      <div className="mx-auto max-w-[1280px]">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 gap-4">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
-            Pacientes
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+          <h1 className="text-[22px] font-semibold tracking-tight text-t1">Pacientes</h1>
+          <p className="mt-0.5 text-sm text-t3">
             {isLoading
-              ? '…'
-              : `${clients.length} paciente${clients.length !== 1 ? 's' : ''} cadastrado${clients.length !== 1 ? 's' : ''}`}
+              ? 'Carregando CRM...'
+              : `${clients.length} pacientes · ${activeCount} ativos`}
           </p>
         </div>
         <Btn onClick={() => setShowModal(true)} className="flex-shrink-0">
@@ -293,6 +296,23 @@ export default function ClientesPage() {
           Novo paciente
         </Btn>
       </div>
+
+      {!isLoading && (
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { label: 'Total de pacientes', value: clients.length, hint: 'base atual' },
+            { label: 'Ativos', value: activeCount, hint: 'com contato recente' },
+            { label: 'Novos', value: newCount, hint: 'últimos 30 dias' },
+            { label: 'Consultas', value: appointmentCount, hint: 'histórico registrado' },
+          ].map(item => (
+            <div key={item.label} className="surface p-4">
+              <div className="text-[22px] font-semibold tabular-nums text-t1">{item.value}</div>
+              <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-t3">{item.label}</div>
+              <div className="mt-1 text-[11.5px] text-t3">{item.hint}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Search + filtros */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -445,6 +465,7 @@ export default function ClientesPage() {
           </table>
         </div>
       )}
+      </div>
     </div>
   )
 }

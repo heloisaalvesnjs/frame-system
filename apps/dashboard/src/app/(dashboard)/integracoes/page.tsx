@@ -1,377 +1,291 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Loader2, ExternalLink, Upload, AlertCircle } from 'lucide-react'
+import { Check, Loader2, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
-import { cn } from '@/lib/utils'
-import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
+import { Badge, Btn, Card } from '@/components/ui/finance-primitives'
 
-type IntegrationId = 'whatsapp' | 'gcal' | 'import'
+type IntegrationId = 'whatsapp' | 'instagram' | 'calendar' | 'stripe' | 'asaas' | 'mailchimp' | 'zapier' | 'webhook' | 'import'
 
-// ── Badge de status ───────────────────────────────────────────────
-function StatusBadge({ loading, connected }: { loading?: boolean; connected?: boolean }) {
-  if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--t3)' }} />
-  if (connected) return <Badge variant="success">Conectado</Badge>
-  return <Badge variant="default">Não conectado</Badge>
+function LogoMark({ type }: { type: IntegrationId }) {
+  const base = 'grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[12px] font-bold text-white'
+  const map: Record<IntegrationId, string> = {
+    whatsapp: 'bg-gradient-to-br from-[#25D366] to-[#128C7E]',
+    instagram: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]',
+    calendar: 'bg-white text-[#1A73E8] border border-[var(--line-2)]',
+    stripe: 'bg-gradient-to-br from-[#635BFF] to-[#3D32D6]',
+    asaas: 'bg-gradient-to-br from-[#00C27C] to-[#00A86B]',
+    mailchimp: 'bg-gradient-to-br from-[#FFE01B] to-[#E0C400] text-[#241C15]',
+    zapier: 'bg-gradient-to-br from-[#FF4A00] to-[#C93B00]',
+    webhook: 'bg-gradient-to-br from-[#6AA9FF] to-[#3F7DD9]',
+    import: 'bg-gradient-to-br from-[#22C55E] to-[#15803D]',
+  }
+
+  if (type === 'calendar') {
+    return (
+      <div className={`${base} ${map[type]}`}>
+        <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+          <path fill="#4285F4" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5V9H4z" />
+          <path fill="#34A853" d="M4 9h4v12H6.5A2.5 2.5 0 0 1 4 18.5z" />
+          <path fill="#FBBC05" d="M8 9h6v12H8z" />
+          <path fill="#EA4335" d="M14 9h6v9.5a2.5 2.5 0 0 1-2.5 2.5H14z" />
+          <path fill="#fff" d="M7 12h10v6H7z" />
+          <path fill="#1A73E8" d="M10.8 16.9h2.6v-.7h-.8v-3.1h-.7l-1.2.8.4.6.7-.5v2.2h-1z" />
+        </svg>
+      </div>
+    )
+  }
+
+  if (type === 'whatsapp') {
+    return (
+      <div className={`${base} ${map[type]}`}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path fill="currentColor" d="M12.04 3.5a8.43 8.43 0 0 0-7.22 12.78L3.8 20.5l4.33-1.01a8.43 8.43 0 1 0 3.91-15.99Zm0 1.5a6.93 6.93 0 0 1 5.93 10.52l-.17.27.6 2.5-2.56-.6-.26.16A6.93 6.93 0 1 1 12.04 5Zm-2.38 3.4c-.16 0-.42.06-.64.3-.22.25-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.66 2.66 4.1 3.62 2.03.8 2.44.64 2.88.6.44-.04 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.42-1.34-1.66-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46Z" />
+        </svg>
+      </div>
+    )
+  }
+
+  if (type === 'instagram') {
+    return (
+      <div className={`${base} ${map[type]}`}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path fill="none" stroke="currentColor" strokeWidth="2" d="M8 3.8h8A4.2 4.2 0 0 1 20.2 8v8a4.2 4.2 0 0 1-4.2 4.2H8A4.2 4.2 0 0 1 3.8 16V8A4.2 4.2 0 0 1 8 3.8Z" />
+          <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="16.7" cy="7.3" r="1" fill="currentColor" />
+        </svg>
+      </div>
+    )
+  }
+
+  if (type === 'stripe') {
+    return <div className={`${base} ${map[type]} text-[15px] normal-case`}>stripe</div>
+  }
+
+  if (type === 'zapier') {
+    return <div className={`${base} ${map[type]} text-[18px]`}>*</div>
+  }
+
+  const labels: Record<IntegrationId, string> = {
+    whatsapp: 'WA',
+    instagram: 'IG',
+    calendar: 'GC',
+    stripe: 'ST',
+    asaas: 'AS',
+    mailchimp: 'MC',
+    zapier: 'ZP',
+    webhook: 'WH',
+    import: 'CSV',
+  }
+
+  return <div className={`${base} ${map[type]}`}>{labels[type]}</div>
 }
 
-// ── Linha da grade ────────────────────────────────────────────────
-function IntegrationTile({ emoji, iconBg, name, desc, selected, onClick, badge }: {
-  emoji: string; iconBg: string; name: string; desc: string
-  selected: boolean; onClick: () => void; badge: React.ReactNode
+function IntegrationCard({
+  id,
+  name,
+  desc,
+  connected,
+  account,
+  onAction,
+  actionLabel,
+}: {
+  id: IntegrationId
+  name: string
+  desc: string
+  connected?: boolean
+  account?: string
+  onAction?: () => void
+  actionLabel?: string
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="card flex items-center gap-3 text-left transition-all"
-      style={{
-        padding: '14px 16px',
-        borderColor: selected ? 'var(--brand)' : undefined,
-        boxShadow: selected ? '0 0 0 3px rgba(0,194,124,0.12)' : undefined,
-      }}
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[20px]"
-        style={{ background: iconBg }}
-      >
-        {emoji}
-      </div>
-      <div className="flex-1 min-w-0">
+    <Card className="!p-4 flex items-center gap-4 transition-colors hover:border-[var(--line-2)]">
+      <LogoMark type={id} />
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-bold truncate" style={{ color: 'var(--t1)' }}>{name}</p>
-          {badge}
-        </div>
-        <p className="text-xs mt-0.5 leading-snug truncate" style={{ color: 'var(--t2)' }}>{desc}</p>
-      </div>
-    </button>
-  )
-}
-
-// ── Detalhe: WhatsApp ─────────────────────────────────────────────
-function WhatsAppDetail({ data, isLoading }: { data: any; isLoading: boolean }) {
-  const qc = useQueryClient()
-  const connected = data?.status === 'connected'
-  const phone = data?.phone
-
-  async function handleDisconnect() {
-    try {
-      await api.delete('/api/whatsapp/disconnect')
-      qc.invalidateQueries({ queryKey: ['whatsapp-status'] })
-      toast.success('WhatsApp desconectado')
-    } catch {
-      toast.error('Erro ao desconectar')
-    }
-  }
-
-  if (isLoading) return <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--t3)' }} />
-
-  return connected ? (
-    <div className="space-y-4">
-      <div
-        className="flex items-center gap-3 p-3 rounded-xl"
-        style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)' }}
-      >
-        <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#059669' }} />
-        <div>
-          <p className="text-sm font-medium" style={{ color: '#059669' }}>Conectado</p>
-          {phone && <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>{phone}</p>}
-        </div>
-      </div>
-      <p className="text-xs" style={{ color: 'var(--t3)' }}>
-        Para trocar o número ou reconectar, desconecte e leia o QR code novamente.
-      </p>
-      <Btn variant="ghost" size="sm" onClick={handleDisconnect} className="!text-[var(--danger)] !px-0 hover:!text-[var(--danger)]">
-        Desconectar
-      </Btn>
-    </div>
-  ) : (
-    <div className="space-y-3">
-      <p className="text-sm" style={{ color: 'var(--t2)' }}>
-        Conecte seu WhatsApp para que a IA possa atender seus pacientes automaticamente.
-      </p>
-      <a href="/integracoes">
-        <Btn>
-          Conectar WhatsApp <ExternalLink className="w-3.5 h-3.5" />
-        </Btn>
-      </a>
-    </div>
-  )
-}
-
-// ── Detalhe: Google Calendar ──────────────────────────────────────
-function GoogleCalendarDetail({ data, isLoading }: { data: any; isLoading: boolean }) {
-  const qc = useQueryClient()
-  const [connecting, setConnecting] = useState(false)
-  const connected = !!data?.calendar_id
-
-  async function handleConnect() {
-    setConnecting(true)
-    try {
-      const { data: authData } = await api.get('/api/google-calendar/auth-url')
-      if (authData?.url) {
-        window.location.href = authData.url
-      }
-    } catch {
-      toast.error('Erro ao obter URL de autorização')
-      setConnecting(false)
-    }
-  }
-
-  async function handleDisconnect() {
-    try {
-      await api.delete('/api/google-calendar/disconnect')
-      qc.invalidateQueries({ queryKey: ['google-calendar-status'] })
-      toast.success('Google Calendar desconectado')
-    } catch {
-      toast.error('Erro ao desconectar')
-    }
-  }
-
-  if (isLoading) return <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--t3)' }} />
-
-  return connected ? (
-    <div className="space-y-4">
-      <div
-        className="flex items-center gap-3 p-3 rounded-xl"
-        style={{ background: 'rgba(10,132,255,0.08)', border: '1px solid rgba(10,132,255,0.2)' }}
-      >
-        <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#2563EB' }} />
-        <div className="min-w-0">
-          <p className="text-sm font-medium" style={{ color: '#2563EB' }}>Conectado</p>
-          {data?.calendar_id && (
-            <p className="text-xs mt-0.5 font-mono truncate" style={{ color: 'var(--t3)' }}>{data.calendar_id}</p>
+          <h3 className="truncate text-[13px] font-semibold text-t1">{name}</h3>
+          {connected && (
+            <Badge variant="success">
+              <Check className="size-2.5" />
+              Conectado
+            </Badge>
           )}
         </div>
+        <p className="mt-0.5 truncate text-[11.5px] text-t3">{connected && account ? account : desc}</p>
       </div>
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--t2)' }}>
-        Consultas agendadas pela IA são adicionadas automaticamente à sua agenda.
-      </p>
-      <Btn variant="ghost" size="sm" onClick={handleDisconnect} className="!text-[var(--danger)] !px-0 hover:!text-[var(--danger)]">
-        Desconectar
+      <Btn variant={connected ? 'ghost' : 'secondary'} size="sm" onClick={onAction} disabled={!onAction}>
+        {actionLabel ?? (connected ? 'Configurar' : 'Conectar')}
       </Btn>
-    </div>
-  ) : (
-    <div className="space-y-3">
-      <p className="text-sm leading-relaxed" style={{ color: 'var(--t2)' }}>
-        Quando conectado, toda consulta agendada pela IA cria automaticamente um evento no Google Calendar.
-      </p>
-      <Btn
-        onClick={handleConnect}
-        disabled={connecting}
-        className="!bg-[#3B82F6] hover:!bg-[#2563EB]"
-      >
-        {connecting
-          ? <Loader2 className="w-4 h-4 animate-spin" />
-          : <ExternalLink className="w-3.5 h-3.5" />}
-        Conectar com Google
-      </Btn>
-    </div>
+    </Card>
   )
 }
 
-// ── Detalhe: Importar pacientes ───────────────────────────────────
-function ImportDetail() {
-  const [dragging, setDragging] = useState(false)
-  const [file,     setFile]     = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [result,   setResult]   = useState<{ imported: number; skipped: number } | null>(null)
+function ImportHiddenInput() {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragging(false)
-    const f = e.dataTransfer.files[0]
-    if (f && (f.name.endsWith('.csv') || f.name.endsWith('.xlsx') || f.name.endsWith('.xls'))) {
-      setFile(f)
-    } else {
-      toast.error('Arquivo inválido. Use CSV ou Excel (.xlsx)')
-    }
-  }
-
-  async function handleImport() {
+  async function onChange(file?: File | null) {
     if (!file) return
     setUploading(true)
-    setResult(null)
     try {
       const form = new FormData()
       form.append('file', file)
       const { data } = await api.post('/api/clients/import-csv', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      setResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 })
-      toast.success(`${data.imported} pacientes importados!`)
-      setFile(null)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error ?? 'Erro ao importar. Verifique o formato do arquivo.')
+      toast.success(`${data.imported ?? 0} pacientes importados`)
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error ?? 'Erro ao importar pacientes')
     } finally {
       setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="space-y-4">
-        <div className="rounded-xl p-3 space-y-1" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-          <p className="text-[11px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--t3)' }}>Formato esperado (CSV)</p>
-          <pre className="text-[11px] font-mono" style={{ color: 'var(--t2)' }}>{`nome,telefone,email\nAna Silva,5511999999999,ana@email.com\nCarlos Souza,5521888888888,`}</pre>
-          <p className="text-[11px] mt-2 leading-relaxed" style={{ color: 'var(--t3)' }}>
-            • Colunas obrigatórias: <code style={{ color: 'var(--brand)' }}>nome</code> e <code style={{ color: 'var(--brand)' }}>telefone</code><br />
-            • Telefone no formato internacional (55 + DDD + número)<br />
-            • Excel (.xlsx) também é aceito
-          </p>
-        </div>
-
-        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'var(--t3)' }} />
-          <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
-            No Webdiet: <strong style={{ color: 'var(--t2)' }}>Pacientes → Exportar → CSV</strong>.
-            No Nutrium: <strong style={{ color: 'var(--t2)' }}>Pacientes → Exportar lista</strong>.
-            Renomeie as colunas para <code style={{ color: 'var(--brand)' }}>nome</code> e <code style={{ color: 'var(--brand)' }}>telefone</code> se necessário.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          className="rounded-xl p-6 text-center cursor-pointer transition-all"
-          style={{
-            border: '2px dashed',
-            borderColor: dragging ? 'var(--brand)' : 'var(--border)',
-            background: dragging ? 'rgba(0,194,124,0.05)' : undefined,
-          }}
-        >
-          <Upload className="w-5 h-5 mx-auto mb-2" style={{ color: 'var(--t3)' }} />
-          {file ? (
-            <p className="text-sm font-medium" style={{ color: 'var(--t1)' }}>{file.name}</p>
-          ) : (
-            <>
-              <p className="text-sm" style={{ color: 'var(--t2)' }}>
-                Arraste o arquivo ou <span style={{ color: 'var(--brand)' }}>clique para selecionar</span>
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>CSV ou Excel — até 10MB</p>
-            </>
-          )}
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={e => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
-
-        {file && (
-          <Btn
-            onClick={handleImport}
-            disabled={uploading}
-            className="w-full justify-center"
-          >
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {uploading ? 'Importando...' : 'Importar pacientes'}
-          </Btn>
-        )}
-
-        {result && (
-          <div
-            className="flex items-start gap-2 p-3 rounded-xl text-sm"
-            style={{ background: 'var(--brand-s)', border: '1px solid rgba(0,194,124,0.2)' }}
-          >
-            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#059669' }} />
-            <div>
-              <p className="font-semibold" style={{ color: '#059669' }}>{result.imported} pacientes importados</p>
-              {result.skipped > 0 && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>{result.skipped} ignorados (duplicados ou dados inválidos)</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        className="hidden"
+        onChange={event => onChange(event.target.files?.[0])}
+      />
+      <Btn variant="secondary" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+        Importar
+      </Btn>
+    </>
   )
 }
 
-// ── Página ────────────────────────────────────────────────────────
 export default function IntegracoesPage() {
-  const [selected, setSelected] = useState<IntegrationId>('whatsapp')
-
-  const { data: waData, isLoading: waLoading } = useQuery<any>({
+  const qc = useQueryClient()
+  const { data: waData } = useQuery<any>({
     queryKey: ['whatsapp-status'],
     queryFn: () => api.get('/api/whatsapp/status').then(r => r.data),
     refetchInterval: 5000,
   })
-
-  const { data: gcData, isLoading: gcLoading } = useQuery<any>({
+  const { data: calendarData, isLoading: calendarLoading } = useQuery<any>({
     queryKey: ['google-calendar-status'],
     queryFn: () => api.get('/api/google-calendar/status').then(r => r.data),
   })
 
   const waConnected = waData?.status === 'connected'
-  const gcConnected = !!gcData?.calendar_id
-  const activeCount = (waConnected ? 1 : 0) + (gcConnected ? 1 : 0)
+  const calendarConnected = !!calendarData?.calendar_id
+  const activeCount = (waConnected ? 1 : 0) + (calendarConnected ? 1 : 0)
+  const total = 9
 
-  const DETAIL_TITLES: Record<IntegrationId, string> = {
-    whatsapp: 'WhatsApp Business',
-    gcal: 'Google Calendar',
-    import: 'Importar pacientes',
+  async function connectCalendar() {
+    try {
+      const { data } = await api.get('/api/google-calendar/auth-url')
+      if (data?.url) window.location.href = data.url
+    } catch {
+      toast.error('Erro ao conectar Google Calendar')
+    }
   }
 
+  async function disconnectCalendar() {
+    try {
+      await api.delete('/api/google-calendar/disconnect')
+      qc.invalidateQueries({ queryKey: ['google-calendar-status'] })
+      toast.success('Google Calendar desconectado')
+    } catch {
+      toast.error('Erro ao desconectar Google Calendar')
+    }
+  }
+
+  const integrations = [
+    {
+      id: 'whatsapp' as const,
+      name: 'WhatsApp Business',
+      desc: 'Canal oficial Meta · mensagens, templates e mídia',
+      connected: waConnected,
+      account: waData?.phone || 'Instância conectada',
+      onAction: () => toast.info('Use a configuração de WhatsApp já conectada ao sistema.'),
+    },
+    {
+      id: 'instagram' as const,
+      name: 'Instagram Direct',
+      desc: 'DMs e respostas a stories',
+      connected: false,
+    },
+    {
+      id: 'calendar' as const,
+      name: 'Google Calendar',
+      desc: calendarLoading ? 'Verificando conexão...' : 'Sincronização bidirecional de agenda',
+      connected: calendarConnected,
+      account: calendarData?.calendar_id,
+      onAction: calendarConnected ? disconnectCalendar : connectCalendar,
+      actionLabel: calendarConnected ? 'Desconectar' : 'Conectar',
+    },
+    {
+      id: 'stripe' as const,
+      name: 'Stripe',
+      desc: 'Pagamentos recorrentes e cobranças',
+      connected: false,
+    },
+    {
+      id: 'asaas' as const,
+      name: 'Asaas',
+      desc: 'Boletos, PIX e assinaturas',
+      connected: false,
+    },
+    {
+      id: 'mailchimp' as const,
+      name: 'Mailchimp',
+      desc: 'Campanhas de e-mail e automações',
+      connected: false,
+    },
+    {
+      id: 'zapier' as const,
+      name: 'Zapier',
+      desc: 'Conecte a 5.000+ aplicativos',
+      connected: false,
+    },
+    {
+      id: 'webhook' as const,
+      name: 'Webhook',
+      desc: 'Eventos em tempo real para sua API',
+      connected: false,
+    },
+  ]
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Integrações</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
-          {activeCount} ativa{activeCount === 1 ? '' : 's'} · Conecte suas ferramentas favoritas
-        </p>
-      </div>
+    <main className="px-6 py-6">
+      <div className="mx-auto max-w-[1200px]">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold tracking-tight text-t1">Integrações</h1>
+            <p className="mt-0.5 text-sm text-t3">
+              {activeCount} ativas · {total - activeCount} disponíveis
+            </p>
+          </div>
+          <Btn variant="primary" size="sm">
+            <Plus className="size-3.5" />
+            Adicionar
+          </Btn>
+        </div>
 
-      {/* Grade de integrações */}
-      <div className="grid md:grid-cols-2 gap-3.5">
-        <IntegrationTile
-          emoji="💬"
-          iconBg="#EFF6FF"
-          name="WhatsApp Business"
-          desc="A IA atende seus pacientes por aqui"
-          selected={selected === 'whatsapp'}
-          onClick={() => setSelected('whatsapp')}
-          badge={<StatusBadge loading={waLoading} connected={waConnected} />}
-        />
-        <IntegrationTile
-          emoji="📅"
-          iconBg="#F0FDF4"
-          name="Google Calendar"
-          desc="Sincroniza consultas automaticamente"
-          selected={selected === 'gcal'}
-          onClick={() => setSelected('gcal')}
-          badge={<StatusBadge loading={gcLoading} connected={gcConnected} />}
-        />
-        <IntegrationTile
-          emoji="📊"
-          iconBg="#FFF9E6"
-          name="Importar pacientes"
-          desc="Webdiet, Nutrium ou planilha CSV"
-          selected={selected === 'import'}
-          onClick={() => setSelected('import')}
-          badge={
-            <span className="text-[11px] font-medium" style={{ color: 'var(--t3)' }}>
-              CSV / Excel
-            </span>
-          }
-        />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {integrations.map(item => (
+            <IntegrationCard key={item.id} {...item} />
+          ))}
+          <Card className="!p-4 flex items-center gap-4 transition-colors hover:border-[var(--line-2)]">
+            <LogoMark type="import" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="truncate text-[13px] font-semibold text-t1">Importar pacientes</h3>
+                <Badge variant="default">CSV / Excel</Badge>
+              </div>
+              <p className="mt-0.5 truncate text-[11.5px] text-t3">Webdiet, Nutrium ou planilha CSV</p>
+            </div>
+            <ImportHiddenInput />
+          </Card>
+        </div>
       </div>
-
-      {/* Painel de detalhe */}
-      <Card>
-        <p className="text-sm font-bold mb-4" style={{ color: 'var(--t1)' }}>{DETAIL_TITLES[selected]}</p>
-        {selected === 'whatsapp' && <WhatsAppDetail data={waData} isLoading={waLoading} />}
-        {selected === 'gcal'     && <GoogleCalendarDetail data={gcData} isLoading={gcLoading} />}
-        {selected === 'import'   && <ImportDetail />}
-      </Card>
-    </div>
+    </main>
   )
 }

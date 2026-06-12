@@ -12,7 +12,6 @@ import {
   LogOut,
   MessageSquare,
   Moon,
-  Palette,
   Plug,
   Plus,
   Settings,
@@ -55,7 +54,6 @@ const groups: Array<{
   {
     label: 'Workspace',
     items: [
-      { href: '/design-system', label: 'Design System', icon: Palette },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },

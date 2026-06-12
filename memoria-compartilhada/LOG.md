@@ -6,6 +6,46 @@
 
 ---
 
+## 2026-06-11 - Codex
+
+- Heloisa autorizou o Codex a assumir o escopo Lovable/PDF que estava
+  reservado ao Claude Code. Ajustes aplicados:
+  - `/configuracoes`: refeito como hub no padrao Lovable com nav lateral de
+    10 secoes (Workspace, Perfil, Aparencia, Notificacoes, Integracoes,
+    Plano e cobranca, Equipe, Seguranca, API/Webhooks, Dados/LGPD).
+  - `/integracoes`: marketplace igual ao Lovable, com mais apps e marcas
+    visuais reconheciveis (WhatsApp, Instagram, Google Calendar, Stripe,
+    Asaas, Mailchimp, Zapier, Webhook), mantendo status real de WhatsApp e
+    Google Calendar e importacao CSV real.
+  - `/clientes` e `/equipe`: largura/spacing e KPIs no topo para ficar mais
+    proximo do Lovable.
+  - `/agenda` e `/conversas`: refinados para topbar de 56px, headings e
+    proporcoes mais consistentes com o shell Lovable, preservando calendario,
+    modais, copiloto e classificacao de conversas.
+  - `/design-system`: removido do source e sem referencias restantes em
+    `apps/dashboard/src`.
+- Validacao: `npm.cmd run build` em `apps/dashboard` passou (39 rotas).
+
+## 2026-06-11 - Codex
+
+- Atualizou o diagnostico apos pedido da Heloisa para retomar de onde o
+  Claude Code parou. Estado encontrado: ultimo commit relevante e `2dbf4e4`
+  (`feat(dashboard): finaliza port das telas Lovable...`); depois dele ha
+  alteracoes locais em `/integracoes`, `Sidebar`, `TopBar`, `globals.css`,
+  remocao de `/design-system` e memoria compartilhada. `npm.cmd run build`
+  em `apps/dashboard` passou (39 rotas; `/design-system` nao aparece mais).
+  Pendencias observadas: textos com encoding quebrado (`Ã`, `Â`) e fidelidade
+  visual ainda incompleta em relacao ao Lovable/PDF nas paginas indicadas pela
+  Heloisa.
+
+## 2026-06-11 - Codex
+
+- Atualizou `MEMORY.md` a pedido da Heloisa para remover a ambiguidade entre
+  a referencia antiga (sidebar 220px/prints) e a direcao atual: `Frame
+  Vision.zip` do Lovable e copia visual fiel, com sidebar 240px, topbar 56px,
+  busca central, white-alpha surfaces/hover states e microdetalhes do
+  Lovable, preservando apenas a logica/funcionamento real por baixo.
+
 ## 2026-06-11 - Claude Code
 
 - Concluido o plano "Replicar telas novas do Lovable (PDF) no dashboard
