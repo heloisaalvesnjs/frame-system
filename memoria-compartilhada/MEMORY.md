@@ -99,6 +99,13 @@ o Codex.
   (`lovable/design-lab` ou equivalente), comparar componentes e portar tela a
   tela. Evitar migracao para Supabase/Lovable full-stack neste momento, pois
   isso exigiria reescrever backend, autenticacao, WhatsApp, IA e webhooks.
+- (2026-06-11, ajuste posterior da Heloisa) A usuaria reforcou que o Lovable
+  "ja entregou tudo" e que o objetivo visual e copiar com mais fidelidade,
+  inclusive microdetalhes. Para novas alteracoes de design, priorizar o
+  `Frame Vision.zip` como fonte visual direta e adaptar apenas o necessario
+  para manter funcionamento real. Shell passou a seguir proporcao do Lovable
+  com sidebar desktop de 240px, topbar de 56px, busca central, grupos de
+  navegacao e primitivos com white-alpha/green accent.
 
 - (2026-06-11) Gap analysis do produto "assistente IA" feito pelo Claude Code
   a partir de checklist enviado pelo Codex. Levantamento tÃ©cnico completo no

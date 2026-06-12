@@ -35,10 +35,9 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header
-      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-4 px-4 backdrop-blur-xl md:left-[220px] md:px-6"
+      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-4 border-b border-[var(--line-1)] px-4 backdrop-blur-xl md:left-[240px] md:px-6"
       style={{
         background: 'color-mix(in oklab, var(--bg) 82%, transparent)',
-        borderBottom: '1px solid var(--line-1)',
       }}
     >
       <button
@@ -60,8 +59,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <button
-        className="group mx-auto hidden h-9 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border px-3 text-left transition-all hover:border-[var(--line-3)] hover:bg-white/[0.04] md:flex"
-        style={{ borderColor: 'var(--line-2)', background: 'rgba(255,255,255,0.02)' }}
+        className="group mx-auto hidden h-9 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border border-[var(--line-2)] bg-white/[0.02] px-3 text-left transition-all hover:border-[var(--line-3)] hover:bg-white/[0.04] md:flex"
         aria-label="Buscar"
       >
         <Search className="h-3.5 w-3.5" style={{ color: 'var(--t3)' }} />
@@ -73,21 +71,21 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
       <div className="flex items-center gap-1.5">
         <button
-          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
+          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.04]"
           style={{ color: 'var(--t2)' }}
           aria-label="Frame AI"
         >
           <Sparkles className="h-4 w-4" strokeWidth={1.75} />
         </button>
         <button
-          className="hidden h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)] sm:grid"
+          className="hidden h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.04] sm:grid"
           style={{ color: 'var(--t2)' }}
           aria-label="Ajuda"
         >
           <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
         </button>
         <button
-          className="relative grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
+          className="relative grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.04]"
           style={{ color: 'var(--t2)' }}
           aria-label="Notificações"
         >
@@ -99,7 +97,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         </button>
         <button
           onClick={() => router.push('/configuracoes')}
-          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-[var(--raised)]"
+          className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.04]"
           style={{ color: 'var(--t2)' }}
           aria-label="Configurações"
         >

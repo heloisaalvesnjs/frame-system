@@ -2,121 +2,128 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  LayoutDashboard, MessageSquare, CalendarDays, Users,
-  LogOut, Shield, User, Settings, Lock, CreditCard,
-  Sparkles, Clock, Plug, Building2, Layers, Wallet,
-  Moon, Plus, Sun,
+  Calendar,
+  ChevronsLeft,
+  Clock,
+  CreditCard,
+  LayoutDashboard,
+  Lock,
+  LogOut,
+  MessageSquare,
+  Moon,
+  Plug,
+  Plus,
+  Settings,
+  Shield,
+  Sparkles,
+  Sun,
+  User,
+  UserCog,
+  Users,
+  Wallet,
+  Workflow,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
-// ── Nav items ─────────────────────────────────────────────────────
-
-const navMain = [
-  { href: '/dashboard',     label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/conversas',     label: 'Conversas',  icon: MessageSquare },
-  { href: '/agenda',        label: 'Agenda',     icon: CalendarDays },
-  { href: '/clientes',      label: 'Pacientes',  icon: Users },
+const groups: Array<{
+  label?: string
+  items: Array<{ href: string; label: string; icon: any; badge?: string }>
+}> = [
+  {
+    items: [
+      { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
+      { href: '/conversas', label: 'Conversas', icon: MessageSquare },
+      { href: '/agenda', label: 'Agenda', icon: Calendar },
+      { href: '/clientes', label: 'Clientes', icon: Users },
+      { href: '/financeiro', label: 'Financeiro', icon: Wallet },
+      { href: '/followup', label: 'Automações', icon: Workflow },
+    ],
+  },
+  {
+    label: 'Operação',
+    items: [
+      { href: '/treinamento', label: 'Assistente IA', icon: Sparkles },
+      { href: '/servicos', label: 'Planos', icon: CreditCard },
+      { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
+      { href: '/equipe', label: 'Equipe', icon: UserCog },
+      { href: '/integracoes', label: 'Integrações', icon: Plug },
+    ],
+  },
+  {
+    label: 'Workspace',
+    items: [
+      { href: '/configuracoes', label: 'Configurações', icon: Settings },
+    ],
+  },
 ]
 
-const navInteligencia = [
-  { href: '/followup',      label: 'Automações',       icon: Layers },
-  { href: '/treinamento',   label: 'Frame AI',         icon: Sparkles },
-]
-
-const navWorkspace = [
-  { href: '/servicos',        label: 'Planos',          icon: CreditCard },
-  { href: '/financeiro',      label: 'Financeiro',      icon: Wallet },
-  { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
-  { href: '/equipe',          label: 'Equipe',          icon: Building2 },
-  { href: '/integracoes',     label: 'Integrações',     icon: Plug },
-  { href: '/configuracoes',   label: 'Configurações',   icon: Settings },
-]
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
-      {children}
-    </p>
-  )
+function initialsFrom(name?: string | null) {
+  if (!name) return 'FS'
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
 }
 
-// ── Frame mark logo ───────────────────────────────────────────────
-
-function FrameMark({ size = 28 }: { size?: number }) {
-  return (
-    <div
-      className="flex items-center justify-center rounded-[8px] font-bold flex-shrink-0"
-      style={{
-        width: size, height: size,
-        background: 'var(--brand)',
-        color: '#02140C',
-        fontSize: size * 0.5,
-        letterSpacing: '-0.02em',
-      }}
-    >
-      F.
-    </div>
-  )
-}
-
-// ── Nav item ──────────────────────────────────────────────────────
-
-function NavItem({ href, label, icon: Icon, expanded, onClick }: {
-  href: string; label: string; icon: any; expanded: boolean; onClick?: () => void
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  badge,
+  onClick,
+}: {
+  href: string
+  label: string
+  icon: any
+  badge?: string
+  onClick?: () => void
 }) {
   const pathname = usePathname()
-  const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+  const active = href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
 
   return (
     <Link
       href={href}
       onClick={onClick}
-      title={!expanded ? label : undefined}
       className={cn(
-        'relative flex items-center gap-3 rounded-xl transition-all duration-150 group overflow-hidden',
-        expanded ? 'px-3 py-2.5' : 'px-0 py-2.5 justify-center',
-        active
-          ? 'bg-white/10 text-white'
-          : 'text-white/45 hover:text-white/85 hover:bg-white/[0.07]'
+        'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-all duration-150',
+        active ? 'bg-white/[0.06] text-white' : 'text-white/55 hover:bg-white/[0.04] hover:text-white',
       )}
     >
-      {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-r-full" style={{ background: 'var(--brand)' }} />
+      <Icon
+        className={cn(
+          'h-[15px] w-[15px] shrink-0 transition-colors',
+          active ? 'text-[var(--brand)]' : 'text-white/35 group-hover:text-white/65',
+        )}
+        strokeWidth={1.75}
+      />
+      <span className="truncate">{label}</span>
+      {badge && (
+        <span className="ml-auto rounded-md px-1.5 py-0.5 text-[10px] font-medium text-[var(--brand)]" style={{ background: 'var(--brand-s)' }}>
+          {badge}
+        </span>
       )}
-      <Icon className={cn(
-        'flex-shrink-0 transition-colors',
-        expanded ? 'w-[15px] h-[15px]' : 'w-[18px] h-[18px]',
-        active ? 'text-white' : 'text-white/40 group-hover:text-white/80'
-      )} />
-      <span className={cn(
-        'text-[13px] font-medium whitespace-nowrap transition-all duration-200 overflow-hidden',
-        expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0',
-      )}>
-        {label}
-      </span>
+      {active && !badge && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_8px_var(--brand)]" />}
     </Link>
   )
 }
 
-// ── User menu ─────────────────────────────────────────────────────
-
-function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => void }) {
+function UserMenu({ onClose }: { onClose?: () => void }) {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  const initials = user?.name
-    ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'U'
+  const initials = initialsFrom(user?.name)
 
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    function handler(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
     }
     if (open) document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -129,266 +136,167 @@ function UserMenu({ expanded, onClose }: { expanded: boolean; onClose?: () => vo
   }
 
   return (
-    <div ref={ref} className="relative px-2 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-
-      {/* Dropdown popup — uses light theme tokens so it's always light */}
+    <div ref={ref} className="relative px-3 py-3 border-t border-white/[0.06]">
       {open && (
-        <div
-          className="absolute left-2 right-2 bottom-full mb-2 rounded-xl overflow-hidden z-50"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-          }}
-        >
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div
-              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold"
-              style={{ background: 'var(--brand-s-solid)', color: 'var(--brand)', border: '1px solid rgba(0,194,124,.2)' }}
-            >
+        <div className="absolute bottom-full left-3 right-3 mb-2 overflow-hidden rounded-xl border border-[var(--line-2)] bg-[var(--surface)] shadow-2xl">
+          <div className="flex items-center gap-3 border-b border-[var(--line-1)] px-4 py-3">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#6AA9FF] to-[#B69CFF] text-[11px] font-semibold text-white">
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold truncate leading-tight" style={{ color: 'var(--t1)' }}>{user?.name}</p>
-              <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--t3)' }}>{user?.email}</p>
+              <p className="truncate text-[13px] font-semibold leading-tight text-t1">{user?.name}</p>
+              <p className="mt-0.5 truncate text-[10px] text-t3">{user?.email}</p>
             </div>
           </div>
 
           <div className="p-1.5">
-            <button
-              onClick={() => go('/perfil')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left hover:bg-gray-50"
-              style={{ color: 'var(--t2)' }}
-            >
-              <User className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="text-[13px] font-medium">Meu Perfil</span>
+            <button onClick={() => go('/perfil')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-t2 transition-colors hover:bg-[var(--raised)] hover:text-t1">
+              <User className="h-[14px] w-[14px]" />
+              Meu Perfil
             </button>
-            <button
-              onClick={() => go('/seguranca')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left hover:bg-gray-50"
-              style={{ color: 'var(--t2)' }}
-            >
-              <Lock className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="text-[13px] font-medium">Segurança</span>
+            <button onClick={() => go('/seguranca')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-t2 transition-colors hover:bg-[var(--raised)] hover:text-t1">
+              <Lock className="h-[14px] w-[14px]" />
+              Segurança
             </button>
           </div>
 
-          <div className="p-1.5" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="border-t border-[var(--line-1)] p-1.5">
             <button
-              onClick={() => { setOpen(false); logout() }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left hover:bg-red-50 hover:text-red-500"
-              style={{ color: 'var(--t3)' }}
+              onClick={() => {
+                setOpen(false)
+                logout()
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-t3 transition-colors hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
             >
-              <LogOut className="w-[14px] h-[14px] flex-shrink-0" />
-              <span className="text-[13px] font-medium">Sair</span>
+              <LogOut className="h-[14px] w-[14px]" />
+              Sair
             </button>
           </div>
         </div>
       )}
 
-      {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
-        title={!expanded ? user?.name : undefined}
         className={cn(
-          'w-full flex items-center rounded-xl transition-all duration-150',
-          expanded ? 'gap-3 px-3 py-2' : 'justify-center py-2',
-          open ? 'bg-white/10' : 'hover:bg-white/[0.07]'
+          'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors',
+          open ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]',
         )}
       >
-        <div
-          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold"
-          style={{ background: 'var(--brand)', color: '#fff' }}
-        >
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#6AA9FF] to-[#B69CFF] text-[11px] font-semibold text-white">
           {initials}
         </div>
-        <div className={cn(
-          'min-w-0 flex-1 text-left transition-all duration-200 overflow-hidden',
-          expanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'
-        )}>
-          <p className="text-[12px] font-medium text-white truncate leading-tight">{user?.name}</p>
-          <p className="text-[10px] text-white/40 truncate mt-0.5">{user?.email}</p>
+        <div className="min-w-0 flex-1 text-left">
+          <div className="truncate text-[12.5px] font-medium text-white">{user?.name || 'Frame System'}</div>
+          <div className="mt-0.5 truncate text-[11px] text-white/35">{user?.email || 'Nutricionista'}</div>
         </div>
+        <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
       </button>
     </div>
   )
 }
 
-// ── Sidebar content ───────────────────────────────────────────────
-
-function SidebarContent({ expanded, onClose }: { expanded: boolean; onClose?: () => void }) {
+function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
 
   return (
-    <div className="flex flex-col h-full" style={{ background: '#0E0F11' }}>
-
-      {/* Logo */}
-      <div
-        className={cn(
-          'flex items-center h-[60px] flex-shrink-0 overflow-hidden transition-all duration-200',
-          expanded ? 'gap-3 px-5' : 'justify-center px-0'
-        )}
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
-      >
-        <div className="flex-shrink-0">
-          <FrameMark size={30} />
-        </div>
-        <div className={cn(
-          'transition-all duration-200 overflow-hidden whitespace-nowrap',
-          expanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'
-        )}>
-          <p className="font-display font-bold text-[16px] leading-none tracking-tight text-white">
-            Frame<span style={{ color: 'var(--brand)' }}>.</span>
-          </p>
-          <p className="text-[9px] tracking-[0.14em] mt-[3px] text-white/30 font-medium">
-            SYSTEM
-          </p>
-        </div>
-      </div>
-
-      <div className={cn('pb-3 transition-all duration-200', expanded ? 'px-3' : 'px-2')}>
-        <button
-          type="button"
-          className={cn(
-            'flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition-colors',
-            expanded ? 'justify-start' : 'justify-center',
-          )}
-          style={{
-            background: 'rgba(255,255,255,0.02)',
-            borderColor: 'rgba(255,255,255,0.10)',
-            color: 'rgba(255,255,255,0.64)',
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {expanded && (
-            <>
-              <span>Novo</span>
-              <kbd className="ml-auto font-mono text-[10px] text-white/30">Ctrl N</kbd>
-            </>
-          )}
+    <div className="flex h-full flex-col bg-[#0E0F11]">
+      <div className="px-3 pb-3 pt-4">
+        <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04]">
+          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[11px] font-bold text-[#02140C]">
+            FS
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <div className="truncate text-[13px] font-medium text-white">Frame System</div>
+            <div className="truncate text-[11px] text-white/35">{user?.name || 'Clínica Nutri Plus'}</div>
+          </div>
+          <ChevronsLeft className="h-3.5 w-3.5 text-white/35 opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className={cn(
-        'flex-1 flex flex-col gap-0.5 py-2 overflow-y-auto transition-all duration-200',
-        expanded ? 'px-3' : 'px-2'
-      )}>
-        {navMain.map(item => (
-          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
+      <div className="px-3 pb-3">
+        <button
+          className="flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.02] px-2.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white"
+          type="button"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span>Novo</span>
+          <kbd className="ml-auto font-mono text-[10px] text-white/30">Ctrl N</kbd>
+        </button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2 pb-4">
+        {groups.map((group, index) => (
+          <div key={group.label || index} className="mb-1">
+            {group.label && (
+              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-white/35">
+                {group.label}
+              </div>
+            )}
+            {group.items.map(item => (
+              <NavLink key={item.href} {...item} onClick={onClose} />
+            ))}
+          </div>
         ))}
 
-        {expanded && <SectionLabel>Inteligência</SectionLabel>}
-        {!expanded && <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />}
-        {navInteligencia.map(item => (
-          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
-        ))}
-
-        {expanded && <SectionLabel>Workspace</SectionLabel>}
-        {!expanded && <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />}
-        {navWorkspace.map(item => (
-          <NavItem key={item.href} {...item} expanded={expanded} onClick={onClose} />
-        ))}
-
-        {/* Admin */}
         {(user as any)?.is_master && (
-          <>
-            <div className="my-2 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
-            <Link
-              href="/admin"
-              onClick={onClose}
-              title={!expanded ? 'Admin' : undefined}
-              className={cn(
-                'relative flex items-center rounded-xl transition-all duration-150 group overflow-hidden',
-                expanded ? 'gap-3 px-3 py-2.5' : 'justify-center px-0 py-2.5',
-                pathname.startsWith('/admin')
-                  ? 'bg-amber-500/20 text-amber-300'
-                  : 'text-white/40 hover:text-amber-300 hover:bg-amber-500/[0.12]'
-              )}
-            >
-              {pathname.startsWith('/admin') && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 bg-amber-400 rounded-r-full" />
-              )}
-              <Shield className={cn(
-                'flex-shrink-0 text-amber-400/70',
-                expanded ? 'w-[15px] h-[15px]' : 'w-[18px] h-[18px]'
-              )} />
-              <span className={cn(
-                'text-[13px] font-medium whitespace-nowrap transition-all duration-200 overflow-hidden',
-                expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'
-              )}>
-                Admin
-              </span>
-            </Link>
-          </>
+          <div className="mt-2 border-t border-white/[0.06] pt-2">
+            <NavLink href="/admin" label="Admin" icon={Shield} onClick={onClose} />
+          </div>
         )}
       </nav>
 
-      {expanded && (
-        <div className="px-3 pb-2">
-          <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
-            <button
-              type="button"
-              onClick={() => theme === 'light' && toggleTheme()}
-              className={cn(
-                'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
-                theme === 'dark' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
-              )}
-              aria-label="Tema escuro"
-            >
-              <Moon className="h-3 w-3" />
-              Dark
-            </button>
-            <button
-              type="button"
-              onClick={() => theme === 'dark' && toggleTheme()}
-              className={cn(
-                'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
-                theme === 'light' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
-              )}
-              aria-label="Tema claro"
-            >
-              <Sun className="h-3 w-3" />
-              Light
-            </button>
-          </div>
+      <div className="px-3 pb-3">
+        <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+          <button
+            type="button"
+            onClick={() => theme === 'light' && toggleTheme()}
+            className={cn(
+              'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
+              theme === 'dark' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+            )}
+            aria-label="Tema escuro"
+          >
+            <Moon className="h-3 w-3" />
+            Dark
+          </button>
+          <button
+            type="button"
+            onClick={() => theme === 'dark' && toggleTheme()}
+            className={cn(
+              'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors',
+              theme === 'light' ? 'bg-white/[0.07] text-white shadow-sm' : 'text-white/35 hover:text-white/65',
+            )}
+            aria-label="Tema claro"
+          >
+            <Sun className="h-3 w-3" />
+            Light
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* User menu */}
-      <UserMenu expanded={expanded} onClose={onClose} />
+      <UserMenu onClose={onClose} />
     </div>
   )
 }
 
-// ── Export ────────────────────────────────────────────────────────
-
 export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   return (
     <>
-      {/* Desktop — fixed 220px, sempre expandida */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[220px] flex-col z-20">
-        <SidebarContent expanded={true} />
+      <aside className="fixed left-0 top-0 z-20 hidden h-screen w-[240px] shrink-0 flex-col md:flex">
+        <SidebarContent />
       </aside>
 
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
-      )}
+      {open && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} />}
 
-      {/* Mobile drawer */}
       <aside
         className={cn(
-          'md:hidden fixed left-0 top-0 h-screen w-[260px] flex flex-col z-50 transition-transform duration-300 ease-in-out',
-          open ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          'fixed left-0 top-0 z-50 flex h-screen w-[280px] flex-col transition-transform duration-300 ease-in-out md:hidden',
+          open ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
         )}
       >
-        <SidebarContent expanded={true} onClose={onClose} />
+        <SidebarContent onClose={onClose} />
       </aside>
     </>
   )

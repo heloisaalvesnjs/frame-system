@@ -8,6 +8,24 @@
 
 ## 2026-06-11 - Codex
 
+- Apos feedback da Heloisa de que o Lovable ainda estava superior e deveria
+  ser copiado com mais fidelidade, fez nova rodada de port visual literal do
+  `Frame Vision.zip`:
+  - `Sidebar.tsx` reescrita no padrao Lovable: 240px desktop, logo FS em
+    gradiente, grupos Painel/Operacao/Workspace, botao "Novo", tema
+    Dark/Light e usuario real no rodape.
+  - `(dashboard)/layout.tsx` e `TopBar.tsx` ajustados para offset de 240px e
+    topbar de 56px com busca central e acoes.
+  - `finance-primitives.tsx` recriado limpo com os microestados do Lovable
+    (white-alpha, green accent, botao primario com texto escuro, KPI limpo).
+  - `globals.css` ganhou aliases/utility classes do Frame Vision
+    (`--bg-base`, `--bg-elevated`, `--brand-soft`, `gradient-brand-text`,
+    `brand-glow`, etc.).
+- Validacao: `npm.cmd run build` em `apps/dashboard` passou; local
+  `/dashboard` e `/financeiro` responderam 200.
+
+## 2026-06-11 - Codex
+
 - Analisou `C:\Users\Heloisa\Downloads\Frame Vision.zip` (export do Lovable)
   contra o dashboard atual. O sistema ja tinha varias telas portadas,
   inclusive `/financeiro`, mas ainda faltavam detalhes do shell/design system.
@@ -331,4 +349,3 @@ versionados (ver MEMORY.md).
   `mockup-sistema.html` â€” manter shell de navegaÃ§Ã£o atual.
 - PendÃªncia aberta: usuÃ¡ria reportou que "todas as pÃ¡ginas" ainda nÃ£o batem
   com o mockup, sem detalhe especÃ­fico. Aguardando print.
-

@@ -26,7 +26,7 @@
 
 ## Codex
 
-- **Ultima atividade**: 2026-06-11 - analisou `Frame Vision.zip` e portou ajustes visuais faltantes do shell/design system (TopBar, Sidebar, tokens, botao primario). Build do dashboard passou.
+- **Ultima atividade**: 2026-06-11 - reforcou a copia literal do Lovable/Frame Vision no shell e primitivos (sidebar 240px, topbar, tokens, white-alpha, botao primario). Build passou e rotas locais responderam 200.
 - **Em andamento**: nada no momento.
 - **Bloqueado/aguardando**: nada no momento.
 

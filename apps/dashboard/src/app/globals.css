@@ -52,6 +52,23 @@
   /* Focus ring */
   --focus-ring: 0 0 0 3px rgba(0, 194, 124, 0.20);
 
+  /* Lovable / Frame Vision aliases */
+  --bg-base: var(--bg);
+  --bg-elevated: var(--surface);
+  --bg-surface: var(--raised);
+  --bg-surface-2: var(--raised-2);
+  --brand-soft: var(--brand-s);
+  --brand-bright: #00E892;
+  --text-1: var(--t1);
+  --text-2: var(--t2);
+  --text-3: var(--t3);
+  --text-4: var(--t4);
+  --shadow-elevated: 0 1px 0 rgba(255,255,255,0.8) inset, 0 8px 24px -16px rgba(10,12,16,0.16);
+  --shadow-glow: 0 0 0 1px var(--brand-ring), 0 8px 32px -8px rgba(0,194,124,0.25);
+  --gradient-brand: linear-gradient(135deg, #00C27C 0%, #00E892 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%);
+  --gradient-hero: radial-gradient(120% 80% at 50% 0%, rgba(0,194,124,0.10) 0%, rgba(0,194,124,0) 60%);
+
   /* Sidebar (always dark) */
   --sidebar-bg:     #111113;
   --sidebar-border: rgba(255,255,255,0.06);
@@ -97,6 +114,23 @@
   --shadow-lg: 0 8px 32px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.50);
 
   --focus-ring: 0 0 0 3px rgba(0, 194, 124, 0.25);
+
+  /* Lovable / Frame Vision aliases */
+  --bg-base: #0B0C0E;
+  --bg-elevated: #141618;
+  --bg-surface: #1E2124;
+  --bg-surface-2: #25282C;
+  --brand-soft: rgba(0, 194, 124, 0.10);
+  --brand-bright: #00E892;
+  --text-1: #F4F5F0;
+  --text-2: #A1A6AE;
+  --text-3: #6B7280;
+  --text-4: #4A5159;
+  --shadow-elevated: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 0 1px var(--brand-ring), 0 8px 32px -8px rgba(0,194,124,0.25);
+  --gradient-brand: linear-gradient(135deg, #00C27C 0%, #00E892 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 100%);
+  --gradient-hero: radial-gradient(120% 80% at 50% 0%, rgba(0,194,124,0.10) 0%, rgba(0,194,124,0) 60%);
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -228,12 +262,17 @@ input:-webkit-autofill:focus {
   .text-t1 { color: var(--t1); }
   .text-t2 { color: var(--t2); }
   .text-t3 { color: var(--t3); }
+  .text-1 { color: var(--text-1); }
+  .text-2 { color: var(--text-2); }
+  .text-3 { color: var(--text-3); }
 
   /* Background tokens */
   .bg-base    { background-color: var(--bg); }
   .bg-surface { background-color: var(--surface); }
   .bg-raised  { background-color: var(--raised); }
   .bg-brand-s { background-color: var(--brand-s); }
+  .bg-elevated { background-color: var(--bg-elevated); }
+  .bg-surface-2 { background-color: var(--bg-surface-2); }
 
   /* Border tokens */
   .border-theme { border-color: var(--border); }
@@ -259,6 +298,15 @@ input:-webkit-autofill:focus {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  .gradient-brand-text {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .brand-glow {
+    box-shadow: var(--shadow-glow);
   }
 
   /* Subtle grid bg */
