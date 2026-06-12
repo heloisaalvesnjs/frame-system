@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-06-11 - Claude Code
+
+- Concluido o plano "Replicar telas novas do Lovable (PDF) no dashboard
+  real" (13 telas + sidebar + nova pagina `/design-system`). Resumo dos
+  ajustes desta rodada (apos `clientes`, `financeiro`, `followup`,
+  `treinamento`, `disponibilidade`, `equipe` ja feitos em rodadas
+  anteriores):
+  - `integracoes`: `IntegrationTile` reestilizado de card vertical para
+    linha horizontal (icone + nome + badge inline + descricao), grid mudou
+    de 3 para 2 colunas, e subtitulo do header passou a ser dinamico
+    ("X ativa(s) - Conecte suas ferramentas favoritas") calculado a partir
+    do status real de WhatsApp/Google Calendar. Nao foram adicionadas
+    integracoes ficticias (Instagram, Stripe, Asaas, Mailchimp, Zapier,
+    Webhook) que aparecem no PDF mas nao existem no backend.
+  - `configuracoes`: **decisao no-op**. O PDF (page-14, "Configuracoes - 10
+    secoes") mostra um hub com nav lateral de 10 secoes e campos de
+    "Identidade do workspace" (nome da clinica, CNPJ, subdominio, fuso
+    horario, moeda, endereco comercial) que nao existem no schema atual
+    (`nutritionists`). A pagina atual (Perfil/Seguranca/Notificacoes) ja
+    cobre o que tem dados reais; reescrever para o hub completo exigiria
+    fabricar 9 das 10 secoes. Mantida como esta.
+  - `admin`: **decisao no-op**. O PDF (page-15, "Admin - Infraestrutura e
+    auditoria") mostra uptime, eventos criticos, armazenamento, sessoes
+    ativas, postura de seguranca, infra (latencia API, replicas de banco,
+    jobs pendentes, backup) e log de auditoria - nenhum desses dados existe
+    no backend hoje. A pagina atual (aprovacao de nutricionistas/conta
+    mestre) ja usa os primitivos "Calm Pro" e cobre a funcionalidade real
+    existente. Mantida como esta.
+- Validacao: `npx tsc --noEmit` ok apos cada pagina; `npm run build` em
+  `apps/dashboard` passou no final (40 rotas geradas, incluindo a nova
+  `/design-system`).
+- Sem commit/push - aguardando confirmacao da Heloisa (deploy Vercel).
+
 ## 2026-06-11 - Codex
 
 - Apos feedback da Heloisa de que o Lovable ainda estava superior e deveria

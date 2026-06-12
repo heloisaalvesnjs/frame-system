@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Btn } from '@/components/ui/finance-primitives'
+import { Btn, KPI } from '@/components/ui/finance-primitives'
 
 // ═══════════════════════════════════════════════════════
 // Shared helpers
@@ -1991,6 +1991,12 @@ const TRAINING_TABS = [
 export default function TreinamentoPage() {
   const [trainingTab, setTrainingTab] = useState('manual')
 
+  const { data: convStats } = useQuery<any>({
+    queryKey: ['conversations-stats'],
+    queryFn: async () => { const { data } = await api.get('/api/conversations/stats'); return data.stats },
+    staleTime: 30_000,
+  })
+
   return (
     <div className="p-6 md:p-8 max-w-3xl space-y-6">
 
@@ -2002,6 +2008,14 @@ export default function TreinamentoPage() {
         <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
           Configure o treinamento, personalidade e horários da sua assistente
         </p>
+      </div>
+
+      {/* Performance da IA */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KPI label="Conversas ativas" value={String(convStats?.active ?? 0)} hint="aguardando resposta" />
+        <KPI label="Agendamentos via IA" value={String(convStats?.agendou ?? 0)} hint="total" />
+        <KPI label="Vendas via IA" value={String(convStats?.comprou ?? 0)} hint="total" />
+        <KPI label="Atendimento humano" value={String(convStats?.human_takeover ?? 0)} hint="conversas assumidas" />
       </div>
 
       {/* IA Power */}

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { UserPlus, Copy, Trash2, Clock, CheckCircle, Shield, Eye, Pencil, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
-import { Card, Badge, Btn, Avatar } from '@/components/ui/finance-primitives'
+import { Card, Badge, Btn, Avatar, SectionTitle } from '@/components/ui/finance-primitives'
 
 interface TeamMember {
   id: string
@@ -66,6 +66,8 @@ export default function EquipePage() {
   }
 
   const roleInfo = (r: string) => ROLES.find(x => x.value === r)
+  const activeMembers  = members.filter(m => m.status === 'active')
+  const pendingMembers = members.filter(m => m.status === 'pending')
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -154,53 +156,98 @@ export default function EquipePage() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {members.map(member => {
-            const info = roleInfo(member.role)
-            const RoleIcon = info?.icon ?? Eye
-            return (
-              <Card key={member.id} className="px-5 py-4">
-                <div className="flex items-center gap-4">
-                  <Avatar name={member.name || member.email} color="green" size={36} />
+        <>
+          {/* Membros ativos */}
+          {activeMembers.length > 0 && (
+            <div className="space-y-2">
+              <SectionTitle title={`Membros (${activeMembers.length})`} />
+              {activeMembers.map(member => {
+                const info = roleInfo(member.role)
+                const RoleIcon = info?.icon ?? Eye
+                return (
+                  <Card key={member.id} className="px-5 py-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar name={member.name || member.email} color="green" size={36} />
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>
-                        {member.name || member.email}
-                      </p>
-                      {member.status === 'pending' ? (
-                        <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> pendente</Badge>
-                      ) : (
-                        <Badge variant="success"><CheckCircle className="w-2.5 h-2.5" /> ativo</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>{member.email}</p>
-                      <span style={{ color: 'var(--border)' }}>·</span>
-                      <div className="flex items-center gap-1">
-                        <RoleIcon className="w-3 h-3" style={{ color: 'var(--t3)' }} />
-                        <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{info?.label}</span>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>
+                            {member.name || member.email}
+                          </p>
+                          <Badge variant="success"><CheckCircle className="w-2.5 h-2.5" /> ativo</Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>{member.email}</p>
+                          <span style={{ color: 'var(--border)' }}>·</span>
+                          <div className="flex items-center gap-1">
+                            <RoleIcon className="w-3 h-3" style={{ color: 'var(--t3)' }} />
+                            <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{info?.label}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Btn>
                       </div>
                     </div>
-                  </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {member.status === 'pending' && member.invite_link && (
-                      <Btn variant="outline" size="sm" onClick={() => copyLink(member.invite_link!)}>
-                        <Copy className="w-3.5 h-3.5" /> Copiar link
-                      </Btn>
-                    )}
-                    <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Btn>
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+          {/* Convites pendentes */}
+          {pendingMembers.length > 0 && (
+            <div className="space-y-2">
+              <SectionTitle title="Convites pendentes" />
+              {pendingMembers.map(member => {
+                const info = roleInfo(member.role)
+                const RoleIcon = info?.icon ?? Eye
+                return (
+                  <Card key={member.id} className="px-5 py-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar name={member.name || member.email} color="green" size={36} />
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>
+                            {member.name || member.email}
+                          </p>
+                          <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> pendente</Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>{member.email}</p>
+                          <span style={{ color: 'var(--border)' }}>·</span>
+                          <div className="flex items-center gap-1">
+                            <RoleIcon className="w-3 h-3" style={{ color: 'var(--t3)' }} />
+                            <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{info?.label}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {member.invite_link && (
+                          <Btn variant="outline" size="sm" onClick={() => copyLink(member.invite_link!)}>
+                            <Copy className="w-3.5 h-3.5" /> Copiar link
+                          </Btn>
+                        )}
+                        <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Btn>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Info */}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Search, Send, Loader2, Bot, Pencil, Check, X, Sparkles, Phone } from 'lucide-react'
+import Link from 'next/link'
+import { MessageSquare, Search, Send, Loader2, Bot, Pencil, Check, X, Sparkles, Phone, Mail, Target, CalendarPlus, UserRound } from 'lucide-react'
 import api from '@/lib/api'
 import { Avatar, Badge, Btn } from '@/components/ui/finance-primitives'
 import { cn } from '@/lib/utils'
@@ -11,8 +12,12 @@ import { cn } from '@/lib/utils'
 
 interface Conversation {
   id: string
+  client_id?: string | null
   client_name: string
   client_phone: string
+  client_goal?: string | null
+  client_email?: string | null
+  client_since?: string | null
   status: 'active' | 'human_takeover' | 'resolved'
   mode?: 'auto' | 'copilot'
   outcome?: string | null
@@ -238,7 +243,11 @@ export default function ConversasPage() {
         {/* ── Split pane ─────────────────────────────────────────────── */}
         <div
           className="grid surface overflow-hidden p-0"
-          style={{ gridTemplateColumns: '320px minmax(0,1fr)', height: 'calc(100vh - 280px)', minHeight: 420 }}
+          style={{
+            gridTemplateColumns: selected ? '320px minmax(0,1fr) 280px' : '320px minmax(0,1fr)',
+            height: 'calc(100vh - 280px)',
+            minHeight: 420,
+          }}
         >
           {/* ── Conversation list ─────────────────────────────────── */}
           <div className="flex flex-col overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
@@ -564,6 +573,73 @@ export default function ConversasPage() {
               </div>
             )}
           </div>
+
+          {/* ── Painel do paciente ───────────────────────────────────── */}
+          {selected && (
+            <div className="flex flex-col overflow-y-auto border-l p-4 gap-4" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex flex-col items-center text-center gap-2 pt-2">
+                <Avatar
+                  name={selected.client_name || selected.client_phone}
+                  color={getAvatarColor(selected.client_name || selected.client_phone)}
+                  size={48}
+                />
+                <div>
+                  <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>
+                    {selected.client_name || selected.client_phone}
+                  </p>
+                  {selected.client_since && (
+                    <p className="text-[11.5px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                      Paciente desde{' '}
+                      {new Date(selected.client_since).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selected.client_id ? (
+                  <Link href={`/clientes/${selected.client_id}`} className="flex-1">
+                    <Btn variant="secondary" size="sm" className="w-full justify-center">
+                      <UserRound className="w-3.5 h-3.5" /> Ver perfil
+                    </Btn>
+                  </Link>
+                ) : (
+                  <Btn variant="secondary" size="sm" className="flex-1 justify-center" disabled>
+                    <UserRound className="w-3.5 h-3.5" /> Ver perfil
+                  </Btn>
+                )}
+                <Link href="/agenda" className="flex-1">
+                  <Btn variant="outline" size="sm" className="w-full justify-center">
+                    <CalendarPlus className="w-3.5 h-3.5" /> Agendar
+                  </Btn>
+                </Link>
+              </div>
+
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--t3)' }}>
+                  Detalhes
+                </p>
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <Phone className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} />
+                    <span className="text-[12.5px]" style={{ color: 'var(--t2)' }}>{selected.client_phone}</span>
+                  </div>
+                  {selected.client_email && (
+                    <div className="flex items-center gap-2.5">
+                      <Mail className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} />
+                      <span className="text-[12.5px] truncate" style={{ color: 'var(--t2)' }}>{selected.client_email}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2.5">
+                    <Target className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} />
+                    <span className="text-[12.5px]" style={{ color: 'var(--t2)' }}>
+                      {selected.client_goal || 'Objetivo não informado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

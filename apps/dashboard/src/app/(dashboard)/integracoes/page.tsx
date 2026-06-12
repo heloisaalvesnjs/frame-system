@@ -17,7 +17,7 @@ function StatusBadge({ loading, connected }: { loading?: boolean; connected?: bo
   return <Badge variant="default">Não conectado</Badge>
 }
 
-// ── Tile da grade ─────────────────────────────────────────────────
+// ── Linha da grade ────────────────────────────────────────────────
 function IntegrationTile({ emoji, iconBg, name, desc, selected, onClick, badge }: {
   emoji: string; iconBg: string; name: string; desc: string
   selected: boolean; onClick: () => void; badge: React.ReactNode
@@ -25,23 +25,25 @@ function IntegrationTile({ emoji, iconBg, name, desc, selected, onClick, badge }
   return (
     <button
       onClick={onClick}
-      className="card flex items-start gap-3 text-left transition-all"
+      className="card flex items-center gap-3 text-left transition-all"
       style={{
-        padding: '16px',
+        padding: '14px 16px',
         borderColor: selected ? 'var(--brand)' : undefined,
         boxShadow: selected ? '0 0 0 3px rgba(0,194,124,0.12)' : undefined,
       }}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[22px]"
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[20px]"
         style={{ background: iconBg }}
       >
         {emoji}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold" style={{ color: 'var(--t1)' }}>{name}</p>
-        <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--t2)' }}>{desc}</p>
-        <div className="mt-2">{badge}</div>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-bold truncate" style={{ color: 'var(--t1)' }}>{name}</p>
+          {badge}
+        </div>
+        <p className="text-xs mt-0.5 leading-snug truncate" style={{ color: 'var(--t2)' }}>{desc}</p>
       </div>
     </button>
   )
@@ -311,6 +313,7 @@ export default function IntegracoesPage() {
 
   const waConnected = waData?.status === 'connected'
   const gcConnected = !!gcData?.calendar_id
+  const activeCount = (waConnected ? 1 : 0) + (gcConnected ? 1 : 0)
 
   const DETAIL_TITLES: Record<IntegrationId, string> = {
     whatsapp: 'WhatsApp Business',
@@ -322,11 +325,13 @@ export default function IntegracoesPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Integrações</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Conecte suas ferramentas favoritas</p>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
+          {activeCount} ativa{activeCount === 1 ? '' : 's'} · Conecte suas ferramentas favoritas
+        </p>
       </div>
 
       {/* Grade de integrações */}
-      <div className="grid md:grid-cols-3 gap-3.5">
+      <div className="grid md:grid-cols-2 gap-3.5">
         <IntegrationTile
           emoji="💬"
           iconBg="#EFF6FF"

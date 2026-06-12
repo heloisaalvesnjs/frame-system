@@ -315,6 +315,29 @@ Arquivo Figma de referencia criado para continuar o redesign do Lovable a partir
   (provavelmente novas tabelas + UI dedicada), recomendado tratar como
   proxima fase/projeto separado com a Heloisa e o Codex.
 
+## 2026-06-11 - Plano "Replicar telas novas do Lovable (PDF)" concluido
+
+Plano `zany-frolicking-feigenbaum` (sidebar reorganizada em
+Painel/Operacao/Workspace, nova pagina `/design-system`, e ajustes nas 13
+paginas) concluido. Decisoes "no-op" registradas (mesma logica de
+financeiro/disponibilidade - nao fabricar dados):
+
+- `configuracoes`: o PDF mostra um hub com nav lateral de 10 secoes e
+  "Identidade do workspace" (CNPJ, subdominio, fuso horario, moeda, endereco
+  comercial) - campos inexistentes no schema de `nutritionists`. Pagina
+  mantida como Perfil/Seguranca/Notificacoes.
+- `admin`: o PDF mostra "Infraestrutura e auditoria" (uptime, storage,
+  sessoes ativas, log de auditoria, postura de seguranca, modo manutencao) -
+  nenhum desses dados existe no backend. Pagina mantida como
+  aprovacao de nutricionistas/conta mestre.
+- `integracoes`: restilizado para grid de 2 colunas com linhas
+  (icone+nome+badge+descricao) e subtitulo dinamico "X ativa(s)", sem
+  adicionar integracoes ficticias (Instagram/Stripe/Asaas/Mailchimp/Zapier/
+  Webhook) que aparecem no PDF mas nao tem backend.
+
+`npm run build` em `apps/dashboard` passou (40 rotas, incluindo
+`/design-system`). Sem commit/push - aguardando confirmacao da Heloisa.
+
 ## 2026-06-11 - Redesign "Calm Pro"/Lovable: todas as paginas concluidas
 
 A pedido da Heloisa ("vamos voltar ao design, faca todas as paginas da

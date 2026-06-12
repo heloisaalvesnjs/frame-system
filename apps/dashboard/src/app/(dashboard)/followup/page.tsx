@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
-import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
+import { Card, Badge, Btn, KPI } from '@/components/ui/finance-primitives'
 
 // ── Status checker (configuração da IA) ───────────────────────────
 interface StatusItem {
@@ -498,6 +498,10 @@ export default function AutomacoesPage() {
       <div>
         <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Automações</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Fluxos de atendimento automático via WhatsApp</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KPI label="Fluxos ativos" value={`${activeCount}/${FLOWS.length}`} hint="configurados nesta conta" />
       </div>
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4 items-start">

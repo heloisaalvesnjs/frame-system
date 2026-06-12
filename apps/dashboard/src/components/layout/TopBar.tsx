@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/disponibilidade': 'Disponibilidade',
   '/equipe': 'Equipe',
   '/integracoes': 'Integrações',
+  '/design-system': 'Design System',
   '/configuracoes': 'Configurações',
   '/onboarding': 'Configuração inicial',
   '/seguranca': 'Segurança',

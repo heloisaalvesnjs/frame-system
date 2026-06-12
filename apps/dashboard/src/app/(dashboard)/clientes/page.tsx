@@ -119,7 +119,7 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
               <UserPlus className="w-4 h-4" style={{ color: 'var(--brand)' }} />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Novo cliente</h2>
+              <h2 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Novo paciente</h2>
               <p className="text-xs" style={{ color: 'var(--t3)' }}>Cadastro manual</p>
             </div>
           </div>
@@ -218,7 +218,7 @@ function NovoClienteModal({ onClose }: { onClose: () => void }) {
             disabled={!form.phone.trim() || create.isPending}
             className="btn-primary flex-1"
           >
-            {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cadastrar cliente'}
+            {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cadastrar paciente'}
           </button>
         </div>
       </div>
@@ -290,7 +290,7 @@ export default function ClientesPage() {
         </div>
         <Btn onClick={() => setShowModal(true)} className="flex-shrink-0">
           <UserPlus className="w-4 h-4" />
-          Novo cliente
+          Novo paciente
         </Btn>
       </div>
 
@@ -356,7 +356,7 @@ export default function ClientesPage() {
           </p>
           {!search && filter === 'todos' && (
             <Btn onClick={() => setShowModal(true)} className="mt-4 mx-auto">
-              <UserPlus className="w-4 h-4" /> Cadastrar primeiro cliente
+              <UserPlus className="w-4 h-4" /> Cadastrar primeiro paciente
             </Btn>
           )}
           {(search || filter !== 'todos') && (

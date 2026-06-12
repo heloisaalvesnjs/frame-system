@@ -7,12 +7,12 @@ import {
   Calendar,
   ChevronsLeft,
   Clock,
-  CreditCard,
   LayoutDashboard,
   Lock,
   LogOut,
   MessageSquare,
   Moon,
+  Palette,
   Plug,
   Plus,
   Settings,
@@ -47,7 +47,6 @@ const groups: Array<{
     label: 'Operação',
     items: [
       { href: '/treinamento', label: 'Assistente IA', icon: Sparkles },
-      { href: '/servicos', label: 'Planos', icon: CreditCard },
       { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
       { href: '/equipe', label: 'Equipe', icon: UserCog },
       { href: '/integracoes', label: 'Integrações', icon: Plug },
@@ -56,6 +55,7 @@ const groups: Array<{
   {
     label: 'Workspace',
     items: [
+      { href: '/design-system', label: 'Design System', icon: Palette },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },
@@ -237,14 +237,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             {group.items.map(item => (
               <NavLink key={item.href} {...item} onClick={onClose} />
             ))}
+            {group.label === 'Workspace' && (user as any)?.is_master && (
+              <NavLink href="/admin" label="Admin" icon={Shield} onClick={onClose} />
+            )}
           </div>
         ))}
-
-        {(user as any)?.is_master && (
-          <div className="mt-2 border-t border-white/[0.06] pt-2">
-            <NavLink href="/admin" label="Admin" icon={Shield} onClick={onClose} />
-          </div>
-        )}
       </nav>
 
       <div className="px-3 pb-3">

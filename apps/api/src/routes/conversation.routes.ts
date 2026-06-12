@@ -14,7 +14,11 @@ export async function conversationRoutes(app: FastifyInstance) {
 
     let sql = `
       SELECT c.*,
+        cl.id as client_id,
         cl.name as client_name,
+        cl.goal as client_goal,
+        cl.email as client_email,
+        cl.created_at as client_since,
         (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY sent_at DESC LIMIT 1) as last_message
       FROM conversations c
       LEFT JOIN clients cl ON cl.phone = c.client_phone AND cl.nutritionist_id = c.nutritionist_id

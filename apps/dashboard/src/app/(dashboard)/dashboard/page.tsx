@@ -6,11 +6,23 @@ import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
+  Line,
+  LineChart,
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
+import {
   ArrowRight,
   Bot,
   CalendarDays,
   Clock,
   Clock3,
+  Download,
   MessageCircle,
   Sparkles,
   TrendingUp,
@@ -21,6 +33,33 @@ import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { Card, SectionTitle, Badge, KPI, Btn, Avatar } from '@/components/ui/finance-primitives'
+
+const revenueSample = [
+  { m: 'Jan', r: 12840, c: 1820 },
+  { m: 'Fev', r: 13120, c: 1910 },
+  { m: 'Mar', r: 14380, c: 2040 },
+  { m: 'Abr', r: 15690, c: 2110 },
+  { m: 'Mai', r: 15940, c: 2230 },
+  { m: 'Jun', r: 16842, c: 2312 },
+]
+
+const aiActivitySample = [
+  { h: '08h', v: 12 },
+  { h: '10h', v: 28 },
+  { h: '12h', v: 19 },
+  { h: '14h', v: 34 },
+  { h: '16h', v: 41 },
+  { h: '18h', v: 22 },
+  { h: '20h', v: 9 },
+]
+
+const tooltipStyle = {
+  background: 'var(--surface)',
+  border: '1px solid var(--line-2)',
+  borderRadius: 10,
+  fontSize: 12,
+  color: 'var(--t1)',
+}
 
 interface Metrics {
   total_leads: number
@@ -283,6 +322,37 @@ function SkeletonGrid() {
   )
 }
 
+function PageHeader() {
+  const dateLabel = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'America/Sao_Paulo',
+  })
+  const displayDate = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
+
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
+          Visão Geral
+        </h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>{displayDate}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Btn variant="secondary" size="sm">
+          <Clock3 className="h-3.5 w-3.5" />
+          Últimos 7 dias
+        </Btn>
+        <Btn variant="outline" size="sm">
+          <Download className="h-3.5 w-3.5" />
+          Exportar
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
 
@@ -324,6 +394,7 @@ export default function DashboardPage() {
   return (
     <main className="px-6 py-6">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+        <PageHeader />
         <Hero userName={user?.name?.split(' ')[0]} />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -355,6 +426,39 @@ export default function DashboardPage() {
           )}
         </section>
 
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <SectionTitle title="Receita" hint="Receita x custo de aquisicao (ilustrativo)" />
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueSample} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line-1)" vertical={false} />
+                  <XAxis dataKey="m" stroke="var(--t3)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--t3)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="r" name="Receita" stroke="var(--brand)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--brand)' }} />
+                  <Line type="monotone" dataKey="c" name="CAC" stroke="var(--info)" strokeWidth={2} dot={{ r: 3, fill: 'var(--info)' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle title="Performance da IA" hint="Mensagens respondidas por hora (ilustrativo)" />
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={aiActivitySample} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line-1)" vertical={false} />
+                  <XAxis dataKey="h" stroke="var(--t3)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--t3)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="v" name="Mensagens" fill="var(--brand)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </section>
+
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <SectionTitle
@@ -375,7 +479,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-4">
             <Card>
               <SectionTitle
-                title="Agenda de hoje"
+                title="Próximas consultas"
                 action={
                   <Link href="/agenda">
                     <Btn variant="ghost" size="sm">

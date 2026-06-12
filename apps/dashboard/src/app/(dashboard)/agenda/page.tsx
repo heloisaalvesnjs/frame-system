@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Btn } from '@/components/ui/finance-primitives'
+import { Btn, KPI } from '@/components/ui/finance-primitives'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -778,6 +778,10 @@ export default function AgendaPage() {
   const weekRangeLabel = `${format(weekStart, "d 'de' MMM", { locale: ptBR })} – ${format(weekEnd, "d 'de' MMM yyyy", { locale: ptBR })}`
   const isCurrentWeek = isSameDay(weekStart, startOfWeek(today, { weekStartsOn: 1 }))
   const todayCount = appointments.filter(a => isToday(parseISO(a.scheduled_at)) && a.status !== 'cancelled').length
+  const weekTotal = appointments.filter(a => a.status !== 'cancelled').length
+  const weekConfirmed = appointments.filter(a => a.status === 'confirmed').length
+  const weekCancelled = appointments.filter(a => a.status === 'cancelled').length
+  const weekCompleted = appointments.filter(a => a.status === 'completed').length
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
@@ -790,6 +794,14 @@ export default function AgendaPage() {
             {format(today, 'MMMM yyyy', { locale: ptBR })} · {todayCount} consulta{todayCount !== 1 ? 's' : ''} hoje
           </p>
         </div>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-6 pb-4 flex-shrink-0">
+        <KPI label="Consultas na semana" value={String(weekTotal)} hint={weekRangeLabel} />
+        <KPI label="Confirmadas" value={String(weekConfirmed)} hint={`de ${weekTotal} agendadas`} />
+        <KPI label="Realizadas" value={String(weekCompleted)} hint="concluídas nesta semana" />
+        <KPI label="Canceladas" value={String(weekCancelled)} hint="nesta semana" />
       </div>
 
     <div className="flex flex-1 overflow-hidden">
