@@ -1,8 +1,16 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('surface p-5', className)}>{children}</div>
+export function Card({
+  className,
+  children,
+  hover = false,
+}: {
+  className?: string
+  children: ReactNode
+  hover?: boolean
+}) {
+  return <div className={cn('surface p-5', hover && 'card-hover', className)}>{children}</div>
 }
 
 export function SectionTitle({
@@ -28,9 +36,11 @@ export function SectionTitle({
 export function Badge({
   children,
   variant = 'default',
+  dot = false,
 }: {
   children: ReactNode
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple'
+  dot?: boolean
 }) {
   const styles: Record<string, string> = {
     default: 'border-white/[0.06] bg-white/[0.05] text-t2',
@@ -40,9 +50,18 @@ export function Badge({
     info: 'border-[var(--info)]/20 bg-[var(--info)]/10 text-[var(--info)]',
     purple: 'border-[var(--purple)]/20 bg-[var(--purple)]/10 text-[var(--purple)]',
   }
+  const dotStyles: Record<string, string> = {
+    default: 'bg-t3',
+    success: 'bg-[var(--brand)]',
+    warning: 'bg-[var(--warning)]',
+    danger: 'bg-[var(--danger)]',
+    info: 'bg-[var(--info)]',
+    purple: 'bg-[var(--purple)]',
+  }
 
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-medium', styles[variant])}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10.5px] font-medium', styles[variant])}>
+      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotStyles[variant])} />}
       {children}
     </span>
   )
@@ -90,10 +109,10 @@ export function Btn({
 }) {
   const variants: Record<string, string> = {
     primary:
-      'bg-[var(--brand)] text-[#02140C] hover:bg-[var(--brand-h)] shadow-[0_0_0_1px_var(--brand-ring),0_8px_24px_-12px_rgba(0,194,124,0.5)]',
-    secondary: 'border border-[var(--line-2)] bg-white/[0.06] text-t1 hover:bg-white/[0.09]',
-    ghost: 'text-t2 hover:bg-white/[0.04] hover:text-t1',
-    outline: 'border border-[var(--line-2)] text-t1 hover:border-[var(--line-3)] hover:bg-white/[0.04]',
+      'btn-gradient text-[#02140C] shadow-[0_0_0_1px_var(--brand-ring),0_8px_24px_-12px_rgba(0,194,124,0.5)]',
+    secondary: 'border border-[var(--border)] bg-[var(--raised)] text-t1 hover:bg-[var(--surface)]',
+    ghost: 'text-t2 hover:bg-[var(--raised)] hover:text-t1',
+    outline: 'border border-[var(--border)] text-t1 hover:border-[var(--line-3)] hover:bg-[var(--raised)]',
   }
   const sizes: Record<string, string> = {
     sm: 'h-7 px-2.5 text-[12px]',
@@ -141,7 +160,7 @@ export function Avatar({
 
   return (
     <div
-      className={cn('grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold text-white', gradients[color])}
+      className={cn('grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold text-white ring-2 ring-[var(--surface)] shadow-sm', gradients[color])}
       style={{ width: size, height: size, fontSize: size * 0.36 }}
     >
       {initials}

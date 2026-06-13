@@ -166,7 +166,7 @@ function Hero({ userName, metrics }: { userName?: string; metrics?: Metrics | nu
             {newLeads > 0 ? (
               <>
                 Sua clinica recebeu{' '}
-                <span style={{ color: 'var(--brand)' }}>{newLeads} {newLeads === 1 ? 'novo lead' : 'novos leads'}</span>{' '}
+                <span className="gradient-brand-text">{newLeads} {newLeads === 1 ? 'novo lead' : 'novos leads'}</span>{' '}
                 esta semana.
               </>
             ) : (

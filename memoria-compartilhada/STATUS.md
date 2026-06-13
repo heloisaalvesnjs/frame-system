@@ -132,20 +132,81 @@
   ja portado na etapa anterior) mantidas inalteradas abaixo do novo grid.
   `npx tsc --noEmit` e `npm run build` ok (39 rotas). Sem verificacao visual
   no preview (requer login) nem commit/push.
-- **Bloqueado/aguardando**: aguardando a Heloisa revisar os screenshots e
+- **Ultima atividade**: 2026-06-13 - a Heloisa aprovou o mockup
+  `frame-system-lovable-light-v4-claude.html` (refinamento V4 a partir do
+  V3 do Codex) e pediu para portar tudo para o sistema real, escolhendo
+  explicitamente a opcao "Tudo, incluindo schema novo". Trabalho concluido
+  nesta sessao:
+  - **Polimento visual V4** em `globals.css` (scrollbar mais grossa +
+    `background-clip: content-box`; novas utilities `.card-hover`,
+    `.btn-gradient`, `.table-row-hover`), `finance-primitives.tsx` (`Card`
+    com prop `hover` -> `.card-hover`; `Badge` agora pill-shaped com prop
+    `dot`; `Btn` primary usa `.btn-gradient`; `Avatar` com ring/shadow) e
+    `Sidebar.tsx` (item ativo ganhou barra lateral em gradiente, alem do
+    dot existente).
+  - **Nova pagina `/oportunidades`** (Kanban de funil comercial), com 6
+    colunas (Novos contatos / Em atendimento / Qualificados / Avaliando /
+    Agendamento pendente / Consulta marcada), busca por nome/objetivo,
+    filtro por origem, e botoes de mover etapa (anterior/proxima) por card
+    - tudo com dados reais via nova API. Adicionada ao `Sidebar.tsx` (icone
+    `Target`, entre Conversas e Clientes) e ao `PAGE_TITLES` de
+    `TopBar.tsx`.
+  - **Schema novo** (`apps/api/src/db/schema.sql`, `ALTER TABLE clients ADD
+    COLUMN IF NOT EXISTS`): `stage` (TEXT, default `'novo_contato'`,
+    valores: `novo_contato | em_atendimento | qualificado | avaliando |
+    agendamento_pendente | consulta_marcada | perdido`), `source` (TEXT,
+    origem do contato), `estimated_value` (NUMERIC(10,2)),
+    `stage_updated_at` (TIMESTAMPTZ default NOW()) + indice
+    `idx_clients_stage`. **Ainda nao aplicado no banco de producao** -
+    precisa rodar a migration (`migrate.ts`) quando fizer o deploy.
+  - **API nova** em `apps/api/src/routes/client.routes.ts` (sem novo
+    registro em `server.ts`, reaproveita prefixo `/api/clients`):
+    `GET /api/clients/opportunities` (lista clientes com
+    stage/source/estimated_value/stage_updated_at, exclui `perdido`) e
+    `PATCH /api/clients/:clientId/stage` (Zod enum dos 7 estagios, atualiza
+    `stage` + `stage_updated_at`).
+  - `npx tsc --noEmit` (api e dashboard) e `npm run build` (dashboard, 40
+    rotas incluindo `/oportunidades`) ok.
+  - **Nota importante para o Codex**: o gap analysis de 2026-06-11
+    (`MEMORY.md`) listava "CRM de pacientes/leads com status/funil" como
+    pendencia do Codex (infra/CRM). A Heloisa decidiu explicitamente que o
+    Claude Code faria essa parte agora (opcao "Tudo, incluindo schema
+    novo"). As novas colunas `stage`/`source`/`estimated_value`/
+    `stage_updated_at` em `clients` e a rota `/api/clients/opportunities` +
+    `/api/clients/:clientId/stage` ja existem - se o Codex for trabalhar em
+    CRM/funil, usar essa base em vez de criar um esquema paralelo.
+- **Bloqueado/aguardando**: aguardando a Heloisa revisar (preview/prints) e
   confirmar antes do commit/push (ela pediu para nao aceitar erros desta
-  vez). Nenhuma das mudancas (minhas + Codex + redesign do dashboard/
-  conversas/agenda/automacoes/treinamento/disponibilidade) foi
-  commitada/enviada ainda.
+  vez). Nenhuma das mudancas acumuladas (minhas + Codex + redesign do
+  dashboard/conversas/agenda/automacoes/treinamento/disponibilidade + V4 +
+  oportunidades) foi commitada/enviada ainda.
 
 ## Codex
 
-- **Ultima atividade**: 2026-06-11 - assumiu o port Lovable/PDF apos
-  autorizacao da Heloisa e aplicou ajustes finais em configuracoes,
-  integracoes, clientes, equipe, agenda e conversas; build passou (39 rotas).
-- **Em andamento**: 2026-06-12 - correcao final de fidelidade Lovable/Frame
-  Vision nas telas do dashboard, com foco em modo claro, conversas, agenda,
-  clientes, automacoes, assistente, equipe, integracoes e configuracoes.
+- **Ultima atividade**: 2026-06-13 - avaliou o arquivo
+  `frame-system-lovable-light-v2.html` enviado pela Heloisa como referencia
+  visual light-first: proposta forte para direcao premium, mas ainda em HTML
+  estatico com CSS duplicado e encoding quebrado; recomendado usar como fonte
+  visual, nao como codigo direto de producao.
+- **Ultima atividade**: 2026-06-13 - criou
+  `frame-system-visual-direction-2026-06-13.html`, arquivo HTML de referencia
+  visual com paleta `#013F32/#E7FE25/#FDFDFD/#161616`, tema claro priorizado,
+  dark mode consistente e telas de Painel, Conversas, Agenda, Assistente,
+  Automacoes e Configuracoes.
+- **Ultima atividade**: 2026-06-13 - criou
+  `frame-system-lovable-light-v3-refinado.html` a partir do HTML Lovable
+  Light V2 enviado pela Heloisa, mantendo a estrutura original e aplicando
+  camada visual refinada com a paleta Frame original, fonte simples e pesos
+  menores.
+- **Ultima atividade**: 2026-06-13 - refinou o V3 apos prints da Heloisa:
+  adicionou camada V3.1 com icones SVG lineares, cores secundarias menos
+  apagadas, graficos mais robustos, pesos de fonte mais suaves e correcao de
+  mojibake no arquivo.
+- **Ultima atividade**: 2026-06-12 - alinhou a base visual do dashboard
+  para a direcao light-first premium (Inter como fonte principal, default
+  do tema em light e tokens/paleta atualizados), validou com `npm run build`
+  em `apps/dashboard` e capturou o preview do redesign com sucesso.
+- **Em andamento**: nada no momento.
 - **Bloqueado/aguardando**: nada no momento.
 
 ---

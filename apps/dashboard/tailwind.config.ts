@@ -49,7 +49,7 @@ const config: Config = {
       },
       fontFamily: {
         sans:    ['Inter', 'sans-serif'],
-        display: ['"Bricolage Grotesque"', 'sans-serif'],
+        display: ['Inter', 'sans-serif'],
         mono:    ['"DM Mono"', 'monospace'],
       },
       boxShadow: {

@@ -12,12 +12,14 @@ import {
   LogOut,
   MessageSquare,
   Moon,
+  Palette,
   Plug,
   Plus,
   Settings,
   Shield,
   Sparkles,
   Sun,
+  Target,
   User,
   UserCog,
   Users,
@@ -37,6 +39,7 @@ const groups: Array<{
       { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
       { href: '/conversas', label: 'Conversas', icon: MessageSquare },
       { href: '/agenda', label: 'Agenda', icon: Calendar },
+      { href: '/oportunidades', label: 'Oportunidades', icon: Target },
       { href: '/clientes', label: 'Clientes', icon: Users },
       { href: '/financeiro', label: 'Financeiro', icon: Wallet },
       { href: '/followup', label: 'Automações', icon: Workflow },
@@ -54,6 +57,7 @@ const groups: Array<{
   {
     label: 'Workspace',
     items: [
+      { href: '/design-system', label: 'Design System', icon: Palette },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },
@@ -90,10 +94,16 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cn(
-        'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-all duration-150',
-        active ? 'bg-white/[0.06] text-t1' : 'text-t2 hover:bg-white/[0.04] hover:text-t1',
+        'group relative flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-all duration-150',
+        active ? 'bg-white/[0.06] text-t1' : 'text-t2 hover:bg-white/[0.04] hover:text-t1 hover:translate-x-px',
       )}
     >
+      {active && (
+        <span
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full"
+          style={{ background: 'linear-gradient(180deg, var(--brand-h), var(--brand))' }}
+        />
+      )}
       <Icon
         className={cn(
           'h-[15px] w-[15px] shrink-0 transition-colors',

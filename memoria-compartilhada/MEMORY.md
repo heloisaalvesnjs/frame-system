@@ -12,6 +12,10 @@
 - Design system "Calm Pro" â€” tokens CSS em `apps/dashboard/src/app/globals.css`
   (`--bg`, `--surface`, `--t1/2/3`, `--brand`, etc.) + `tailwind.config.ts`
   (tokens semÃ¢nticos: `bg`, `surface`, `raised`, `border`, `t1`, `t2`, `t3`).
+- DireÃ§Ã£o visual atual do produto: light-first premium para nutriÃ§Ã£o
+  (`#F4F5F0`/`#FFFFFF`/`#FAFBF8`), com `Inter` como tipografia principal,
+  verde apenas como acento funcional e o tema escuro ficando apenas como
+  opÃ§Ã£o manual.
 - Header padrÃ£o de pÃ¡gina:
   `<h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>`
   + `<p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>`.
@@ -353,3 +357,43 @@ anteriormente): `clientes`, `perfil`, `equipe`, `admin`, `seguranca`,
 **nao** foram alterados (decisao 2026-06-10). Ainda sem commit/push -
 aguardando `npm run build` + confirmacao da Heloisa para deploy (push =
 Vercel).
+
+## 2026-06-13 - Mockup V4 aprovado, port completo (visual + Oportunidades + schema)
+
+A Heloisa aprovou `frame-system-lovable-light-v4-claude.html` (refinamento V4
+do Claude Code a partir do V3 do Codex) e pediu para portar "tudo" para o
+sistema real. Perguntada sobre o escopo, escolheu explicitamente a opcao
+**"Tudo, incluindo schema novo"**.
+
+**Mudanca de convencao/decisao importante**: o gap analysis de 2026-06-11
+listava "CRM de pacientes/leads com status/funil" (`clients` sem
+`status`/funil/`source`/tags) como pendencia do **Codex** (infra/CRM). Com
+essa nova decisao da Heloisa, o **Claude Code implementou essa parte**:
+
+- Novas colunas em `clients` (additive, `ALTER TABLE ... ADD COLUMN IF NOT
+  EXISTS` em `apps/api/src/db/schema.sql`): `stage` (TEXT, default
+  `'novo_contato'`, valores `novo_contato | em_atendimento | qualificado |
+  avaliando | agendamento_pendente | consulta_marcada | perdido`), `source`
+  (TEXT, origem do contato), `estimated_value` (NUMERIC(10,2)),
+  `stage_updated_at` (TIMESTAMPTZ default NOW()) + indice
+  `idx_clients_stage`. **Ainda nao aplicado no banco** - precisa rodar a
+  migration no deploy.
+- Novas rotas em `apps/api/src/routes/client.routes.ts` (prefixo existente
+  `/api/clients`, sem novo registro em `server.ts`): `GET
+  /api/clients/opportunities` (lista para o Kanban, exclui `perdido`) e
+  `PATCH /api/clients/:clientId/stage` (Zod enum dos 7 estagios).
+- Nova pagina `/oportunidades` (Kanban de 6 colunas, busca, filtro por
+  origem, mover etapa anterior/proxima por card), adicionada ao `Sidebar`
+  (icone `Target`) e ao `PAGE_TITLES` do `TopBar`.
+- Polimento visual V4 em `globals.css` (scrollbar, `.card-hover`,
+  `.btn-gradient`, `.table-row-hover`), `finance-primitives.tsx` (`Card`
+  prop `hover`, `Badge` pill com `dot`, `Btn` primary com gradiente,
+  `Avatar` com ring/shadow) e `Sidebar` (indicador ativo em barra lateral
+  gradiente).
+
+**Para o Codex**: se for trabalhar em CRM/funil de leads, a base
+(`clients.stage/source/estimated_value/stage_updated_at` +
+`/api/clients/opportunities` + `/api/clients/:clientId/stage`) ja existe -
+nao criar um esquema paralelo. `npx tsc --noEmit` (api e dashboard) e `npm
+run build` (dashboard, 40 rotas) ok. Sem commit/push - aguardando revisao e
+confirmacao da Heloisa.

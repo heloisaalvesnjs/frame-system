@@ -6,6 +6,63 @@
 
 ---
 
+## 2026-06-13 - Claude Code (port V4 + Oportunidades + schema de funil)
+
+- Polimento visual V4 (a partir de `frame-system-lovable-light-v4-claude.html`,
+  aprovado pela Heloisa): `globals.css` (scrollbar mais grossa, novas
+  utilities `.card-hover`/`.btn-gradient`/`.table-row-hover`),
+  `finance-primitives.tsx` (`Card` com prop `hover`, `Badge` pill com prop
+  `dot`, `Btn` primary com `.btn-gradient`, `Avatar` com ring/shadow) e
+  `Sidebar.tsx` (item ativo com barra lateral em gradiente).
+- Nova pagina `/oportunidades` (Kanban de funil: Novos contatos / Em
+  atendimento / Qualificados / Avaliando / Agendamento pendente / Consulta
+  marcada), com busca, filtro por origem e botoes de mover etapa por card.
+  Adicionada ao `Sidebar` (icone `Target`) e ao `PAGE_TITLES` do `TopBar`.
+- Schema novo em `clients` (`stage`, `source`, `estimated_value`,
+  `stage_updated_at` + indice `idx_clients_stage`) via `ALTER TABLE ... ADD
+  COLUMN IF NOT EXISTS` em `apps/api/src/db/schema.sql` - ainda nao aplicado
+  no banco de producao.
+- API nova em `apps/api/src/routes/client.routes.ts`: `GET
+  /api/clients/opportunities` e `PATCH /api/clients/:clientId/stage`.
+- Decisao registrada em `MEMORY.md`: essa parte do CRM/funil, antes listada
+  como pendencia do Codex, foi feita pelo Claude Code a pedido explicito da
+  Heloisa ("Tudo, incluindo schema novo").
+- `npx tsc --noEmit` (api e dashboard) e `npm run build` (dashboard, 40
+  rotas) ok. Sem commit/push - aguardando revisao da Heloisa.
+
+## 2026-06-12 - Codex (base visual light-first)
+
+- Atualizou a base visual do dashboard para a direcao light-first premium
+  pedida pela Heloisa:
+  - `apps/dashboard/src/app/globals.css`: removeu Bricolage do import,
+    manteve Inter + DM Mono e redefiniu `.font-display` para usar Inter.
+  - `apps/dashboard/tailwind.config.ts`: `fontFamily.display` passou a ser
+    Inter, alinhando toda a hierarquia tipografica ao novo briefing.
+  - `apps/dashboard/src/contexts/ThemeContext.tsx`: o tema padrao agora
+    nasce em `light`, sem herdar dark salvo; o tema escuro fica como opcao
+    manual.
+  - `apps/dashboard/src/components/ui/finance-primitives.tsx`: botoes
+    secundarios/ghost/outline ficaram mais leves e coerentes com a nova
+    paleta.
+  - `apps/dashboard/src/app/(dashboard)/design-system/page.tsx`: mostra a
+    paleta oficial light (#F4F5F0/#FFFFFF/#FAFBF8/#E5E7E2) e a tipografia
+    Inter.
+- Validacao: `npm.cmd run build` em `apps/dashboard` passou (40 rotas) e o
+  preview local `http://localhost:3000/preview-dashboard` foi capturado com
+  sucesso no novo tema.
+
+## 2026-06-12 - Codex
+
+- Heloisa mudou a direcao da discussao de "corrigir novamente o design no
+  Next atual" para avaliar "usar o Lovable como interface" para reduzir
+  retrabalho de design.
+- Codex leu a memoria atualizada e encontrou entrada do Claude Code sobre
+  auditoria do modo claro: Claude revisou as paginas no preview, corrigiu
+  mojibake em `treinamento`/`followup`, ajustou filtros de `conversas`,
+  reverteu mocks temporarios e validou `npx tsc --noEmit` + `npm run build`.
+- Estado local verificado: apenas `memoria-compartilhada/STATUS.md` modificado
+  por Codex; nenhuma mudanca de codigo aparecendo em `git status`.
+
 ## 2026-06-12 - Claude Code (auditoria modo claro)
 
 - A Heloisa enviou print do dashboard em modo claro classificando como
@@ -102,6 +159,54 @@
   Vision.zip` do Lovable e copia visual fiel, com sidebar 240px, topbar 56px,
   busca central, white-alpha surfaces/hover states e microdetalhes do
   Lovable, preservando apenas a logica/funcionamento real por baixo.
+
+## 2026-06-13 - Codex
+
+- Refinou `frame-system-lovable-light-v3-refinado.html` apos feedback visual
+  da Heloisa nos prints.
+- Ajustes: substituiu simbolos/emoji-like em cards, automacoes, insights e
+  locais por SVGs lineares; suavizou pesos de fonte restantes; ajustou avatares
+  e tags para cores mais alinhadas a paleta Frame; melhorou os graficos de
+  relatorios com grid, maior altura, barras mais robustas e linha mais
+  consistente; removeu mojibake do arquivo.
+- Mantida a base do mockup Lovable Light V2, sem criar outra estrutura.
+
+## 2026-06-13 - Codex
+
+- Apos feedback da Heloisa de que o arquivo anterior ficou chamativo demais,
+  voltou para a abordagem correta: usar o HTML Lovable Light V2 enviado como
+  base e criar `frame-system-lovable-light-v3-refinado.html`.
+- O novo arquivo preserva a estrutura/telas do mockup original e aplica uma
+  camada final de CSS com paleta Frame original
+  (`#0B0C0E`, `#141618`, `#1E2124`, `#00C27C`, `#00E892`, `#0B2E1E`,
+  `#F4F5F0`, `#6B7280`), tipografia simples (`Inter`, fallback `Open Sans`/
+  `Montserrat`) e pesos principais reduzidos para 400/500/600.
+- O arquivo anterior `frame-system-visual-direction-2026-06-13.html` deve ser
+  tratado como rejeitado/fora da direcao atual.
+
+## 2026-06-13 - Codex
+
+- Criou `frame-system-visual-direction-2026-06-13.html` como novo arquivo
+  standalone de referencia visual, inspirado nas 10 imagens enviadas pela
+  Heloisa.
+- Direcao aplicada: tema claro como padrao, dark mode consistente, sidebar
+  verde profunda, acento lime `#E7FE25`, estrutura premium SaaS com cards
+  densos, chips/status com glow controlado, agenda semanal, inbox com painel
+  de contexto, assistente, automacoes e pagina de paleta/configuracoes.
+- Paleta registrada para avaliacao: `#013F32`, `#E7FE25`, `#FDFDFD` e
+  `#161616`. O arquivo e referencia visual, nao substitui ainda o app Next.
+
+## 2026-06-13 - Codex
+
+- Avaliou o arquivo `frame-system-lovable-light-v2.html` enviado pela Heloisa.
+- Conclusao: e uma referencia visual melhor alinhada ao pedido atual
+  (light-first premium, denso, operacional, com telas completas de dashboard,
+  caixa de entrada, oportunidades, agenda, pacientes, assistente, automacoes,
+  disponibilidade/servicos, relatorios e configuracoes).
+- Ressalvas: o HTML esta estatico, tem camadas de CSS duplicadas/reescritas e
+  varios textos com mojibake/encoding quebrado; deve ser usado como fonte de
+  layout, tokens e hierarquia visual, nao colado diretamente no app Next sem
+  portar para componentes reais e dados reais.
 
 ## 2026-06-11 - Claude Code
 

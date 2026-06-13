@@ -550,3 +550,17 @@ CREATE TABLE IF NOT EXISTS google_calendar_connections (
   created_at        TIMESTAMP DEFAULT NOW(),
   updated_at        TIMESTAMP DEFAULT NOW()
 );
+
+-- ── Funil de oportunidades (pipeline comercial) ──
+-- stage: etapa do funil de cada cliente/lead
+--   novo_contato | em_atendimento | qualificado | avaliando |
+--   agendamento_pendente | consulta_marcada | perdido
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS stage TEXT DEFAULT 'novo_contato';
+-- source: origem do contato (ex: 'Site', 'Instagram', 'Indicação', 'WhatsApp')
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS source TEXT;
+-- estimated_value: valor estimado da oportunidade (preenchido a partir do serviço de interesse)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS estimated_value NUMERIC(10,2);
+-- stage_updated_at: quando a etapa mudou pela última vez (usado para "há X min/h" no Kanban)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS stage_updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_clients_stage ON clients(nutritionist_id, stage);

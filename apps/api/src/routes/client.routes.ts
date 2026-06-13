@@ -45,6 +45,62 @@ export async function clientRoutes(app: FastifyInstance) {
     return reply.send({ clients })
   })
 
+  // GET /api/clients/opportunities — lista clientes agrupados por estágio do funil
+  app.get('/opportunities', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const opportunities = await query(
+      `
+      SELECT
+        cl.id,
+        cl.name,
+        cl.phone,
+        cl.goal,
+        cl.stage,
+        cl.source,
+        cl.estimated_value::text AS estimated_value,
+        cl.stage_updated_at,
+        cl.created_at
+      FROM clients cl
+      WHERE cl.nutritionist_id = $1
+        AND COALESCE(cl.stage, 'novo_contato') != 'perdido'
+      ORDER BY cl.stage_updated_at DESC NULLS LAST
+      `,
+      [id]
+    )
+    return reply.send({ opportunities })
+  })
+
+  // PATCH /api/clients/:clientId/stage — move o cliente para outra etapa do funil
+  app.patch('/:clientId/stage', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const schema = z.object({
+      stage: z.enum([
+        'novo_contato',
+        'em_atendimento',
+        'qualificado',
+        'avaliando',
+        'agendamento_pendente',
+        'consulta_marcada',
+        'perdido',
+      ]),
+    })
+    const { stage } = schema.parse(request.body)
+
+    const client = await queryOne<any>(
+      `UPDATE clients
+       SET stage = $1, stage_updated_at = NOW()
+       WHERE id = $2 AND nutritionist_id = $3
+       RETURNING id, name, stage, stage_updated_at`,
+      [stage, clientId, nutritionistId]
+    )
+
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+    return reply.send({ client })
+  })
+
   // POST /api/clients — cadastrar cliente manualmente
   app.post('/', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user
