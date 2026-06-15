@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Btn, KPI } from '@/components/ui/finance-primitives'
+import { V4Page, V4Card, V4CardPad, V4Button, V4Metric, V4Tag } from '@/components/v4/V4Primitives'
 
 // ═══════════════════════════════════════════════════════
 // Shared helpers
@@ -38,24 +39,19 @@ function SectionCard({ title, subtitle, icon, children }: {
   title: string; subtitle?: string; icon?: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-    >
-      <div className="card-header">
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--raised)' }}>
-              {icon}
-            </div>
-          )}
-          <div>
-            <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
-            {subtitle && <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{subtitle}</p>}
+    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+        {icon && (
+          <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0 bg-[var(--raised)]">
+            {icon}
           </div>
+        )}
+        <div>
+          <p className="text-[13px] font-medium text-t1">{title}</p>
+          {subtitle && <p className="text-[11.5px] text-t3">{subtitle}</p>}
         </div>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   )
 }
@@ -1771,94 +1767,82 @@ export default function TreinamentoPage() {
   })
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-6">
-
-      {/* Header */}
-      <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>
-          Assistente IA
-        </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
-          Configure o treinamento, personalidade e horários da sua assistente
-        </p>
-      </div>
-
-      <div
-        className="relative overflow-hidden rounded-2xl border border-[var(--line-1)] p-6"
-        style={{ background: 'radial-gradient(120% 80% at 90% 0%, rgba(0,194,124,0.10) 0%, rgba(0,194,124,0) 50%), var(--bg-elevated)' }}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#00C27C] to-[#00E892] shadow-[0_8px_24px_-8px_rgba(0,194,124,0.6)]">
-              <Brain className="h-6 w-6 text-[#02140C]" strokeWidth={2} />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[20px] font-semibold tracking-tight text-t1">Modelo Frame · v3.2</h2>
-                <span className="inline-flex items-center gap-1 rounded-md border border-[var(--brand-ring)] bg-[var(--brand-s)] px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--brand)]">
-                  <CheckCircle className="h-2.5 w-2.5" /> Em produção
-                </span>
-              </div>
-              <p className="mt-1 max-w-2xl text-[13px] text-t2">
-                Treinado com o manual do consultorio, regras de atendimento, conversas de teste e automacoes reais. Ultima atualizacao sincronizada com a sua configuracao atual.
-              </p>
-            </div>
+    <V4Page
+      eyebrow="Configuração"
+      title="Assistente IA"
+      subtitle="Configure o treinamento, personalidade e horários da sua assistente."
+      actions={
+        <V4Button onClick={() => setTrainingTab('testar')}>
+          <PlayCircle className="h-4 w-4" />Testar no playground
+        </V4Button>
+      }
+    >
+      {/* Banner do modelo */}
+      <V4CardPad className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--brand-s)] text-[var(--brand)]">
+            <Brain className="h-5 w-5" strokeWidth={1.75} />
           </div>
-          <Btn variant="secondary" size="sm" onClick={() => setTrainingTab('testar')}>
-            Testar no playground
-          </Btn>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[14px] font-medium text-t1">Modelo Frame · v3.2</h2>
+              <V4Tag tone="green" dot>Em produção</V4Tag>
+            </div>
+            <p className="mt-1 max-w-2xl text-[12.5px] leading-5 text-t3">
+              Treinado com o manual do consultório, regras de atendimento, conversas de teste e automações reais. Última atualização sincronizada com a sua configuração atual.
+            </p>
+          </div>
         </div>
-      </div>
+      </V4CardPad>
 
       {/* Performance da IA */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <KPI label="Conversas ativas" value={String(convStats?.active ?? 0)} hint="aguardando resposta" />
-        <KPI label="Agendamentos via IA" value={String(convStats?.agendou ?? 0)} hint="total" />
-        <KPI label="Vendas via IA" value={String(convStats?.comprou ?? 0)} hint="total" />
-        <KPI label="Mensagens enviadas pela IA" value={String(convStats?.ai_messages ?? 0)} hint="total" />
-      </div>
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <V4Metric label="Conversas ativas" value={convStats?.active ?? 0} foot="Aguardando resposta" />
+        <V4Metric label="Agendamentos via IA" value={convStats?.agendou ?? 0} foot="Total" tone="good" />
+        <V4Metric label="Vendas via IA" value={convStats?.comprou ?? 0} foot="Total" tone="good" />
+        <V4Metric label="Mensagens enviadas pela IA" value={convStats?.ai_messages ?? 0} foot="Total" />
+      </section>
 
       {/* IA Power */}
       <AIPowerToggle />
 
       {/* Base de conhecimento + Configurações da assistente */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Base de conhecimento */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
-        >
-          <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div className="flex items-center gap-2.5 mb-3">
-              <BookOpen className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />
+        <V4Card className="overflow-hidden">
+          <div className="border-b border-[var(--border)] p-4">
+            <div className="mb-3 flex items-center gap-2.5">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[var(--raised)] text-[var(--brand)]">
+                <BookOpen className="h-4 w-4" strokeWidth={1.75} />
+              </div>
               <div>
-                <h3 className="text-[14px] font-semibold text-t1">Base de conhecimento</h3>
-                <p className="text-[12px] text-t3">Treinamento, automações e teste de atendimento</p>
+                <h3 className="text-[13px] font-medium text-t1">Base de conhecimento</h3>
+                <p className="text-[11.5px] text-t3">Treinamento, automações e teste de atendimento</p>
               </div>
             </div>
-            <div className="flex gap-0.5 overflow-x-auto -mb-3">
+            <div className="flex gap-0.5 overflow-x-auto">
               {TRAINING_TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setTrainingTab(id)}
-                  className="flex items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-mono border-b-2 transition-all duration-150 -mb-px whitespace-nowrap tracking-wide"
+                  className="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-[12px] font-medium transition"
                   style={{
                     borderColor: trainingTab === id ? 'var(--brand)' : 'transparent',
                     color: trainingTab === id ? 'var(--brand)' : 'var(--t3)',
                   }}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="h-3.5 w-3.5" />
                   {label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="px-6 py-6">
+          <div className="p-4">
             {trainingTab === 'manual'     && <ManualSection />}
             {trainingTab === 'automacoes' && <AutomacoesSection />}
             {trainingTab === 'testar'     && <TestarAtendimentoSection />}
           </div>
-        </div>
+        </V4Card>
 
         {/* Configurações da Assistente */}
         <SectionCard
@@ -1868,7 +1852,7 @@ export default function TreinamentoPage() {
         >
           <TabAssistente />
         </SectionCard>
-      </div>
+      </section>
 
       {/* Horário de Funcionamento */}
       <SectionCard
@@ -1878,7 +1862,6 @@ export default function TreinamentoPage() {
       >
         <HorarioFuncionamento />
       </SectionCard>
-
-    </div>
+    </V4Page>
   )
 }
