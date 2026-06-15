@@ -9,6 +9,25 @@
 
 ## Claude Code
 
+- **Ultima atividade**: 2026-06-15 - a pedido da Heloisa (remover
+  Oportunidades, tornar o sistema funcional, repor calendario de bloqueio,
+  verificar automacoes/n8n e assistente IA, sem perder configuracoes do
+  nutri ativo): removida a pagina/rota/menu `/oportunidades`; `/agenda`
+  ganhou de volta `BlockTimeModal`/`NewAppointmentModal`/`AppointmentModal`/
+  `MiniCalendar` com dados reais; `/dashboard` reescrito com dados reais
+  (`/api/metrics/overview`, `/api/conversations/stats`, `/api/appointments`,
+  `/api/metrics/recent-activity`, `/api/whatsapp/status`), sem fabricacao;
+  `/treinamento` restaurado para a versao funcional completa (1884 linhas -
+  o port V4 tinha trocado por mockup sem nenhuma API, o que deixaria as
+  configuracoes da nutri ativa invisiveis/nao editaveis, embora os dados
+  continuassem no banco); `/configuracoes` reescrita em secoes com nav
+  lateral (Perfil/Seguranca/Aparencia/Integracoes/Equipe), portando logica
+  real de `/perfil`, `/seguranca`, `/integracoes`, `/equipe`. `/followup`
+  (automacoes) ja estava ok de sessao anterior. `npx tsc --noEmit` e
+  `npm run build` (40 rotas) ok. Detalhes completos em LOG.md. Arquivos
+  temporarios `old_*.tsx` removidos.
+- **Bloqueado/aguardando**: aguardando revisao da Heloisa (preview/prints) e
+  confirmacao antes do commit/push.
 - **Ultima atividade**: 2026-06-12 - Port Lovable de `treinamento` e
   `followup` concluido, validado (`npx tsc --noEmit` + `npm run build`, 40
   rotas ok) e enviado para `origin/main` (commit + push feitos a pedido da

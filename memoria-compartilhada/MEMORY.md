@@ -91,6 +91,28 @@ o Codex.
   commit por não serem código/feature - avaliar com a Heloísa se devem ser
   versionados ou descartados.
 
+## 2026-06-15 - Oportunidades removida; alerta sobre ports V4 que descartam funcionalidade
+
+A Heloisa pediu para remover a aba/pagina `/oportunidades` (Kanban de
+funil), considerando-a pouco usada, e tornar o sistema funcional de novo
+apos o port V4. **Isso reverte a decisao de 2026-06-13** ("Tudo, incluindo
+schema novo" / Oportunidades no menu). A API (`/api/clients/opportunities`,
+`/api/clients/:id/stage`) e as colunas `stage/source/estimated_value/
+stage_updated_at` em `clients` continuam no backend (nao usadas pelo
+frontend por ora) - se forem reaproveitadas no futuro, nao recriar schema
+paralelo.
+
+**Alerta importante para futuros ports de telas do Lovable/V4**: o port V4
+de 2026-06-15 (Codex) substituiu `apps/dashboard/.../treinamento/page.tsx`
+(1884 linhas, totalmente funcional - identidade da assistente, base de
+conhecimento, automacoes, regras clinicas, toggle de IA) por um mockup de
+115 linhas **sem nenhuma chamada de API**. Isso nao apaga dados do banco,
+mas torna invisiveis/nao editaveis as configuracoes que a nutri ativa ja
+salvou em `assistants`. Foi restaurado nesta sessao (ver LOG.md
+2026-06-15). **Ao portar uma tela do Lovable/V4 que substitui uma pagina ja
+funcional, sempre preservar/portar as chamadas de API existentes** - nunca
+trocar uma pagina com queries/mutations reais por um mockup estatico.
+
 ## PendÃªncias em aberto
 
 - (2026-06-15) Referencia V4 oficial de interface: a Heloisa pediu que

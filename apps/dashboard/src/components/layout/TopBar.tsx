@@ -6,7 +6,6 @@ import { Bell, HelpCircle, Menu, Search, Settings, Sparkles } from 'lucide-react
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Visão geral',
   '/conversas': 'Caixa de entrada',
-  '/oportunidades': 'Oportunidades',
   '/agenda': 'Agenda',
   '/clientes': 'Pacientes',
   '/treinamento': 'Assistente',

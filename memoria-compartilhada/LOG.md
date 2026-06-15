@@ -6,6 +6,65 @@
 
 ---
 
+## 2026-06-15 - Claude Code (remover Oportunidades, restaurar funcionalidades pos-V4)
+
+A pedido da Heloisa ("tire essa aba de oportunidades... torne o sistema
+funcional agora (tem alguns botoes que nao funcionam)... calendario de
+bloqueio... automacoes/n8n... assistente 100%... nutri ativo nao pode perder
+configuracoes"):
+
+- **Removida a aba/pagina `/oportunidades`** por completo: rota, item da
+  Sidebar e referencia em `PAGE_TITLES` do `TopBar`. Kanban de funil
+  removido do produto (API `/api/clients/opportunities` e
+  `/api/clients/:id/stage` continuam existindo no backend, sem uso no
+  frontend por ora).
+- **`/agenda`**: restaurado o calendario de bloqueio de data/horario
+  (`BlockTimeModal`), `NewAppointmentModal`, `AppointmentModal` e
+  `MiniCalendar`/`GoogleCalendarCard`, com dados reais de
+  `/api/appointments` e navegacao semanal - mantendo estilo V4.
+- **`/dashboard`**: reescrito por completo (~290 linhas). Removidos todos os
+  dados fabricados (`funnel`/`opportunities`, link morto para
+  `/oportunidades`, "Agenda de hoje"/"Follow-ups" hardcoded). Agora usa
+  dados reais de `/api/metrics/overview`, `/api/conversations/stats`,
+  `/api/appointments?date=...`, `/api/metrics/recent-activity` e
+  `/api/whatsapp/status`: KPIs (precisam de voce, conversas ativas, novos
+  leads 7d, consultas hoje), "Atividade recente", "Agenda de hoje", "Saude
+  da assistente", "Conversao" e cards de navegacao para
+  Conversas/Agenda/Pacientes.
+- **`/treinamento` (Assistente IA)**: o port V4 havia substituido a pagina
+  inteira (1884 linhas funcionais) por um mockup de 115 linhas sem nenhuma
+  chamada de API (identidade fake "Lia", score "82%" fixo, botao "Salvar
+  identidade" sem acao). **Restaurada a versao funcional completa**
+  (identidade da assistente, base de conhecimento manual/PDF/entrevista,
+  automacoes de mensagens, regras clinicas, objeções, exemplos de conversa,
+  toggle de IA, horario de funcionamento, testar atendimento). Isso garante
+  que as configuracoes que a nutri ativa ja salvou em `assistants`
+  (`farewell_message`, `frases_proibidas/preferidas`, `custom_objections`,
+  `conversation_examples`, `clinical_rules`, mensagens de followup, etc.)
+  continuam visiveis/editaveis - nada foi perdido no banco, mas estava
+  invisivel na UI V4.
+- **`/configuracoes`**: reescrita no layout "secoes com nav lateral"
+  (Perfil / Seguranca / Aparencia / Integracoes / Equipe), portando a logica
+  real das paginas orfas `/perfil`, `/seguranca`, `/integracoes` e `/equipe`
+  (que continuam existindo como rotas standalone, agora sem uso no menu).
+  Nova secao "Aparencia" com toggle de tema (`useTheme()`).
+- **`/followup` (Automacoes)**: ja estava redesenhado em sessao anterior
+  (tabela "Todos os fluxos" com Execucoes/Conversao/Status, KPIs reais,
+  filtros Todos/Ativos/Pausados) - confirmado e sem alteracoes.
+- Validacao: `npx tsc --noEmit` (sem erros) e `npm run build` em
+  `apps/dashboard` (40 rotas, ok) apos todas as mudancas.
+- Fluxo n8n/follow-up: confirmado que a infraestrutura
+  (`followup.service.ts`, `followup-sequences.routes.ts`,
+  `webhook-events.service.ts`) nao foi tocada pelo port V4 e a UI de
+  `/treinamento` (aba Automacoes) continua escrevendo nos mesmos campos de
+  `assistants` que alimentam esse fluxo. Teste end-to-end com WhatsApp/n8n
+  em produção nao foi feito (fora do alcance deste ambiente - depende do
+  Codex/infra).
+- Arquivos temporarios `old_treinamento.tsx`/`old_agenda.tsx`/
+  `old_disponibilidade.tsx` (copias de referencia do commit anterior, criadas
+  via `git show HEAD~1:...`) foram removidos apos uso.
+- Sem commit/push - aguardando revisao da Heloisa.
+
 ## 2026-06-15 - Codex (V4 oficial aplicado nas rotas principais)
 
 - Apos a Heloisa esclarecer que nao queria apenas shell/oportunidades, e sim

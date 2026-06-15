@@ -18,7 +18,6 @@ import {
   Shield,
   Sparkles,
   Sun,
-  Target,
   User,
   Users,
   Workflow,
@@ -35,7 +34,6 @@ const groups: Array<{
     items: [
       { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
       { href: '/conversas', label: 'Caixa de entrada', icon: MessageSquare, badge: '5' },
-      { href: '/oportunidades', label: 'Oportunidades', icon: Target, badge: '12' },
       { href: '/agenda', label: 'Agenda', icon: Calendar },
       { href: '/clientes', label: 'Pacientes', icon: Users },
     ],

@@ -57,12 +57,12 @@ export function V4Button({
   )
 }
 
-export function V4Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm', className)}>{children}</div>
+export function V4Card({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <div className={cn('rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm', className)} style={style}>{children}</div>
 }
 
-export function V4CardPad({ children, className }: { children: ReactNode; className?: string }) {
-  return <V4Card className={cn('p-4', className)}>{children}</V4Card>
+export function V4CardPad({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <V4Card className={cn('p-4', className)} style={style}>{children}</V4Card>
 }
 
 export function V4Metric({
