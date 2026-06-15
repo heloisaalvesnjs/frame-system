@@ -1757,8 +1757,18 @@ const TRAINING_TABS = [
   { id: 'testar',    label: 'Testar atendimento', icon: PlayCircle },
 ]
 
+const V4_TABS = [
+  { id: 'identidade',  label: 'Identidade',         icon: Bot },
+  { id: 'conhecimento',label: 'Conhecimento',        icon: BookOpen },
+  { id: 'automacoes',  label: 'Automações',          icon: Clock },
+  { id: 'horarios',    label: 'Horários',            icon: Clock },
+  { id: 'testar',      label: 'Testar assistente',   icon: PlayCircle },
+  { id: 'desempenho',  label: 'Desempenho',          icon: Brain },
+] as const
+type V4Tab = typeof V4_TABS[number]['id']
+
 export default function TreinamentoPage() {
-  const [trainingTab, setTrainingTab] = useState('manual')
+  const [tab, setTab] = useState<V4Tab>('identidade')
 
   const { data: convStats } = useQuery<any>({
     queryKey: ['conversations-stats'],
@@ -1768,100 +1778,106 @@ export default function TreinamentoPage() {
 
   return (
     <V4Page
-      eyebrow="Configuração"
+      eyebrow="Inteligência do consultório"
       title="Assistente IA"
-      subtitle="Configure o treinamento, personalidade e horários da sua assistente."
+      subtitle="Treine, teste e acompanhe a recepção comercial da sua assistente."
       actions={
-        <V4Button onClick={() => setTrainingTab('testar')}>
-          <PlayCircle className="h-4 w-4" />Testar no playground
-        </V4Button>
+        <>
+          <AIPowerToggleBadge />
+          <V4Button onClick={() => setTab('testar')}>
+            <PlayCircle className="h-4 w-4" />Testar no playground
+          </V4Button>
+        </>
       }
     >
-      {/* Banner do modelo */}
-      <V4CardPad className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--brand-s)] text-[var(--brand)]">
-            <Brain className="h-5 w-5" strokeWidth={1.75} />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[14px] font-medium text-t1">Modelo Frame · v3.2</h2>
-              <V4Tag tone="green" dot>Em produção</V4Tag>
-            </div>
-            <p className="mt-1 max-w-2xl text-[12.5px] leading-5 text-t3">
-              Treinado com o manual do consultório, regras de atendimento, conversas de teste e automações reais. Última atualização sincronizada com a sua configuração atual.
-            </p>
-          </div>
-        </div>
-      </V4CardPad>
-
-      {/* Performance da IA */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <V4Metric label="Conversas ativas" value={convStats?.active ?? 0} foot="Aguardando resposta" />
-        <V4Metric label="Agendamentos via IA" value={convStats?.agendou ?? 0} foot="Total" tone="good" />
-        <V4Metric label="Vendas via IA" value={convStats?.comprou ?? 0} foot="Total" tone="good" />
-        <V4Metric label="Mensagens enviadas pela IA" value={convStats?.ai_messages ?? 0} foot="Total" />
-      </section>
-
-      {/* IA Power */}
-      <AIPowerToggle />
-
-      {/* Base de conhecimento + Configurações da assistente */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Base de conhecimento */}
-        <V4Card className="overflow-hidden">
-          <div className="border-b border-[var(--border)] p-4">
-            <div className="mb-3 flex items-center gap-2.5">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[var(--raised)] text-[var(--brand)]">
-                <BookOpen className="h-4 w-4" strokeWidth={1.75} />
-              </div>
-              <div>
-                <h3 className="text-[13px] font-medium text-t1">Base de conhecimento</h3>
-                <p className="text-[11.5px] text-t3">Treinamento, automações e teste de atendimento</p>
-              </div>
-            </div>
-            <div className="flex gap-0.5 overflow-x-auto">
-              {TRAINING_TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setTrainingTab(id)}
-                  className="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-[12px] font-medium transition"
-                  style={{
-                    borderColor: trainingTab === id ? 'var(--brand)' : 'transparent',
-                    color: trainingTab === id ? 'var(--brand)' : 'var(--t3)',
-                  }}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="p-4">
-            {trainingTab === 'manual'     && <ManualSection />}
-            {trainingTab === 'automacoes' && <AutomacoesSection />}
-            {trainingTab === 'testar'     && <TestarAtendimentoSection />}
-          </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+        {/* Nav lateral */}
+        <V4Card className="h-max p-2">
+          {V4_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                'mb-1 flex w-full rounded-[10px] px-3 py-2 text-left text-[13px] font-medium transition',
+                tab === id
+                  ? 'bg-[var(--brand-s)] text-[var(--brand)]'
+                  : 'text-t2 hover:bg-[var(--raised)]'
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </V4Card>
 
-        {/* Configurações da Assistente */}
-        <SectionCard
-          title="Configurações da assistente"
-          subtitle="Personalidade, tom de voz e comportamento"
-          icon={<Bot className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--brand)' }} />}
-        >
-          <TabAssistente />
-        </SectionCard>
-      </section>
-
-      {/* Horário de Funcionamento */}
-      <SectionCard
-        title="Horário de funcionamento da IA"
-        subtitle="Quando a assistente responde e o que dizer fora do horário"
-        icon={<Clock className="w-4 h-4" strokeWidth={1.75} style={{ color: '#6AA9FF' }} />}
-      >
-        <HorarioFuncionamento />
-      </SectionCard>
+        {/* Conteúdo */}
+        <V4CardPad className="min-h-[480px]">
+          {tab === 'identidade'   && <TabAssistente />}
+          {tab === 'conhecimento' && <ManualSection />}
+          {tab === 'automacoes'   && <AutomacoesSection />}
+          {tab === 'horarios'     && <HorarioFuncionamento />}
+          {tab === 'testar'       && <TestarAtendimentoSection />}
+          {tab === 'desempenho'   && (
+            <div className="space-y-4">
+              <div>
+                <div className="text-[15px] font-medium text-t1">Desempenho da assistente</div>
+                <p className="mt-1 text-[13px] text-t3">Métricas em tempo real da IA no seu consultório.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <V4Metric label="Conversas ativas" value={convStats?.active ?? 0} foot="Aguardando resposta" />
+                <V4Metric label="Agendamentos via IA" value={convStats?.agendou ?? 0} foot="Total" tone="good" />
+                <V4Metric label="Vendas via IA" value={convStats?.comprou ?? 0} foot="Total" tone="good" />
+                <V4Metric label="Mensagens enviadas" value={convStats?.ai_messages ?? 0} foot="Pela IA" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <V4Metric label="Resolvidas" value={convStats?.resolved ?? 0} foot="Total" />
+                <V4Metric label="Sem retorno" value={convStats?.sem_resposta ?? 0} foot="Total" tone={convStats?.sem_resposta > 0 ? 'warn' : 'default'} />
+                <V4Metric label="Intervenção humana" value={convStats?.human_takeover ?? 0} foot="Precisaram de você" tone={convStats?.human_takeover > 0 ? 'warn' : 'default'} />
+              </div>
+            </div>
+          )}
+        </V4CardPad>
+      </div>
     </V4Page>
+  )
+}
+
+function AIPowerToggleBadge() {
+  const [paused, setPaused] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const { data: assistant } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: async () => { const { data } = await api.get('/api/assistants'); return data.assistant },
+    staleTime: 30_000,
+  })
+
+  useEffect(() => {
+    if (assistant) setPaused(assistant.ai_paused ?? false)
+  }, [assistant])
+
+  async function toggle() {
+    setSaving(true)
+    try {
+      const next = !paused
+      await api.patch('/api/assistants/toggle-ai', { paused: next })
+      setPaused(next)
+      toast.success(next ? 'IA desativada.' : 'IA ativada!')
+    } catch { toast.error('Erro ao alterar.') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={saving}
+      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium transition disabled:opacity-50"
+      style={paused
+        ? { borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', background: 'color-mix(in srgb, var(--danger) 10%, transparent)', color: 'var(--danger)' }
+        : { borderColor: 'var(--brand-ring)', background: 'var(--brand-s)', color: 'var(--brand)' }
+      }
+    >
+      <Power className="h-3.5 w-3.5" />
+      {paused ? 'IA pausada — reativar' : 'IA ativa'}
+    </button>
   )
 }
