@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -55,14 +55,14 @@ export default function OportunidadesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['opportunities'],
     queryFn: async () => {
-      const res = await api.get('/clients/opportunities')
+      const res = await api.get('/api/clients/opportunities')
       return res.data.opportunities as Opportunity[]
     },
   })
 
   const moveStage = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
-      await api.patch(`/clients/${id}/stage`, { stage })
+      await api.patch(`/api/clients/${id}/stage`, { stage })
     },
     onMutate: async ({ id, stage }) => {
       await qc.cancelQueries({ queryKey: ['opportunities'] })
@@ -112,116 +112,105 @@ export default function OportunidadesPage() {
   }, [filtered])
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-6">
-      <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Oportunidades</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>
-          Transforme contatos em consultas com clareza de etapa, intenção e próxima ação.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex h-9 min-w-[240px] items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-3">
-          <Search className="h-3.5 w-3.5 text-t3" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar oportunidade…"
-            className="h-full flex-1 bg-transparent text-[13px] text-t1 placeholder:text-t3 focus:outline-none"
-          />
+    <main className="px-6 py-6">
+      <div className="mx-auto max-w-[1400px] space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-t3">Pipeline comercial</div>
+            <h1 className="text-[22px] font-semibold tracking-tight text-t1">Oportunidades</h1>
+            <p className="mt-0.5 text-sm text-t3">Transforme contatos em consultas com clareza de etapa, intenção e próxima ação.</p>
+          </div>
         </div>
-        <select
-          value={sourceFilter}
-          onChange={e => setSourceFilter(e.target.value)}
-          className="h-9 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-3 text-[13px] text-t1 focus:outline-none"
-        >
-          <option value="all">Todas as origens</option>
-          {sources.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </div>
 
-      {isLoading ? (
-        <div className="py-12 text-center text-[13px] text-t3">Carregando oportunidades…</div>
-      ) : (
-        <div className="grid grid-cols-[repeat(6,minmax(220px,1fr))] gap-3 overflow-x-auto pb-2">
-          {STAGES.map(stage => {
-            const items = byStage[stage.key] ?? []
-            return (
-              <div
-                key={stage.key}
-                className="flex min-h-[480px] min-w-[220px] flex-col rounded-[13px] border p-2.5"
-                style={{ background: 'var(--raised)', borderColor: 'var(--border)' }}
-              >
-                <div className="flex items-center justify-between px-1 pb-2.5 pt-0.5">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-t1">{stage.label}</span>
-                  <span className="text-[10px] font-semibold text-t3">{items.length}</span>
-                </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex h-9 min-w-[260px] items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-3">
+            <Search className="h-3.5 w-3.5 text-t3" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar oportunidade..."
+              className="h-full flex-1 bg-transparent text-[13px] text-t1 placeholder:text-t3 focus:outline-none"
+            />
+          </div>
+          <select
+            value={sourceFilter}
+            onChange={e => setSourceFilter(e.target.value)}
+            className="h-9 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-3 text-[13px] text-t1 focus:outline-none"
+          >
+            <option value="all">Todas as origens</option>
+            {sources.map(s => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
 
-                <div className="flex flex-1 flex-col gap-2.5">
-                  {items.map(o => {
-                    const stageIndex = STAGES.findIndex(s => s.key === stage.key)
-                    const prevStage = STAGES[stageIndex - 1]
-                    const nextStage = STAGES[stageIndex + 1]
-                    return (
-                      <div
-                        key={o.id}
-                        className="card-hover rounded-[11px] border p-3 shadow-sm"
-                        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[12px] font-extrabold text-t1">{o.name || o.phone}</div>
-                          <div className="shrink-0 text-[10px] font-extrabold text-[var(--brand)]">{formatValue(o.estimated_value)}</div>
-                        </div>
-                        {o.goal && (
-                          <p className="mt-[7px] text-[10px] leading-[1.4] text-t3">{o.goal}</p>
-                        )}
-                        <div className="mt-2.5 flex items-center gap-1.5">
-                          {o.source && <Badge variant="info">{o.source}</Badge>}
-                          <span className="ml-auto text-[9px] text-t4">{timeAgo(o.stage_updated_at || o.created_at)}</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              disabled={!prevStage || moveStage.isPending}
-                              onClick={() => prevStage && moveStage.mutate({ id: o.id, stage: prevStage.key })}
-                              className={cn(
-                                'grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
-                                prevStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30',
-                              )}
-                              aria-label="Mover para etapa anterior"
-                            >
-                              <ChevronLeft className="h-3 w-3" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!nextStage || moveStage.isPending}
-                              onClick={() => nextStage && moveStage.mutate({ id: o.id, stage: nextStage.key })}
-                              className={cn(
-                                'grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
-                                nextStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30',
-                              )}
-                              aria-label="Mover para próxima etapa"
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                            </button>
+        {isLoading ? (
+          <div className="py-12 text-center text-[13px] text-t3">Carregando oportunidades...</div>
+        ) : (
+          <div className="grid grid-cols-[repeat(6,minmax(220px,1fr))] gap-3 overflow-x-auto pb-2">
+            {STAGES.map(stage => {
+              const items = byStage[stage.key] ?? []
+              return (
+                <div key={stage.key} className="flex min-h-[480px] min-w-[220px] flex-col rounded-[13px] border border-[var(--border)] bg-[var(--raised)] p-2.5">
+                  <div className="flex items-center justify-between px-1 pb-2.5 pt-0.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-t1">{stage.label}</span>
+                    <span className="text-[10px] font-semibold text-t3">{items.length}</span>
+                  </div>
+
+                  <div className="flex flex-1 flex-col gap-2.5">
+                    {items.map(o => {
+                      const stageIndex = STAGES.findIndex(s => s.key === stage.key)
+                      const prevStage = STAGES[stageIndex - 1]
+                      const nextStage = STAGES[stageIndex + 1]
+                      return (
+                        <div key={o.id} className="card-hover rounded-[11px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-[12px] font-semibold text-t1">{o.name || o.phone}</div>
+                            <div className="shrink-0 text-[10px] font-semibold text-[var(--brand)]">{formatValue(o.estimated_value)}</div>
+                          </div>
+                          {o.goal && <p className="mt-[7px] text-[10px] leading-[1.4] text-t3">{o.goal}</p>}
+                          <div className="mt-2.5 flex items-center gap-1.5">
+                            {o.source && <Badge variant="info">{o.source}</Badge>}
+                            <span className="ml-auto text-[9px] text-t3">{timeAgo(o.stage_updated_at || o.created_at)}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={!prevStage || moveStage.isPending}
+                                onClick={() => prevStage && moveStage.mutate({ id: o.id, stage: prevStage.key })}
+                                className={cn('grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors', prevStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30')}
+                                aria-label="Mover para etapa anterior"
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!nextStage || moveStage.isPending}
+                                onClick={() => nextStage && moveStage.mutate({ id: o.id, stage: nextStage.key })}
+                                className={cn('grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors', nextStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30')}
+                                aria-label="Mover para próxima etapa"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
 
-                  {items.length === 0 && (
-                    <div className="rounded-[11px] border border-dashed px-3 py-6 text-center text-[11px] text-t4" style={{ borderColor: 'var(--border)' }}>
-                      Nenhuma oportunidade
-                    </div>
-                  )}
+                    {items.length === 0 && (
+                      <div className="rounded-[11px] border border-dashed border-[var(--border)] px-3 py-6 text-center text-[11px] text-t3">
+                        Nenhuma oportunidade
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </main>
   )
 }

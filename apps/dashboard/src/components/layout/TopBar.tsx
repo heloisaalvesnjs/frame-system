@@ -4,24 +4,24 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Bell, HelpCircle, Menu, Search, Settings, Sparkles } from 'lucide-react'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/conversas': 'Conversas',
-  '/agenda': 'Agenda',
+  '/dashboard': 'Visão geral',
+  '/conversas': 'Caixa de entrada',
   '/oportunidades': 'Oportunidades',
-  '/clientes': 'Clientes',
-  '/servicos': 'Planos',
-  '/financeiro': 'Financeiro',
+  '/agenda': 'Agenda',
+  '/clientes': 'Pacientes',
+  '/treinamento': 'Assistente',
   '/followup': 'Automações',
-  '/treinamento': 'Assistente IA',
+  '/relatorios': 'Relatórios',
   '/disponibilidade': 'Disponibilidade',
-  '/equipe': 'Equipe',
-  '/integracoes': 'Integrações',
-  '/design-system': 'Design System',
   '/configuracoes': 'Configurações',
   '/onboarding': 'Configuração inicial',
   '/seguranca': 'Segurança',
   '/perfil': 'Perfil',
   '/admin': 'Admin',
+  '/servicos': 'Serviços',
+  '/financeiro': 'Financeiro',
+  '/integracoes': 'Integrações',
+  '/equipe': 'Equipe',
 }
 
 function getTitle(pathname: string) {
@@ -37,7 +37,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header
-      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-4 border-b border-[var(--line-1)] px-4 backdrop-blur-xl md:left-[240px] md:px-6"
+      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-4 border-b border-[var(--line-1)] px-4 backdrop-blur-xl md:left-[72px] md:px-6"
       style={{ background: 'color-mix(in oklab, var(--bg) 82%, transparent)' }}
     >
       <button

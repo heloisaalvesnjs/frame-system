@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-base">
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <div className="flex-1 md:ml-[240px] flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-[72px] flex flex-col min-h-screen">
         <TopBar onMenuClick={() => setDrawerOpen(true)} />
         <main className="flex-1 pt-14">{children}</main>
       </div>

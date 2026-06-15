@@ -93,6 +93,24 @@ o Codex.
 
 ## PendÃªncias em aberto
 
+- (2026-06-15) Referencia V4 oficial de interface: a Heloisa pediu que
+  `frame-system-lovable-light-v4-claude.html` seja a interface atual do
+  sistema. O shell do app deve seguir essa estrutura: sidebar desktop
+  compacta/expansivel (72px recolhida, ~210px expandida), TopBar com offset
+  de 72px e menu principal com as abas Visao geral (`/dashboard`), Caixa de
+  entrada (`/conversas`), Oportunidades (`/oportunidades`), Agenda
+  (`/agenda`), Pacientes (`/clientes`), Assistente (`/treinamento`),
+  Automacoes (`/followup`), Relatorios (`/relatorios`), Disponibilidade
+  (`/disponibilidade`) e Configuracoes (`/configuracoes`). `/design-system`
+  nao deve voltar para a navegacao/produto.
+- (2026-06-15) O port V4 deixou de ser apenas referencia visual e passou para
+  as rotas reais principais. Para novas alteracoes de design, usar os
+  componentes em `apps/dashboard/src/components/v4/V4Primitives.tsx` e manter
+  as paginas principais coerentes com o HTML V4: dashboard/funil, inbox,
+  agenda semanal, pacientes, assistente com subabas, automacoes,
+  disponibilidade, relatorios e configuracoes. Nao reintroduzir layouts
+  antigos de cards grandes/marketing nem pagina `/design-system`.
+
 - (2026-06-11) Decisao Codex/Heloisa sobre Lovable: usar o Lovable como
   laboratorio de design/UI, nao como substituto do sistema principal. Para
   transferir telas criadas no Lovable, copiar/adaptar apenas a camada visual

@@ -183,11 +183,30 @@
 
 ## Codex
 
+- **Ultima atividade**: 2026-06-15 - portou o V4 oficial para as rotas reais
+  principais do dashboard, alem do shell: `/dashboard`, `/conversas`,
+  `/agenda`, `/clientes`, `/treinamento` (Assistente), `/followup`
+  (Automacoes), `/disponibilidade`, `/configuracoes`, `/oportunidades` e
+  `/relatorios`. As telas agora usam a composicao visual do mockup
+  `frame-system-lovable-light-v4-claude.html` (cards, grids, inbox,
+  calendario semanal, pipeline, subabas de assistente, tabela de pacientes,
+  automacoes, disponibilidade e configuracoes). Validado com
+  `npx.cmd tsc --noEmit` em api/dashboard e `npm.cmd run build` no dashboard
+  (41 rotas).
+- **Ultima atividade**: 2026-06-15 - alinhou o shell do dashboard ao V4
+  oficial enviado pela Heloisa: sidebar desktop compacta/expansivel (72px ->
+  210px), menu com as abas do mockup (Visao geral, Caixa de entrada,
+  Oportunidades, Agenda, Pacientes, Assistente, Automacoes, Relatorios,
+  Disponibilidade, Configuracoes), TopBar ajustada para o novo offset, rota
+  `/relatorios` criada e `/design-system` removida do app. Corrigido endpoint
+  de `/oportunidades` para usar `/api/clients/...`. Validado com
+  `npx.cmd tsc --noEmit` (api/dashboard) e `npm.cmd run build`
+  (dashboard, 41 rotas).
 - **Ultima atividade**: 2026-06-15 - atualizou contexto do projeto: confirmou
   que o commit `74a0a5d` (port V4 + pagina `/oportunidades` + schema novo)
   ja esta em `main` e `origin/main`; restam alteracoes locais nao commitadas
-  em `apps/dashboard/src/app/(dashboard)/oportunidades/page.tsx`,
-  `apps/dashboard/tsconfig.tsbuildinfo` e arquivos HTML/mockups soltos.
+  em `apps/dashboard/src/app/(dashboard)/oportunidades/page.tsx` e arquivos
+  HTML/mockups soltos.
 - **Ultima atividade**: 2026-06-13 - avaliou o arquivo
   `frame-system-lovable-light-v2.html` enviado pela Heloisa como referencia
   visual light-first: proposta forte para direcao premium, mas ainda em HTML

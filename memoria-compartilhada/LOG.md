@@ -6,6 +6,47 @@
 
 ---
 
+## 2026-06-15 - Codex (V4 oficial aplicado nas rotas principais)
+
+- Apos a Heloisa esclarecer que nao queria apenas shell/oportunidades, e sim
+  o sistema abrindo igual ao mockup V4, foram reescritas as rotas principais
+  do dashboard usando a composicao visual do
+  `frame-system-lovable-light-v4-claude.html`:
+  `/dashboard`, `/conversas`, `/agenda`, `/clientes`, `/treinamento`,
+  `/followup`, `/disponibilidade` e `/configuracoes`, alem das rotas ja
+  ajustadas `/oportunidades` e `/relatorios`.
+- Criado `apps/dashboard/src/components/v4/V4Primitives.tsx` para padronizar
+  PageHeader, cards, botoes, tags, inputs, selects, metricas e avatares no
+  vocabulario visual do V4.
+- Resultado visual: dashboard com funil/agenda/saude da assistente; inbox com
+  lista/chat/contexto; agenda semanal com painel lateral; pacientes em tabela
+  V4; assistente com subabas internas; automacoes em tabela operacional;
+  disponibilidade com horarios/locais; configuracoes com perfil, seguranca,
+  integracoes e equipe.
+- Validacao: `npx.cmd tsc --noEmit` em `apps/api`, `npx.cmd tsc --noEmit` em
+  `apps/dashboard` e `npm.cmd run build` em `apps/dashboard` passaram. Build
+  gerou 41 rotas.
+
+## 2026-06-15 - Codex (alinhamento V4 oficial no app real)
+
+- Conferiu que o arquivo enviado pela Heloisa
+  `C:\Users\Heloisa\Documents\HELOISA\frame-system-lovable-light-v4-claude.html`
+  e a copia local `frame-system-lovable-light-v4-claude.html` sao identicos
+  por SHA256; usado como fonte oficial desta rodada.
+- Alinhou o shell do dashboard ao V4: sidebar desktop compacta/expansivel
+  (72px -> 210px), itens do menu na ordem/nomes do mockup (Visao geral,
+  Caixa de entrada, Oportunidades, Agenda, Pacientes, Assistente, Automacoes,
+  Relatorios, Disponibilidade, Configuracoes), TopBar ajustada para offset de
+  72px e titulos corrigidos.
+- Removeu a pagina `/design-system` do app e criou a nova rota `/relatorios`
+  com KPIs, graficos visuais, gargalos e recomendacoes no estilo V4.
+- Corrigiu `/oportunidades` para usar os endpoints reais com prefixo
+  `/api/clients/opportunities` e `/api/clients/:id/stage`; antes estava sem
+  `/api` e podia falhar dependendo do ambiente.
+- Validacao: `npx.cmd tsc --noEmit` em `apps/api`, `npx.cmd tsc --noEmit` em
+  `apps/dashboard` e `npm.cmd run build` em `apps/dashboard` passaram. Build
+  gerou 41 rotas, incluindo `/relatorios` e sem `/design-system`.
+
 ## 2026-06-13 - Claude Code (port V4 + Oportunidades + schema de funil)
 
 - Polimento visual V4 (a partir de `frame-system-lovable-light-v4-claude.html`,
