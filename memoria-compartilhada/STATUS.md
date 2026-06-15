@@ -183,6 +183,11 @@
 
 ## Codex
 
+- **Ultima atividade**: 2026-06-15 - atualizou contexto do projeto: confirmou
+  que o commit `74a0a5d` (port V4 + pagina `/oportunidades` + schema novo)
+  ja esta em `main` e `origin/main`; restam alteracoes locais nao commitadas
+  em `apps/dashboard/src/app/(dashboard)/oportunidades/page.tsx`,
+  `apps/dashboard/tsconfig.tsbuildinfo` e arquivos HTML/mockups soltos.
 - **Ultima atividade**: 2026-06-13 - avaliou o arquivo
   `frame-system-lovable-light-v2.html` enviado pela Heloisa como referencia
   visual light-first: proposta forte para direcao premium, mas ainda em HTML

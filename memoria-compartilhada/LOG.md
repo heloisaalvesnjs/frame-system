@@ -160,6 +160,18 @@
   busca central, white-alpha surfaces/hover states e microdetalhes do
   Lovable, preservando apenas a logica/funcionamento real por baixo.
 
+## 2026-06-15 - Codex
+
+- Atualizou contexto via `STATUS.md`, `MEMORY.md`, `LOG.md`, `git status` e
+  `git log`.
+- Confirmou que `74a0a5d feat(dashboard): port V4 (polimento visual) + nova
+  pagina Oportunidades com funil` ja esta em `main` e `origin/main`.
+- Estado local restante: modificacao nao commitada em
+  `apps/dashboard/src/app/(dashboard)/oportunidades/page.tsx`, arquivo
+  `apps/dashboard/tsconfig.tsbuildinfo` modificado e mockups/HTMLs soltos na
+  raiz. Lembrete: schema novo de oportunidades existe no codigo, mas a
+  migration ainda precisa ser aplicada no banco no deploy.
+
 ## 2026-06-13 - Codex
 
 - Refinou `frame-system-lovable-light-v3-refinado.html` apos feedback visual

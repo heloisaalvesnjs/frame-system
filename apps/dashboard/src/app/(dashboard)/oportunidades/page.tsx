@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Badge, Card } from '@/components/ui/finance-primitives'
+import { Badge } from '@/components/ui/finance-primitives'
 
 interface Opportunity {
   id: string
@@ -145,68 +145,74 @@ export default function OportunidadesPage() {
       {isLoading ? (
         <div className="py-12 text-center text-[13px] text-t3">Carregando oportunidades…</div>
       ) : (
-        <div className="grid grid-cols-[repeat(6,minmax(230px,1fr))] gap-3 overflow-x-auto pb-2">
+        <div className="grid grid-cols-[repeat(6,minmax(220px,1fr))] gap-3 overflow-x-auto pb-2">
           {STAGES.map(stage => {
             const items = byStage[stage.key] ?? []
             return (
-              <div key={stage.key} className="flex min-w-[230px] flex-col gap-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[12px] font-semibold text-t1">{stage.label}</span>
-                  <span className="rounded-full bg-[var(--raised)] px-2 py-0.5 text-[11px] font-medium text-t3">{items.length}</span>
+              <div
+                key={stage.key}
+                className="flex min-h-[480px] min-w-[220px] flex-col rounded-[13px] border p-2.5"
+                style={{ background: 'var(--raised)', borderColor: 'var(--border)' }}
+              >
+                <div className="flex items-center justify-between px-1 pb-2.5 pt-0.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-t1">{stage.label}</span>
+                  <span className="text-[10px] font-semibold text-t3">{items.length}</span>
                 </div>
 
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-1 flex-col gap-2.5">
                   {items.map(o => {
                     const stageIndex = STAGES.findIndex(s => s.key === stage.key)
                     const prevStage = STAGES[stageIndex - 1]
                     const nextStage = STAGES[stageIndex + 1]
                     return (
-                      <Card key={o.id} hover className="p-3.5">
+                      <div
+                        key={o.id}
+                        className="card-hover rounded-[11px] border p-3 shadow-sm"
+                        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                      >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13px] font-semibold text-t1">{o.name || o.phone}</div>
-                          <div className="text-[12.5px] font-semibold tabular-nums text-t1">{formatValue(o.estimated_value)}</div>
+                          <div className="text-[12px] font-extrabold text-t1">{o.name || o.phone}</div>
+                          <div className="shrink-0 text-[10px] font-extrabold text-[var(--brand)]">{formatValue(o.estimated_value)}</div>
                         </div>
                         {o.goal && (
-                          <p className="mt-1.5 text-[12px] leading-snug text-t3">{o.goal}</p>
+                          <p className="mt-[7px] text-[10px] leading-[1.4] text-t3">{o.goal}</p>
                         )}
-                        <div className="mt-2.5 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            {o.source && <Badge variant="info">{o.source}</Badge>}
-                            <span className="text-[11px] text-t3">{timeAgo(o.stage_updated_at || o.created_at)}</span>
-                          </div>
+                        <div className="mt-2.5 flex items-center gap-1.5">
+                          {o.source && <Badge variant="info">{o.source}</Badge>}
+                          <span className="ml-auto text-[9px] text-t4">{timeAgo(o.stage_updated_at || o.created_at)}</span>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               disabled={!prevStage || moveStage.isPending}
                               onClick={() => prevStage && moveStage.mutate({ id: o.id, stage: prevStage.key })}
                               className={cn(
-                                'grid h-6 w-6 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
+                                'grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
                                 prevStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30',
                               )}
                               aria-label="Mover para etapa anterior"
                             >
-                              <ChevronLeft className="h-3.5 w-3.5" />
+                              <ChevronLeft className="h-3 w-3" />
                             </button>
                             <button
                               type="button"
                               disabled={!nextStage || moveStage.isPending}
                               onClick={() => nextStage && moveStage.mutate({ id: o.id, stage: nextStage.key })}
                               className={cn(
-                                'grid h-6 w-6 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
+                                'grid h-5 w-5 place-items-center rounded-md border border-[var(--border)] text-t3 transition-colors',
                                 nextStage ? 'hover:bg-[var(--raised)] hover:text-t1' : 'opacity-30',
                               )}
                               aria-label="Mover para próxima etapa"
                             >
-                              <ChevronRight className="h-3.5 w-3.5" />
+                              <ChevronRight className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
-                      </Card>
+                      </div>
                     )
                   })}
 
                   {items.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-6 text-center text-[12px] text-t3">
+                    <div className="rounded-[11px] border border-dashed px-3 py-6 text-center text-[11px] text-t4" style={{ borderColor: 'var(--border)' }}>
                       Nenhuma oportunidade
                     </div>
                   )}
