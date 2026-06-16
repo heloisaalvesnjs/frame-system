@@ -9,6 +9,23 @@
 
 ## Claude Code
 
+- **Ultima atividade**: 2026-06-16 - implementacao das fases 0-4 do plano premium
+  (IMPLEMENTATION_PLAN_PREMIUM.md criado). Fase 3: Configuracoes reconstruida com
+  13 secoes reais (Minha conta, Perfil profissional, Consultorio e marca, Servicos
+  e precos, WhatsApp, Assistente e atendimento, Integracoes, Equipe e permissoes,
+  Notificacoes, Seguranca, Privacidade e dados, Plano e cobranca, Preferencias) -
+  subnav lateral funcional, formularios reais com save/validacao/toast, dados de
+  API reais em 10 das 13 secoes. Fase 4: Disponibilidade ganhou `CalendarBlocksSection`
+  - bloqueios de horario parcial ou multi-dia via `calendar_blocks` (starts_at/ends_at),
+  form com tipo "dia inteiro" ou "por horario", lista de bloqueios com delete. O
+  calendario mensal de dias bloqueados (blocked_dates) ja existia e foi mantido.
+  `npx tsc --noEmit` e `npm run build` (40 rotas) ok.
+- **Bloqueado/aguardando**: aguardando push/deploy (nao foi pedido explicitamente
+  nesta sessao). Fases 5-8 (operacao, qualidade, testes) a implementar nas proximas
+  sessoes conforme spec IMPLEMENTATION_PLAN_PREMIUM.md.
+
+## Claude Code (anterior)
+
 - **Ultima atividade**: 2026-06-15 - a pedido da Heloisa (remover
   Oportunidades, tornar o sistema funcional, repor calendario de bloqueio,
   verificar automacoes/n8n e assistente IA, sem perder configuracoes do

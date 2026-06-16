@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee, Trash2, ChevronDown, ChevronUp, Plus, Save, Loader2, MapPin, Clock } from 'lucide-react'
+import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee, Trash2, ChevronDown, ChevronUp, Plus, Save, Loader2, MapPin, Clock, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -705,6 +705,154 @@ function BlockedCalendar() {
   )
 }
 
+// ── Calendar Blocks (time-range, parciais ou multi-dia) ──────────────────────
+function CalendarBlocksSection() {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate]     = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime]     = useState('')
+  const [allDay, setAllDay]       = useState(true)
+  const [reason, setReason]       = useState('')
+  const [saving, setSaving]       = useState(false)
+
+  const now = new Date()
+  const startQ = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01T00:00:00`
+  const endQ   = new Date(now.getFullYear(), now.getMonth() + 3, 1).toISOString()
+
+  const { data } = useQuery({
+    queryKey: ['calendar-blocks'],
+    queryFn: () => api.get(`/api/locations/blocks?start=${startQ}&end=${endQ}`).then(r => r.data.blocks as { id: string; starts_at: string; ends_at: string; reason?: string }[]),
+  })
+  const blocks = data ?? []
+
+  async function handleSave() {
+    if (!startDate || (!allDay && (!startTime || !endTime))) {
+      toast.error('Preencha as datas e horários.')
+      return
+    }
+    setSaving(true)
+    try {
+      const sDate = endDate || startDate
+      const starts_at = allDay ? `${startDate}T00:00:00` : `${startDate}T${startTime}:00`
+      const ends_at   = allDay ? `${sDate}T23:59:59`    : `${sDate}T${endTime}:00`
+      await api.post('/api/locations/blocks', { starts_at, ends_at, reason: reason.trim() || undefined })
+      qc.invalidateQueries({ queryKey: ['calendar-blocks'] })
+      setShowForm(false); setStartDate(''); setEndDate(''); setStartTime(''); setEndTime(''); setReason('')
+      toast.success('Bloqueio criado!')
+    } catch { toast.error('Erro ao criar bloqueio') }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(id: string) {
+    await api.delete(`/api/locations/blocks/${id}`)
+    qc.invalidateQueries({ queryKey: ['calendar-blocks'] })
+    toast.success('Bloqueio removido')
+  }
+
+  function fmt(dt: string) {
+    return new Date(dt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
+
+  return (
+    <V4Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+        <div>
+          <div className="text-[13px] font-medium text-t1">Bloqueios de horário</div>
+          <div className="text-[12px] text-t3">Bloqueios parciais ou em intervalo de datas. A IA não oferecerá esses horários.</div>
+        </div>
+        <V4Button className="h-8" onClick={() => setShowForm(v => !v)}>
+          <Plus className="h-3.5 w-3.5" />
+          Novo bloqueio
+        </V4Button>
+      </div>
+      <div className="p-4 space-y-4">
+        {showForm && (
+          <div className="rounded-[10px] border border-[var(--brand-ring)] bg-[var(--raised)] p-4 space-y-3">
+            <p className="text-[13px] font-medium text-t1">Novo bloqueio de horário</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAllDay(true)}
+                className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors', allDay ? 'border-[var(--brand)] bg-[var(--brand-s)] text-[var(--brand)]' : 'border-[var(--border)] text-t2 hover:bg-[var(--surface)]')}
+              >Dia inteiro</button>
+              <button
+                onClick={() => setAllDay(false)}
+                className={cn('rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors', !allDay ? 'border-[var(--brand)] bg-[var(--brand-s)] text-[var(--brand)]' : 'border-[var(--border)] text-t2 hover:bg-[var(--surface)]')}
+              >Por horário</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11.5px] text-t3 mb-1 block">Data início</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
+              </div>
+              <div>
+                <label className="text-[11.5px] text-t3 mb-1 block">Data fim (opcional)</label>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
+              </div>
+            </div>
+            {!allDay && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11.5px] text-t3 mb-1 block">Hora início</label>
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
+                </div>
+                <div>
+                  <label className="text-[11.5px] text-t3 mb-1 block">Hora fim</label>
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
+                </div>
+              </div>
+            )}
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Motivo (opcional): folga, viagem, reunião..." className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
+            <div className="flex gap-2">
+              <V4Button onClick={() => setShowForm(false)} className="flex-1 h-8">Cancelar</V4Button>
+              <V4Button variant="primary" onClick={handleSave} disabled={saving} className="flex-1 h-8">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Salvar bloqueio
+              </V4Button>
+            </div>
+          </div>
+        )}
+
+        {blocks.length === 0 && !showForm ? (
+          <p className="py-3 text-center text-[13px] text-t3">Nenhum bloqueio de horário cadastrado.</p>
+        ) : (
+          <div className="space-y-2">
+            {blocks.map(b => {
+              const isAllDay = b.starts_at.includes('T00:00') && b.ends_at.includes('T23:59')
+              const startD = new Date(b.starts_at)
+              const endD   = new Date(b.ends_at)
+              const sameDay = startD.toDateString() === endD.toDateString()
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3 py-2.5">
+                  <div>
+                    <p className="text-[13px] font-medium text-t1">
+                      {isAllDay
+                        ? sameDay
+                          ? startD.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+                          : `${startD.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} → ${endD.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                        : `${fmt(b.starts_at)} → ${fmt(b.ends_at)}`}
+                    </p>
+                    {b.reason && <p className="text-[11.5px] text-t3">{b.reason}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10.5px] font-medium px-2 py-0.5 rounded-full border" style={{ background: 'color-mix(in oklab, var(--warning) 10%, transparent)', color: 'var(--warning)', borderColor: 'color-mix(in oklab, var(--warning) 30%, transparent)' }}>
+                      {isAllDay ? 'Dia inteiro' : 'Parcial'}
+                    </span>
+                    <button onClick={() => handleDelete(b.id)} className="p-1 text-t3 hover:text-[var(--danger)]">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </V4Card>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 const DEFAULT_DAYS: DayConfig[] = DAYS_META.map(m => ({
   ...m,
@@ -840,6 +988,7 @@ export default function DisponibilidadePage() {
               </p>
             </div>
           </V4Card>
+          <CalendarBlocksSection />
           <ExceptionsCard />
         </div>
       )}

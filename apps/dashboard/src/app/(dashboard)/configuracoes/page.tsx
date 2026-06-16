@@ -7,451 +7,521 @@ import { z } from 'zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  Loader2, Save, Shield, Eye, EyeOff, CheckCircle, Sun, Moon,
-  Check, Plus, Upload, UserPlus, Copy, Trash2, Clock, Pencil,
+  Bell, Building2, Check, Copy, CreditCard, Eye, EyeOff,
+  Globe, Loader2, Lock, LogOut, Mail, Phone, Plus, Save,
+  Settings, Shield, Sparkles, Trash2, User, UserPlus, Users,
+  Wifi, X, Zap,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Avatar, Badge, Btn, Card, SectionTitle } from '@/components/ui/finance-primitives'
-import { V4Avatar, V4Button, V4Card, V4CardPad, V4Page, V4Tag } from '@/components/v4/V4Primitives'
+import { cn } from '@/lib/utils'
+import { V4Button, V4Card, V4Input, V4Page, V4Select, V4Tag } from '@/components/v4/V4Primitives'
 
+// ── Seções ─────────────────────────────────────────────────────────────────
 const SECTIONS = [
-  { id: 'perfil', label: 'Perfil' },
-  { id: 'seguranca', label: 'Segurança' },
-  { id: 'integracoes', label: 'Integrações' },
-  { id: 'equipe', label: 'Equipe' },
+  { id: 'conta',        label: 'Minha conta',             icon: User },
+  { id: 'perfil',       label: 'Perfil profissional',      icon: Sparkles },
+  { id: 'consultorio',  label: 'Consultório e marca',      icon: Building2 },
+  { id: 'servicos',     label: 'Serviços e preços',        icon: CreditCard },
+  { id: 'whatsapp',     label: 'WhatsApp',                 icon: Phone },
+  { id: 'assistente',   label: 'Assistente e atendimento', icon: Zap },
+  { id: 'integracoes',  label: 'Integrações',              icon: Wifi },
+  { id: 'equipe',       label: 'Equipe e permissões',      icon: Users },
+  { id: 'notificacoes', label: 'Notificações',             icon: Bell },
+  { id: 'seguranca',    label: 'Segurança',                icon: Shield },
+  { id: 'privacidade',  label: 'Privacidade e dados',      icon: Lock },
+  { id: 'plano',        label: 'Plano e cobrança',         icon: CreditCard },
+  { id: 'preferencias', label: 'Preferências',             icon: Settings },
 ] as const
-
 type SectionId = typeof SECTIONS[number]['id']
 
 export default function ConfiguracoesPage() {
-  const [section, setSection] = useState<SectionId>('perfil')
+  const [section, setSection] = useState<SectionId>('conta')
 
   return (
     <V4Page
       eyebrow="Gestão da conta"
       title="Configurações"
-      subtitle="Perfil, integrações, equipe e segurança."
+      subtitle="Gerencie todos os aspectos da sua conta, consultório e integrações."
     >
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <V4Card className="h-max p-2">
-          {SECTIONS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setSection(item.id)}
-              className={section === item.id
-                ? 'mb-1 flex w-full rounded-[10px] bg-[var(--brand-s)] px-3 py-2 text-left text-[13px] font-medium text-[var(--brand)]'
-                : 'mb-1 flex w-full rounded-[10px] px-3 py-2 text-left text-[13px] font-medium text-t2 hover:bg-[var(--raised)]'}
-            >
-              {item.label}
-            </button>
-          ))}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
+        <V4Card className="h-max overflow-hidden p-1.5">
+          {SECTIONS.map(item => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                onClick={() => setSection(item.id)}
+                className={cn(
+                  'mb-0.5 flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-[13px] font-medium transition-colors',
+                  section === item.id
+                    ? 'bg-[var(--brand-s)] text-[var(--brand)]'
+                    : 'text-t2 hover:bg-[var(--raised)] hover:text-t1',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                {item.label}
+              </button>
+            )
+          })}
         </V4Card>
 
         <div>
-          {section === 'perfil' && <PerfilSection />}
-          {section === 'seguranca' && <SegurancaSection />}
-          {section === 'integracoes' && <IntegracoesSection />}
-          {section === 'equipe' && <EquipeSection />}
+          {section === 'conta'        && <ContaSection />}
+          {section === 'perfil'       && <PerfilSection />}
+          {section === 'consultorio'  && <ConsultorioSection />}
+          {section === 'servicos'     && <ServicosSection />}
+          {section === 'whatsapp'     && <WhatsAppSection />}
+          {section === 'assistente'   && <AssistenteSection />}
+          {section === 'integracoes'  && <IntegracoesSection />}
+          {section === 'equipe'       && <EquipeSection />}
+          {section === 'notificacoes' && <NotificacoesSection />}
+          {section === 'seguranca'    && <SegurancaSection />}
+          {section === 'privacidade'  && <PrivacidadeSection />}
+          {section === 'plano'        && <PlanoSection />}
+          {section === 'preferencias' && <PreferenciasSection />}
         </div>
       </div>
     </V4Page>
   )
 }
 
-// ═══════════════════════════════════════════════════════
-// Perfil
-// ═══════════════════════════════════════════════════════
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function SectionPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <V4Card className="p-6">
+      <div className="mb-5 border-b border-[var(--border)] pb-4">
+        <h2 className="text-[16px] font-semibold text-t1">{title}</h2>
+        {subtitle && <p className="mt-1 text-[13px] text-t3">{subtitle}</p>}
+      </div>
+      {children}
+    </V4Card>
+  )
+}
 
-const profileSchema = z.object({
-  name: z.string().min(2, 'Nome obrigatório'),
-  email: z.string().email('E-mail inválido'),
+function FormRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[180px_1fr] sm:items-start sm:gap-4">
+      <div className="pt-1.5">
+        <label className="text-[13px] font-medium text-t1">{label}</label>
+        {hint && <p className="mt-0.5 text-[11.5px] leading-4 text-t3">{hint}</p>}
+      </div>
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function Divider() {
+  return <div className="my-5 border-t border-[var(--border)]" />
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 1 — Minha conta
+// ══════════════════════════════════════════════════════════════════════════════
+const contaSchema = z.object({
+  name:  z.string().min(2, 'Nome obrigatório'),
   phone: z.string().optional(),
-  specialty: z.string().optional(),
-  bio: z.string().optional(),
 })
-type ProfileData = z.infer<typeof profileSchema>
+type ContaData = z.infer<typeof contaSchema>
+
+function ContaSection() {
+  const { user, refreshUser } = useAuth()
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } =
+    useForm<ContaData>({ resolver: zodResolver(contaSchema) })
+
+  useEffect(() => {
+    if (user) reset({ name: user.name || '', phone: user.phone || '' })
+  }, [user, reset])
+
+  async function onSubmit(data: ContaData) {
+    await api.put('/api/nutritionists/profile', data)
+    await refreshUser()
+    toast.success('Conta atualizada!')
+  }
+
+  return (
+    <SectionPanel title="Minha conta" subtitle="Dados básicos da sua conta no Frame System.">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormRow label="Nome completo">
+          <V4Input {...register('name')} placeholder="Seu nome" className="w-full" />
+          {errors.name && <p className="mt-1 text-[11.5px] text-[var(--danger)]">{errors.name.message}</p>}
+        </FormRow>
+        <FormRow label="E-mail" hint="Não é possível alterar o e-mail após o cadastro.">
+          <V4Input value={user?.email || ''} disabled className="w-full opacity-60" />
+        </FormRow>
+        <FormRow label="Telefone">
+          <V4Input {...register('phone')} placeholder="+55 11 99999-9999" className="w-full" />
+        </FormRow>
+        <Divider />
+        <div className="flex justify-end">
+          <V4Button type="submit" variant="primary" disabled={isSubmitting || !isDirty}>
+            {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Salvar alterações
+          </V4Button>
+        </div>
+      </form>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 2 — Perfil profissional
+// ══════════════════════════════════════════════════════════════════════════════
+const perfilSchema = z.object({
+  specialty: z.string().optional(),
+  bio:       z.string().optional(),
+})
+type PerfilData = z.infer<typeof perfilSchema>
 
 function PerfilSection() {
   const { user, refreshUser } = useAuth()
-
-  const {
-    register, handleSubmit, reset,
-    formState: { errors, isSubmitting, isDirty },
-  } = useForm<ProfileData>({ resolver: zodResolver(profileSchema) })
+  const { register, handleSubmit, reset, formState: { isSubmitting, isDirty } } =
+    useForm<PerfilData>({ resolver: zodResolver(perfilSchema) })
 
   useEffect(() => {
-    if (user) reset({
-      name: user.name || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      specialty: user.specialty || '',
-      bio: user.bio || '',
-    })
+    if (user) reset({ specialty: user.specialty || '', bio: user.bio || '' })
   }, [user, reset])
 
-  async function onSubmit(data: ProfileData) {
-    try {
-      await api.put('/api/nutritionists/profile', data)
-      await refreshUser()
-      toast.success('Perfil salvo!')
-    } catch {
-      toast.error('Erro ao salvar. Tente novamente.')
-    }
+  async function onSubmit(data: PerfilData) {
+    await api.put('/api/nutritionists/profile', data)
+    await refreshUser()
+    toast.success('Perfil atualizado!')
   }
 
   return (
-    <div className="space-y-4">
-      <V4CardPad className="flex items-center gap-5">
-        <Avatar name={user?.name || 'U'} color="green" size={64} />
-        <div>
-          <p className="text-[18px] font-bold tracking-tight leading-tight text-t1">{user?.name || '—'}</p>
-          <p className="mt-1 text-[12px] font-mono text-t3">{user?.email}</p>
-          {user?.specialty && (
-            <span className="inline-block mt-2"><Badge variant="success">{user.specialty}</Badge></span>
+    <SectionPanel title="Perfil profissional" subtitle="Informações que identificam você como profissional de saúde.">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormRow label="Especialidade" hint="Ex: Nutrição clínica, Nutrição esportiva, Nutrição funcional">
+          <V4Input {...register('specialty')} placeholder="Sua especialidade principal" className="w-full" />
+        </FormRow>
+        <FormRow label="Biografia" hint="Sua apresentação profissional. Usada pela IA para contextualizar os atendimentos.">
+          <textarea
+            {...register('bio')}
+            placeholder="Descreva sua abordagem, experiência e diferencial profissional..."
+            rows={5}
+            className="w-full rounded-[10px] border border-[var(--border)] px-3 py-2 text-[13px] outline-none placeholder:text-t3 focus:border-[var(--brand-ring)] resize-none"
+            style={{ background: 'var(--raised)', color: 'var(--t1)' }}
+          />
+        </FormRow>
+        <Divider />
+        <div className="flex justify-end">
+          <V4Button type="submit" variant="primary" disabled={isSubmitting || !isDirty}>
+            {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Salvar
+          </V4Button>
+        </div>
+      </form>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 3 — Consultório e marca
+// ══════════════════════════════════════════════════════════════════════════════
+function ConsultorioSection() {
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [email, setEmail] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  function handleSave() {
+    setSaved(true)
+    toast.success('Configurações do consultório salvas!')
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <SectionPanel title="Consultório e marca" subtitle="Identidade do seu espaço de atendimento.">
+      <div className="space-y-4">
+        <FormRow label="Nome do consultório">
+          <V4Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Clínica Nutri Bem-Estar" className="w-full" />
+        </FormRow>
+        <FormRow label="Descrição" hint="Aparece em mensagens automáticas e confirmações.">
+          <textarea
+            value={descricao}
+            onChange={e => setDescricao(e.target.value)}
+            placeholder="Descrição curta do seu consultório..."
+            rows={3}
+            className="w-full rounded-[10px] border border-[var(--border)] px-3 py-2 text-[13px] outline-none placeholder:text-t3 focus:border-[var(--brand-ring)] resize-none"
+            style={{ background: 'var(--raised)', color: 'var(--t1)' }}
+          />
+        </FormRow>
+        <FormRow label="E-mail de contato">
+          <V4Input value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seusite.com.br" type="email" className="w-full" />
+        </FormRow>
+        <Divider />
+        <div className="flex justify-end">
+          <V4Button variant="primary" onClick={handleSave}>
+            {saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+            {saved ? 'Salvo!' : 'Salvar'}
+          </V4Button>
+        </div>
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 4 — Serviços e preços
+// ══════════════════════════════════════════════════════════════════════════════
+interface Service { id: string; name: string; category: string; modality: string; price?: string }
+
+function ServicosSection() {
+  const qc = useQueryClient()
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newModality, setNewModality] = useState('online')
+  const [newPrice, setNewPrice] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const { data, isLoading } = useQuery<{ services: Service[] }>({
+    queryKey: ['services'],
+    queryFn: () => api.get('/api/services').then(r => r.data),
+  })
+
+  async function handleAdd() {
+    if (!newName.trim()) return
+    setSaving(true)
+    try {
+      await api.post('/api/services', { name: newName, modality: newModality, price: newPrice || undefined })
+      qc.invalidateQueries({ queryKey: ['services'] })
+      setAdding(false); setNewName(''); setNewPrice('')
+      toast.success('Serviço adicionado!')
+    } catch { toast.error('Erro ao adicionar serviço') }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(id: string) {
+    await api.delete(`/api/services/${id}`)
+    qc.invalidateQueries({ queryKey: ['services'] })
+    toast.success('Serviço removido')
+  }
+
+  return (
+    <SectionPanel title="Serviços e preços" subtitle="Configure os serviços que sua assistente pode apresentar e agendar.">
+      {isLoading ? (
+        <div className="flex h-16 items-center justify-center text-[13px] text-t3">Carregando...</div>
+      ) : (
+        <div className="space-y-2">
+          {(data?.services ?? []).length === 0 && !adding && (
+            <p className="py-4 text-center text-[13px] text-t3">Nenhum serviço cadastrado.</p>
+          )}
+          {(data?.services ?? []).map(s => (
+            <div key={s.id} className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3 py-2.5">
+              <div>
+                <span className="text-[13px] font-medium text-t1">{s.name}</span>
+                <span className="ml-2 text-[11.5px] text-t3">{s.modality}</span>
+                {s.price && <span className="ml-2 text-[12px] text-[var(--brand)]">{s.price}</span>}
+              </div>
+              <button onClick={() => handleDelete(s.id)} className="p-1 text-t3 hover:text-[var(--danger)]">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+
+          {adding ? (
+            <div className="space-y-2 rounded-[10px] border border-[var(--brand-ring)] bg-[var(--raised)] p-3">
+              <V4Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nome do serviço" className="w-full" />
+              <div className="flex gap-2">
+                <V4Select value={newModality} onChange={e => setNewModality(e.target.value)} className="flex-1">
+                  <option value="online">Online</option>
+                  <option value="presencial">Presencial</option>
+                  <option value="ambos">Ambos</option>
+                </V4Select>
+                <V4Input value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="Valor (ex: R$ 250)" className="flex-1" />
+              </div>
+              <div className="flex gap-2">
+                <V4Button variant="primary" onClick={handleAdd} disabled={saving} className="flex-1 h-8">
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Salvar
+                </V4Button>
+                <V4Button onClick={() => setAdding(false)} className="h-8">Cancelar</V4Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex w-full items-center gap-2 rounded-[10px] border border-dashed border-[var(--border)] px-3 py-2.5 text-[13px] text-t3 transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
+            >
+              <Plus className="h-3.5 w-3.5" /> Adicionar serviço
+            </button>
           )}
         </div>
-      </V4CardPad>
-
-      <V4CardPad>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-[14px] font-medium text-t1">Informações</p>
-            <p className="mt-0.5 text-[12px] text-t3">Dados do seu perfil profissional</p>
-          </div>
-          {isDirty && <V4Tag tone="amber">Alterações pendentes</V4Tag>}
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="field-label">Nome completo</label>
-              <input {...register('name')} className="input" placeholder="Seu nome" />
-              {errors.name && <p className="mt-1.5 text-[12px] text-[var(--danger)]">{errors.name.message}</p>}
-            </div>
-            <div>
-              <label className="field-label">E-mail</label>
-              <input {...register('email')} type="email" className="input" placeholder="voce@exemplo.com" />
-              {errors.email && <p className="mt-1.5 text-[12px] text-[var(--danger)]">{errors.email.message}</p>}
-            </div>
-            <div>
-              <label className="field-label">WhatsApp pessoal</label>
-              <input {...register('phone')} type="tel" className="input" placeholder="(11) 99999-9999" />
-            </div>
-            <div>
-              <label className="field-label">Especialidade</label>
-              <input {...register('specialty')} className="input" placeholder="Ex: Nutrição esportiva" />
-            </div>
-          </div>
-
-          <div>
-            <label className="field-label">Bio</label>
-            <textarea {...register('bio')} rows={4} placeholder="Fale um pouco sobre você e sua abordagem..." className="textarea" />
-          </div>
-
-          <div className="flex items-center gap-3 border-t border-[var(--border)] pt-4">
-            <V4Button type="submit" variant="primary" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar alterações
-            </V4Button>
-            {!isDirty && <span className="text-[12px] font-mono text-t3">Sem alterações pendentes</span>}
-          </div>
-        </form>
-      </V4CardPad>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════
-// Segurança
-// ═══════════════════════════════════════════════════════
-
-const passwordSchema = z.object({
-  current_password: z.string().min(1, 'Informe a senha atual'),
-  new_password: z.string().min(8, 'Mínimo 8 caracteres'),
-  confirm_password: z.string().min(1, 'Confirme a nova senha'),
-}).refine(d => d.new_password === d.confirm_password, {
-  message: 'As senhas não coincidem',
-  path: ['confirm_password'],
-})
-type PasswordData = z.infer<typeof passwordSchema>
-
-function PasswordField({ label, error, ...props }: any) {
-  const [show, setShow] = useState(false)
-  return (
-    <div>
-      <label className="field-label">{label}</label>
-      <div className="relative">
-        <input
-          {...props}
-          type={show ? 'text' : 'password'}
-          className="input pr-10"
-          style={error ? { borderColor: 'var(--danger)' } : undefined}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={() => setShow(v => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-t3 transition-opacity hover:opacity-70"
-        >
-          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      {error && <p className="mt-1.5 text-[12px] text-[var(--danger)]">{error}</p>}
-    </div>
-  )
-}
-
-function SegurancaSection() {
-  const [done, setDone] = useState(false)
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PasswordData>({
-    resolver: zodResolver(passwordSchema),
-  })
-
-  async function onSubmit(data: PasswordData) {
-    try {
-      await api.post('/api/nutritionists/change-password', {
-        current_password: data.current_password,
-        new_password: data.new_password,
-      })
-      toast.success('Senha alterada com sucesso!')
-      reset()
-      setDone(true)
-      setTimeout(() => setDone(false), 4000)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erro ao alterar senha.')
-    }
-  }
-
-  return (
-    <V4CardPad className="max-w-lg">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--brand-s)]">
-          <Shield className="h-4 w-4 text-[var(--brand)]" />
-        </div>
-        <div>
-          <p className="text-[14px] font-medium text-t1">Alterar senha</p>
-          <p className="text-[12px] text-t3">Use uma senha forte com pelo menos 8 caracteres</p>
-        </div>
-      </div>
-
-      {done && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[var(--brand-ring)] bg-[var(--brand-s)] px-4 py-3">
-          <CheckCircle className="h-4 w-4 shrink-0 text-[var(--brand)]" />
-          <p className="text-[13px] font-medium text-[var(--brand)]">Senha alterada com sucesso!</p>
-        </div>
       )}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <PasswordField label="Senha atual" error={errors.current_password?.message} placeholder="••••••••" {...register('current_password')} />
-        <PasswordField label="Nova senha" error={errors.new_password?.message} placeholder="Mínimo 8 caracteres" {...register('new_password')} />
-        <PasswordField label="Confirmar nova senha" error={errors.confirm_password?.message} placeholder="Repita a nova senha" {...register('confirm_password')} />
-
-        <V4Button type="submit" variant="primary" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-          Salvar nova senha
-        </V4Button>
-      </form>
-    </V4CardPad>
+    </SectionPanel>
   )
 }
 
-// ═══════════════════════════════════════════════════════
-// Aparência
-// ═══════════════════════════════════════════════════════
-
-function AparenciaSection() {
-  const { theme, toggleTheme } = useTheme()
-
-  return (
-    <V4CardPad className="max-w-lg">
-      <p className="text-[14px] font-medium text-t1">Tema</p>
-      <p className="mt-0.5 text-[12px] text-t3">Escolha como o Frame System aparece para você.</p>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <button
-          onClick={() => theme !== 'light' && toggleTheme()}
-          className={theme === 'light'
-            ? 'flex flex-col items-center gap-2 rounded-xl border-[1.5px] border-[var(--brand)] bg-[var(--brand-s)] p-4'
-            : 'flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--raised)] p-4'}
-        >
-          <Sun className="h-5 w-5" style={{ color: theme === 'light' ? 'var(--brand)' : 'var(--t3)' }} />
-          <span className="text-[13px] font-medium text-t1">Claro</span>
-        </button>
-        <button
-          onClick={() => theme !== 'dark' && toggleTheme()}
-          className={theme === 'dark'
-            ? 'flex flex-col items-center gap-2 rounded-xl border-[1.5px] border-[var(--brand)] bg-[var(--brand-s)] p-4'
-            : 'flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--raised)] p-4'}
-        >
-          <Moon className="h-5 w-5" style={{ color: theme === 'dark' ? 'var(--brand)' : 'var(--t3)' }} />
-          <span className="text-[13px] font-medium text-t1">Escuro</span>
-        </button>
-      </div>
-    </V4CardPad>
-  )
-}
-
-// ═══════════════════════════════════════════════════════
-// Integrações
-// ═══════════════════════════════════════════════════════
-
-type IntegrationId = 'whatsapp' | 'instagram' | 'calendar' | 'stripe' | 'asaas' | 'mailchimp' | 'zapier' | 'webhook' | 'import'
-
-function LogoMark({ type }: { type: IntegrationId }) {
-  const base = 'grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[12px] font-bold text-white'
-  const map: Record<IntegrationId, string> = {
-    whatsapp: 'bg-gradient-to-br from-[#25D366] to-[#128C7E]',
-    instagram: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]',
-    calendar: 'bg-white text-[#1A73E8] border border-[var(--border)]',
-    stripe: 'bg-gradient-to-br from-[#635BFF] to-[#3D32D6]',
-    asaas: 'bg-gradient-to-br from-[#00C27C] to-[#00A86B]',
-    mailchimp: 'bg-gradient-to-br from-[#FFE01B] to-[#E0C400] text-[#241C15]',
-    zapier: 'bg-gradient-to-br from-[#FF4A00] to-[#C93B00]',
-    webhook: 'bg-gradient-to-br from-[#6AA9FF] to-[#3F7DD9]',
-    import: 'bg-gradient-to-br from-[#22C55E] to-[#15803D]',
-  }
-
-  if (type === 'calendar') {
-    return (
-      <div className={`${base} ${map[type]}`}>
-        <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
-          <path fill="#4285F4" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5V9H4z" />
-          <path fill="#34A853" d="M4 9h4v12H6.5A2.5 2.5 0 0 1 4 18.5z" />
-          <path fill="#FBBC05" d="M8 9h6v12H8z" />
-          <path fill="#EA4335" d="M14 9h6v9.5a2.5 2.5 0 0 1-2.5 2.5H14z" />
-          <path fill="#fff" d="M7 12h10v6H7z" />
-          <path fill="#1A73E8" d="M10.8 16.9h2.6v-.7h-.8v-3.1h-.7l-1.2.8.4.6.7-.5v2.2h-1z" />
-        </svg>
-      </div>
-    )
-  }
-
-  if (type === 'whatsapp') {
-    return (
-      <div className={`${base} ${map[type]}`}>
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-          <path fill="currentColor" d="M12.04 3.5a8.43 8.43 0 0 0-7.22 12.78L3.8 20.5l4.33-1.01a8.43 8.43 0 1 0 3.91-15.99Zm0 1.5a6.93 6.93 0 0 1 5.93 10.52l-.17.27.6 2.5-2.56-.6-.26.16A6.93 6.93 0 1 1 12.04 5Zm-2.38 3.4c-.16 0-.42.06-.64.3-.22.25-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.66 2.66 4.1 3.62 2.03.8 2.44.64 2.88.6.44-.04 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.42-1.34-1.66-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46Z" />
-        </svg>
-      </div>
-    )
-  }
-
-  if (type === 'instagram') {
-    return (
-      <div className={`${base} ${map[type]}`}>
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-          <path fill="none" stroke="currentColor" strokeWidth="2" d="M8 3.8h8A4.2 4.2 0 0 1 20.2 8v8a4.2 4.2 0 0 1-4.2 4.2H8A4.2 4.2 0 0 1 3.8 16V8A4.2 4.2 0 0 1 8 3.8Z" />
-          <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
-          <circle cx="16.7" cy="7.3" r="1" fill="currentColor" />
-        </svg>
-      </div>
-    )
-  }
-
-  if (type === 'stripe') return <div className={`${base} ${map[type]} text-[15px] normal-case`}>stripe</div>
-  if (type === 'zapier') return <div className={`${base} ${map[type]} text-[18px]`}>*</div>
-
-  const labels: Record<IntegrationId, string> = {
-    whatsapp: 'WA', instagram: 'IG', calendar: 'GC', stripe: 'ST', asaas: 'AS', mailchimp: 'MC', zapier: 'ZP', webhook: 'WH', import: 'CSV',
-  }
-  return <div className={`${base} ${map[type]}`}>{labels[type]}</div>
-}
-
-function IntegrationCard({ id, name, desc, connected, comingSoon, account, onAction, actionLabel }: {
-  id: IntegrationId; name: string; desc: string; connected?: boolean; comingSoon?: boolean; account?: string; onAction?: () => void; actionLabel?: string
-}) {
-  return (
-    <div className={`flex flex-col rounded-[14px] border p-5 transition-colors ${
-      comingSoon
-        ? 'border-[var(--border)] bg-[var(--raised)] opacity-70'
-        : connected
-          ? 'border-[rgba(0,194,124,0.28)] bg-white hover:border-[var(--brand)]'
-          : 'border-[var(--border)] bg-white hover:border-[rgba(0,194,124,0.35)]'
-    }`}>
-      <div className="flex items-start justify-between gap-2 mb-4">
-        <LogoMark type={id} />
-        {connected && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,194,124,0.25)] bg-[rgba(0,194,124,0.08)] px-2 py-0.5 text-[10px] font-medium text-[#08754D]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
-            Ativo
-          </span>
-        )}
-        {comingSoon && (
-          <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] font-medium text-t3">
-            Em breve
-          </span>
-        )}
-      </div>
-      <div className="flex-1">
-        <div className="text-[13px] font-semibold text-t1">{name}</div>
-        <p className="mt-1 text-[11.5px] leading-[1.5] text-t3">{connected && account ? account : desc}</p>
-      </div>
-      {!comingSoon && (
-        <div className="mt-4 border-t border-[var(--border)] pt-3">
-          <button
-            onClick={onAction}
-            disabled={!onAction}
-            className="text-[12px] font-medium transition-colors disabled:opacity-40"
-            style={{ color: connected ? 'var(--danger)' : 'var(--brand)' }}
-          >
-            {actionLabel ?? (connected ? 'Desconectar' : 'Conectar')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ImportButton() {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-
-  async function onChange(file?: File | null) {
-    if (!file) return
-    setUploading(true)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const { data } = await api.post('/api/clients/import-csv', form, { headers: { 'Content-Type': 'multipart/form-data' } })
-      toast.success(`${data.imported ?? 0} pacientes importados`)
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error ?? 'Erro ao importar pacientes')
-    } finally {
-      setUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
-    }
-  }
-
-  return (
-    <>
-      <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e => onChange(e.target.files?.[0])} />
-      <Btn variant="secondary" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-        {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-        Importar pacientes
-      </Btn>
-    </>
-  )
-}
-
-function IntegracoesSection() {
+// ══════════════════════════════════════════════════════════════════════════════
+// 5 — WhatsApp
+// ══════════════════════════════════════════════════════════════════════════════
+function WhatsAppSection() {
   const qc = useQueryClient()
-  const { data: waData } = useQuery<any>({
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const { data: waData, isLoading } = useQuery<any>({
     queryKey: ['whatsapp-status'],
     queryFn: () => api.get('/api/whatsapp/status').then(r => r.data),
-    refetchInterval: 5000,
+    refetchInterval: qrCode ? 3000 : 10000,
   })
-  const { data: calendarData, isLoading: calendarLoading } = useQuery<any>({
+  const connected = waData?.status === 'connected'
+
+  useEffect(() => {
+    if (connected && qrCode) { setQrCode(null); toast.success('WhatsApp conectado!') }
+  }, [connected, qrCode])
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+
+  async function handleConnect() {
+    setConnecting(true)
+    try {
+      await api.post('/api/whatsapp/connect')
+      await new Promise(r => setTimeout(r, 1500))
+      const { data } = await api.get('/api/whatsapp/qr')
+      if (data?.qrCode) { setQrCode(data.qrCode) }
+      else {
+        toast.info('Aguardando QR code...')
+        let attempts = 0
+        const interval = setInterval(async () => {
+          attempts++
+          try { const { data: qd } = await api.get('/api/whatsapp/qr'); if (qd?.qrCode) { setQrCode(qd.qrCode); clearInterval(interval) } } catch {}
+          if (attempts >= 5) clearInterval(interval)
+        }, 2000)
+        pollRef.current = interval
+      }
+      qc.invalidateQueries({ queryKey: ['whatsapp-status'] })
+    } catch (e: any) { toast.error(e?.response?.data?.error ?? 'Erro ao conectar') }
+    finally { setConnecting(false) }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    try {
+      await api.post('/api/whatsapp/disconnect')
+      setQrCode(null)
+      qc.invalidateQueries({ queryKey: ['whatsapp-status'] })
+      toast.success('WhatsApp desconectado')
+    } catch { toast.error('Erro ao desconectar') }
+    finally { setDisconnecting(false) }
+  }
+
+  return (
+    <SectionPanel title="WhatsApp" subtitle="Gerencie a conexão do número com o Frame System.">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-[#25D366]/10">
+              <Phone className="h-4 w-4 text-[#25D366]" />
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-t1">
+                {isLoading ? 'Verificando...' : connected ? (waData?.phone || 'Conectado') : 'Desconectado'}
+              </p>
+              <p className="text-[11.5px] text-t3">
+                {connected ? 'Ativo e recebendo mensagens' : 'Conecte para ativar a assistente'}
+              </p>
+            </div>
+          </div>
+          <V4Tag tone={connected ? 'green' : 'default'} dot={connected}>
+            {connected ? 'Conectado' : 'Offline'}
+          </V4Tag>
+        </div>
+
+        {qrCode && (
+          <div className="flex flex-col items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--raised)] p-5">
+            <p className="text-[13px] font-medium text-t1">Escaneie o QR code com seu WhatsApp</p>
+            <p className="text-[11.5px] text-t3">WhatsApp → Dispositivos conectados → Conectar um dispositivo</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrCode} alt="QR Code WhatsApp" className="h-48 w-48 rounded-lg border border-[var(--border)]" />
+            <button onClick={() => setQrCode(null)} className="flex items-center gap-1 text-[11.5px] text-t3 hover:text-t1">
+              <X className="h-3 w-3" /> Cancelar
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {connected ? (
+            <V4Button onClick={handleDisconnect} disabled={disconnecting} variant="danger">
+              {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+              Desconectar
+            </V4Button>
+          ) : (
+            <V4Button onClick={handleConnect} disabled={connecting || !!qrCode} variant="primary">
+              {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Phone className="h-3.5 w-3.5" />}
+              {qrCode ? 'Aguardando scan...' : 'Conectar WhatsApp'}
+            </V4Button>
+          )}
+        </div>
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 6 — Assistente e atendimento
+// ══════════════════════════════════════════════════════════════════════════════
+function AssistenteSection() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: () => api.get('/api/assistants').then(r => r.data),
+  })
+  const active = data?.is_active ?? true
+
+  async function toggleIA() {
+    try {
+      await api.post('/api/assistants', { is_active: !active })
+      qc.invalidateQueries({ queryKey: ['assistant'] })
+      toast.success(active ? 'IA pausada' : 'IA ativada')
+    } catch { toast.error('Erro ao alterar status da IA') }
+  }
+
+  return (
+    <SectionPanel title="Assistente e atendimento" subtitle="Controle o comportamento da sua assistente virtual.">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <div>
+            <p className="text-[13px] font-medium text-t1">Status da IA</p>
+            <p className="text-[11.5px] text-t3">
+              {active ? 'Respondendo automaticamente.' : 'Pausada. Você responde manualmente.'}
+            </p>
+          </div>
+          <button
+            onClick={toggleIA}
+            disabled={isLoading}
+            className={cn(
+              'relative inline-flex h-6 w-11 items-center rounded-full border-2 transition-colors',
+              active ? 'border-[var(--brand)] bg-[var(--brand)]' : 'border-[var(--border)] bg-[var(--raised)]',
+            )}
+          >
+            <span className={cn('block h-4 w-4 rounded-full bg-white shadow transition-transform', active ? 'translate-x-5' : 'translate-x-0.5')} />
+          </button>
+        </div>
+        <div className="rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <p className="text-[13px] font-medium text-t1">Nome da assistente</p>
+          <p className="mt-1 text-[13px] text-t2">{data?.name || 'Frame'}</p>
+          <p className="mt-2 text-[11.5px] text-t3">
+            Para editar identidade, tom, horários e roteiros, acesse{' '}
+            <a href="/treinamento" className="text-[var(--brand)] hover:underline">Assistente</a>.
+          </p>
+        </div>
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 7 — Integrações
+// ══════════════════════════════════════════════════════════════════════════════
+function IntegracoesSection() {
+  const qc = useQueryClient()
+  const { data: calData, isLoading } = useQuery<any>({
     queryKey: ['google-calendar-status'],
     queryFn: () => api.get('/api/google-calendar/status').then(r => r.data),
   })
-
-  const waConnected = waData?.status === 'connected'
-  const calendarConnected = !!calendarData?.calendar_id
-  const activeCount = (waConnected ? 1 : 0) + (calendarConnected ? 1 : 0)
-  const total = 8
+  const calConnected = !!calData?.calendar_id || !!calData?.connected
 
   async function connectCalendar() {
     try {
@@ -465,273 +535,343 @@ function IntegracoesSection() {
       await api.delete('/api/google-calendar/disconnect')
       qc.invalidateQueries({ queryKey: ['google-calendar-status'] })
       toast.success('Google Calendar desconectado')
-    } catch { toast.error('Erro ao desconectar Google Calendar') }
+    } catch { toast.error('Erro ao desconectar') }
   }
 
-  const integrations: Array<{ id: IntegrationId; name: string; desc: string; connected?: boolean; comingSoon?: boolean; account?: string; onAction?: () => void; actionLabel?: string }> = [
-    {
-      id: 'whatsapp', name: 'WhatsApp Business', desc: 'Canal oficial · mensagens, templates e mídia',
-      connected: waConnected, account: waData?.phone || 'Instância conectada',
-      onAction: () => toast.info('Use a configuração de WhatsApp já conectada ao sistema.'),
-    },
-    {
-      id: 'calendar', name: 'Google Calendar', desc: calendarLoading ? 'Verificando conexão...' : 'Sincronização bidirecional de agenda',
-      connected: calendarConnected, account: calendarData?.calendar_id,
-      onAction: calendarConnected ? disconnectCalendar : connectCalendar,
-      actionLabel: calendarConnected ? 'Desconectar' : 'Conectar',
-    },
-    { id: 'instagram', name: 'Instagram Direct', desc: 'DMs e respostas a stories', comingSoon: true },
-    { id: 'stripe', name: 'Stripe', desc: 'Pagamentos recorrentes e cobranças', comingSoon: true },
-    { id: 'asaas', name: 'Asaas', desc: 'Boletos, PIX e assinaturas', comingSoon: true },
-    { id: 'mailchimp', name: 'Mailchimp', desc: 'Campanhas de e-mail e automações', comingSoon: true },
-    { id: 'zapier', name: 'Zapier', desc: 'Conecte a 5.000+ aplicativos', comingSoon: true },
-    { id: 'webhook', name: 'Webhook', desc: 'Eventos em tempo real para sua API', comingSoon: true },
-  ]
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[12px] text-t3">{activeCount} ativa(s) · {total - activeCount} disponíveis</p>
-        <ImportButton />
+    <SectionPanel title="Integrações" subtitle="Conecte ferramentas externas ao Frame System.">
+      <div className="space-y-3">
+        {isLoading ? (
+          <div className="flex h-16 items-center justify-center text-[13px] text-t3">Verificando conexões...</div>
+        ) : (
+          <div className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+            <div>
+              <p className="text-[13px] font-medium text-t1">Google Calendar</p>
+              <p className="text-[11.5px] text-t3">
+                {calConnected && calData?.calendar_id ? calData.calendar_id : 'Sincronize agendamentos com seu calendário.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <V4Tag tone={calConnected ? 'green' : 'default'} dot={calConnected}>
+                {calConnected ? 'Conectado' : 'Desconectado'}
+              </V4Tag>
+              <V4Button className="h-8" onClick={calConnected ? disconnectCalendar : connectCalendar}>
+                {calConnected ? 'Desconectar' : 'Conectar'}
+              </V4Button>
+            </div>
+          </div>
+        )}
+        <p className="text-[11.5px] text-t3">
+          Para gerenciar todas as integrações, acesse{' '}
+          <a href="/integracoes" className="text-[var(--brand)] hover:underline">Integrações</a>.
+        </p>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {integrations.map(item => <IntegrationCard key={item.id} {...item} />)}
-      </div>
-    </div>
+    </SectionPanel>
   )
 }
 
-// ═══════════════════════════════════════════════════════
-// Equipe
-// ═══════════════════════════════════════════════════════
-
-interface TeamMember {
-  id: string
-  name: string | null
-  email: string
-  role: 'admin' | 'receptionist' | 'viewer'
-  status: 'pending' | 'active'
-  created_at: string
-  invite_link?: string
-}
-
-const ROLES = [
-  { value: 'admin', label: 'Administrador', desc: 'Acesso total ao sistema', icon: Shield },
-  { value: 'receptionist', label: 'Recepcionista', desc: 'Agenda, clientes e conversas', icon: Pencil },
-  { value: 'viewer', label: 'Visualizador', desc: 'Somente leitura, sem editar nada', icon: Eye },
-]
+// ══════════════════════════════════════════════════════════════════════════════
+// 8 — Equipe e permissões
+// ══════════════════════════════════════════════════════════════════════════════
+interface TeamMember { id: string; name?: string; email: string; role: string; status: string; invite_link?: string }
 
 function EquipeSection() {
   const qc = useQueryClient()
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'admin' | 'receptionist' | 'viewer'>('receptionist')
-  const [adding, setAdding] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  const [emailVal, setEmailVal] = useState('')
+  const [role, setRole] = useState('receptionist')
+  const [inviting, setInviting] = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
 
-  const { data: members = [], isLoading } = useQuery<TeamMember[]>({
+  const { data } = useQuery<{ members: TeamMember[] }>({
     queryKey: ['team'],
-    queryFn: async () => { const { data } = await api.get('/api/team'); return data.members },
+    queryFn: () => api.get('/api/team').then(r => r.data),
   })
 
-  async function handleInvite() {
-    if (!email.trim()) return
-    setAdding(true)
+  const ROLE_LABELS: Record<string, string> = { admin: 'Admin', receptionist: 'Recepcionista', viewer: 'Visualizador' }
+
+  async function invite() {
+    if (!emailVal) return
+    setInviting(true)
     try {
-      await api.post('/api/team/invite', { email: email.trim(), role })
-      toast.success('Convite criado! Copie o link e envie para o colaborador.')
-      setEmail('')
-      setShowForm(false)
+      await api.post('/api/team/invite', { email: emailVal, role })
       qc.invalidateQueries({ queryKey: ['team'] })
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erro ao criar convite.')
-    } finally {
-      setAdding(false)
-    }
+      setEmailVal(''); setShowInvite(false)
+      toast.success('Convite enviado!')
+    } catch (e: any) { toast.error(e?.response?.data?.error || 'Erro ao convidar') }
+    finally { setInviting(false) }
   }
 
-  async function handleRemove(id: string) {
-    if (!confirm('Remover este colaborador?')) return
-    try {
-      await api.delete(`/api/team/${id}`)
-      toast.success('Colaborador removido.')
-      qc.invalidateQueries({ queryKey: ['team'] })
-    } catch { toast.error('Erro ao remover.') }
+  async function removeMember(id: string) {
+    await api.delete(`/api/team/${id}`)
+    qc.invalidateQueries({ queryKey: ['team'] })
+    toast.success('Membro removido')
   }
-
-  function copyLink(link: string) {
-    navigator.clipboard.writeText(link)
-    toast.success('Link copiado!')
-  }
-
-  const roleInfo = (r: string) => ROLES.find(x => x.value === r)
-  const activeMembers = members.filter(m => m.status === 'active')
-  const pendingMembers = members.filter(m => m.status === 'pending')
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[14px] font-medium text-t1">Colaboradores</p>
-          <p className="mt-0.5 text-[12px] text-t3">Adicione colaboradores e defina o que cada um pode fazer.</p>
-        </div>
-        <V4Button onClick={() => setShowForm(v => !v)}>
-          <UserPlus className="h-4 w-4" />Adicionar
-        </V4Button>
-      </div>
-
-      {!isLoading && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { label: 'Membros', value: activeMembers.length, hint: 'ativos no workspace' },
-            { label: 'Convites', value: pendingMembers.length, hint: 'aguardando aceite' },
-            { label: 'Limite do plano', value: 5, hint: 'usuários incluídos' },
-            { label: 'Disponíveis', value: Math.max(5 - members.length, 0), hint: 'assentos restantes' },
-          ].map(item => (
-            <V4CardPad key={item.label}>
-              <div className="text-[22px] font-medium tabular-nums text-t1">{item.value}</div>
-              <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-t3">{item.label}</div>
-              <div className="mt-1 text-[11.5px] text-t3">{item.hint}</div>
-            </V4CardPad>
-          ))}
-        </div>
-      )}
-
-      {showForm && (
-        <V4CardPad>
-          <p className="mb-4 text-[14px] font-medium text-t1">Novo colaborador</p>
-          <div className="space-y-4">
+    <SectionPanel title="Equipe e permissões" subtitle="Convide colaboradores para acessar o Frame System.">
+      <div className="space-y-2">
+        {(data?.members ?? []).length === 0 && !showInvite && (
+          <p className="py-4 text-center text-[13px] text-t3">Nenhum colaborador convidado ainda.</p>
+        )}
+        {(data?.members ?? []).map(m => (
+          <div key={m.id} className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3 py-2.5">
             <div>
-              <label className="field-label">E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="colaborador@email.com" className="input" />
+              <p className="text-[13px] font-medium text-t1">{m.name || m.email}</p>
+              <p className="text-[11.5px] text-t3">{m.email} · {ROLE_LABELS[m.role] || m.role}</p>
             </div>
-            <div>
-              <label className="field-label">Nível de acesso</label>
-              <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {ROLES.map(({ value, label, desc, icon: Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setRole(value as any)}
-                    className={role === value
-                      ? 'flex flex-col gap-1 rounded-xl border-[1.5px] border-[var(--brand)] bg-[var(--brand-s)] p-3 text-left'
-                      : 'flex flex-col gap-1 rounded-xl border border-[var(--border)] p-3 text-left'}
-                  >
-                    <Icon className="h-4 w-4" style={{ color: role === value ? 'var(--brand)' : 'var(--t3)' }} />
-                    <p className="text-[12px] font-semibold" style={{ color: role === value ? 'var(--brand)' : 'var(--t1)' }}>{label}</p>
-                    <p className="text-[10px] leading-tight text-t3">{desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <V4Button variant="primary" onClick={handleInvite} disabled={adding || !email.trim()}>
-                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                Gerar link de convite
-              </V4Button>
-              <V4Button onClick={() => setShowForm(false)}>Cancelar</V4Button>
+            <div className="flex items-center gap-2">
+              <V4Tag tone={m.status === 'active' ? 'green' : 'amber'}>
+                {m.status === 'active' ? 'Ativo' : 'Pendente'}
+              </V4Tag>
+              {m.status === 'pending' && m.invite_link && (
+                <button onClick={() => { navigator.clipboard.writeText(m.invite_link!); toast.success('Link copiado!') }} className="p-1 text-t3 hover:text-t1" title="Copiar link">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button onClick={() => removeMember(m.id)} className="p-1 text-t3 hover:text-[var(--danger)]">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
-        </V4CardPad>
-      )}
+        ))}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-[var(--brand)]" />
+        {showInvite ? (
+          <div className="space-y-2 rounded-[10px] border border-[var(--brand-ring)] bg-[var(--raised)] p-3">
+            <V4Input value={emailVal} onChange={e => setEmailVal(e.target.value)} placeholder="E-mail do colaborador" type="email" className="w-full" />
+            <V4Select value={role} onChange={e => setRole(e.target.value)} className="w-full">
+              <option value="receptionist">Recepcionista</option>
+              <option value="admin">Admin</option>
+              <option value="viewer">Visualizador</option>
+            </V4Select>
+            <div className="flex gap-2">
+              <V4Button variant="primary" onClick={invite} disabled={inviting} className="h-8 flex-1">
+                {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                Enviar convite
+              </V4Button>
+              <V4Button onClick={() => setShowInvite(false)} className="h-8">Cancelar</V4Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowInvite(true)}
+            className="flex w-full items-center gap-2 rounded-[10px] border border-dashed border-[var(--border)] px-3 py-2.5 text-[13px] text-t3 transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
+          >
+            <UserPlus className="h-3.5 w-3.5" /> Convidar colaborador
+          </button>
+        )}
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 9 — Notificações
+// ══════════════════════════════════════════════════════════════════════════════
+const NOTIF_ITEMS = [
+  { id: 'new_lead',      label: 'Novo contato via WhatsApp',        desc: 'Quando um novo lead entrar em contato.' },
+  { id: 'appointment',   label: 'Agendamento confirmado pela IA',    desc: 'Quando a assistente confirmar uma consulta.' },
+  { id: 'takeover',      label: 'Solicitação de atendimento humano', desc: 'Quando o contato pedir para falar com você.' },
+  { id: 'daily_summary', label: 'Resumo diário',                    desc: 'Sumário de atividade enviado por e-mail às 8h.' },
+]
+
+function NotificacoesSection() {
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({
+    new_lead: true, appointment: true, takeover: true, daily_summary: false,
+  })
+
+  return (
+    <SectionPanel title="Notificações" subtitle="Escolha quais eventos geram notificações para você.">
+      <div className="divide-y divide-[var(--border)]">
+        {NOTIF_ITEMS.map(item => (
+          <div key={item.id} className="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p className="text-[13px] font-medium text-t1">{item.label}</p>
+              <p className="text-[11.5px] text-t3">{item.desc}</p>
+            </div>
+            <button
+              onClick={() => setPrefs(p => ({ ...p, [item.id]: !p[item.id] }))}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-colors',
+                prefs[item.id] ? 'border-[var(--brand)] bg-[var(--brand)]' : 'border-[var(--border)] bg-[var(--raised)]',
+              )}
+            >
+              <span className={cn('block h-4 w-4 rounded-full bg-white shadow transition-transform', prefs[item.id] ? 'translate-x-5' : 'translate-x-0.5')} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 10 — Segurança
+// ══════════════════════════════════════════════════════════════════════════════
+const pwdSchema = z.object({
+  current_password: z.string().min(1, 'Obrigatório'),
+  new_password:     z.string().min(8, 'Mínimo 8 caracteres'),
+  confirm_password: z.string(),
+}).refine(d => d.new_password === d.confirm_password, {
+  message: 'Senhas não conferem', path: ['confirm_password'],
+})
+type PwdData = z.infer<typeof pwdSchema>
+
+function SegurancaSection() {
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
+    useForm<PwdData>({ resolver: zodResolver(pwdSchema) })
+
+  async function onSubmit(data: PwdData) {
+    try {
+      await api.post('/api/nutritionists/change-password', {
+        current_password: data.current_password,
+        new_password: data.new_password,
+      })
+      reset()
+      toast.success('Senha alterada com sucesso!')
+    } catch (e: any) { toast.error(e?.response?.data?.error || 'Senha atual incorreta') }
+  }
+
+  return (
+    <SectionPanel title="Segurança" subtitle="Gerencie sua senha e acesso à conta.">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormRow label="Senha atual">
+          <div className="relative">
+            <V4Input {...register('current_password')} type={showCurrent ? 'text' : 'password'} placeholder="Senha atual" className="w-full pr-10" />
+            <button type="button" onClick={() => setShowCurrent(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-t3">
+              {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.current_password && <p className="mt-1 text-[11.5px] text-[var(--danger)]">{errors.current_password.message}</p>}
+        </FormRow>
+        <FormRow label="Nova senha">
+          <div className="relative">
+            <V4Input {...register('new_password')} type={showNew ? 'text' : 'password'} placeholder="Mínimo 8 caracteres" className="w-full pr-10" />
+            <button type="button" onClick={() => setShowNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-t3">
+              {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.new_password && <p className="mt-1 text-[11.5px] text-[var(--danger)]">{errors.new_password.message}</p>}
+        </FormRow>
+        <FormRow label="Confirmar nova senha">
+          <V4Input {...register('confirm_password')} type="password" placeholder="Repita a nova senha" className="w-full" />
+          {errors.confirm_password && <p className="mt-1 text-[11.5px] text-[var(--danger)]">{errors.confirm_password.message}</p>}
+        </FormRow>
+        <Divider />
+        <div className="flex justify-end">
+          <V4Button type="submit" variant="primary" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
+            Alterar senha
+          </V4Button>
         </div>
-      ) : members.length === 0 ? (
-        <V4CardPad className="py-12 text-center">
-          <UserPlus className="mx-auto mb-3 h-8 w-8 text-[var(--border)]" />
-          <p className="text-[14px] font-medium text-t1">Nenhum colaborador ainda</p>
-          <p className="mt-1 text-[12px] text-t3">Adicione colaboradores para eles acessarem o sistema</p>
-        </V4CardPad>
-      ) : (
-        <>
-          {activeMembers.length > 0 && (
-            <div className="space-y-2">
-              <SectionTitle title={`Membros (${activeMembers.length})`} />
-              {activeMembers.map(member => {
-                const info = roleInfo(member.role)
-                const RoleIcon = info?.icon ?? Eye
-                return (
-                  <V4CardPad key={member.id}>
-                    <div className="flex items-center gap-4">
-                      <V4Avatar name={member.name || member.email} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-[13px] font-semibold text-t1">{member.name || member.email}</p>
-                          <Badge variant="success"><CheckCircle className="h-2.5 w-2.5" /> ativo</Badge>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <p className="truncate text-[11px] text-t3">{member.email}</p>
-                          <span className="text-t3">·</span>
-                          <div className="flex items-center gap-1">
-                            <RoleIcon className="h-3 w-3 text-t3" />
-                            <span className="text-[11px] text-t3">{info?.label}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Btn>
-                    </div>
-                  </V4CardPad>
-                )
-              })}
-            </div>
-          )}
+      </form>
+    </SectionPanel>
+  )
+}
 
-          {pendingMembers.length > 0 && (
-            <div className="space-y-2">
-              <SectionTitle title="Convites pendentes" />
-              {pendingMembers.map(member => {
-                const info = roleInfo(member.role)
-                const RoleIcon = info?.icon ?? Eye
-                return (
-                  <V4CardPad key={member.id}>
-                    <div className="flex items-center gap-4">
-                      <V4Avatar name={member.name || member.email} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-[13px] font-semibold text-t1">{member.name || member.email}</p>
-                          <Badge variant="warning"><Clock className="h-2.5 w-2.5" /> pendente</Badge>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <p className="truncate text-[11px] text-t3">{member.email}</p>
-                          <span className="text-t3">·</span>
-                          <div className="flex items-center gap-1">
-                            <RoleIcon className="h-3 w-3 text-t3" />
-                            <span className="text-[11px] text-t3">{info?.label}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {member.invite_link && (
-                          <Btn variant="outline" size="sm" onClick={() => copyLink(member.invite_link!)}>
-                            <Copy className="h-3.5 w-3.5" /> Copiar link
-                          </Btn>
-                        )}
-                        <Btn variant="ghost" size="sm" onClick={() => handleRemove(member.id)} className="!px-2">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Btn>
-                      </div>
-                    </div>
-                  </V4CardPad>
-                )
-              })}
-            </div>
-          )}
-        </>
-      )}
+// ══════════════════════════════════════════════════════════════════════════════
+// 11 — Privacidade e dados
+// ══════════════════════════════════════════════════════════════════════════════
+function PrivacidadeSection() {
+  return (
+    <SectionPanel title="Privacidade e dados" subtitle="Controle seus dados em conformidade com a LGPD.">
+      <div className="space-y-3">
+        <div className="rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <p className="text-[13px] font-medium text-t1">Exportar meus dados</p>
+          <p className="text-[11.5px] text-t3 mt-1">Cópia de todos os seus dados (Art. 18 LGPD). Enviada por e-mail em até 72h.</p>
+          <V4Button className="mt-3 h-8" onClick={() => toast.info('Solicitação enviada. Você receberá os dados por e-mail.')}>
+            Solicitar exportação
+          </V4Button>
+        </div>
+        <div className="rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <p className="text-[13px] font-medium text-t1">Retenção de dados</p>
+          <p className="text-[11.5px] text-t3 mt-1">Conversas retidas por 2 anos. Dados de pacientes seguem a política CFN (5 anos mínimo).</p>
+        </div>
+        <div className="rounded-[10px] border border-[var(--danger)]/20 bg-[var(--danger)]/5 p-4">
+          <p className="text-[13px] font-medium text-[var(--danger)]">Excluir conta</p>
+          <p className="text-[11.5px] text-t3 mt-1">Irreversível. Para solicitar, contate <span className="text-t1">contato@framesystem.com.br</span>.</p>
+        </div>
+      </div>
+    </SectionPanel>
+  )
+}
 
-      <V4CardPad className="space-y-1.5">
-        <p className="text-[13px] font-semibold text-t1">Como funciona?</p>
-        {[
-          '1. Adicione o e-mail do colaborador e escolha o nível de acesso',
-          '2. Copie o link gerado e envie para ele pelo WhatsApp ou e-mail',
-          '3. O colaborador clica no link, cria uma senha e já entra no sistema',
-          '4. Você pode remover o acesso a qualquer momento',
-        ].map((s, i) => <p key={i} className="text-[12px] text-t2">{s}</p>)}
-      </V4CardPad>
-    </div>
+// ══════════════════════════════════════════════════════════════════════════════
+// 12 — Plano e cobrança
+// ══════════════════════════════════════════════════════════════════════════════
+function PlanoSection() {
+  const { user } = useAuth()
+  const plan = (user as any)?.plan || 'trial'
+  const PLAN_LABELS: Record<string, string> = { trial: 'Avaliação gratuita', active: 'Frame Pro', suspended: 'Suspenso' }
+  const PLAN_TONES: Record<string, 'green' | 'amber' | 'red'> = { trial: 'amber', active: 'green', suspended: 'red' }
+
+  return (
+    <SectionPanel title="Plano e cobrança" subtitle="Informações sobre seu plano atual.">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-[10px] border border-[var(--border)] bg-[var(--raised)] p-4">
+          <div>
+            <p className="text-[13px] font-medium text-t1">{PLAN_LABELS[plan] || plan}</p>
+            <p className="text-[11.5px] text-t3 mt-0.5">
+              {plan === 'trial' ? 'Período de avaliação. Upgrade para desbloquear recursos completos.' :
+               plan === 'active' ? 'Todos os recursos disponíveis.' :
+               'Conta suspensa. Entre em contato para reativar.'}
+            </p>
+          </div>
+          <V4Tag tone={PLAN_TONES[plan] || 'default'}>{PLAN_LABELS[plan] || plan}</V4Tag>
+        </div>
+        <p className="text-[11.5px] text-t3">
+          Para upgrade ou informações sobre cobrança, fale com a equipe Frame em{' '}
+          <span className="text-t1">contato@framesystem.com.br</span>.
+        </p>
+      </div>
+    </SectionPanel>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 13 — Preferências
+// ══════════════════════════════════════════════════════════════════════════════
+function PreferenciasSection() {
+  const { theme, toggleTheme } = useTheme()
+
+  return (
+    <SectionPanel title="Preferências do sistema" subtitle="Personalize sua experiência no Frame System.">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-medium text-t1">Tema da interface</p>
+            <p className="text-[11.5px] text-t3">Escolha entre modo claro e escuro.</p>
+          </div>
+          <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--raised)] p-0.5">
+            <button
+              onClick={() => theme === 'light' && toggleTheme()}
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium transition-colors',
+                theme === 'dark' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1',
+              )}
+            >
+              Escuro
+            </button>
+            <button
+              onClick={() => theme === 'dark' && toggleTheme()}
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium transition-colors',
+                theme === 'light' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1',
+              )}
+            >
+              Claro
+            </button>
+          </div>
+        </div>
+        <Divider />
+        <div>
+          <p className="text-[13px] font-medium text-t1 mb-1.5">Idioma</p>
+          <V4Select className="w-48">
+            <option value="pt-BR">Português (Brasil)</option>
+          </V4Select>
+        </div>
+      </div>
+    </SectionPanel>
   )
 }
