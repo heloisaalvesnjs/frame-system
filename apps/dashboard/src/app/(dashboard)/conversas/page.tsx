@@ -83,31 +83,47 @@ export default function ConversasPage() {
       <div className="grid min-h-[560px] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] lg:h-[calc(100vh-190px)] lg:grid-cols-[320px_minmax(0,1fr)_300px]">
         <aside className="border-r border-[var(--border)] bg-[var(--surface)]">
           <div className="border-b border-[var(--border)] p-3">
-            <V4Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente..." className="w-full" />
+            <V4Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conversa..." className="w-full" />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {['Todas', 'Precisa de você', 'IA atendendo', 'Aguardando'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setSearch('')}
+                  className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition"
+                  style={{ background: tab === 'Todas' ? 'var(--brand-s)' : 'var(--raised)', color: tab === 'Todas' ? 'var(--brand)' : 'var(--t3)' }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="max-h-[520px] divide-y divide-[var(--border)] overflow-auto lg:max-h-none">
-            {filtered.map((item, index) => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedId(item.id)}
-                className="flex w-full gap-3 p-3 text-left transition hover:bg-[var(--raised)]"
-                style={{ background: selected?.id === item.id ? 'var(--brand-s)' : undefined }}
-              >
-                <V4Avatar name={item.client_name || item.client_phone} color={['#8867a9', '#427fa1', '#b26d54'][index % 3]} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[13px] font-medium text-t1">{item.client_name || item.client_phone}</span>
-                    <span className="text-[10px] text-t3">{formatTime(item.last_message_at)}</span>
+            {filtered.map((item, index) => {
+              const isActive = selected?.id === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedId(item.id)}
+                  className="relative flex w-full gap-3 p-3 text-left transition hover:bg-[var(--raised)]"
+                  style={{ background: isActive ? 'rgba(0,194,124,0.07)' : undefined }}
+                >
+                  {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[var(--brand)]" />}
+                  <V4Avatar name={item.client_name || item.client_phone} color={['#8867a9', '#427fa1', '#b26d54'][index % 3]} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[12px] font-bold text-t1">{item.client_name || item.client_phone}</span>
+                      <span className="text-[9px] text-t3">{formatTime(item.last_message_at)}</span>
+                    </div>
+                    <p className="mt-0.5 truncate text-[10px] text-t3">{item.last_message || 'Sem mensagens recentes'}</p>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <V4Tag tone={item.status === 'human_takeover' ? 'red' : item.status === 'resolved' ? 'default' : 'green'}>
+                        {item.status === 'human_takeover' ? 'Precisa de você' : item.status === 'resolved' ? 'Resolvida' : 'IA atendendo'}
+                      </V4Tag>
+                    </div>
                   </div>
-                  <p className="mt-1 truncate text-[12px] text-t3">{item.last_message || 'Sem mensagens recentes'}</p>
-                  <div className="mt-2 flex gap-1.5">
-                    <V4Tag tone={item.status === 'human_takeover' ? 'red' : item.status === 'resolved' ? 'default' : 'green'}>
-                      {item.status === 'human_takeover' ? 'Precisa de você' : item.status === 'resolved' ? 'Resolvida' : 'IA atendendo'}
-                    </V4Tag>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
             {!filtered.length && (
               <div className="px-4 py-10 text-center text-[12px] text-t3">
                 Nenhuma conversa encontrada.
@@ -170,20 +186,45 @@ export default function ConversasPage() {
           )}
         </section>
 
-        <aside className="space-y-4 border-l border-[var(--border)] p-4">
-          <V4Card className="p-4">
-            <div className="text-[13px] font-medium text-t1">Resumo inteligente</div>
-            <p className="mt-2 text-[12px] leading-5 text-t2">
-              {selected ? 'Use este painel para acompanhar o contexto da conversa e decidir quando assumir o atendimento.' : 'Selecione uma conversa para ver o contexto.'}
-            </p>
-          </V4Card>
-          <V4Card className="p-4">
-            <div className="text-[13px] font-medium text-t1">Ações rápidas</div>
-            <div className="mt-3 space-y-2">
-              <V4Button className="w-full" disabled={!selected}><Phone className="h-4 w-4" />Ligar</V4Button>
-              <V4Button className="w-full" disabled={!selected}><CalendarPlus className="h-4 w-4" />Agendar consulta</V4Button>
+        <aside className="overflow-auto border-l border-[var(--border)] bg-[var(--raised)]">
+          <div className="border-b border-[var(--border)] p-4">
+            <div className="text-[12px] font-bold text-t1">Resumo inteligente</div>
+            <div className="mt-2 rounded-[9px] bg-[var(--surface)] p-3 text-[10px] leading-[1.55] text-t3 border border-[var(--border)]">
+              {selected
+                ? `${selected.client_name || selected.client_phone} está em atendimento. ${selected.status === 'human_takeover' ? 'Esta conversa precisa da sua intervenção.' : selected.status === 'resolved' ? 'Conversa encerrada.' : 'IA atendendo automaticamente.'}`
+                : 'Selecione uma conversa para ver o contexto.'}
             </div>
-          </V4Card>
+          </div>
+          <div className="border-b border-[var(--border)] p-4">
+            <div className="mb-2 text-[12px] font-bold text-t1">Informações</div>
+            {[
+              ['Etapa', selected?.status === 'human_takeover' ? 'Intervenção' : selected?.status === 'resolved' ? 'Resolvida' : 'Atendimento'],
+              ['Objetivo', selected?.client_goal || '—'],
+              ['Canal', 'WhatsApp'],
+              ['Modo', selected?.mode === 'copilot' ? 'Copiloto' : 'Automático'],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-2 border-b border-[var(--border)] py-1.5 last:border-0">
+                <span className="text-[10px] text-t3">{k}</span>
+                <strong className="text-right text-[10px] font-semibold text-t1">{v}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="border-b border-[var(--border)] p-4">
+            <div className="mb-2 text-[12px] font-bold text-t1">Próxima ação</div>
+            <V4Button variant="primary" className="w-full" disabled={!selected} onClick={() => selected && takeover.mutate()}>
+              {selected?.status === 'human_takeover' ? 'Assumir conversa' : 'Encaminhar para você'}
+            </V4Button>
+            {selected?.client_phone && (
+              <a href={`https://wa.me/${selected.client_phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
+                <V4Button className="mt-2 w-full"><Phone className="h-4 w-4" />Abrir no WhatsApp</V4Button>
+              </a>
+            )}
+            {selected?.client_phone && (
+              <a href={`tel:${selected.client_phone}`}>
+                <V4Button className="mt-2 w-full"><CalendarPlus className="h-4 w-4" />Agendar consulta</V4Button>
+              </a>
+            )}
+          </div>
         </aside>
       </div>
     </V4Page>
