@@ -21,8 +21,8 @@ export function V4Page({
       <div className="mx-auto max-w-[1380px] space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-1 text-[12px] font-normal leading-relaxed text-t3">{eyebrow}</div>
-            <h1 className="text-[25px] font-medium leading-tight tracking-normal text-t1">{title}</h1>
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.09em] text-[var(--brand)]">{eyebrow}</div>
+            <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.025em] text-t1">{title}</h1>
             <p className="mt-1.5 max-w-[720px] text-[13px] leading-6 text-t3">{subtitle}</p>
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -79,7 +79,7 @@ export function V4Metric({
   return (
     <V4CardPad>
       <div className="text-[12px] text-t2">{label}</div>
-      <div className="mt-2 text-[26px] font-medium leading-none tracking-normal text-t1 tabular-nums">{value}</div>
+      <div className="mt-2 text-[28px] font-extrabold leading-none tracking-[-0.02em] text-t1 tabular-nums">{value}</div>
       {foot && (
         <div
           className={cn(
