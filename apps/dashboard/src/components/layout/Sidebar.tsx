@@ -86,7 +86,7 @@ function NavLink({
       title={label}
       className={cn(
         'group/item relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-all duration-150',
-        active ? 'bg-white/[0.06] text-t1' : 'text-t2 hover:bg-white/[0.04] hover:text-t1',
+        active ? 'bg-white/[0.07] text-white/90' : 'text-white/50 hover:bg-white/[0.04] hover:text-white/80',
       )}
     >
       {active && (
@@ -96,7 +96,7 @@ function NavLink({
         />
       )}
       <Icon
-        className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-[var(--brand)]' : 'text-t3 group-hover/item:text-t2')}
+        className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-[var(--brand)]' : 'text-white/35 group-hover/item:text-white/60')}
         strokeWidth={1.75}
       />
       <span className="truncate opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">{label}</span>
@@ -183,8 +183,8 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
           {initials}
         </div>
         <div className="min-w-0 flex-1 text-left opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
-          <div className="truncate text-[12.5px] font-medium text-t1">{user?.name || 'Frame System'}</div>
-          <div className="mt-0.5 truncate text-[11px] text-t3">{user?.email || 'Nutricionista'}</div>
+          <div className="truncate text-[12.5px] font-medium text-white/90">{user?.name || 'Frame System'}</div>
+          <div className="mt-0.5 truncate text-[11px] text-white/40">{user?.email || 'Nutricionista'}</div>
         </div>
         <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100" />
       </button>
@@ -204,8 +204,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             FS
           </div>
           <div className="min-w-0 flex-1 text-left opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
-            <div className="truncate text-[13px] font-semibold text-t1">Frame System</div>
-            <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
+            <div className="truncate text-[13px] font-semibold text-white/90">Frame System</div>
+            <div className="truncate text-[11px] text-white/40">{user?.name || 'Clínica Nutri Plus'}</div>
           </div>
           <ChevronsLeft className="h-3.5 w-3.5 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
         </button>
@@ -213,7 +213,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       <div className="px-3 pb-3">
         <button
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--line-2)] bg-white/[0.02] px-2.5 text-[12px] font-medium text-t2 transition-colors hover:bg-white/[0.04] hover:text-t1"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 text-[12px] font-medium text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white/80"
           type="button"
         >
           <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -226,7 +226,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {groups.map((group, index) => (
           <div key={group.label || index} className="mb-1">
             {group.label && (
-              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-t3 opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
+              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-white/30 opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
                 {group.label}
               </div>
             )}
@@ -242,7 +242,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={() => theme === 'light' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-white/[0.07] text-t1 shadow-sm' : 'text-t3 hover:text-t2')}
+            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-white/[0.07] text-white/90 shadow-sm' : 'text-white/35 hover:text-white/60')}
             aria-label="Tema escuro"
           >
             <Moon className="h-3 w-3" />
@@ -251,7 +251,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={() => theme === 'dark' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-white/[0.07] text-t1 shadow-sm' : 'text-t3 hover:text-t2')}
+            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-white/[0.07] text-white/90 shadow-sm' : 'text-white/35 hover:text-white/60')}
             aria-label="Tema claro"
           >
             <Sun className="h-3 w-3" />
