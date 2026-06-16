@@ -19,7 +19,6 @@ import { V4Avatar, V4Button, V4Card, V4CardPad, V4Page, V4Tag } from '@/componen
 const SECTIONS = [
   { id: 'perfil', label: 'Perfil' },
   { id: 'seguranca', label: 'Segurança' },
-  { id: 'aparencia', label: 'Aparência' },
   { id: 'integracoes', label: 'Integrações' },
   { id: 'equipe', label: 'Equipe' },
 ] as const
@@ -33,7 +32,7 @@ export default function ConfiguracoesPage() {
     <V4Page
       eyebrow="Gestão da conta"
       title="Configurações"
-      subtitle="Perfil, aparência, integrações, equipe e segurança."
+      subtitle="Perfil, integrações, equipe e segurança."
     >
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
         <V4Card className="h-max p-2">
@@ -53,7 +52,6 @@ export default function ConfiguracoesPage() {
         <div>
           {section === 'perfil' && <PerfilSection />}
           {section === 'seguranca' && <SegurancaSection />}
-          {section === 'aparencia' && <AparenciaSection />}
           {section === 'integracoes' && <IntegracoesSection />}
           {section === 'equipe' && <EquipeSection />}
         </div>
@@ -362,23 +360,48 @@ function LogoMark({ type }: { type: IntegrationId }) {
   return <div className={`${base} ${map[type]}`}>{labels[type]}</div>
 }
 
-function IntegrationCard({ id, name, desc, connected, account, onAction, actionLabel }: {
-  id: IntegrationId; name: string; desc: string; connected?: boolean; account?: string; onAction?: () => void; actionLabel?: string
+function IntegrationCard({ id, name, desc, connected, comingSoon, account, onAction, actionLabel }: {
+  id: IntegrationId; name: string; desc: string; connected?: boolean; comingSoon?: boolean; account?: string; onAction?: () => void; actionLabel?: string
 }) {
   return (
-    <Card className="!p-4 flex items-center gap-4 transition-colors hover:border-[var(--brand-ring)]">
-      <LogoMark type={id} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className="truncate text-[13px] font-semibold text-t1">{name}</h3>
-          {connected && <Badge variant="success"><Check className="size-2.5" />Conectado</Badge>}
-        </div>
-        <p className="mt-0.5 truncate text-[11.5px] text-t3">{connected && account ? account : desc}</p>
+    <div className={`flex flex-col rounded-[14px] border p-5 transition-colors ${
+      comingSoon
+        ? 'border-[var(--border)] bg-[var(--raised)] opacity-70'
+        : connected
+          ? 'border-[rgba(0,194,124,0.28)] bg-white hover:border-[var(--brand)]'
+          : 'border-[var(--border)] bg-white hover:border-[rgba(0,194,124,0.35)]'
+    }`}>
+      <div className="flex items-start justify-between gap-2 mb-4">
+        <LogoMark type={id} />
+        {connected && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,194,124,0.25)] bg-[rgba(0,194,124,0.08)] px-2 py-0.5 text-[10px] font-medium text-[#08754D]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
+            Ativo
+          </span>
+        )}
+        {comingSoon && (
+          <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] font-medium text-t3">
+            Em breve
+          </span>
+        )}
       </div>
-      <Btn variant={connected ? 'ghost' : 'secondary'} size="sm" onClick={onAction} disabled={!onAction}>
-        {actionLabel ?? (connected ? 'Configurar' : 'Conectar')}
-      </Btn>
-    </Card>
+      <div className="flex-1">
+        <div className="text-[13px] font-semibold text-t1">{name}</div>
+        <p className="mt-1 text-[11.5px] leading-[1.5] text-t3">{connected && account ? account : desc}</p>
+      </div>
+      {!comingSoon && (
+        <div className="mt-4 border-t border-[var(--border)] pt-3">
+          <button
+            onClick={onAction}
+            disabled={!onAction}
+            className="text-[12px] font-medium transition-colors disabled:opacity-40"
+            style={{ color: connected ? 'var(--danger)' : 'var(--brand)' }}
+          >
+            {actionLabel ?? (connected ? 'Desconectar' : 'Conectar')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -445,7 +468,7 @@ function IntegracoesSection() {
     } catch { toast.error('Erro ao desconectar Google Calendar') }
   }
 
-  const integrations: Array<{ id: IntegrationId; name: string; desc: string; connected?: boolean; account?: string; onAction?: () => void; actionLabel?: string }> = [
+  const integrations: Array<{ id: IntegrationId; name: string; desc: string; connected?: boolean; comingSoon?: boolean; account?: string; onAction?: () => void; actionLabel?: string }> = [
     {
       id: 'whatsapp', name: 'WhatsApp Business', desc: 'Canal oficial · mensagens, templates e mídia',
       connected: waConnected, account: waData?.phone || 'Instância conectada',
@@ -457,12 +480,12 @@ function IntegracoesSection() {
       onAction: calendarConnected ? disconnectCalendar : connectCalendar,
       actionLabel: calendarConnected ? 'Desconectar' : 'Conectar',
     },
-    { id: 'instagram', name: 'Instagram Direct', desc: 'DMs e respostas a stories', connected: false },
-    { id: 'stripe', name: 'Stripe', desc: 'Pagamentos recorrentes e cobranças', connected: false },
-    { id: 'asaas', name: 'Asaas', desc: 'Boletos, PIX e assinaturas', connected: false },
-    { id: 'mailchimp', name: 'Mailchimp', desc: 'Campanhas de e-mail e automações', connected: false },
-    { id: 'zapier', name: 'Zapier', desc: 'Conecte a 5.000+ aplicativos', connected: false },
-    { id: 'webhook', name: 'Webhook', desc: 'Eventos em tempo real para sua API', connected: false },
+    { id: 'instagram', name: 'Instagram Direct', desc: 'DMs e respostas a stories', comingSoon: true },
+    { id: 'stripe', name: 'Stripe', desc: 'Pagamentos recorrentes e cobranças', comingSoon: true },
+    { id: 'asaas', name: 'Asaas', desc: 'Boletos, PIX e assinaturas', comingSoon: true },
+    { id: 'mailchimp', name: 'Mailchimp', desc: 'Campanhas de e-mail e automações', comingSoon: true },
+    { id: 'zapier', name: 'Zapier', desc: 'Conecte a 5.000+ aplicativos', comingSoon: true },
+    { id: 'webhook', name: 'Webhook', desc: 'Eventos em tempo real para sua API', comingSoon: true },
   ]
 
   return (

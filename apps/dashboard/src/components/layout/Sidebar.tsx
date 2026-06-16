@@ -83,7 +83,6 @@ function NavLink({
     <Link
       href={href}
       onClick={onClick}
-      title={label}
       className={cn(
         'group/item relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-all duration-150',
         active ? 'bg-[rgba(0,194,124,0.085)] text-[#08754D]' : 'text-[#6B7280] hover:bg-[#F4F5F0] hover:text-[#141618]',

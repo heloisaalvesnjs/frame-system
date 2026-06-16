@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, HelpCircle, Menu, Search, Settings, Sparkles } from 'lucide-react'
+import { Bell, Menu, Search, Settings, Sparkles } from 'lucide-react'
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Visão geral',
@@ -50,7 +50,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
       <div className="min-w-0 flex-1 md:w-[220px] md:flex-none">
         <h1 className="truncate text-[14px] font-semibold leading-tight text-t1">{title}</h1>
-        <p className="hidden truncate text-[11.5px] text-t3 md:block">Operação do consultório</p>
       </div>
 
       <button
@@ -63,20 +62,28 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       </button>
 
       <div className="flex items-center gap-1.5">
-        <button className="grid h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-white/[0.04]" aria-label="Frame AI">
+        <button
+          onClick={() => router.push('/treinamento')}
+          className="grid h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-[#F4F5F0] hover:text-[#141618]"
+          aria-label="Assistente IA"
+          title="Assistente IA"
+        >
           <Sparkles className="h-4 w-4" strokeWidth={1.75} />
         </button>
-        <button className="hidden h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-white/[0.04] sm:grid" aria-label="Ajuda">
-          <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
-        </button>
-        <button className="relative grid h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-white/[0.04]" aria-label="Notificações">
+        <button
+          onClick={() => router.push('/conversas')}
+          className="relative hidden h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-[#F4F5F0] hover:text-[#141618] sm:grid"
+          aria-label="Notificações"
+          title="Notificações"
+        >
           <Bell className="h-4 w-4" strokeWidth={1.75} />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />
         </button>
         <button
           onClick={() => router.push('/configuracoes')}
-          className="grid h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-white/[0.04]"
+          className="grid h-9 w-9 place-items-center rounded-lg text-t2 transition-colors hover:bg-[#F4F5F0] hover:text-[#141618]"
           aria-label="Configurações"
+          title="Configurações"
         >
           <Settings className="h-4 w-4" strokeWidth={1.75} />
         </button>
