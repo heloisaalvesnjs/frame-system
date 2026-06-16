@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { V4Button, V4Card, V4Page, V4Tag } from '@/components/v4/V4Primitives'
@@ -50,21 +50,12 @@ function Logo({ id }: { id: IntegrationId }) {
   }
 
   const text: Record<IntegrationId, string> = {
-    whatsapp: 'WA',
-    instagram: 'IG',
-    calendar: 'G',
-    stripe: 'stripe',
-    asaas: 'asaas',
-    mailchimp: 'mc',
-    zapier: 'zapier',
-    webhook: '{}',
-    import: 'CSV',
+    whatsapp: 'WA', instagram: 'IG', calendar: 'G',
+    stripe: 'stripe', asaas: 'asaas', mailchimp: 'mc',
+    zapier: 'zapier', webhook: '{}', import: 'CSV',
   }
-
   const color: Record<IntegrationId, string> = {
-    whatsapp: '',
-    instagram: '',
-    calendar: '',
+    whatsapp: '', instagram: '', calendar: '',
     stripe: 'bg-[#635BFF] text-white',
     asaas: 'bg-[#00A868] text-white',
     mailchimp: 'bg-[#FFE01B] text-[#241C15]',
@@ -72,7 +63,6 @@ function Logo({ id }: { id: IntegrationId }) {
     webhook: 'bg-[#141618] text-white',
     import: 'bg-[var(--brand-s)] text-[var(--brand)]',
   }
-
   return <div className={`${common} ${color[id]} text-[13px] font-semibold lowercase`}>{text[id]}</div>
 }
 
@@ -86,9 +76,7 @@ function ImportButton() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const { data } = await api.post('/api/clients/import-csv', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const { data } = await api.post('/api/clients/import-csv', form, { headers: { 'Content-Type': 'multipart/form-data' } })
       toast.success(`${data.imported ?? 0} pacientes importados`)
     } catch (error: any) {
       toast.error(error?.response?.data?.error ?? 'Erro ao importar pacientes')
@@ -100,13 +88,7 @@ function ImportButton() {
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".csv,.xlsx,.xls"
-        className="hidden"
-        onChange={event => onChange(event.target.files?.[0])}
-      />
+      <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e => onChange(e.target.files?.[0])} />
       <V4Button className="h-8" onClick={() => inputRef.current?.click()} disabled={uploading}>
         {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
         Importar
@@ -116,19 +98,16 @@ function ImportButton() {
 }
 
 function IntegrationCard({
-  id,
-  name,
-  desc,
-  connected,
-  account,
-  action,
+  id, name, desc, connected, comingSoon, account, action, extra,
 }: {
   id: IntegrationId
   name: string
   desc: string
   connected?: boolean
+  comingSoon?: boolean
   account?: string
   action?: React.ReactNode
+  extra?: React.ReactNode
 }) {
   return (
     <V4Card className="flex min-h-[190px] flex-col justify-between p-4 transition-colors hover:border-[var(--line-3)]">
@@ -137,35 +116,147 @@ function IntegrationCard({
           <Logo id={id} />
           {connected ? (
             <V4Tag tone="green" dot>Conectado</V4Tag>
+          ) : comingSoon ? (
+            <V4Tag tone="amber">Em breve</V4Tag>
           ) : (
-            <V4Tag tone={id === 'import' ? 'default' : 'amber'}>{id === 'import' ? 'Disponível' : 'Em breve'}</V4Tag>
+            <V4Tag tone="default">{id === 'import' ? 'Disponível' : 'Desconectado'}</V4Tag>
           )}
         </div>
         <h3 className="text-[14px] font-medium text-t1">{name}</h3>
         <p className="mt-1.5 min-h-10 text-[12px] leading-5 text-t3">{connected && account ? account : desc}</p>
       </div>
+      {extra}
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--line-1)] pt-3">
-        <span className="text-[11px] text-t3">{connected ? 'Ativo no sistema' : id === 'import' ? 'Arquivo local' : 'Integração futura'}</span>
+        <span className="text-[11px] text-t3">
+          {connected ? 'Ativo no sistema' : comingSoon ? 'Integração futura' : id === 'import' ? 'Arquivo local' : 'Pronto para conectar'}
+        </span>
         {action ?? (
-          <V4Button className="h-8" disabled>
-            Em breve
-          </V4Button>
+          <V4Button className="h-8" disabled>Em breve</V4Button>
         )}
       </div>
     </V4Card>
   )
 }
 
-export default function IntegracoesPage() {
+function WhatsAppCard() {
   const qc = useQueryClient()
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const { data: waData } = useQuery<any>({
     queryKey: ['whatsapp-status'],
     queryFn: () => api.get('/api/whatsapp/status').then(r => r.data),
-    refetchInterval: 5000,
+    refetchInterval: qrCode ? 3000 : 8000,
   })
+
+  const waConnected = waData?.status === 'connected'
+
+  useEffect(() => {
+    if (waConnected && qrCode) {
+      setQrCode(null)
+      toast.success('WhatsApp conectado com sucesso!')
+    }
+  }, [waConnected, qrCode])
+
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [])
+
+  async function handleConnect() {
+    setConnecting(true)
+    try {
+      await api.post('/api/whatsapp/connect')
+      await new Promise(r => setTimeout(r, 1500))
+      const { data } = await api.get('/api/whatsapp/qr')
+      if (data?.qrCode) {
+        setQrCode(data.qrCode)
+      } else {
+        toast.info('Instância criada. Aguardando QR code...')
+        // Tenta buscar o QR por mais alguns segundos
+        let attempts = 0
+        const interval = setInterval(async () => {
+          attempts++
+          try {
+            const { data: qrData } = await api.get('/api/whatsapp/qr')
+            if (qrData?.qrCode) {
+              setQrCode(qrData.qrCode)
+              clearInterval(interval)
+            }
+          } catch {}
+          if (attempts >= 5) clearInterval(interval)
+        }, 2000)
+        pollRef.current = interval
+      }
+      qc.invalidateQueries({ queryKey: ['whatsapp-status'] })
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error ?? 'Erro ao iniciar conexão')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    try {
+      await api.post('/api/whatsapp/disconnect')
+      setQrCode(null)
+      qc.invalidateQueries({ queryKey: ['whatsapp-status'] })
+      toast.success('WhatsApp desconectado')
+    } catch {
+      toast.error('Erro ao desconectar')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <IntegrationCard
+      id="whatsapp"
+      name="WhatsApp Business"
+      desc="Canal principal de atendimento via Evolution API."
+      connected={waConnected}
+      account={waData?.phone || 'Instância conectada'}
+      extra={qrCode ? (
+        <div className="my-3 flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--raised)] p-3">
+          <p className="text-[11px] text-t3">Escaneie o QR code com o WhatsApp</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrCode} alt="QR Code WhatsApp" className="h-40 w-40 rounded-lg" />
+          <button onClick={() => setQrCode(null)} className="flex items-center gap-1 text-[11px] text-t3 hover:text-t1">
+            <X className="h-3 w-3" /> Cancelar
+          </button>
+        </div>
+      ) : null}
+      action={
+        waConnected ? (
+          <V4Button className="h-8" onClick={handleDisconnect} disabled={disconnecting}>
+            {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            Desconectar
+          </V4Button>
+        ) : (
+          <V4Button className="h-8" onClick={handleConnect} disabled={connecting || !!qrCode}>
+            {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            {qrCode ? 'Aguardando...' : 'Conectar'}
+          </V4Button>
+        )
+      }
+    />
+  )
+}
+
+export default function IntegracoesPage() {
+  const qc = useQueryClient()
+
   const { data: calendarData, isLoading: calendarLoading } = useQuery<any>({
     queryKey: ['google-calendar-status'],
     queryFn: () => api.get('/api/google-calendar/status').then(r => r.data),
+  })
+
+  const { data: waData } = useQuery<any>({
+    queryKey: ['whatsapp-status'],
+    queryFn: () => api.get('/api/whatsapp/status').then(r => r.data),
+    refetchInterval: 8000,
   })
 
   const waConnected = waData?.status === 'connected'
@@ -195,21 +286,10 @@ export default function IntegracoesPage() {
     <V4Page
       eyebrow="Workspace"
       title="Integrações"
-      subtitle={`${activeCount} integração(ões) ativa(s). O que ainda não está implementado fica sinalizado como Em breve, sem botão falso de conexão.`}
+      subtitle={`${activeCount} integração(ões) ativa(s). Conecte e gerencie suas integrações diretamente aqui.`}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <IntegrationCard
-          id="whatsapp"
-          name="WhatsApp Business"
-          desc="Canal principal de atendimento via Evolution API."
-          connected={waConnected}
-          account={waData?.phone || 'Instância conectada'}
-          action={
-            <V4Button className="h-8" onClick={() => toast.info('A conexão do WhatsApp é feita no onboarding/configuração da instância.')}>
-              {waConnected ? 'Ver status' : 'Configurar'}
-            </V4Button>
-          }
-        />
+        <WhatsAppCard />
         <IntegrationCard
           id="calendar"
           name="Google Calendar"
@@ -222,12 +302,12 @@ export default function IntegracoesPage() {
             </V4Button>
           }
         />
-        <IntegrationCard id="instagram" name="Instagram Direct" desc="DMs, respostas a stories e captação de leads." />
-        <IntegrationCard id="stripe" name="Stripe" desc="Pagamentos recorrentes, assinaturas e cartão." />
-        <IntegrationCard id="asaas" name="Asaas" desc="PIX, boleto, cobrança e assinatura nacional." />
-        <IntegrationCard id="mailchimp" name="Mailchimp" desc="Campanhas de e-mail e nutrição de leads." />
-        <IntegrationCard id="zapier" name="Zapier" desc="Conexão com ferramentas externas sem código." />
-        <IntegrationCard id="webhook" name="Webhook" desc="Envio de eventos em tempo real para sua API." />
+        <IntegrationCard id="instagram" name="Instagram Direct" desc="DMs, respostas a stories e captação de leads." comingSoon />
+        <IntegrationCard id="stripe" name="Stripe" desc="Pagamentos recorrentes, assinaturas e cartão." comingSoon />
+        <IntegrationCard id="asaas" name="Asaas" desc="PIX, boleto, cobrança e assinatura nacional." comingSoon />
+        <IntegrationCard id="mailchimp" name="Mailchimp" desc="Campanhas de e-mail e nutrição de leads." comingSoon />
+        <IntegrationCard id="zapier" name="Zapier" desc="Conexão com ferramentas externas sem código." comingSoon />
+        <IntegrationCard id="webhook" name="Webhook" desc="Envio de eventos em tempo real para sua API." comingSoon />
         <IntegrationCard id="import" name="Importar pacientes" desc="Importação de base por CSV ou planilha." action={<ImportButton />} />
       </div>
     </V4Page>
