@@ -100,7 +100,7 @@ function NavLink({
         className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-[var(--brand)]' : 'text-t3 group-hover/item:text-t2')}
         strokeWidth={1.75}
       />
-      <span className="w-0 overflow-hidden truncate opacity-0 transition-all duration-150 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100">{label}</span>
+      <span className="flex-1 max-w-0 overflow-hidden truncate opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">{label}</span>
       {active && (
         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--brand)] opacity-0 shadow-[0_0_8px_var(--brand)] transition-opacity duration-150 group-hover/sidebar:opacity-100" />
       )}
@@ -175,7 +175,7 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[11px] font-semibold text-[#02140C]">
           {initials}
         </div>
-        <div className="w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/sidebar:w-auto group-hover/sidebar:flex-1 group-hover/sidebar:opacity-100">
+        <div className="flex-1 max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
           <div className="truncate text-[12.5px] font-medium text-t1">{user?.name || 'Frame System'}</div>
           <div className="mt-0.5 truncate text-[11px] text-t3">{user?.email || 'Nutricionista'}</div>
         </div>
@@ -196,11 +196,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#0B0C0E] text-[11px] font-bold text-[#00E892]">
             FS
           </div>
-          <div className="w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/sidebar:w-auto group-hover/sidebar:flex-1 group-hover/sidebar:opacity-100">
+          <div className="flex-1 max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
             <div className="truncate text-[13px] font-semibold text-t1">Frame System</div>
             <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
           </div>
-          <ChevronsLeft className="h-3.5 w-3.5 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
+          <ChevronsLeft className="h-3.5 w-3.5 shrink-0 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
         </button>
       </div>
 
@@ -211,8 +211,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           onClick={() => onClose?.()}
         >
           <Plus className="h-3.5 w-3.5 shrink-0" />
-          <span className="w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100">Novo</span>
-          <kbd className="ml-auto w-0 overflow-hidden font-mono text-[10px] text-t3 opacity-0 transition-all duration-150 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100">Ctrl N</kbd>
+          <span className="flex-1 max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[120px] group-hover/sidebar:opacity-100">Novo</span>
+          <kbd className="max-w-0 overflow-hidden font-mono text-[10px] text-t3 opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[60px] group-hover/sidebar:opacity-100">Ctrl N</kbd>
         </button>
       </div>
 
