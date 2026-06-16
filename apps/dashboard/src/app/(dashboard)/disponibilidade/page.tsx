@@ -717,8 +717,17 @@ const DEFAULT_DAYS: DayConfig[] = DAYS_META.map(m => ({
   slot_duration: 60,
 }))
 
+const AVAIL_TABS = [
+  { id: 'horarios',  label: 'Horários semanais' },
+  { id: 'bloqueios', label: 'Bloqueios e exceções' },
+  { id: 'locais',    label: 'Locais de atendimento' },
+  { id: 'regras',    label: 'Regras da agenda' },
+] as const
+type AvailTab = typeof AVAIL_TABS[number]['id']
+
 export default function DisponibilidadePage() {
   const qc = useQueryClient()
+  const [tab, setTab] = useState<AvailTab>('horarios')
   const [days, setDays] = useState<DayConfig[]>(DEFAULT_DAYS)
   const [dirty, setDirty] = useState(false)
 
@@ -766,50 +775,100 @@ export default function DisponibilidadePage() {
     <V4Page
       eyebrow="Agenda e atendimento"
       title="Disponibilidade"
-      subtitle={`Configure seus horários, pausas e dias sem atendimento.${activeDays > 0 ? ` ${activeDays} ${activeDays === 1 ? 'dia ativo' : 'dias ativos'}.` : ''}`}
+      subtitle={`Defina horários, locais, intervalos e bloqueios da agenda.${activeDays > 0 ? ` ${activeDays} ${activeDays === 1 ? 'dia ativo' : 'dias ativos'}.` : ''}`}
       actions={
-        <V4Button onClick={() => saveMut.mutate(days)} disabled={!dirty || saveMut.isPending} variant={dirty ? 'primary' : 'default'}>
-          {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-          {dirty ? 'Salvar' : 'Salvo'}
-        </V4Button>
+        tab === 'horarios' ? (
+          <V4Button onClick={() => saveMut.mutate(days)} disabled={!dirty || saveMut.isPending} variant={dirty ? 'primary' : 'default'}>
+            {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            {dirty ? 'Salvar' : 'Salvo'}
+          </V4Button>
+        ) : undefined
       }
     >
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div>
-          <V4SectionTitle title="Horário semanal padrão" subtitle="Slots utilizados pela IA para sugerir agendamentos." />
-          <div className="space-y-3">
-            {days.map(day => {
-              const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
-              return <CompactDayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
-            })}
-          </div>
-        </div>
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)] mb-4">
+        {AVAIL_TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="px-4 py-2.5 text-[13px] font-medium transition-colors relative"
+            style={tab === t.id
+              ? { color: 'var(--brand)' }
+              : { color: 'var(--t3)' }}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full" style={{ background: 'var(--brand)' }} />
+            )}
+          </button>
+        ))}
+      </div>
 
-        <aside className="space-y-4">
+      {/* Tab: Horários semanais */}
+      {tab === 'horarios' && (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <V4Card className="overflow-hidden">
+            <div className="border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
+              <div>
+                <div className="text-[13px] font-medium text-t1">Horário semanal padrão</div>
+                <div className="text-[12px] text-t3">Slots utilizados pela IA para sugerir agendamentos.</div>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              {days.map(day => {
+                const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
+                return <CompactDayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
+              })}
+            </div>
+          </V4Card>
           <RulesCard days={days} />
+        </div>
+      )}
+
+      {/* Tab: Bloqueios e exceções */}
+      {tab === 'bloqueios' && (
+        <div className="space-y-6">
+          <V4Card className="overflow-hidden">
+            <div className="border-b border-[var(--border)] px-4 py-3">
+              <div className="text-[13px] font-medium text-t1">Dias sem atendimento</div>
+              <div className="text-[12px] text-t3">Feriados, folgas ou qualquer data que não haverá atendimento. Clique num dia para bloquear/desbloquear.</div>
+            </div>
+            <div className="p-4">
+              <BlockedCalendar />
+              <p className="text-[11.5px] text-t3 mt-3">
+                Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
+              </p>
+            </div>
+          </V4Card>
           <ExceptionsCard />
-        </aside>
-      </div>
+        </div>
+      )}
 
-      <div>
-        <V4SectionTitle title="Dias sem atendimento" subtitle="Feriados, folgas ou qualquer data que não haverá atendimento. Clique num dia para bloquear/desbloquear." />
-        <BlockedCalendar />
-        <p className="text-[11.5px] text-t3 mt-3">
-          Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
-        </p>
-      </div>
-
-      <V4Card className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[var(--border)] p-4">
-          <div>
-            <div className="text-[14px] font-medium text-t1">Locais de atendimento</div>
+      {/* Tab: Locais de atendimento */}
+      {tab === 'locais' && (
+        <V4Card className="overflow-hidden">
+          <div className="border-b border-[var(--border)] px-4 py-3">
+            <div className="text-[13px] font-medium text-t1">Locais de atendimento</div>
             <div className="text-[12px] text-t3">Consultórios, cidades, valor e mensagem de confirmação.</div>
           </div>
+          <div className="p-4">
+            <TabLocais />
+          </div>
+        </V4Card>
+      )}
+
+      {/* Tab: Regras da agenda */}
+      {tab === 'regras' && (
+        <div className="max-w-2xl space-y-4">
+          <RulesCard days={days} />
+          <V4Card className="p-4">
+            <div className="text-[13px] font-medium text-t1 mb-1">Sobre as regras</div>
+            <p className="text-[12px] text-t3 leading-relaxed">
+              As regras são calculadas automaticamente com base nos horários configurados. Para ajustar duração de slots, pause almoco e dias ativos, acesse a aba <button className="text-[var(--brand)] font-medium" onClick={() => setTab('horarios')}>Horários semanais</button>.
+            </p>
+          </V4Card>
         </div>
-        <div className="p-4">
-          <TabLocais />
-        </div>
-      </V4Card>
+      )}
     </V4Page>
   )
 }

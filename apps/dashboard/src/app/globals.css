@@ -69,13 +69,13 @@
   --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%);
   --gradient-hero: radial-gradient(120% 80% at 50% 0%, rgba(0,163,104,0.10) 0%, rgba(0,163,104,0) 60%);
 
-  /* Sidebar — always dark regardless of page theme (matches V4 mockup) */
-  --sidebar:        #0B0C0E;
-  --sidebar-bg:     #0B0C0E;
-  --sidebar-border: rgba(255,255,255,0.05);
-  --sidebar-text:   rgba(255,255,255,0.50);
-  --sidebar-active: rgba(255,255,255,0.90);
-  --sidebar-hover:  rgba(255,255,255,0.04);
+  /* Sidebar — white background, dark text (matches V4 Lovable Light) */
+  --sidebar:        #FFFFFF;
+  --sidebar-bg:     #FFFFFF;
+  --sidebar-border: #E5E7E2;
+  --sidebar-text:   #6B7280;
+  --sidebar-active: #08754D;
+  --sidebar-hover:  #F4F5F0;
 }
 
 [data-theme="dark"] {

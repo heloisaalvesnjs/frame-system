@@ -1748,6 +1748,171 @@ function TestarAtendimentoSection() {
 }
 
 // ═══════════════════════════════════════════════════════
+// ServicosSection
+// ═══════════════════════════════════════════════════════
+function ServicosSection() {
+  const { data, isLoading } = useQuery<any[]>({
+    queryKey: ['services'],
+    queryFn: () => api.get('/api/services').then(r => r.data.services ?? []),
+  })
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-t3" /></div>
+
+  const services: any[] = data ?? []
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[14px] font-medium text-t1">Serviços disponíveis para a assistente</div>
+          <div className="text-[12px] text-t3 mt-0.5">Sincronizados com a agenda e disponibilidade.</div>
+        </div>
+      </div>
+      {services.length === 0 ? (
+        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--raised)] px-4 py-8 text-center text-[13px] text-t3">
+          Nenhum serviço cadastrado ainda.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[12px] border border-[var(--border)]">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--raised)]">
+                <th className="px-4 py-2.5 text-left text-[11px] font-medium text-t3">Serviço</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-medium text-t3">Duração</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-medium text-t3">Valor</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-medium text-t3">Modalidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((s: any) => (
+                <tr key={s.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--raised)]">
+                  <td className="px-4 py-3 font-medium text-t1">{s.name}</td>
+                  <td className="px-4 py-3 text-t2">{s.duration_minutes ? `${s.duration_minutes} min` : '—'}</td>
+                  <td className="px-4 py-3 text-t2">{s.price ? `R$ ${Number(s.price).toFixed(0)}` : '—'}</td>
+                  <td className="px-4 py-3 text-t2">{s.modality ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════
+// LimitesSection
+// ═══════════════════════════════════════════════════════
+const LIMITES_OPTIONS = [
+  { key: 'diagnostico',    label: 'Diagnóstico, sintomas ou condição clínica' },
+  { key: 'prescricao',     label: 'Prescrição, suplemento ou medicamento' },
+  { key: 'reclamacao',     label: 'Reclamação sobre atendimento' },
+  { key: 'cancelamento',   label: 'Cancelamento e reembolso' },
+  { key: 'urgencia',       label: 'Mensagem com urgência ou risco' },
+]
+
+function LimitesSection() {
+  const qc = useQueryClient()
+  const { data: assistant } = useQuery<any>({
+    queryKey: ['assistant'],
+    queryFn: () => api.get('/api/assistants').then(r => r.data.assistant),
+  })
+
+  // Store limits as JSON in clinical_rules field
+  const saved: Record<string, boolean> = (() => {
+    try { return JSON.parse(assistant?.clinical_rules ?? '{}') } catch { return {} }
+  })()
+  const [limits, setLimits] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (assistant) {
+      const parsed: Record<string, boolean> = {}
+      LIMITES_OPTIONS.forEach(o => { parsed[o.key] = saved[o.key] !== false })
+      setLimits(parsed)
+    }
+  }, [assistant])
+
+  const saveMut = useMutation({
+    mutationFn: (vals: Record<string, boolean>) =>
+      api.post('/api/assistants', { clinical_rules: JSON.stringify(vals) }),
+    onSuccess: () => { toast.success('Limites salvos!'); qc.invalidateQueries({ queryKey: ['assistant'] }) },
+    onError: () => toast.error('Erro ao salvar'),
+  })
+
+  return (
+    <div>
+      <div className="mb-4">
+        <div className="text-[14px] font-medium text-t1">Limites e segurança</div>
+        <div className="text-[12px] text-t3 mt-0.5">Defina quando a assistente deve interromper e chamar você.</div>
+      </div>
+      <div className="space-y-2 mb-4">
+        {LIMITES_OPTIONS.map(opt => (
+          <div key={opt.key} className="flex items-center justify-between rounded-[10px] border border-[var(--border)] px-4 py-3">
+            <span className="text-[13px] text-t1">{opt.label}</span>
+            <button
+              type="button"
+              onClick={() => setLimits(prev => ({ ...prev, [opt.key]: !prev[opt.key] }))}
+              className="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-all duration-200"
+              style={{ background: limits[opt.key] !== false ? 'var(--brand)' : 'var(--raised)', border: limits[opt.key] !== false ? 'none' : '1px solid var(--border)' }}
+            >
+              <span
+                className="absolute top-0.5 inline-block h-4 w-4 transform rounded-full shadow transition-transform duration-200"
+                style={{ background: '#fff', transform: limits[opt.key] !== false ? 'translateX(18px)' : 'translateX(2px)' }}
+              />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-[10px] border border-[var(--brand-ring)] bg-[var(--brand-s)] px-4 py-3 text-[12px] text-[var(--brand)] mb-4">
+        Quando um limite é acionado, a IA pausa, registra o motivo e envia a conversa para "Precisa de você".
+      </div>
+      <button
+        onClick={() => saveMut.mutate(limits)}
+        disabled={saveMut.isPending}
+        className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[var(--brand)] bg-[var(--brand)] px-4 text-[12px] font-medium text-[#0B2E1E] transition hover:opacity-90 disabled:opacity-50"
+      >
+        {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        Salvar limites
+      </button>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════
+// FluxoComercialSection
+// ═══════════════════════════════════════════════════════
+const FLUXO_STEPS = [
+  { num: '1', title: 'Acolher',    desc: 'Identificar intenção e apresentar-se com a mensagem de boas-vindas configurada.' },
+  { num: '2', title: 'Qualificar', desc: 'Coletar objetivo, modalidade preferida e disponibilidade de horário.' },
+  { num: '3', title: 'Apresentar', desc: 'Explicar o serviço mais adequado e os diferenciais do atendimento.' },
+  { num: '4', title: 'Agendar',    desc: 'Oferecer horários disponíveis e confirmar a escolha do lead.' },
+  { num: '5', title: 'Confirmar',  desc: 'Registrar a consulta e enviar instruções e lembretes automáticos.' },
+]
+
+function FluxoComercialSection() {
+  return (
+    <div>
+      <div className="mb-4">
+        <div className="text-[14px] font-medium text-t1">Fluxo comercial</div>
+        <div className="text-[12px] text-t3 mt-0.5">Etapas que a assistente segue para transformar um lead em consulta marcada.</div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        {FLUXO_STEPS.map(step => (
+          <div key={step.num} className="rounded-[12px] border border-[var(--border)] bg-[var(--raised)] p-4">
+            <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--brand-s)] text-[12px] font-bold text-[var(--brand)]">{step.num}</div>
+            <div className="text-[12px] font-medium text-t1">{step.title}</div>
+            <div className="mt-1 text-[11px] leading-[1.5] text-t3">{step.desc}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-4 py-3 text-[12px] text-t3">
+        O fluxo é executado pela assistente automaticamente. Para personalizar as mensagens de cada etapa, configure os roteiros de venda na aba <strong className="text-t1">Identidade</strong>.
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════
 // Main Page
 // ═══════════════════════════════════════════════════════
 
@@ -1758,12 +1923,13 @@ const TRAINING_TABS = [
 ]
 
 const V4_TABS = [
-  { id: 'identidade',  label: 'Identidade',         icon: Bot },
-  { id: 'conhecimento',label: 'Conhecimento',        icon: BookOpen },
-  { id: 'automacoes',  label: 'Automações',          icon: Clock },
-  { id: 'horarios',    label: 'Horários',            icon: Clock },
-  { id: 'testar',      label: 'Testar assistente',   icon: PlayCircle },
-  { id: 'desempenho',  label: 'Desempenho',          icon: Brain },
+  { id: 'identidade',  label: 'Identidade'         },
+  { id: 'servicos',    label: 'Serviços'            },
+  { id: 'conhecimento',label: 'Conhecimento'        },
+  { id: 'limites',     label: 'Limites e segurança' },
+  { id: 'fluxo',       label: 'Fluxo comercial'     },
+  { id: 'testar',      label: 'Testar assistente'   },
+  { id: 'desempenho',  label: 'Desempenho'          },
 ] as const
 type V4Tab = typeof V4_TABS[number]['id']
 
@@ -1812,9 +1978,10 @@ export default function TreinamentoPage() {
         {/* Conteúdo */}
         <V4CardPad className="min-h-[480px]">
           {tab === 'identidade'   && <TabAssistente />}
+          {tab === 'servicos'     && <ServicosSection />}
           {tab === 'conhecimento' && <ManualSection />}
-          {tab === 'automacoes'   && <AutomacoesSection />}
-          {tab === 'horarios'     && <HorarioFuncionamento />}
+          {tab === 'limites'      && <LimitesSection />}
+          {tab === 'fluxo'        && <FluxoComercialSection />}
           {tab === 'testar'       && <TestarAtendimentoSection />}
           {tab === 'desempenho'   && (
             <div className="space-y-4">
