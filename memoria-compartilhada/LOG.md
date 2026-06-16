@@ -696,3 +696,28 @@ versionados (ver MEMORY.md).
   `mockup-sistema.html` â€” manter shell de navegaÃ§Ã£o atual.
 - PendÃªncia aberta: usuÃ¡ria reportou que "todas as pÃ¡ginas" ainda nÃ£o batem
   com o mockup, sem detalhe especÃ­fico. Aguardando print.
+
+## 2026-06-16 - Codex
+
+- Atendeu a revisao da Heloisa sobre pontos que o Claude nao tinha aplicado:
+  topbar, sidebar, integracoes, caixa de entrada e pacientes.
+- `apps/dashboard/src/components/layout/TopBar.tsx`: removido o titulo fixo
+  duplicado no topo (a pagina ja mostra o titulo), removida a engrenagem de
+  configuracoes do topo e mantidos apenas atalhos para rotas reais
+  (`/treinamento`, `/conversas?filter=unread`, busca levando a `/clientes`).
+- `apps/dashboard/src/components/layout/Sidebar.tsx`: reescrita limpa com
+  labels sem mojibake, sem badge fake em Caixa de entrada e com
+  `/integracoes` no grupo Gestao.
+- `apps/dashboard/src/app/(dashboard)/integracoes/page.tsx`: refeita no estilo
+  V4 em cards quadrados, com logos reconheciveis; WhatsApp e Google Calendar
+  usam status/acoes reais, demais apps aparecem como "Em breve" sem botao de
+  conexao falso; importacao CSV/planilha continua funcional.
+- `apps/dashboard/src/app/(dashboard)/conversas/page.tsx`: removidos
+  fallbacks ficticios de conversas/mensagens; tela agora lista somente dados
+  reais, tem empty states e mantem acao real de assumir conversa.
+- `apps/dashboard/src/app/(dashboard)/clientes/page.tsx`: removidos pacientes
+  ficticios de fallback; busca/filtro front-end sobre dados reais; importacao
+  CSV/planilha funcional.
+- Validacoes: `npx.cmd tsc --noEmit` em `apps/dashboard` e `apps/api` ok;
+  `npm.cmd run build` em `apps/dashboard` ok (40 rotas). Browser interno nao
+  abriu por erro de permissao do Windows, portanto sem screenshot local.

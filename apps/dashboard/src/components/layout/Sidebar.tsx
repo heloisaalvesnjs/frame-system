@@ -13,12 +13,12 @@ import {
   LogOut,
   MessageSquare,
   Moon,
+  Plug,
   Plus,
   Settings,
   Shield,
   Sparkles,
   Sun,
-  User,
   Users,
   Workflow,
 } from 'lucide-react'
@@ -28,13 +28,13 @@ import { cn } from '@/lib/utils'
 
 const groups: Array<{
   label?: string
-  items: Array<{ href: string; label: string; icon: any; badge?: string }>
+  items: Array<{ href: string; label: string; icon: any }>
 }> = [
   {
     label: 'Operação',
     items: [
       { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
-      { href: '/conversas', label: 'Caixa de entrada', icon: MessageSquare, badge: '5' },
+      { href: '/conversas', label: 'Caixa de entrada', icon: MessageSquare },
       { href: '/agenda', label: 'Agenda', icon: Calendar },
       { href: '/clientes', label: 'Pacientes', icon: Users },
     ],
@@ -51,6 +51,7 @@ const groups: Array<{
     label: 'Gestão',
     items: [
       { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
+      { href: '/integracoes', label: 'Integrações', icon: Plug },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },
@@ -70,13 +71,11 @@ function NavLink({
   href,
   label,
   icon: Icon,
-  badge,
   onClick,
 }: {
   href: string
   label: string
   icon: any
-  badge?: string
   onClick?: () => void
 }) {
   const pathname = usePathname()
@@ -102,15 +101,7 @@ function NavLink({
         strokeWidth={1.75}
       />
       <span className="truncate opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">{label}</span>
-      {badge && (
-        <span
-          className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100"
-          style={{ background: 'var(--brand)' }}
-        >
-          {badge}
-        </span>
-      )}
-      {active && !badge && (
+      {active && (
         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--brand)] opacity-0 shadow-[0_0_8px_var(--brand)] transition-opacity duration-150 group-hover/sidebar:opacity-100" />
       )}
     </Link>
@@ -217,6 +208,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         <button
           className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-2.5 text-[12px] font-medium text-t3 transition-colors hover:bg-[var(--sidebar-hover)] hover:text-t1"
           type="button"
+          onClick={() => onClose?.()}
         >
           <Plus className="h-3.5 w-3.5 shrink-0" />
           <span className="opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">Novo</span>

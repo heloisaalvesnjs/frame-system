@@ -115,6 +115,12 @@ trocar uma pagina com queries/mutations reais por um mockup estatico.
 
 ## PendÃªncias em aberto
 
+- (2026-06-16) Regra para telas reais: nao usar fallbacks ficticios de
+  pacientes/conversas/metricas quando a API retorna vazio. Em paginas
+  autenticadas de produto, preferir empty state honesto ou loading state,
+  mantendo dados somente de APIs reais. Isso foi aplicado em `/clientes` e
+  `/conversas` apos a revisao da Heloisa sobre o port V4.
+
 - (2026-06-15) Referencia V4 oficial de interface: a Heloisa pediu que
   `frame-system-lovable-light-v4-claude.html` seja a interface atual do
   sistema. O shell do app deve seguir essa estrutura: sidebar desktop

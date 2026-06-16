@@ -202,6 +202,20 @@
 
 ## Codex
 
+- **Ultima atividade**: 2026-06-16 - corrigidos pontos reclamados pela
+  Heloisa apos revisao do Claude: TopBar sem titulo duplicado e sem engrenagem
+  repetida; Sidebar limpa com labels corretas, sem badge fake e com
+  Integracoes no menu; `/integracoes` refeita em cards quadrados com logos
+  reconheciveis, WhatsApp/Google Calendar reais e demais itens como "Em
+  breve"; `/conversas` e `/clientes` deixaram de exibir dados ficticios de
+  fallback e agora mostram somente dados reais/empty states. `npx.cmd tsc
+  --noEmit` passou em dashboard e api; `npm.cmd run build` passou no
+  dashboard (40 rotas). Browser interno nao abriu por erro de permissao do
+  Windows, entao nao houve validacao visual por screenshot nesta sessao.
+- **Em andamento**: nada no momento.
+- **Bloqueado/aguardando**: aguardando revisao visual da Heloisa/Claude e
+  decisao sobre continuar refinando Agenda/Assistente/Automacoes alem do shell
+  ja ajustado.
 - **Ultima atividade**: 2026-06-15 - portou o V4 oficial para as rotas reais
   principais do dashboard, alem do shell: `/dashboard`, `/conversas`,
   `/agenda`, `/clientes`, `/treinamento` (Assistente), `/followup`

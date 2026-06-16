@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
-import { Upload, UserPlus } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Loader2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import { V4Avatar, V4Button, V4Card, V4Input, V4Page, V4Select, V4Tag } from '@/components/v4/V4Primitives'
 
@@ -16,13 +18,18 @@ interface Client {
   appointment_count?: number
 }
 
-const fallback = [
-  ['Amanda Souza', 'Emagrecimento', 'Ontem', '12 jun, 15:00', 'Alta intenção', '#8867a9'],
-  ['Larissa Costa', 'Nutrição esportiva', 'há 2 dias', 'Sem data', 'Preço enviado', '#b26d54'],
-  ['Marina Rocha', 'Consulta online', 'há 4 horas', 'Hoje, 18:00', 'Precisa de você', '#427fa1'],
-]
+function dateLabel(date?: string | null) {
+  if (!date) return 'Sem registro'
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(date))
+}
 
 export default function ClientesPage() {
+  const qc = useQueryClient()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('todos')
+  const [uploading, setUploading] = useState(false)
+
   const { data } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
@@ -31,34 +38,56 @@ export default function ClientesPage() {
     },
     staleTime: 30_000,
   })
-  const rows = data?.length
-    ? data.slice(0, 12).map((client, index) => [
-        client.name || client.phone,
-        client.goal || 'Objetivo não informado',
-        client.last_contact ? 'Recente' : 'Novo contato',
-        client.appointment_count ? `${client.appointment_count} consulta(s)` : 'Sem data',
-        index % 3 === 0 ? 'Ativa' : index % 3 === 1 ? 'Retorno pendente' : 'Nova',
-        ['#8867a9', '#b26d54', '#427fa1'][index % 3],
-        client.id,
-      ])
-    : fallback.map((row, index) => [...row, String(index)])
+
+  const clients = (data ?? []).filter(client => {
+    const text = `${client.name ?? ''} ${client.phone} ${client.goal ?? ''}`.toLowerCase()
+    const matchesSearch = text.includes(search.toLowerCase())
+    const isActive = (client.appointment_count ?? 0) > 0
+    const matchesStatus = status === 'todos' || (status === 'ativos' ? isActive : !isActive)
+    return matchesSearch && matchesStatus
+  })
+
+  async function importFile(file?: File | null) {
+    if (!file) return
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const { data } = await api.post('/api/clients/import-csv', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      toast.success(`${data.imported ?? 0} pacientes importados`)
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error ?? 'Erro ao importar pacientes')
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
 
   return (
     <V4Page
       eyebrow="Relacionamento"
       title="Pacientes"
-      subtitle="Pessoas que já agendaram ou iniciaram acompanhamento."
+      subtitle="Pessoas que já agendaram ou iniciaram acompanhamento, usando somente dados reais do sistema."
       actions={
         <>
-          <V4Button><Upload className="h-4 w-4" />Importar</V4Button>
-          <V4Button variant="primary"><UserPlus className="h-4 w-4" />Novo paciente</V4Button>
+          <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={event => importFile(event.target.files?.[0])} />
+          <V4Button onClick={() => inputRef.current?.click()} disabled={uploading}>
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Importar
+          </V4Button>
         </>
       }
     >
       <div className="flex flex-wrap gap-2">
-        <V4Input placeholder="Buscar por nome, telefone ou objetivo..." className="min-w-[280px] flex-1" />
-        <V4Select><option>Todos os status</option><option>Ativos</option><option>Retorno pendente</option><option>Inativos</option></V4Select>
-        <V4Select><option>Todos os serviços</option></V4Select>
+        <V4Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por nome, telefone ou objetivo..." className="min-w-[280px] flex-1" />
+        <V4Select value={status} onChange={event => setStatus(event.target.value)}>
+          <option value="todos">Todos os status</option>
+          <option value="ativos">Com consulta</option>
+          <option value="novos">Sem consulta</option>
+        </V4Select>
       </div>
 
       <V4Card className="overflow-hidden">
@@ -67,31 +96,47 @@ export default function ClientesPage() {
             <tr>
               <th className="px-4 py-3 font-medium">Paciente</th>
               <th className="px-4 py-3 font-medium">Objetivo</th>
-              <th className="px-4 py-3 font-medium">Última consulta</th>
-              <th className="px-4 py-3 font-medium">Próxima consulta</th>
+              <th className="px-4 py-3 font-medium">Último contato</th>
+              <th className="px-4 py-3 font-medium">Consultas</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {rows.map(([name, goal, last, next, status, color, id]) => (
-              <tr key={id as string} className="transition hover:bg-[var(--raised)]">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <V4Avatar name={name as string} color={color as string} />
-                    <div>
-                      <div className="font-medium text-t1">{name as string}</div>
-                      <div className="text-[11.5px] text-t3">WhatsApp · Frame</div>
+            {clients.map((client, index) => {
+              const active = (client.appointment_count ?? 0) > 0
+              return (
+                <tr key={client.id} className="transition hover:bg-[var(--raised)]">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <V4Avatar name={client.name || client.phone} color={['#8867a9', '#b26d54', '#427fa1'][index % 3]} />
+                      <div>
+                        <div className="font-medium text-t1">{client.name || client.phone}</div>
+                        <div className="text-[11.5px] text-t3">{client.phone}</div>
+                      </div>
                     </div>
-                  </div>
+                  </td>
+                  <td className="px-4 py-3 text-t2">{client.goal || 'Objetivo não informado'}</td>
+                  <td className="px-4 py-3 text-t2">{dateLabel(client.last_contact)}</td>
+                  <td className="px-4 py-3 text-t2">{client.appointment_count ?? 0}</td>
+                  <td className="px-4 py-3">
+                    <V4Tag tone={active ? 'green' : 'default'}>{active ? 'Com consulta' : 'Novo contato'}</V4Tag>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/clientes/${client.id}`} className="text-[12px] font-medium text-[var(--brand)]">
+                      Abrir
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+            {!clients.length && (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-[12px] text-t3">
+                  Nenhum paciente encontrado.
                 </td>
-                <td className="px-4 py-3 text-t2">{goal as string}</td>
-                <td className="px-4 py-3 text-t2">{last as string}</td>
-                <td className="px-4 py-3 text-t2">{next as string}</td>
-                <td className="px-4 py-3"><V4Tag tone={status === 'Ativa' || status === 'Alta intenção' ? 'green' : status === 'Precisa de você' ? 'red' : 'amber'}>{status as string}</V4Tag></td>
-                <td className="px-4 py-3 text-right"><Link href={`/clientes/${id}`} className="text-[12px] font-medium text-[var(--brand)]">Abrir</Link></td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </V4Card>
