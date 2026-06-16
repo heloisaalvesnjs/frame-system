@@ -191,69 +191,73 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="group/sidebar flex h-full flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)]">
-      <div className="px-3 pb-3 pt-4">
-        <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--sidebar-hover)]">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#0B0C0E] text-[11px] font-bold text-[#00E892]">
-            FS
-          </div>
-          <div className="flex-1 max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
-            <div className="truncate text-[13px] font-semibold text-t1">Frame System</div>
-            <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
-          </div>
-          <ChevronsLeft className="h-3.5 w-3.5 shrink-0 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
-        </button>
-      </div>
-
-      <div className="px-3 pb-3">
-        <button
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-2.5 text-[12px] font-medium text-t3 transition-colors hover:bg-[var(--sidebar-hover)] hover:text-t1"
-          type="button"
-          onClick={() => onClose?.()}
-        >
-          <Plus className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[120px] group-hover/sidebar:opacity-100">Novo</span>
-          <kbd className="max-w-0 overflow-hidden font-mono text-[10px] text-t3 opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[60px] group-hover/sidebar:opacity-100">Ctrl N</kbd>
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
-        {groups.map((group, index) => (
-          <div key={group.label || index} className="mb-1">
-            {group.label && (
-              <div className="max-h-0 overflow-hidden px-3 text-[10.5px] font-medium uppercase tracking-wider text-t3 opacity-0 transition-all duration-150 group-hover/sidebar:max-h-8 group-hover/sidebar:pb-1.5 group-hover/sidebar:pt-3 group-hover/sidebar:opacity-100">
-                {group.label}
-              </div>
-            )}
-            {group.items.map(item => (
-              <NavLink key={item.href} {...item} onClick={onClose} />
-            ))}
-          </div>
-        ))}
-      </nav>
-
-      <div className="px-3 pb-3">
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--raised)] p-0.5">
-          <button
-            type="button"
-            onClick={() => theme === 'light' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
-            aria-label="Tema escuro"
-          >
-            <Moon className="h-3 w-3" />
-            <span className="hidden opacity-0 transition-opacity duration-150 group-hover/sidebar:inline group-hover/sidebar:opacity-100">Dark</span>
+      {/* overflow-x-hidden aqui clipa textos que passam dos 72px colapsados */}
+      <div className="flex flex-1 flex-col overflow-x-hidden">
+        <div className="px-3 pb-3 pt-4">
+          <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--sidebar-hover)]">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#0B0C0E] text-[11px] font-bold text-[#00E892]">
+              FS
+            </div>
+            <div className="min-w-0 flex-1 text-left opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">
+              <div className="truncate text-[13px] font-semibold text-t1">Frame System</div>
+              <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
+            </div>
+            <ChevronsLeft className="h-3.5 w-3.5 shrink-0 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
           </button>
+        </div>
+
+        <div className="px-3 pb-3">
           <button
+            className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-2.5 text-[12px] font-medium text-t3 transition-colors hover:bg-[var(--sidebar-hover)] hover:text-t1"
             type="button"
-            onClick={() => theme === 'dark' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
-            aria-label="Tema claro"
+            onClick={() => onClose?.()}
           >
-            <Sun className="h-3 w-3" />
-            <span className="hidden opacity-0 transition-opacity duration-150 group-hover/sidebar:inline group-hover/sidebar:opacity-100">Light</span>
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">Novo</span>
+            <kbd className="font-mono text-[10px] text-t3 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">Ctrl N</kbd>
           </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 pb-4">
+          {groups.map((group, index) => (
+            <div key={group.label || index} className="mb-1">
+              {group.label && (
+                <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-t3 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">
+                  {group.label}
+                </div>
+              )}
+              {group.items.map(item => (
+                <NavLink key={item.href} {...item} onClick={onClose} />
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--raised)] p-0.5">
+            <button
+              type="button"
+              onClick={() => theme === 'light' && toggleTheme()}
+              className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
+              aria-label="Tema escuro"
+            >
+              <Moon className="h-3 w-3" />
+              <span className="opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">Dark</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => theme === 'dark' && toggleTheme()}
+              className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
+              aria-label="Tema claro"
+            >
+              <Sun className="h-3 w-3" />
+              <span className="opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100">Light</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* UserMenu fora do overflow-x-hidden para o popup não ser cortado */}
       <UserMenu onClose={onClose} />
     </div>
   )
