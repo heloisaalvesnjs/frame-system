@@ -150,19 +150,23 @@ export function V4Avatar({ name, color = '#2f8b68' }: { name: string; color?: st
 }
 
 export function V4Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const { className, style, ...rest } = props
   return (
     <input
-      className={cn('h-9 rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3 text-[13px] text-t1 outline-none placeholder:text-t3 focus:border-[var(--brand-ring)]', props.className)}
-      {...props}
+      className={cn('h-9 rounded-[10px] border border-[var(--border)] px-3 text-[13px] outline-none placeholder:text-t3 focus:border-[var(--brand-ring)]', className)}
+      style={{ background: 'var(--raised)', color: 'var(--t1)', ...style }}
+      {...rest}
     />
   )
 }
 
 export function V4Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const { className, style, ...rest } = props
   return (
     <select
-      className={cn('h-9 rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3 text-[13px] text-t1 outline-none focus:border-[var(--brand-ring)]', props.className)}
-      {...props}
+      className={cn('h-9 appearance-none rounded-[10px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-[var(--brand-ring)]', className)}
+      style={{ background: 'var(--raised)', color: 'var(--t1)', ...style }}
+      {...rest}
     />
   )
 }
