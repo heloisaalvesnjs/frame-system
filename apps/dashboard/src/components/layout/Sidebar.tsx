@@ -31,6 +31,7 @@ const groups: Array<{
   items: Array<{ href: string; label: string; icon: any; badge?: string }>
 }> = [
   {
+    label: 'Operação',
     items: [
       { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
       { href: '/conversas', label: 'Caixa de entrada', icon: MessageSquare, badge: '5' },
@@ -39,17 +40,19 @@ const groups: Array<{
     ],
   },
   {
-    label: 'Operação',
+    label: 'Inteligência',
     items: [
       { href: '/treinamento', label: 'Assistente', icon: Sparkles },
       { href: '/followup', label: 'Automações', icon: Workflow },
       { href: '/relatorios', label: 'Relatórios', icon: FileBarChart },
-      { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
     ],
   },
   {
-    label: 'Workspace',
-    items: [{ href: '/configuracoes', label: 'Configurações', icon: Settings }],
+    label: 'Gestão',
+    items: [
+      { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
+      { href: '/configuracoes', label: 'Configurações', icon: Settings },
+    ],
   },
 ]
 
@@ -85,7 +88,7 @@ function NavLink({
       onClick={onClick}
       className={cn(
         'group/item relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-all duration-150',
-        active ? 'bg-[rgba(0,194,124,0.085)] text-[#08754D]' : 'text-[#6B7280] hover:bg-[#F4F5F0] hover:text-[#141618]',
+        active ? 'bg-[var(--brand-s)] text-[var(--brand)]' : 'text-t3 hover:bg-[var(--sidebar-hover)] hover:text-t1',
       )}
     >
       {active && (
@@ -95,7 +98,7 @@ function NavLink({
         />
       )}
       <Icon
-        className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-[var(--brand)]' : 'text-[#9AA0A8] group-hover/item:text-[#6B7280]')}
+        className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-[var(--brand)]' : 'text-t3 group-hover/item:text-t2')}
         strokeWidth={1.75}
       />
       <span className="truncate opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">{label}</span>
@@ -176,14 +179,14 @@ function UserMenu({ onClose }: { onClose?: () => void }) {
 
       <button
         onClick={() => setOpen(v => !v)}
-        className={cn('flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors', open ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]')}
+        className={cn('flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors', open ? 'bg-[var(--raised)]' : 'hover:bg-[var(--sidebar-hover)]')}
       >
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[11px] font-semibold text-[#02140C]">
           {initials}
         </div>
         <div className="min-w-0 flex-1 text-left opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
-          <div className="truncate text-[12.5px] font-medium text-[#141618]">{user?.name || 'Frame System'}</div>
-          <div className="mt-0.5 truncate text-[11px] text-[#6B7280]">{user?.email || 'Nutricionista'}</div>
+          <div className="truncate text-[12.5px] font-medium text-t1">{user?.name || 'Frame System'}</div>
+          <div className="mt-0.5 truncate text-[11px] text-t3">{user?.email || 'Nutricionista'}</div>
         </div>
         <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100" />
       </button>
@@ -198,13 +201,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   return (
     <div className="group/sidebar flex h-full flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)]">
       <div className="px-3 pb-3 pt-4">
-        <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04]">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-gradient-to-br from-[#00C27C] to-[#00E892] text-[11px] font-bold text-[#02140C]">
+        <button className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--sidebar-hover)]">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#0B0C0E] text-[11px] font-bold text-[#00E892]">
             FS
           </div>
           <div className="min-w-0 flex-1 text-left opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
-            <div className="truncate text-[13px] font-semibold text-[#141618]">Frame System</div>
-            <div className="truncate text-[11px] text-[#6B7280]">{user?.name || 'Clínica Nutri Plus'}</div>
+            <div className="truncate text-[13px] font-semibold text-t1">Frame System</div>
+            <div className="truncate text-[11px] text-t3">{user?.name || 'Clínica Nutri Plus'}</div>
           </div>
           <ChevronsLeft className="h-3.5 w-3.5 text-t3 opacity-0 transition-opacity group-hover/sidebar:opacity-100" />
         </button>
@@ -212,7 +215,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       <div className="px-3 pb-3">
         <button
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-2.5 text-[12px] font-medium text-[#6B7280] transition-colors hover:bg-[#F4F5F0] hover:text-[#141618]"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--raised)] px-2.5 text-[12px] font-medium text-t3 transition-colors hover:bg-[var(--sidebar-hover)] hover:text-t1"
           type="button"
         >
           <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -225,7 +228,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {groups.map((group, index) => (
           <div key={group.label || index} className="mb-1">
             {group.label && (
-              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-[#A0A5AC] opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
+              <div className="px-3 pb-1.5 pt-3 text-[10.5px] font-medium uppercase tracking-wider text-t3 opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
                 {group.label}
               </div>
             )}
@@ -237,11 +240,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </nav>
 
       <div className="px-3 pb-3">
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--line-1)] bg-white/[0.03] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--raised)] p-0.5">
           <button
             type="button"
             onClick={() => theme === 'light' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-[var(--raised)] text-[#141618] shadow-sm' : 'text-[#6B7280] hover:text-[#141618]')}
+            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'dark' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
             aria-label="Tema escuro"
           >
             <Moon className="h-3 w-3" />
@@ -250,7 +253,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={() => theme === 'dark' && toggleTheme()}
-            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-[var(--raised)] text-[#141618] shadow-sm' : 'text-[#6B7280] hover:text-[#141618]')}
+            className={cn('flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors', theme === 'light' ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3 hover:text-t1')}
             aria-label="Tema claro"
           >
             <Sun className="h-3 w-3" />
