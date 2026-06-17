@@ -6,7 +6,7 @@ import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee, Trash2, ChevronDown,
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { V4Button, V4Card, V4CardPad, V4Page, V4SectionTitle } from '@/components/v4/V4Primitives'
+import { V4Button, V4Card, V4CardPad, V4Metric, V4Page, V4SectionTitle } from '@/components/v4/V4Primitives'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface DayConfig {
@@ -933,6 +933,35 @@ export default function DisponibilidadePage() {
         ) : undefined
       }
     >
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {(() => {
+          const activeDaysCount = days.filter(d => d.is_active).length
+          const totalHours = days.filter(d => d.is_active).reduce((sum, d) => {
+            const [sh, sm] = d.start_time.split(':').map(Number)
+            const [eh, em] = d.end_time.split(':').map(Number)
+            let h = (eh + em / 60) - (sh + sm / 60)
+            if (d.has_break) {
+              const [bsh, bsm] = d.break_start.split(':').map(Number)
+              const [beh, bem] = d.break_end.split(':').map(Number)
+              h -= (beh + bem / 60) - (bsh + bsm / 60)
+            }
+            return sum + Math.max(0, h)
+          }, 0)
+          const commonSlot = days.filter(d => d.is_active).map(d => d.slot_duration).sort((a, b) =>
+            days.filter(d => d.slot_duration === b).length - days.filter(d => d.slot_duration === a).length
+          )[0] ?? 60
+          return (
+            <>
+              <V4Metric label="Horas semanais" value={`${Math.round(totalHours)}h`} foot={`${activeDaysCount} dia(s) ativo(s)`} tone={activeDaysCount > 0 ? 'good' : 'default'} />
+              <V4Metric label="Dias ativos" value={activeDaysCount} foot="na semana" />
+              <V4Metric label="Duração padrão" value={commonSlot < 60 ? `${commonSlot} min` : `${commonSlot / 60}h`} foot="por consulta" />
+              <V4Metric label="Bloqueios" value="—" foot="via calendário" />
+            </>
+          )
+        })()}
+      </div>
+
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-[var(--border)] mb-4">
         {AVAIL_TABS.map(t => (
