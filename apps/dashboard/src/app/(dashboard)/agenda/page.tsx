@@ -37,6 +37,21 @@ const STATUS: Record<string, { label:string; dot:string; tag:'default'|'green'|'
   cancelled: { label:'Cancelado',  dot:'bg-red-400',      tag:'red',     bg:'bg-red-500/[0.08]',    border:'border-red-400',   text:'text-red-600',     textSub:'text-red-400/70'   },
   completed: { label:'Realizado',  dot:'bg-zinc-400',     tag:'default', bg:'bg-zinc-100',          border:'border-zinc-300',  text:'text-zinc-600',    textSub:'text-zinc-400'     },
 }
+
+const EVT_COLORS = ['blue', 'purple', 'orange', 'pink', 'green'] as const
+type EvtColor = typeof EVT_COLORS[number]
+const evtMap: Record<EvtColor, { bg: string; border: string; text: string; sub: string }> = {
+  blue:   { bg:'rgba(106,169,255,0.13)', border:'rgba(106,169,255,0.4)', text:'#4B88E8', sub:'#6AA9FF' },
+  purple: { bg:'rgba(182,156,255,0.13)', border:'rgba(182,156,255,0.4)', text:'#7C5CFF', sub:'#B69CFF' },
+  orange: { bg:'rgba(255,180,84,0.13)',  border:'rgba(255,180,84,0.4)',  text:'#C47A20', sub:'#FFB454' },
+  pink:   { bg:'rgba(255,143,179,0.13)', border:'rgba(255,143,179,0.4)', text:'#C0446E', sub:'#FF8FB3' },
+  green:  { bg:'rgba(0,194,124,0.13)',   border:'rgba(0,194,124,0.4)',   text:'var(--brand)', sub:'rgba(0,194,124,0.8)' },
+}
+function evtColor(name: string): EvtColor {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff
+  return EVT_COLORS[h % EVT_COLORS.length]
+}
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7) // 07–20
 const HOUR_H = 64
 const MIN_H  = HOUR_H / 60
@@ -579,21 +594,20 @@ function WeekView({ weekStart, appointments, blocks, onClickAppt, onClickSlot }:
                   const startMin = (dt.getHours() - 7) * 60 + dt.getMinutes()
                   const top = Math.max(startMin * MIN_H, 0)
                   const height = Math.max(dur * MIN_H, 26)
-                  const s = STATUS[a.status] || STATUS.scheduled
-                  const endDt = new Date(dt.getTime() + dur * 60000)
+                  const c = evtMap[evtColor(a.client_name)]
                   return (
                     <button key={a.id} data-appt="true"
                       onClick={e => { e.stopPropagation(); onClickAppt(a) }}
-                      className={cn('absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 text-left overflow-hidden transition-all hover:opacity-80 hover:shadow-md border-l-[3px]', s.bg, s.border)}
-                      style={{ top, height, zIndex: ai + 1 }}>
-                      <p className={cn('text-[11px] font-semibold leading-tight truncate', s.text)}>{a.client_name}</p>
-                      {height > 38 && (
-                        <p className={cn('flex items-center gap-1 text-[9px] truncate mt-0.5', s.textSub)}>
-                          {a.modality === 'online' ? <Video className="w-2.5 h-2.5 flex-shrink-0" /> : <MapPin className="w-2.5 h-2.5 flex-shrink-0" />}
-                          {format(dt,'HH:mm')} – {format(endDt,'HH:mm')}
-                        </p>
+                      className="absolute left-0.5 right-0.5 rounded-lg px-2 py-1 text-left overflow-hidden transition-all hover:brightness-95 cursor-pointer"
+                      style={{ top, height, zIndex: ai + 1, background: c.bg, border: `1px solid ${c.border}` }}>
+                      {height > 22 && (
+                        <div className="flex items-center gap-1 mb-0.5">
+                          {a.modality === 'online' ? <Video className="w-2.5 h-2.5 flex-shrink-0" style={{ color: c.sub }} /> : <MapPin className="w-2.5 h-2.5 flex-shrink-0" style={{ color: c.sub }} />}
+                          <span className="font-mono text-[9.5px]" style={{ color: c.sub }}>{format(dt,'HH:mm')}</span>
+                        </div>
                       )}
-                      {height > 52 && a.location_name && <p className={cn('text-[9px] truncate mt-0.5', s.textSub)}>{a.location_name}</p>}
+                      <p className="text-[11px] font-semibold leading-tight truncate" style={{ color: c.text }}>{a.client_name}</p>
+                      {height > 52 && a.notes && <p className="text-[9px] truncate mt-0.5" style={{ color: c.sub }}>{a.notes}</p>}
                     </button>
                   )
                 })}
@@ -701,19 +715,14 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-1">Agenda</h1>
-          <p className="mt-0.5 text-[13px] text-3">
-            {`Semana de ${format(weekStart, 'd')} a ${format(weekEnd, "d 'de' MMMM", { locale: ptBR })} · ${todayCount} consulta${todayCount !== 1 ? 's' : ''} hoje`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Btn variant="outline" size="sm" onClick={prevWeek}><ChevronLeft className="h-3.5 w-3.5" /></Btn>
-          <Btn variant={isCurrentWeek ? 'primary' : 'secondary'} size="sm" onClick={goToday}>Hoje</Btn>
-          <Btn variant="outline" size="sm" onClick={nextWeek}><ChevronRight className="h-3.5 w-3.5" /></Btn>
+    <div className="mx-auto max-w-[1400px] px-6 py-4 space-y-5">
+      {/* Nav controls (sem título — TopBar já mostra "Agenda") */}
+      <div className="flex items-center gap-2">
+        <Btn variant="outline" size="sm" onClick={prevWeek}><ChevronLeft className="h-3.5 w-3.5" /></Btn>
+        <Btn variant={isCurrentWeek ? 'primary' : 'secondary'} size="sm" onClick={goToday}>Hoje</Btn>
+        <Btn variant="outline" size="sm" onClick={nextWeek}><ChevronRight className="h-3.5 w-3.5" /></Btn>
+        <span className="text-[13px] text-3 ml-1">{weekRangeLabel}</span>
+        <div className="ml-auto flex items-center gap-2">
           <Btn variant="secondary" size="sm" onClick={() => setBlockDate(new Date())}><Ban className="h-3.5 w-3.5" />Bloquear</Btn>
           <Btn variant="primary" size="sm" onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}>
             <Plus className="h-3.5 w-3.5" />Nova consulta
@@ -721,53 +730,24 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — Lovable layout */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KPI label="Consultas na semana" value={String(weekTotal)} hint={weekRangeLabel} />
-        <KPI label="Confirmadas" value={String(weekConfirmed)} hint={`de ${weekTotal} agendadas`} />
-        <KPI label="Realizadas" value={String(weekCompleted)} hint="concluídas nesta semana" />
-        <KPI label="Canceladas" value={String(weekCancelled)} hint="nesta semana" />
+        <KPI label="Taxa de ocupação" value="—" hint="sem dados suficientes" />
+        <KPI label="No-shows" value={String(weekCancelled)} hint="cancelados esta semana" />
+        <KPI label="Receita prevista" value="—" hint="integração de pagamentos" />
       </div>
 
-      {/* Week grid + sidebar */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[200px_minmax(0,1fr)]">
-        <aside className="hidden lg:flex flex-col gap-4">
-          <Card>
-            <MiniCalendar
-              currentMonth={currentMonth} selectedDate={weekStart} appointments={monthAppts}
-              onSelectDate={selectDate}
-              onPrevMonth={() => setCurrentMonth(m => subMonths(m, 1))}
-              onNextMonth={() => setCurrentMonth(m => addMonths(m, 1))}
-            />
-          </Card>
-          <Card>
-            <p className="font-mono text-[9px] text-3 tracking-wider uppercase mb-2">Status</p>
-            <div className="space-y-1.5">
-              {Object.entries(STATUS).map(([key, s]) => (
-                <div key={key} className="flex items-center gap-2">
-                  <span className={cn('w-2 h-2 rounded-full flex-shrink-0', s.dot)} />
-                  <span className="text-[11px] text-2">{s.label}</span>
-                </div>
-              ))}
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded flex-shrink-0" style={{ background:'color-mix(in oklab, var(--text-3) 35%, transparent)' }} />
-                <span className="text-[11px] text-2">Bloqueado</span>
-              </div>
-            </div>
-          </Card>
-          <GoogleCalendarCard />
-        </aside>
-
-        <Card className="overflow-hidden !p-0" style={{ height: '600px' }}>
-          <WeekView
-            weekStart={weekStart}
-            appointments={appointments}
-            blocks={blocks}
-            onClickAppt={setSelectedAppt}
-            onClickSlot={handleClickSlot}
-          />
-        </Card>
-      </div>
+      {/* Grade semanal full-width */}
+      <Card className="overflow-hidden !p-0" style={{ height: '640px' }}>
+        <WeekView
+          weekStart={weekStart}
+          appointments={appointments}
+          blocks={blocks}
+          onClickAppt={setSelectedAppt}
+          onClickSlot={handleClickSlot}
+        />
+      </Card>
 
       {/* Bottom cards */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
