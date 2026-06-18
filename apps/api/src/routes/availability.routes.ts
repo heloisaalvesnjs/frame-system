@@ -12,7 +12,7 @@ export async function availabilityRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
 
     const rows = await query<any>(
-      `SELECT day_of_week, start_time, end_time, slot_duration, is_active, break_start, break_end
+      `SELECT day_of_week, start_time, end_time, slot_duration, is_active, break_start, break_end, location_id
        FROM availability WHERE nutritionist_id = $1 ORDER BY day_of_week`,
       [id]
     )
@@ -28,6 +28,7 @@ export async function availabilityRoutes(app: FastifyInstance) {
         slot_duration: found?.slot_duration             ?? 60,
         break_start:   found?.break_start?.slice(0, 5) ?? null,
         break_end:     found?.break_end?.slice(0, 5)   ?? null,
+        location_id:   found?.location_id              ?? null,
       }
     })
 
@@ -46,6 +47,7 @@ export async function availabilityRoutes(app: FastifyInstance) {
       slot_duration: z.number().int().min(15).max(240).default(60),
       break_start:   z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
       break_end:     z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      location_id:   z.string().uuid().nullable().optional(),
     })
     const bodySchema = z.object({ availability: z.array(daySchema) })
     const body = bodySchema.parse(request.body)
@@ -54,20 +56,20 @@ export async function availabilityRoutes(app: FastifyInstance) {
 
     if (body.availability.length > 0) {
       const values = body.availability.map((d, i) => {
-        const base = i * 7
-        return `($1, $${base+2}, $${base+3}, $${base+4}, $${base+5}, $${base+6}, $${base+7}, $${base+8})`
+        const base = i * 8
+        return `($1, $${base+2}, $${base+3}, $${base+4}, $${base+5}, $${base+6}, $${base+7}, $${base+8}, $${base+9})`
       }).join(', ')
 
       const params: any[] = [id]
       for (const d of body.availability) {
         params.push(
           d.day_of_week, d.start_time, d.end_time, d.slot_duration, d.is_active,
-          d.break_start ?? null, d.break_end ?? null
+          d.break_start ?? null, d.break_end ?? null, d.location_id ?? null
         )
       }
 
       await query(
-        `INSERT INTO availability (nutritionist_id, day_of_week, start_time, end_time, slot_duration, is_active, break_start, break_end)
+        `INSERT INTO availability (nutritionist_id, day_of_week, start_time, end_time, slot_duration, is_active, break_start, break_end, location_id)
          VALUES ${values}`,
         params
       )

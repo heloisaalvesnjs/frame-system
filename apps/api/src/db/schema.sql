@@ -564,3 +564,8 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS estimated_value NUMERIC(10,2);
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS stage_updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_clients_stage ON clients(nutritionist_id, stage);
+
+-- --------------------------------
+-- Local de atendimento por dia da semana
+-- --------------------------------
+ALTER TABLE availability ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;

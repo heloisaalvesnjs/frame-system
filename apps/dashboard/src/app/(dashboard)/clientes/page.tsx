@@ -1,11 +1,89 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Filter, Loader2, MoreHorizontal, Plus, Search, Star, Upload } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Filter, Loader2, MoreHorizontal, Plus, Search, Star, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { Avatar, Badge, Btn } from '@/components/ui/finance-primitives'
+
+// ── Modal Novo Paciente ───────────────────────────────────────────────────────
+
+function NovoPacienteModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({ name: '', phone: '', email: '', goal: '', notes: '' })
+  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [k]: e.target.value }))
+
+  const create = useMutation({
+    mutationFn: () => api.post('/api/clients', form),
+    onSuccess: () => {
+      toast.success('Paciente cadastrado!')
+      qc.invalidateQueries({ queryKey: ['clients'] })
+      onClose()
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error ?? 'Erro ao cadastrar'),
+  })
+
+  const inputCls = "w-full h-9 px-3 rounded-lg text-[13px] outline-none focus:ring-2 transition"
+  const inputStyle = { background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--line-1)' }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl p-6 shadow-xl" style={{ background: 'var(--bg-base)', border: '1px solid var(--line-1)' }}>
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-1">Novo paciente</h2>
+          <button onClick={onClose} className="grid size-7 place-items-center rounded-md text-3 hover:text-1 transition-colors">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11.5px] font-medium text-3 mb-1 block">Telefone (WhatsApp) *</label>
+            <input className={inputCls} style={inputStyle} placeholder="+55 11 99999-0000" value={form.phone} onChange={f('phone')} />
+          </div>
+          <div>
+            <label className="text-[11.5px] font-medium text-3 mb-1 block">Nome</label>
+            <input className={inputCls} style={inputStyle} placeholder="Nome completo" value={form.name} onChange={f('name')} />
+          </div>
+          <div>
+            <label className="text-[11.5px] font-medium text-3 mb-1 block">E-mail</label>
+            <input className={inputCls} style={inputStyle} type="email" placeholder="email@exemplo.com" value={form.email} onChange={f('email')} />
+          </div>
+          <div>
+            <label className="text-[11.5px] font-medium text-3 mb-1 block">Objetivo</label>
+            <input className={inputCls} style={inputStyle} placeholder="Ex: Emagrecimento, ganho de massa…" value={form.goal} onChange={f('goal')} />
+          </div>
+          <div>
+            <label className="text-[11.5px] font-medium text-3 mb-1 block">Observações</label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none focus:ring-2 transition resize-none"
+              style={inputStyle}
+              rows={2}
+              placeholder="Informações adicionais…"
+              value={form.notes}
+              onChange={f('notes')}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Btn variant="ghost" size="sm" onClick={onClose}>Cancelar</Btn>
+          <Btn
+            variant="primary"
+            size="sm"
+            disabled={!form.phone.trim() || create.isPending}
+            onClick={() => create.mutate()}
+          >
+            {create.isPending ? <Loader2 className="size-3 animate-spin" /> : null}
+            Cadastrar
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface Client {
   id: string
@@ -30,6 +108,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
   const [uploading, setUploading] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients'],
@@ -78,9 +157,10 @@ export default function ClientesPage() {
             {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
             Importar
           </Btn>
-          <Btn variant="primary" size="sm">
+          <Btn variant="primary" size="sm" onClick={() => setShowModal(true)}>
             <Plus className="h-3.5 w-3.5" /> Novo paciente
           </Btn>
+          {showModal && <NovoPacienteModal onClose={() => setShowModal(false)} />}
         </div>
       </div>
 

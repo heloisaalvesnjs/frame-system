@@ -83,11 +83,36 @@ export default function ConversasPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
+  const [draft, setDraft] = useState('')
+
   const takeover = useMutation({
     mutationFn: () => api.post(`/api/conversations/${selected!.id}/takeover`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['conversations'] }); toast.success('Conversa assumida') },
     onError: () => toast.error('Não foi possível assumir a conversa'),
   })
+
+  const sendMessage = useMutation({
+    mutationFn: (content: string) => api.post(`/api/conversations/${selected!.id}/messages`, { content }),
+    onSuccess: () => {
+      setDraft('')
+      qc.invalidateQueries({ queryKey: ['messages', selected?.id] })
+      qc.invalidateQueries({ queryKey: ['conversations'] })
+    },
+    onError: () => toast.error('Erro ao enviar mensagem'),
+  })
+
+  function handleSend() {
+    const text = draft.trim()
+    if (!text || sendMessage.isPending) return
+    sendMessage.mutate(text)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
 
   return (
     <div
@@ -262,10 +287,13 @@ export default function ConversasPage() {
                   rows={2}
                   placeholder={
                     selected.status === 'human_takeover'
-                      ? 'Escreva uma mensagem…'
+                      ? 'Escreva uma mensagem… (Ctrl+Enter para enviar)'
                       : 'IA está respondendo automaticamente. Use "Assumir" para intervir.'
                   }
                   disabled={selected.status !== 'human_takeover'}
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
                 />
                 <div className="mt-1 flex items-center justify-between">
                   <div className="flex items-center gap-1">
@@ -282,8 +310,13 @@ export default function ConversasPage() {
                       <Sparkles className="h-3.5 w-3.5" /> Sugerir
                     </button>
                   </div>
-                  <Btn variant="primary" size="sm" disabled={selected.status !== 'human_takeover'}>
-                    <Send className="h-3.5 w-3.5" /> Enviar
+                  <Btn
+                    variant="primary"
+                    size="sm"
+                    disabled={selected.status !== 'human_takeover' || !draft.trim() || sendMessage.isPending}
+                    onClick={handleSend}
+                  >
+                    <Send className="h-3.5 w-3.5" /> {sendMessage.isPending ? 'Enviando…' : 'Enviar'}
                   </Btn>
                 </div>
               </div>

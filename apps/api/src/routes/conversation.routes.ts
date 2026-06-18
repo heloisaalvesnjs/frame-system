@@ -208,6 +208,39 @@ export async function conversationRoutes(app: FastifyInstance) {
     return reply.send({ ok: true, message: updated })
   })
 
+  // POST /api/conversations/:id/messages — nutricionista envia mensagem direta
+  app.post('/:id/messages', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { id } = request.params as any
+    const { content } = request.body as any
+
+    if (!content?.trim()) return reply.code(400).send({ error: 'content é obrigatório' })
+
+    const conversation = await queryOne<any>(
+      'SELECT * FROM conversations WHERE id = $1 AND nutritionist_id = $2',
+      [id, nutritionistId]
+    )
+    if (!conversation) return reply.code(404).send({ error: 'Conversa não encontrada' })
+
+    // Envia via WhatsApp
+    await sendMessageForNutri(nutritionistId, conversation.client_phone, content.trim())
+
+    // Salva no histórico como mensagem do assistente (humano)
+    const [message] = await query<any>(
+      `INSERT INTO messages (conversation_id, role, content)
+       VALUES ($1, 'assistant', $2) RETURNING *`,
+      [id, content.trim()]
+    )
+
+    // Atualiza timestamp da conversa
+    await query(
+      `UPDATE conversations SET last_message_at = NOW() WHERE id = $1`,
+      [id]
+    )
+
+    return reply.code(201).send({ ok: true, message })
+  })
+
   // POST /api/conversations/:id/messages/:messageId/discard — descarta o rascunho sem enviar
   app.post('/:id/messages/:messageId/discard', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user

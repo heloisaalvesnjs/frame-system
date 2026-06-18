@@ -23,6 +23,7 @@ interface DayConfig {
   break_start:   string
   break_end:     string
   slot_duration: number
+  location_id:   string | null
 }
 interface DayConfigApi {
   day_of_week:   number
@@ -32,6 +33,7 @@ interface DayConfigApi {
   slot_duration: number
   break_start:   string | null
   break_end:     string | null
+  location_id:   string | null
 }
 interface Location {
   id: string; name: string; city?: string; address?: string; color?: string
@@ -70,6 +72,7 @@ function apiToConfig(d: DayConfigApi): Omit<DayConfig, 'label' | 'abbr'> {
     break_start:   d.break_start?.slice(0, 5) ?? '12:00',
     break_end:     d.break_end?.slice(0, 5)   ?? '13:00',
     slot_duration: d.slot_duration ?? 60,
+    location_id:   d.location_id ?? null,
   }
 }
 function configToApi(d: DayConfig): DayConfigApi {
@@ -81,6 +84,7 @@ function configToApi(d: DayConfig): DayConfigApi {
     slot_duration: d.slot_duration,
     break_start:   d.has_break ? d.break_start : null,
     break_end:     d.has_break ? d.break_end   : null,
+    location_id:   d.location_id ?? null,
   }
 }
 
@@ -93,6 +97,7 @@ const DEFAULT_DAYS: DayConfig[] = DAYS_META.map(m => ({
   break_start:   '12:00',
   break_end:     '13:00',
   slot_duration: 60,
+  location_id:   null,
 }))
 
 // ─── helpers ─────────────────────────────────────────────
@@ -125,9 +130,16 @@ function timeRanges(day: DayConfig): string[] {
 }
 
 // ─── Day Row (Lovable flat style, expands to edit) ─────
-function DayRow({ day, onChange }: { day: DayConfig; onChange: (p: Partial<DayConfig>) => void }) {
+function DayRow({
+  day, onChange, locations,
+}: {
+  day: DayConfig
+  onChange: (p: Partial<DayConfig>) => void
+  locations: Location[]
+}) {
   const [open, setOpen] = useState(false)
   const ranges = timeRanges(day)
+  const selectedLoc = locations.find(l => l.id === day.location_id)
 
   return (
     <div>
@@ -144,6 +156,15 @@ function DayRow({ day, onChange }: { day: DayConfig; onChange: (p: Partial<DayCo
                   <Clock className="w-3 h-3" style={{ color: 'var(--brand)' }} /> {r}
                 </span>
               ))}
+              {selectedLoc && (
+                <span className="text-[11.5px] px-2.5 py-1 rounded-md inline-flex items-center gap-1.5"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--line-1)', color: 'var(--text-2)' }}>
+                  {selectedLoc.modality === 'online'
+                    ? <Video className="w-3 h-3" style={{ color: selectedLoc.color ?? 'var(--brand)' }} />
+                    : <MapPin className="w-3 h-3" style={{ color: selectedLoc.color ?? 'var(--brand)' }} />}
+                  {selectedLoc.name}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -158,33 +179,57 @@ function DayRow({ day, onChange }: { day: DayConfig; onChange: (p: Partial<DayCo
             <Toggle checked={day.is_active} onChange={v => onChange({ is_active: v })} />
           </div>
           {day.is_active && (
-            <div className="flex items-end gap-3 flex-wrap">
-              <TimeInput label="Início" value={day.start_time} onChange={v => onChange({ start_time: v })} />
-              <span className="text-2 text-sm mb-2">–</span>
-              <TimeInput label="Fim" value={day.end_time} onChange={v => onChange({ end_time: v })} />
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Pausa almoço</span>
-                <div className="flex items-center gap-2 h-[38px]">
-                  <Toggle checked={day.has_break} onChange={v => onChange({ has_break: v })} />
-                  <Coffee className={cn('w-3.5 h-3.5', day.has_break ? 'text-amber-400' : 'text-3')} />
+            <>
+              <div className="flex items-end gap-3 flex-wrap">
+                <TimeInput label="Início" value={day.start_time} onChange={v => onChange({ start_time: v })} />
+                <span className="text-2 text-sm mb-2">–</span>
+                <TimeInput label="Fim" value={day.end_time} onChange={v => onChange({ end_time: v })} />
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Pausa almoço</span>
+                  <div className="flex items-center gap-2 h-[38px]">
+                    <Toggle checked={day.has_break} onChange={v => onChange({ has_break: v })} />
+                    <Coffee className={cn('w-3.5 h-3.5', day.has_break ? 'text-amber-400' : 'text-3')} />
+                  </div>
+                </div>
+                {day.has_break && (
+                  <>
+                    <TimeInput label="Início pausa" value={day.break_start} onChange={v => onChange({ break_start: v })} />
+                    <span className="text-2 text-sm mb-2">–</span>
+                    <TimeInput label="Fim pausa" value={day.break_end} onChange={v => onChange({ break_end: v })} />
+                  </>
+                )}
+                <div className="flex flex-col gap-1 ml-auto">
+                  <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Duração</span>
+                  <select value={day.slot_duration} onChange={e => onChange({ slot_duration: Number(e.target.value) })}
+                    className="h-[38px] rounded-lg px-3 text-sm text-1 focus:outline-none"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}>
+                    {SLOT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 </div>
               </div>
-              {day.has_break && (
-                <>
-                  <TimeInput label="Início pausa" value={day.break_start} onChange={v => onChange({ break_start: v })} />
-                  <span className="text-2 text-sm mb-2">–</span>
-                  <TimeInput label="Fim pausa" value={day.break_end} onChange={v => onChange({ break_end: v })} />
-                </>
+
+              {locations.length > 0 && (
+                <div className="mt-3 flex flex-col gap-1">
+                  <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Local de atendimento neste dia</span>
+                  <select
+                    value={day.location_id ?? ''}
+                    onChange={e => onChange({ location_id: e.target.value || null })}
+                    className="h-[38px] rounded-lg px-3 text-sm text-1 focus:outline-none max-w-xs"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}
+                  >
+                    <option value="">— Sem local definido —</option>
+                    {locations.map(l => (
+                      <option key={l.id} value={l.id}>
+                        {l.modality === 'online' ? '🌐' : '📍'} {l.name}{l.city ? ` · ${l.city}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-3 mt-0.5">
+                    A IA usa essa informação para oferecer o local correto ao agendar neste dia.
+                  </p>
+                </div>
               )}
-              <div className="flex flex-col gap-1 ml-auto">
-                <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Duração</span>
-                <select value={day.slot_duration} onChange={e => onChange({ slot_duration: Number(e.target.value) })}
-                  className="h-[38px] rounded-lg px-3 text-sm text-1 focus:outline-none"
-                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}>
-                  {SLOT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -410,7 +455,7 @@ export default function DisponibilidadePage() {
       setDays(DAYS_META.map(m => {
         const found = availData.find(d => d.day_of_week === m.day_of_week)
         if (found) return { ...m, ...apiToConfig(found) }
-        return { ...m, is_active: false, start_time: '08:00', end_time: '18:00', has_break: false, break_start: '12:00', break_end: '13:00', slot_duration: 60 }
+        return { ...m, is_active: false, start_time: '08:00', end_time: '18:00', has_break: false, break_start: '12:00', break_end: '13:00', slot_duration: 60, location_id: null }
       }))
       setDirty(false)
     }
@@ -612,7 +657,7 @@ export default function DisponibilidadePage() {
           <div className="divide-y divide-[var(--line-1)]">
             {days.map(day => {
               const idx = days.findIndex(d => d.day_of_week === day.day_of_week)
-              return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
+              return <DayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} locations={locations} />
             })}
           </div>
         </Card>
