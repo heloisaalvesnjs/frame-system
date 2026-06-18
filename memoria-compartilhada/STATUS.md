@@ -9,7 +9,15 @@
 
 ## Claude Code
 
-- **Ultima atividade**: 2026-06-18 - port Lovable pixel-perfect concluido para todas as paginas principais:
+- **Ultima atividade**: 2026-06-18 - port Lovable de treinamento/page.tsx concluido: nova estrutura
+  com hero banner (gradiente verde, nome real da assistente, badge Em producao/Pausada), KPI row
+  (4 cards, mensagens reais de convStats), AreaChart de performance (recharts), progress bars de
+  capacidades, cards Base de conhecimento (upload PDF real) e Persona & tom de voz (form real com
+  nome/tom/greeting_message + salvar e publicar). TopBar titulo alterado para "Assistente". tsc e
+  npm run build (40 rotas) ok. Aguardando confirmacao antes do push/deploy.
+- **Pendente**: revisao visual da Heloisa; paginas /relatorios e /configuracoes ainda nao portadas.
+
+## Claude Code (anterior) - 2026-06-18 - port Lovable pixel-perfect concluido para todas as paginas principais:
   `conversas`, `clientes`, `followup`, `integracoes`, `agenda`, `treinamento`, `disponibilidade`.
   Todas usam agora finance-primitives (Card/Badge/Btn/KPI/SectionTitle/Avatar) sem V4Primitives.
   `finance-primitives.tsx` ganhou variant `danger` em Btn e prop `dot` em Badge.

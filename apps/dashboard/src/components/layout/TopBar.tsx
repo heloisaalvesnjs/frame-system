@@ -9,7 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/conversas':       'Conversas',
   '/agenda':          'Agenda',
   '/clientes':        'Pacientes',
-  '/treinamento':     'Assistente IA',
+  '/treinamento':     'Assistente',
   '/followup':        'Automações',
   '/disponibilidade': 'Disponibilidade',
   '/integracoes':     'Integrações',
