@@ -138,6 +138,10 @@ trocar uma pagina com queries/mutations reais por um mockup estatico.
   agenda semanal, pacientes, assistente com subabas, automacoes,
   disponibilidade, relatorios e configuracoes. Nao reintroduzir layouts
   antigos de cards grandes/marketing nem pagina `/design-system`.
+- (2026-06-17) Regra de disponibilidade para a IA: alem de bloquear data e
+  horario, o nutricionista precisa poder informar o local de atendimento
+  daquele dia. A agenda e o motor de agendamento devem respeitar a dupla
+  "data + local" para evitar marcacoes em unidade errada.
 
 - (2026-06-11) Decisao Codex/Heloisa sobre Lovable: usar o Lovable como
   laboratorio de design/UI, nao como substituto do sistema principal. Para

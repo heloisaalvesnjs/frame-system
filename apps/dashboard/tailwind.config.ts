@@ -9,52 +9,52 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ── Semantic tokens (CSS vars, theme-aware) ──────────────
-        bg:       'var(--bg)',
-        surface:  'var(--surface)',
-        raised:   'var(--raised)',
-        raised2:  'var(--raised-2)',
-        border:   'var(--border)',
-        t1:       'var(--t1)',
-        t2:       'var(--t2)',
-        t3:       'var(--t3)',
-        t4:       'var(--t4)',
-
-        // ── Semantic status colors ───────────────────────────────
+        // ── New tokens (Lovable design system) ───────────────────
+        'bg-base':      'var(--bg-base)',
+        'bg-elevated':  'var(--bg-elevated)',
+        'bg-surface':   'var(--bg-surface)',
+        'bg-surface-2': 'var(--bg-surface-2)',
+        'text-1':       'var(--text-1)',
+        'text-2':       'var(--text-2)',
+        'text-3':       'var(--text-3)',
+        'text-4':       'var(--text-4)',
+        'line-1':       'var(--line-1)',
+        'line-2':       'var(--line-2)',
+        'line-3':       'var(--line-3)',
+        // ── Legacy aliases (backward compat) ─────────────────────
+        bg:      'var(--bg-base)',
+        surface: 'var(--bg-elevated)',
+        raised:  'var(--bg-surface)',
+        raised2: 'var(--bg-surface-2)',
+        border:  'var(--line-2)',
+        t1:      'var(--text-1)',
+        t2:      'var(--text-2)',
+        t3:      'var(--text-3)',
+        t4:      'var(--text-4)',
         danger:  'var(--danger)',
         warning: 'var(--warning)',
         info:    'var(--info)',
         purple:  'var(--purple)',
-
-        // ── Brand (hex — suporta Tailwind opacity modifiers) ─────
         brand: {
-          DEFAULT: '#00C27C',
-          50:      '#E8FBF4',
-          100:     '#C6F6E4',
-          400:     '#00E892',
-          500:     '#00C27C',
-          600:     '#009A62',
-          700:     '#007A4E',
-          subtle:  '#0B2E1E',
-        },
-
-        // ── Legacy aliases (backward compat) ─────────────────────
-        ui: {
-          bg:       'var(--bg)',
-          card:     'var(--surface)',
-          elevated: 'var(--raised)',
-          border:   'var(--border)',
-          sidebar:  'var(--bg)',
+          DEFAULT: 'var(--brand)',
+          bright:  'var(--brand-bright)',
+          lime:    'var(--brand-lime)',
+          soft:    'var(--brand-soft)',
+          ring:    'var(--brand-ring)',
+          500:     '#2E7D32',
+          600:     '#1B5E20',
         },
       },
       fontFamily: {
-        sans:    ['Inter', 'sans-serif'],
-        display: ['Inter', 'sans-serif'],
-        mono:    ['"DM Mono"', 'monospace'],
+        sans:    ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', '"DM Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        card:    '0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05)',
-        'card-md': '0 4px 8px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06)',
+        sm:       'var(--shadow-sm)',
+        md:       'var(--shadow-md)',
+        elevated: 'var(--shadow-elevated)',
+        card:     'var(--shadow-sm)',
       },
     },
   },

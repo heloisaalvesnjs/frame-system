@@ -15,8 +15,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Btn, KPI } from '@/components/ui/finance-primitives'
-import { V4Page, V4Card, V4CardPad, V4Button, V4Metric, V4Tag } from '@/components/v4/V4Primitives'
+import { Badge, Btn, Card, KPI, SectionTitle } from '@/components/ui/finance-primitives'
 
 // ═══════════════════════════════════════════════════════
 // Shared helpers
@@ -1922,19 +1921,19 @@ const TRAINING_TABS = [
   { id: 'testar',    label: 'Testar atendimento', icon: PlayCircle },
 ]
 
-const V4_TABS = [
-  { id: 'identidade',  label: 'Identidade'         },
-  { id: 'servicos',    label: 'Serviços'            },
-  { id: 'conhecimento',label: 'Conhecimento'        },
-  { id: 'limites',     label: 'Limites e segurança' },
-  { id: 'fluxo',       label: 'Fluxo comercial'     },
-  { id: 'testar',      label: 'Testar assistente'   },
-  { id: 'desempenho',  label: 'Desempenho'          },
+const NAV_TABS = [
+  { id: 'identidade',   label: 'Personalidade',       icon: Brain },
+  { id: 'servicos',     label: 'Serviços',             icon: BookOpen },
+  { id: 'conhecimento', label: 'Base de conhecimento', icon: FileText },
+  { id: 'limites',      label: 'Limites',              icon: Moon },
+  { id: 'fluxo',        label: 'Fluxo comercial',      icon: ArrowRight },
+  { id: 'testar',       label: 'Testar assistente',    icon: PlayCircle },
+  { id: 'desempenho',   label: 'Desempenho',           icon: RotateCcw },
 ] as const
-type V4Tab = typeof V4_TABS[number]['id']
+type NavTab = typeof NAV_TABS[number]['id']
 
 export default function TreinamentoPage() {
-  const [tab, setTab] = useState<V4Tab>('identidade')
+  const [tab, setTab] = useState<NavTab>('identidade')
 
   const { data: convStats } = useQuery<any>({
     queryKey: ['conversations-stats'],
@@ -1943,40 +1942,45 @@ export default function TreinamentoPage() {
   })
 
   return (
-    <V4Page
-      eyebrow="Inteligência do consultório"
-      title="Assistente IA"
-      subtitle="Treine, teste e acompanhe a recepção comercial da sua assistente."
-      actions={
-        <>
+    <div className="mx-auto max-w-[1400px] px-6 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-1">Assistente IA</h1>
+          <p className="mt-0.5 text-[13px] text-3">Treine, teste e acompanhe a recepção comercial da sua assistente.</p>
+        </div>
+        <div className="flex items-center gap-2">
           <AIPowerToggleBadge />
-          <V4Button onClick={() => setTab('testar')}>
-            <PlayCircle className="h-4 w-4" />Testar no playground
-          </V4Button>
-        </>
-      }
-    >
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <Btn variant="secondary" size="sm" onClick={() => setTab('testar')}>
+            <PlayCircle className="h-3.5 w-3.5" />Testar playground
+          </Btn>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
         {/* Nav lateral */}
-        <V4Card className="h-max p-2">
-          {V4_TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={cn(
-                'mb-1 flex w-full rounded-[10px] px-3 py-2 text-left text-[13px] font-medium transition',
-                tab === id
-                  ? 'bg-[var(--brand-s)] text-[var(--brand)]'
-                  : 'text-t2 hover:bg-[var(--raised)]'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </V4Card>
+        <Card className="!p-2 h-fit">
+          <nav className="space-y-0.5">
+            {NAV_TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 rounded-lg px-3 h-9 text-left text-[12.5px] font-medium transition',
+                  tab === id
+                    ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
+                    : 'text-2 hover:bg-[var(--bg-surface)] hover:text-1'
+                )}
+              >
+                <Icon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+                <span className="flex-1">{label}</span>
+              </button>
+            ))}
+          </nav>
+        </Card>
 
         {/* Conteúdo */}
-        <V4CardPad className="min-h-[480px]">
+        <Card className="min-h-[480px]">
           {tab === 'identidade'   && <TabAssistente />}
           {tab === 'servicos'     && <ServicosSection />}
           {tab === 'conhecimento' && <ManualSection />}
@@ -1984,27 +1988,24 @@ export default function TreinamentoPage() {
           {tab === 'fluxo'        && <FluxoComercialSection />}
           {tab === 'testar'       && <TestarAtendimentoSection />}
           {tab === 'desempenho'   && (
-            <div className="space-y-4">
-              <div>
-                <div className="text-[15px] font-medium text-t1">Desempenho da assistente</div>
-                <p className="mt-1 text-[13px] text-t3">Métricas em tempo real da IA no seu consultório.</p>
-              </div>
+            <div className="space-y-6">
+              <SectionTitle title="Desempenho da assistente" hint="Métricas em tempo real da IA no seu consultório." />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <V4Metric label="Conversas ativas" value={convStats?.active ?? 0} foot="Aguardando resposta" />
-                <V4Metric label="Agendamentos via IA" value={convStats?.agendou ?? 0} foot="Total" tone="good" />
-                <V4Metric label="Vendas via IA" value={convStats?.comprou ?? 0} foot="Total" tone="good" />
-                <V4Metric label="Mensagens enviadas" value={convStats?.ai_messages ?? 0} foot="Pela IA" />
+                <KPI label="Conversas ativas" value={String(convStats?.active ?? 0)} hint="Aguardando resposta" />
+                <KPI label="Agendamentos via IA" value={String(convStats?.agendou ?? 0)} hint="Total" />
+                <KPI label="Vendas via IA" value={String(convStats?.comprou ?? 0)} hint="Total" />
+                <KPI label="Mensagens enviadas" value={String(convStats?.ai_messages ?? 0)} hint="Pela IA" />
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <V4Metric label="Resolvidas" value={convStats?.resolved ?? 0} foot="Total" />
-                <V4Metric label="Sem retorno" value={convStats?.sem_resposta ?? 0} foot="Total" tone={convStats?.sem_resposta > 0 ? 'warn' : 'default'} />
-                <V4Metric label="Intervenção humana" value={convStats?.human_takeover ?? 0} foot="Precisaram de você" tone={convStats?.human_takeover > 0 ? 'warn' : 'default'} />
+                <KPI label="Resolvidas" value={String(convStats?.resolved ?? 0)} hint="Total" />
+                <KPI label="Sem retorno" value={String(convStats?.sem_resposta ?? 0)} hint="Total" />
+                <KPI label="Intervenção humana" value={String(convStats?.human_takeover ?? 0)} hint="Precisaram de você" />
               </div>
             </div>
           )}
-        </V4CardPad>
+        </Card>
       </div>
-    </V4Page>
+    </div>
   )
 }
 

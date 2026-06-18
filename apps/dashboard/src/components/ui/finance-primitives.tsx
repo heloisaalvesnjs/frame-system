@@ -1,18 +1,13 @@
+import React from 'react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-export function Card({
-  className,
-  children,
-  hover = false,
-}: {
-  className?: string
-  children: ReactNode
-  hover?: boolean
-}) {
-  return <div className={cn('surface p-5', hover && 'card-hover', className)}>{children}</div>
+// ─── Card ──────────────────────────────────────────────────────
+export function Card({ className, style, children }: { className?: string; style?: React.CSSProperties; children: ReactNode }) {
+  return <div className={cn('surface p-6', className)} style={style}>{children}</div>
 }
 
+// ─── SectionTitle ──────────────────────────────────────────────
 export function SectionTitle({
   title,
   hint,
@@ -23,50 +18,63 @@ export function SectionTitle({
   action?: ReactNode
 }) {
   return (
-    <div className="mb-4 flex items-end justify-between">
+    <div className="mb-5 flex items-end justify-between">
       <div>
-        <h2 className="text-[13px] font-semibold tracking-tight text-t1">{title}</h2>
-        {hint && <p className="mt-0.5 text-[12px] text-t3">{hint}</p>}
+        <h2 className="text-[14px] font-semibold tracking-tight text-1">{title}</h2>
+        {hint && <p className="mt-1 text-[12px] text-3">{hint}</p>}
       </div>
       {action}
     </div>
   )
 }
 
+// ─── Badge ─────────────────────────────────────────────────────
+type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple'
+
+const badgeStyles: Record<BadgeVariant, string> = {
+  default: 'bg-[var(--bg-surface)] text-2 border-[var(--line-1)]',
+  success: 'bg-[var(--brand-soft)] text-[var(--brand)] border-[var(--brand-ring)]',
+  warning: 'bg-[#FFF6E5] text-[#9A6B14] border-[#F1D9A8]',
+  danger:  'bg-[#FDECEC] text-[#A12C2C] border-[#F1C7C7]',
+  info:    'bg-[#EAF1FE] text-[#1F4FBA] border-[#C9D9F7]',
+  purple:  'bg-[#EFEAFF] text-[#5236C7] border-[#D6CBF7]',
+}
+
+const dotColors: Record<BadgeVariant, string> = {
+  default: 'bg-[var(--text-3)]',
+  success: 'bg-[var(--brand)]',
+  warning: 'bg-[#E8A020]',
+  danger:  'bg-[#DC2626]',
+  info:    'bg-[#2563EB]',
+  purple:  'bg-[#7C5CFF]',
+}
+
 export function Badge({
   children,
   variant = 'default',
-  dot = false,
+  dot,
+  className,
 }: {
   children: ReactNode
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple'
+  variant?: BadgeVariant
   dot?: boolean
+  className?: string
 }) {
-  const styles: Record<string, string> = {
-    default: 'border-white/[0.06] bg-white/[0.05] text-t2',
-    success: 'border-[var(--brand-ring)] bg-[var(--brand-s)] text-[var(--brand)]',
-    warning: 'border-[var(--warning)]/20 bg-[var(--warning)]/10 text-[var(--warning)]',
-    danger: 'border-[var(--danger)]/20 bg-[var(--danger)]/10 text-[var(--danger)]',
-    info: 'border-[var(--info)]/20 bg-[var(--info)]/10 text-[var(--info)]',
-    purple: 'border-[var(--purple)]/20 bg-[var(--purple)]/10 text-[var(--purple)]',
-  }
-  const dotStyles: Record<string, string> = {
-    default: 'bg-t3',
-    success: 'bg-[var(--brand)]',
-    warning: 'bg-[var(--warning)]',
-    danger: 'bg-[var(--danger)]',
-    info: 'bg-[var(--info)]',
-    purple: 'bg-[var(--purple)]',
-  }
-
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10.5px] font-medium', styles[variant])}>
-      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotStyles[variant])} />}
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium',
+        badgeStyles[variant],
+        className,
+      )}
+    >
+      {dot && <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', dotColors[variant])} />}
       {children}
     </span>
   )
 }
 
+// ─── KPI ───────────────────────────────────────────────────────
 export function KPI({
   label,
   value,
@@ -82,19 +90,45 @@ export function KPI({
 }) {
   return (
     <div className="surface relative overflow-hidden p-5">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-      <div className="text-[11px] font-medium uppercase tracking-wider text-t3">{label}</div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <div className="text-[26px] font-semibold tracking-tight text-t1 tabular-nums">{value}</div>
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-3">{label}</div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <div className="tabular-nums text-[28px] font-semibold tracking-tight text-1">{value}</div>
         {delta && (
-          <span className={cn('text-[11.5px] font-medium tabular-nums', positive ? 'text-[var(--brand)]' : 'text-[var(--danger)]')}>
-            {positive ? '+' : '-'} {delta}
+          <span
+            className={cn(
+              'tabular-nums text-[11.5px] font-medium',
+              positive ? 'text-[var(--brand)]' : 'text-[var(--danger)]',
+            )}
+          >
+            {positive ? '↑' : '↓'} {delta}
           </span>
         )}
       </div>
-      {hint && <div className="mt-1 text-[11.5px] text-t3">{hint}</div>}
+      {hint && <div className="mt-1.5 text-[11.5px] text-3">{hint}</div>}
     </div>
   )
+}
+
+// ─── Btn ───────────────────────────────────────────────────────
+type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger'
+type BtnSize = 'sm' | 'md'
+
+const btnVariants: Record<BtnVariant, string> = {
+  primary:
+    'bg-[var(--brand)] text-white hover:bg-[#256E29] shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,0_6px_20px_-10px_rgba(46,125,50,0.5)]',
+  secondary:
+    'bg-[var(--bg-elevated)] text-1 hover:bg-[var(--bg-surface)] border border-[var(--line-2)] shadow-[var(--shadow-sm)]',
+  ghost:
+    'text-2 hover:bg-[var(--bg-surface)] hover:text-1',
+  outline:
+    'border border-[var(--line-2)] text-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-surface)] hover:border-[var(--line-3)]',
+  danger:
+    'bg-[var(--danger,#DC2626)] text-white hover:opacity-90',
+}
+
+const btnSizes: Record<BtnSize, string> = {
+  sm: 'h-8 px-3 text-[12.5px]',
+  md: 'h-9 px-4 text-[13px]',
 }
 
 export function Btn({
@@ -104,27 +138,15 @@ export function Btn({
   className,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'outline'
-  size?: 'sm' | 'md'
+  variant?: BtnVariant
+  size?: BtnSize
 }) {
-  const variants: Record<string, string> = {
-    primary:
-      'btn-gradient text-[#02140C] shadow-[0_0_0_1px_var(--brand-ring),0_8px_24px_-12px_rgba(0,194,124,0.5)]',
-    secondary: 'border border-[var(--border)] bg-[var(--raised)] text-t1 hover:bg-[var(--surface)]',
-    ghost: 'text-t2 hover:bg-[var(--raised)] hover:text-t1',
-    outline: 'border border-[var(--border)] text-t1 hover:border-[var(--line-3)] hover:bg-[var(--raised)]',
-  }
-  const sizes: Record<string, string> = {
-    sm: 'h-7 px-2.5 text-[12px]',
-    md: 'h-9 px-3.5 text-[13px]',
-  }
-
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-ring)] disabled:pointer-events-none disabled:opacity-50',
-        variants[variant],
-        sizes[size],
+        'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]',
+        btnVariants[variant],
+        btnSizes[size],
         className,
       )}
       {...props}
@@ -134,12 +156,13 @@ export function Btn({
   )
 }
 
+// ─── Avatar ────────────────────────────────────────────────────
 const gradients = {
-  blue: 'from-[#6AA9FF] to-[#3F7DD9]',
-  green: 'from-[#00C27C] to-[#00E892]',
-  purple: 'from-[#B69CFF] to-[#7B5FE0]',
-  orange: 'from-[#FFB454] to-[#FF8A3D]',
-  pink: 'from-[#FF8FB3] to-[#E0598A]',
+  blue:   'from-[#5B8DEF] to-[#2563EB]',
+  green:  'from-[#61D836] to-[#2E7D32]',
+  purple: 'from-[#A78BFA] to-[#7C5CFF]',
+  orange: 'from-[#F5B056] to-[#C98A2B]',
+  pink:   'from-[#F4A7B9] to-[#D14380]',
 } as const
 
 export function Avatar({
@@ -154,13 +177,15 @@ export function Avatar({
   const initials = name
     .split(' ')
     .slice(0, 2)
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
-
   return (
     <div
-      className={cn('grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold text-white ring-2 ring-[var(--surface)] shadow-sm', gradients[color])}
+      className={cn(
+        'shrink-0 rounded-full bg-gradient-to-br grid place-items-center font-semibold text-white',
+        gradients[color],
+      )}
       style={{ width: size, height: size, fontSize: size * 0.36 }}
     >
       {initials}

@@ -6,7 +6,7 @@ import { CheckCircle, X, ChevronLeft, ChevronRight, Coffee, Trash2, ChevronDown,
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { V4Button, V4Card, V4CardPad, V4Metric, V4Page, V4SectionTitle } from '@/components/v4/V4Primitives'
+import { Btn, Card, KPI, SectionTitle } from '@/components/ui/finance-primitives'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface DayConfig {
@@ -256,10 +256,10 @@ function LocationCard({
             </div>
           </div>
 
-          <V4Button type="button" onClick={handleSave} disabled={saving} variant="primary" className="w-full">
+          <Btn variant="primary" type="button" onClick={handleSave} disabled={saving} className="w-full">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar local
-          </V4Button>
+          </Btn>
         </div>
       )}
     </div>
@@ -510,8 +510,8 @@ function RulesCard({ days }: { days: DayConfig[] }) {
     { label: 'Limite por dia',         value: '—' },
   ]
   return (
-    <V4CardPad>
-      <div className="text-[14px] font-medium text-t1">Regras</div>
+    <Card>
+      <div className="text-[14px] font-medium text-1">Regras</div>
       <div className="mt-3 space-y-2 text-[12px]">
         {rows.map(r => (
           <div key={r.label} className="flex justify-between border-b border-[var(--border)] pb-2 last:border-0">
@@ -520,7 +520,7 @@ function RulesCard({ days }: { days: DayConfig[] }) {
           </div>
         ))}
       </div>
-    </V4CardPad>
+    </Card>
   )
 }
 
@@ -542,9 +542,9 @@ function ExceptionsCard() {
     .sort((a, b) => a.blocked_date.localeCompare(b.blocked_date))
 
   return (
-    <V4CardPad>
-      <div className="text-[14px] font-medium text-t1">Exceções</div>
-      <div className="text-[12px] text-t3 mt-0.5">Próximos 60 dias</div>
+    <Card>
+      <div className="text-[14px] font-medium text-1">Exceções</div>
+      <div className="text-[12px] text-3 mt-0.5">Próximos 60 dias</div>
       {upcoming.length === 0 ? (
         <p className="text-[12px] mt-3" style={{ color: 'var(--t3)' }}>Nenhum bloqueio nos próximos 60 dias.</p>
       ) : (
@@ -566,7 +566,7 @@ function ExceptionsCard() {
           ))}
         </div>
       )}
-    </V4CardPad>
+    </Card>
   )
 }
 
@@ -612,8 +612,8 @@ function BlockedCalendar() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <V4Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+      <Card className="!p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line-1)]">
           <button type="button" onClick={prevMonth} className="grid h-8 w-8 place-items-center rounded-lg text-t2 hover:bg-[var(--raised)]">
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -652,31 +652,31 @@ function BlockedCalendar() {
             )
           })}
         </div>
-      </V4Card>
+      </Card>
 
       <div className="space-y-3">
         {selected ? (
-          <V4CardPad className="space-y-3" style={{ borderColor: 'var(--warning)', background: 'color-mix(in oklab, var(--warning) 8%, transparent)' }}>
-            <p className="text-[13px] font-medium" style={{ color: 'var(--warning)' }}>
+          <Card style={{ borderColor: 'var(--warning)', background: 'color-mix(in oklab, var(--warning) 8%, transparent)' }}>
+            <p className="text-[13px] font-medium mb-3" style={{ color: 'var(--warning)' }}>
               Bloquear {new Date(selected + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}?
             </p>
             <input type="text" value={reason} onChange={e => setReason(e.target.value)}
               placeholder="Motivo (opcional): folga, feriado, viagem..."
-              className="w-full rounded-lg px-3 py-2 text-sm text-t1 focus:outline-none"
-              style={{ background: 'var(--raised)', border: '1px solid var(--border)' }} />
+              className="w-full rounded-lg px-3 py-2 text-sm text-1 focus:outline-none mb-3"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-1)' }} />
             <div className="flex gap-2">
-              <V4Button onClick={() => setSelected(null)} className="flex-1">Cancelar</V4Button>
-              <V4Button
-                onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
+              <Btn variant="secondary" onClick={() => setSelected(null)} className="flex-1">Cancelar</Btn>
+              <Btn
                 variant="primary"
+                onClick={() => { addMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}
                 className="flex-1"
-              >Confirmar</V4Button>
+              >Confirmar</Btn>
             </div>
-          </V4CardPad>
+          </Card>
         ) : (
-          <V4CardPad>
-            <p className="text-[13px] text-t3">Clique em um dia no calendário para bloqueá-lo. A assistente não vai oferecer agendamentos nessas datas.</p>
-          </V4CardPad>
+          <Card>
+            <p className="text-[13px] text-3">Clique em um dia no calendário para bloqueá-lo. A assistente não vai oferecer agendamentos nessas datas.</p>
+          </Card>
         )}
 
         {blocked.length > 0 && (
@@ -756,16 +756,16 @@ function CalendarBlocksSection() {
   }
 
   return (
-    <V4Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+    <Card className="!p-0 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-[var(--line-1)] px-4 py-3">
         <div>
-          <div className="text-[13px] font-medium text-t1">Bloqueios de horário</div>
-          <div className="text-[12px] text-t3">Bloqueios parciais ou em intervalo de datas. A IA não oferecerá esses horários.</div>
+          <div className="text-[13px] font-medium text-1">Bloqueios de horário</div>
+          <div className="text-[12px] text-3">Bloqueios parciais ou em intervalo de datas. A IA não oferecerá esses horários.</div>
         </div>
-        <V4Button className="h-8" onClick={() => setShowForm(v => !v)}>
+        <Btn variant="secondary" size="sm" onClick={() => setShowForm(v => !v)}>
           <Plus className="h-3.5 w-3.5" />
           Novo bloqueio
-        </V4Button>
+        </Btn>
       </div>
       <div className="p-4 space-y-4">
         {showForm && (
@@ -805,11 +805,11 @@ function CalendarBlocksSection() {
             )}
             <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Motivo (opcional): folga, viagem, reunião..." className="w-full rounded-[8px] border border-[var(--border)] px-2.5 py-1.5 text-[13px] outline-none" style={{ background: 'var(--raised)', color: 'var(--t1)' }} />
             <div className="flex gap-2">
-              <V4Button onClick={() => setShowForm(false)} className="flex-1 h-8">Cancelar</V4Button>
-              <V4Button variant="primary" onClick={handleSave} disabled={saving} className="flex-1 h-8">
+              <Btn variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Cancelar</Btn>
+              <Btn variant="primary" onClick={handleSave} disabled={saving} className="flex-1">
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 Salvar bloqueio
-              </V4Button>
+              </Btn>
             </div>
           </div>
         )}
@@ -849,7 +849,7 @@ function CalendarBlocksSection() {
           </div>
         )}
       </div>
-    </V4Card>
+    </Card>
   )
 }
 
@@ -911,67 +911,64 @@ export default function DisponibilidadePage() {
 
   if (isLoading) {
     return (
-      <V4Page eyebrow="Agenda e atendimento" title="Disponibilidade" subtitle="Carregando...">
+      <div className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--brand)' }} />
         </div>
-      </V4Page>
+      </div>
     )
   }
 
+  const activeDaysCount = days.filter(d => d.is_active).length
+  const totalHours = days.filter(d => d.is_active).reduce((sum, d) => {
+    const [sh, sm] = d.start_time.split(':').map(Number)
+    const [eh, em] = d.end_time.split(':').map(Number)
+    let h = (eh + em / 60) - (sh + sm / 60)
+    if (d.has_break) {
+      const [bsh, bsm] = d.break_start.split(':').map(Number)
+      const [beh, bem] = d.break_end.split(':').map(Number)
+      h -= (beh + bem / 60) - (bsh + bsm / 60)
+    }
+    return sum + Math.max(0, h)
+  }, 0)
+  const commonSlot = days.filter(d => d.is_active).map(d => d.slot_duration).sort((a, b) =>
+    days.filter(d => d.slot_duration === b).length - days.filter(d => d.slot_duration === a).length
+  )[0] ?? 60
+
   return (
-    <V4Page
-      eyebrow="Agenda e atendimento"
-      title="Disponibilidade"
-      subtitle={`Defina horários, locais, intervalos e bloqueios da agenda.${activeDays > 0 ? ` ${activeDays} ${activeDays === 1 ? 'dia ativo' : 'dias ativos'}.` : ''}`}
-      actions={
-        tab === 'horarios' ? (
-          <V4Button onClick={() => saveMut.mutate(days)} disabled={!dirty || saveMut.isPending} variant={dirty ? 'primary' : 'default'}>
-            {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+    <div className="mx-auto max-w-[1400px] px-6 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-1">Disponibilidade</h1>
+          <p className="mt-0.5 text-[13px] text-3">
+            {`Defina horários, locais, intervalos e bloqueios da agenda.${activeDays > 0 ? ` ${activeDays} ${activeDays === 1 ? 'dia ativo' : 'dias ativos'}.` : ''}`}
+          </p>
+        </div>
+        {tab === 'horarios' && (
+          <Btn variant={dirty ? 'primary' : 'secondary'} size="sm" onClick={() => saveMut.mutate(days)} disabled={!dirty || saveMut.isPending}>
+            {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
             {dirty ? 'Salvar' : 'Salvo'}
-          </V4Button>
-        ) : undefined
-      }
-    >
+          </Btn>
+        )}
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {(() => {
-          const activeDaysCount = days.filter(d => d.is_active).length
-          const totalHours = days.filter(d => d.is_active).reduce((sum, d) => {
-            const [sh, sm] = d.start_time.split(':').map(Number)
-            const [eh, em] = d.end_time.split(':').map(Number)
-            let h = (eh + em / 60) - (sh + sm / 60)
-            if (d.has_break) {
-              const [bsh, bsm] = d.break_start.split(':').map(Number)
-              const [beh, bem] = d.break_end.split(':').map(Number)
-              h -= (beh + bem / 60) - (bsh + bsm / 60)
-            }
-            return sum + Math.max(0, h)
-          }, 0)
-          const commonSlot = days.filter(d => d.is_active).map(d => d.slot_duration).sort((a, b) =>
-            days.filter(d => d.slot_duration === b).length - days.filter(d => d.slot_duration === a).length
-          )[0] ?? 60
-          return (
-            <>
-              <V4Metric label="Horas semanais" value={`${Math.round(totalHours)}h`} foot={`${activeDaysCount} dia(s) ativo(s)`} tone={activeDaysCount > 0 ? 'good' : 'default'} />
-              <V4Metric label="Dias ativos" value={activeDaysCount} foot="na semana" />
-              <V4Metric label="Duração padrão" value={commonSlot < 60 ? `${commonSlot} min` : `${commonSlot / 60}h`} foot="por consulta" />
-              <V4Metric label="Bloqueios" value="—" foot="via calendário" />
-            </>
-          )
-        })()}
+        <KPI label="Horas semanais" value={`${Math.round(totalHours)}h`} hint={`${activeDaysCount} dia(s) ativo(s)`} />
+        <KPI label="Dias ativos" value={String(activeDaysCount)} hint="na semana" />
+        <KPI label="Duração padrão" value={commonSlot < 60 ? `${commonSlot} min` : `${commonSlot / 60}h`} hint="por consulta" />
+        <KPI label="Bloqueios" value="—" hint="via calendário" />
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[var(--border)] mb-4">
+      <div className="flex gap-1 border-b border-[var(--line-1)]">
         {AVAIL_TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className="px-4 py-2.5 text-[13px] font-medium transition-colors relative"
-            style={tab === t.id
-              ? { color: 'var(--brand)' }
-              : { color: 'var(--t3)' }}
+            style={tab === t.id ? { color: 'var(--brand)' } : { color: 'var(--text-3)' }}
           >
             {t.label}
             {tab === t.id && (
@@ -984,12 +981,10 @@ export default function DisponibilidadePage() {
       {/* Tab: Horários semanais */}
       {tab === 'horarios' && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-          <V4Card className="overflow-hidden">
-            <div className="border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
-              <div>
-                <div className="text-[13px] font-medium text-t1">Horário semanal padrão</div>
-                <div className="text-[12px] text-t3">Slots utilizados pela IA para sugerir agendamentos.</div>
-              </div>
+          <Card className="!p-0 overflow-hidden">
+            <div className="border-b border-[var(--line-1)] px-4 py-3">
+              <div className="text-[13px] font-medium text-1">Horário semanal padrão</div>
+              <div className="text-[12px] text-3">Slots utilizados pela IA para sugerir agendamentos.</div>
             </div>
             <div className="p-4 space-y-3">
               {days.map(day => {
@@ -997,7 +992,7 @@ export default function DisponibilidadePage() {
                 return <CompactDayRow key={day.day_of_week} day={day} onChange={patch => updateDay(idx, patch)} />
               })}
             </div>
-          </V4Card>
+          </Card>
           <RulesCard days={days} />
         </div>
       )}
@@ -1005,18 +1000,18 @@ export default function DisponibilidadePage() {
       {/* Tab: Bloqueios e exceções */}
       {tab === 'bloqueios' && (
         <div className="space-y-6">
-          <V4Card className="overflow-hidden">
-            <div className="border-b border-[var(--border)] px-4 py-3">
-              <div className="text-[13px] font-medium text-t1">Dias sem atendimento</div>
-              <div className="text-[12px] text-t3">Feriados, folgas ou qualquer data que não haverá atendimento. Clique num dia para bloquear/desbloquear.</div>
+          <Card className="!p-0 overflow-hidden">
+            <div className="border-b border-[var(--line-1)] px-4 py-3">
+              <div className="text-[13px] font-medium text-1">Dias sem atendimento</div>
+              <div className="text-[12px] text-3">Feriados, folgas ou qualquer data que não haverá atendimento. Clique num dia para bloquear/desbloquear.</div>
             </div>
             <div className="p-4">
               <BlockedCalendar />
-              <p className="text-[11.5px] text-t3 mt-3">
+              <p className="text-[11.5px] text-3 mt-3">
                 Feriados nacionais <strong>não</strong> são bloqueados automaticamente — adicione manualmente acima.
               </p>
             </div>
-          </V4Card>
+          </Card>
           <CalendarBlocksSection />
           <ExceptionsCard />
         </div>
@@ -1024,29 +1019,29 @@ export default function DisponibilidadePage() {
 
       {/* Tab: Locais de atendimento */}
       {tab === 'locais' && (
-        <V4Card className="overflow-hidden">
-          <div className="border-b border-[var(--border)] px-4 py-3">
-            <div className="text-[13px] font-medium text-t1">Locais de atendimento</div>
-            <div className="text-[12px] text-t3">Consultórios, cidades, valor e mensagem de confirmação.</div>
+        <Card className="!p-0 overflow-hidden">
+          <div className="border-b border-[var(--line-1)] px-4 py-3">
+            <div className="text-[13px] font-medium text-1">Locais de atendimento</div>
+            <div className="text-[12px] text-3">Consultórios, cidades, valor e mensagem de confirmação.</div>
           </div>
           <div className="p-4">
             <TabLocais />
           </div>
-        </V4Card>
+        </Card>
       )}
 
       {/* Tab: Regras da agenda */}
       {tab === 'regras' && (
         <div className="max-w-2xl space-y-4">
           <RulesCard days={days} />
-          <V4Card className="p-4">
-            <div className="text-[13px] font-medium text-t1 mb-1">Sobre as regras</div>
-            <p className="text-[12px] text-t3 leading-relaxed">
-              As regras são calculadas automaticamente com base nos horários configurados. Para ajustar duração de slots, pause almoco e dias ativos, acesse a aba <button className="text-[var(--brand)] font-medium" onClick={() => setTab('horarios')}>Horários semanais</button>.
+          <Card>
+            <div className="text-[13px] font-medium text-1 mb-1">Sobre as regras</div>
+            <p className="text-[12px] text-3 leading-relaxed">
+              As regras são calculadas automaticamente com base nos horários configurados. Para ajustar duração de slots, pause almoço e dias ativos, acesse a aba <button className="text-[var(--brand)] font-medium" onClick={() => setTab('horarios')}>Horários semanais</button>.
             </p>
-          </V4Card>
+          </Card>
         </div>
       )}
-    </V4Page>
+    </div>
   )
 }

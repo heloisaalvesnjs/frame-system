@@ -9,7 +9,14 @@
 
 ## Claude Code
 
-- **Ultima atividade**: 2026-06-16 - implementacao das fases 0-4 do plano premium
+- **Ultima atividade**: 2026-06-18 - port Lovable pixel-perfect concluido para todas as paginas principais:
+  `conversas`, `clientes`, `followup`, `integracoes`, `agenda`, `treinamento`, `disponibilidade`.
+  Todas usam agora finance-primitives (Card/Badge/Btn/KPI/SectionTitle/Avatar) sem V4Primitives.
+  `finance-primitives.tsx` ganhou variant `danger` em Btn e prop `dot` em Badge.
+  `npx tsc --noEmit` e `npm run build` (40 rotas) ok. Aguardando confirmacao da Heloisa para commit/push.
+- **Bloqueado/aguardando**: aguardando confirmacao antes do push/deploy.
+
+## Claude Code (anterior - 2026-06-16): implementacao das fases 0-4 do plano premium
   (IMPLEMENTATION_PLAN_PREMIUM.md criado). Fase 3: Configuracoes reconstruida com
   13 secoes reais (Minha conta, Perfil profissional, Consultorio e marca, Servicos
   e precos, WhatsApp, Assistente e atendimento, Integracoes, Equipe e permissoes,
@@ -219,6 +226,9 @@
 
 ## Codex
 
+- **Ultima atividade**: 2026-06-17 - corrigiu a referencia visual para a versao mais limpa, alinhada ao zip do Lovable: criou `exports/frame-ascend-lovable-clean.html`, mantendo apenas agenda e disponibilidade por local, sem excesso de brilho, hero ou cards decorativos.
+- **Em andamento**: nada no momento.
+- **Bloqueado/aguardando**: aguardando a Heloisa revisar a visualizacao e dizer se quer que eu porte esse layout para o sistema real.
 - **Ultima atividade**: 2026-06-16 - corrigidos pontos reclamados pela
   Heloisa apos revisao do Claude: TopBar sem titulo duplicado e sem engrenagem
   repetida; Sidebar limpa com labels corretas, sem badge fake e com
@@ -276,12 +286,13 @@
   adicionou camada V3.1 com icones SVG lineares, cores secundarias menos
   apagadas, graficos mais robustos, pesos de fonte mais suaves e correcao de
   mojibake no arquivo.
-- **Ultima atividade**: 2026-06-12 - alinhou a base visual do dashboard
-  para a direcao light-first premium (Inter como fonte principal, default
-  do tema em light e tokens/paleta atualizados), validou com `npm run build`
-  em `apps/dashboard` e capturou o preview do redesign com sucesso.
-- **Em andamento**: nada no momento.
-- **Bloqueado/aguardando**: nada no momento.
+- **Ultima atividade**: 2026-06-16 - criou um novo arquivo Figma de brand
+  kit (`XhhcjYjkMA87071O2Y8yKk`) para a logo/paleta da Frame System, mas a
+  populacao da board foi bloqueada pelo limite de chamadas do Figma MCP no
+  plano Starter antes de concluir a composicao.
+- **Em andamento**: aguardando a liberacao/upgrade do limite do Figma MCP
+  para concluir a board com logo, favicon e paleta.
+- **Bloqueado/aguardando**: limite do Figma MCP no plano Starter.
 
 ---
 

@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-06-17 - Codex (mockup Lovable clean / agenda e disponibilidade)
+
+- Criou `exports/frame-ascend-lovable-clean.html` com uma versao mais limpa
+  e fiel ao zip do Lovable: sidebar compacta, topbar discreta, cards
+  minimalistas e foco apenas em agenda e disponibilidade por local.
+- Aversao anterior, mais pesada, foi tratada como rascunho; a nova fica como
+  referencia ativa para continuidade.
+
+## 2026-06-17 - Codex (mockup Legitimuz / Frame Ascend)
+
+- Criou `exports/frame-ascend-legitimuz-redesign.html` com a nova direcao
+  visual do sistema: dark minimal, Inter, cards compactos, agenda
+  operacional e destaque para disponibilidade por local e por dia.
+- Registrou a regra de produto para que o agendamento respeite nao so a
+  data/horario, mas tambem o local escolhido pelo nutricionista naquele dia.
+
+## 2026-06-16 - Codex (modelo 5 recortado da referencia correta)
+
+- Gerou `exports/frame-system-logo-modelo-5.png` a partir do screenshot
+  enviado pela Heloisa, recortando o simbolo circular escuro com as ondas
+  verdes.
+- Gerou tambem `exports/frame-system-logo-modelo-5.svg` como wrapper
+  importavel no Figma.
+
+## 2026-06-16 - Codex (logo base exportada em PNG e SVG)
+
+- Copiou a logo original da Frame System para `exports/frame-system-logo-base.png`.
+- Gerou `exports/frame-system-logo-base.svg` como wrapper importavel no Figma, mantendo a imagem original embutida.
+
+## 2026-06-16 - Codex (arquivo vetorial importavel para o Figma)
+
+- Criou `exports/frame-system-brand-kit-import.svg` com duas variantes da
+  logo, favicon e nova paleta em layout de cards, pensado para importacao
+  direta no Figma.
+- Validou o SVG como XML para evitar arquivo quebrado.
+
+## 2026-06-16 - Codex (Figma brand kit bloqueado por limite)
+
+- Tentativa de criar no Figma um brand kit com a nova logo, favicon e
+  paleta da Frame System.
+- O arquivo Figma foi criado com sucesso (`XhhcjYjkMA87071O2Y8yKk`), mas a
+  populacao da board nao concluiu porque o Figma MCP atingiu o limite de
+  chamadas do plano Starter antes do primeiro layout ser salvo.
+- Nenhuma composicao visual foi escrita no arquivo; ele permanece em branco
+  aguardando nova tentativa quando o limite for liberado/expandido.
+
 ## 2026-06-15 - Claude Code (remover Oportunidades, restaurar funcionalidades pos-V4)
 
 A pedido da Heloisa ("tire essa aba de oportunidades... torne o sistema

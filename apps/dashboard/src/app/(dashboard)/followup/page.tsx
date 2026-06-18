@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, type LucideIcon } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, MoreHorizontal, Pause, Play, Zap, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Btn, Badge } from '@/components/ui/finance-primitives'
 import { V4Button, V4Card, V4CardPad, V4Metric, V4Page, V4Tag } from '@/components/v4/V4Primitives'
 
 // ── Status checker (configuração da IA) ───────────────────────────
@@ -498,9 +499,12 @@ export default function AutomacoesPage() {
 
   const activeCount = FLOWS.filter(f => (assistant?.[f.key] ?? f.def)).length
 
-  function toggleExpand(id: string) {
-    setExpandedCard(prev => prev === id ? null : id)
-  }
+  const FLOW_ROWS = [
+    { key: 'followup_enabled',      def: true,  label: 'Sem resposta',  desc: 'Retoma a conversa após horas sem retorno.', trigger: `${assistant?.followup_delay_hours ?? 4}h sem resposta`, icon: MessageSquare, color: 'var(--brand)',     cardId: 'sem_resposta' },
+    { key: 'auto_feedback_enabled', def: false, label: 'Pós-consulta',  desc: 'Coleta feedback após cada atendimento.',     trigger: `${assistant?.auto_feedback_delay_hours ?? 2}h após a consulta`, icon: Mail,          color: '#B69CFF',       cardId: 'feedback'     },
+    { key: 'auto_reminder_enabled', def: false, label: 'Lembrete',      desc: 'Envia data, horário e modalidade no mesmo dia.', trigger: `${assistant?.auto_reminder_hours_before ?? 24}h antes da consulta`, icon: Calendar,      color: '#6AA9FF',       cardId: 'lembrete'     },
+    { key: 'auto_return_enabled',   def: false, label: 'Retorno',       desc: 'Convida pacientes inativos a retornar.',    trigger: `${assistant?.auto_return_days ?? 45} dias sem consulta`, icon: RotateCcw,     color: '#FFB454',       cardId: 'retorno'      },
+  ] as const
 
   const visibleFlows = FLOWS.filter(f => {
     const on = assistant?.[f.key] ?? f.def
@@ -509,188 +513,182 @@ export default function AutomacoesPage() {
     return true
   })
 
-  const FLOW_ROWS = [
-    { key: 'followup_enabled',      def: true,  label: 'Sem resposta',  desc: 'Retoma a conversa após horas sem retorno.', trigger: `${assistant?.followup_delay_hours ?? 4}h sem resposta`, icon: MessageSquare, color: 'var(--brand)',     cardId: 'sem_resposta' },
-    { key: 'auto_feedback_enabled', def: false, label: 'Pós-consulta',  desc: 'Coleta feedback após cada atendimento.',     trigger: `${assistant?.auto_feedback_delay_hours ?? 2}h após a consulta`, icon: Mail,          color: '#B69CFF',       cardId: 'feedback'     },
-    { key: 'auto_reminder_enabled', def: false, label: 'Lembrete',      desc: 'Envia data, horário e modalidade no mesmo dia.', trigger: `${assistant?.auto_reminder_hours_before ?? 24}h antes da consulta`, icon: Calendar,      color: '#6AA9FF',       cardId: 'lembrete'     },
-    { key: 'auto_return_enabled',   def: false, label: 'Retorno',       desc: 'Convida pacientes inativos a retornar.',    trigger: `${assistant?.auto_return_days ?? 45} dias sem consulta`, icon: RotateCcw,     color: '#FFB454',       cardId: 'retorno'      },
-  ] as const
-
   return (
-    <V4Page
-      eyebrow="Relacionamento automático"
-      title="Automações"
-      subtitle="Acompanhe mensagens automáticas, confirmações e retomadas sem perder o controle do atendimento."
-      actions={
-        <>
-          <V4Button>Ver histórico</V4Button>
-          <V4Button variant="primary">Nova automação</V4Button>
-        </>
-      }
-    >
-      {isLoading ? (
-        <div className="py-12 text-center text-[13px] text-t3">Carregando…</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <V4Metric label="Fluxos ativos" value={activeCount} foot="Operando normalmente" tone={activeCount > 0 ? 'good' : 'default'} />
-            <V4Metric label="Execuções este mês" value="—" foot="aguardando rastreamento" />
-            <V4Metric label="Taxa de sucesso" value="—" foot="sem dados suficientes" />
-            <V4Metric label="Próxima execução" value={activeCount > 0 ? 'Automática' : 'Sem fluxos'} foot="via gatilho da IA" />
+    <div className="mx-auto max-w-[1400px] px-6 py-6">
+      {/* Page header */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-1">Automações</h1>
+          <p className="mt-1 text-[13px] text-3">Fluxos disparados automaticamente via WhatsApp</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Btn variant="secondary" size="sm">Templates</Btn>
+          <Btn variant="primary" size="sm">
+            <span className="text-[16px] leading-none">+</span> Nova automação
+          </Btn>
+        </div>
+      </div>
+
+      {/* KPI row */}
+      <div
+        className="mb-6 grid grid-cols-2 overflow-hidden rounded-2xl lg:grid-cols-4"
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-1)', boxShadow: 'var(--shadow-sm)' }}
+      >
+        {[
+          { label: 'Fluxos ativos', value: String(activeCount), hint: 'Operando normalmente' },
+          { label: 'Execuções (7d)', value: '—', hint: 'aguardando rastreamento' },
+          { label: 'Conversão média', value: '—', hint: 'sem dados suficientes' },
+          { label: 'Tempo economizado', value: '—', hint: 'esta semana' },
+        ].map((s, i) => (
+          <div key={s.label} className="p-6" style={{ borderLeft: i > 0 ? '1px solid var(--line-1)' : 'none' }}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-3">{s.label}</div>
+            <div className="mt-2 tabular-nums text-[24px] font-semibold tracking-tight text-1">{s.value}</div>
+            {s.hint && <div className="mt-0.5 text-[11.5px] text-3">{s.hint}</div>}
           </div>
+        ))}
+      </div>
 
-          {/* Tabela de workflows */}
-          <V4Card className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
-              <div>
-                <div className="text-[14px] font-medium text-t1">Workflows</div>
-                <div className="mt-0.5 text-[12px] text-t3">Fluxos configurados, gatilhos e última atividade.</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 rounded-lg bg-[var(--raised)] p-0.5">
-                  {FLOW_FILTERS.map(f => (
-                    <button
-                      key={f.key}
-                      type="button"
-                      onClick={() => setFlowFilter(f.key)}
-                      className={cn('rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors', flowFilter === f.key ? 'bg-[var(--surface)] text-t1 shadow-sm' : 'text-t3')}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+      {/* Flows table */}
+      <div
+        className="mb-6 overflow-hidden rounded-2xl"
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-1)' }}
+      >
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+          style={{ borderBottom: '1px solid var(--line-1)' }}
+        >
+          <div>
+            <h2 className="text-[13px] font-semibold text-1">Todos os fluxos</h2>
+            <p className="mt-0.5 text-[11.5px] text-3">{FLOWS.length} fluxos · {activeCount} ativo{activeCount !== 1 ? 's' : ''} · {FLOWS.length - activeCount} pausado{FLOWS.length - activeCount !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {FLOW_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFlowFilter(f.key)}
+                className="rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors"
+                style={{
+                  background: flowFilter === f.key ? 'var(--bg-surface)' : 'transparent',
+                  color: flowFilter === f.key ? 'var(--text-1)' : 'var(--text-3)',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="divide-y" style={{ '--tw-divide-color': 'var(--line-1)' } as any}>
+          {isLoading && (
+            <div className="flex justify-center py-10 text-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[var(--raised)]">
-                    <th className="px-5 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-t3">Automação</th>
-                    <th className="px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-t3">Gatilho</th>
-                    <th className="px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-t3">Canal</th>
-                    <th className="px-4 py-2.5 text-right text-[10.5px] font-semibold uppercase tracking-wide text-t3">Execuções</th>
-                    <th className="px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-t3">Resultado</th>
-                    <th className="px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-t3">Status</th>
-                    <th className="px-4 py-2.5" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {visibleFlows.map(f => {
-                    const row = FLOW_ROWS.find(r => r.key === f.key)!
-                    const on = assistant?.[f.key] ?? f.def
-                    const Icon = f.icon
-                    const isExpanded = expandedCard === row.cardId
-                    return (
-                      <>
-                        <tr key={f.key} className="transition-colors hover:bg-[var(--raised)]">
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--raised)]" style={{ color: f.color }}>
-                                <Icon className="h-4 w-4" strokeWidth={1.75} />
-                              </div>
-                              <div>
-                                <div className="text-[12px] font-semibold text-t1">{f.label}</div>
-                                <div className="text-[10px] text-t3">{row.desc}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-[12px] text-t2">{row.trigger}</td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-flex rounded-[7px] bg-[var(--raised)] px-2 py-1 text-[10px] font-semibold text-t2">WhatsApp</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right text-[12px] font-medium text-t1">—</td>
-                          <td className="px-4 py-3.5 text-[11px] text-t3">Sem dados</td>
-                          <td className="px-4 py-3.5">
-                            <V4Tag tone={on ? 'green' : 'default'} dot>{on ? 'Ativa' : 'Pausada'}</V4Tag>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center justify-end gap-2">
-                              <Toggle value={on} onChange={v => handleSave({ [f.key]: v })} />
-                              <V4Button className="h-8 px-3" onClick={() => toggleExpand(row.cardId)}>
-                                {isExpanded ? 'Fechar' : 'Editar'}
-                              </V4Button>
-                            </div>
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr key={`${f.key}-editor`}>
-                            <td colSpan={7} className="bg-[var(--raised)] px-5 py-4">
-                              {row.cardId === 'sem_resposta' && <SemRespostaCard assistant={assistant} onSave={handleSave} expanded onEdit={() => toggleExpand(row.cardId)} />}
-                              {row.cardId === 'feedback'     && <FeedbackCard    assistant={assistant} onSave={handleSave} expanded onEdit={() => toggleExpand(row.cardId)} />}
-                              {row.cardId === 'lembrete'     && <LembreteCard    assistant={assistant} onSave={handleSave} expanded onEdit={() => toggleExpand(row.cardId)} />}
-                              {row.cardId === 'retorno'      && <RetornoCard     assistant={assistant} onSave={handleSave} expanded onEdit={() => toggleExpand(row.cardId)} />}
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    )
-                  })}
-                  {visibleFlows.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-8 text-center text-[12px] text-t3">
-                        Nenhum fluxo {flowFilter === 'active' ? 'ativo' : 'pausado'}.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </V4Card>
-
-          {/* Bottom grid */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <V4CardPad>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-medium text-t1">Próximas execuções</div>
-                  <div className="mt-0.5 text-[12px] text-t3">Automatizações programadas pela IA.</div>
-                </div>
-                <V4Tag tone={activeCount > 0 ? 'green' : 'default'}>{activeCount > 0 ? `${activeCount} ativo${activeCount > 1 ? 's' : ''}` : 'Nenhum'}</V4Tag>
-              </div>
-              <div className="divide-y divide-[var(--border)]">
-                {activeCount === 0 ? (
-                  <p className="py-4 text-center text-[12px] text-t3">Ative pelo menos um fluxo para ver as próximas execuções.</p>
-                ) : (
-                  [
-                    { time: 'Sem resposta',  sub: `Dispara após ${assistant?.followup_delay_hours ?? 4}h de silêncio`, key: 'followup_enabled' },
-                    { time: 'Lembrete',      sub: `Dispara ${assistant?.auto_reminder_hours_before ?? 24}h antes da consulta`, key: 'auto_reminder_enabled' },
-                    { time: 'Pós-consulta', sub: `Dispara ${assistant?.auto_feedback_delay_hours ?? 2}h após atendimento`, key: 'auto_feedback_enabled' },
-                  ].filter(e => assistant?.[e.key as keyof typeof assistant] || (e.key === 'followup_enabled' && (assistant?.followup_enabled ?? true))).map(e => (
-                    <div key={e.time} className="flex items-center justify-between gap-3 py-3">
-                      <div>
-                        <div className="text-[12px] font-medium text-t1">{e.time}</div>
-                        <div className="text-[10px] text-t3">{e.sub}</div>
-                      </div>
-                      <V4Button className="h-8 px-3">Ver lista</V4Button>
+          )}
+          {!isLoading && visibleFlows.map(f => {
+            const row = FLOW_ROWS.find(r => r.key === f.key)!
+            const on = assistant?.[f.key] ?? f.def
+            const Icon = f.icon
+            const isExpanded = expandedCard === row.cardId
+            return (
+              <div key={f.key}>
+                <div
+                  className="group flex cursor-pointer items-center gap-4 px-5 py-3.5 transition-colors"
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, white 2%, transparent)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                >
+                  <div
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg"
+                    style={{ background: 'var(--bg-surface)', color: f.color }}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13.5px] font-medium text-1">{f.label}</span>
+                      <Badge>{row.trigger}</Badge>
                     </div>
-                  ))
+                    <div className="truncate text-[12px] text-3">{row.desc}</div>
+                  </div>
+                  <div className="hidden w-24 md:block">
+                    <div className="text-[11px] text-3">Execuções</div>
+                    <div className="text-[13px] font-semibold text-1">—</div>
+                  </div>
+                  <div className="hidden w-24 md:block">
+                    <div className="text-[11px] text-3">Conversão</div>
+                    <div className="text-[13px] font-semibold text-1">—</div>
+                  </div>
+                  <div className="w-24">
+                    <span className="inline-flex items-center gap-1.5 text-[11.5px] text-2">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: on ? 'var(--brand)' : 'var(--text-3)', boxShadow: on ? '0 0 6px var(--brand)' : 'none' }}
+                      />
+                      {on ? 'Ativo' : 'Pausado'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      className="grid h-7 w-7 place-items-center rounded-md text-2 hover:bg-[var(--bg-surface)] hover:text-1 transition-colors"
+                      onClick={() => handleSave({ [f.key]: !on })}
+                    >
+                      {on ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      className="grid h-7 w-7 place-items-center rounded-md text-2 hover:bg-[var(--bg-surface)] hover:text-1 transition-colors"
+                      onClick={() => setExpandedCard(expandedCard === row.cardId ? null : row.cardId)}
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div
+                    className="px-5 py-4"
+                    style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--line-1)' }}
+                  >
+                    {row.cardId === 'sem_resposta' && <SemRespostaCard assistant={assistant} onSave={handleSave} expanded onEdit={() => setExpandedCard(null)} />}
+                    {row.cardId === 'feedback'     && <FeedbackCard    assistant={assistant} onSave={handleSave} expanded onEdit={() => setExpandedCard(null)} />}
+                    {row.cardId === 'lembrete'     && <LembreteCard    assistant={assistant} onSave={handleSave} expanded onEdit={() => setExpandedCard(null)} />}
+                    {row.cardId === 'retorno'      && <RetornoCard     assistant={assistant} onSave={handleSave} expanded onEdit={() => setExpandedCard(null)} />}
+                  </div>
                 )}
               </div>
-            </V4CardPad>
+            )
+          })}
+          {!isLoading && visibleFlows.length === 0 && (
+            <div className="px-5 py-8 text-center text-[12px] text-3">
+              Nenhum fluxo {flowFilter === 'active' ? 'ativo' : 'pausado'}.
+            </div>
+          )}
+        </div>
+      </div>
 
-            <V4CardPad>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-medium text-t1">Sugestão do Frame</div>
-                  <div className="mt-0.5 text-[12px] text-t3">Baseada no comportamento das conversas.</div>
-                </div>
-                <V4Tag tone="blue">Recomendação</V4Tag>
-              </div>
-              <div className="rounded-[10px] border border-[var(--brand-ring)] bg-[var(--brand-s)] p-4">
-                <div className="text-[13px] font-semibold text-t1">Crie uma retomada após o envio de horários.</div>
-                <p className="mt-2 text-[12px] leading-[1.55] text-t2">
-                  24% das oportunidades esfriam depois que recebem opções de agenda. Uma mensagem em 3 horas pode recuperar parte delas.
-                </p>
-                <V4Button variant="primary" className="mt-3 h-8">Usar modelo</V4Button>
-              </div>
-              <div className="mt-3 rounded-[10px] border border-[var(--border)] bg-[var(--raised)] px-3.5 py-3 text-[11px] leading-relaxed text-t2">
-                💡 Os fluxos usam <strong className="text-t1">n8n</strong> como motor. Para gatilhos avançados, acesse o painel n8n.
-              </div>
-            </V4CardPad>
+      {/* Template cards */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {[
+          { t: 'Lead → Consulta', d: 'Qualifica WhatsApp em 4 mensagens', c: 'var(--brand)' },
+          { t: 'Carrinho abandonado', d: 'Recupera vendas em até 24h', c: '#6AA9FF' },
+          { t: 'Reativação inteligente', d: 'IA segmenta e personaliza copy', c: '#B69CFF' },
+        ].map(tmpl => (
+          <div
+            key={tmpl.t}
+            className="flex items-start gap-3 rounded-2xl p-5"
+            style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-1)' }}
+          >
+            <div
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg"
+              style={{ background: 'var(--bg-surface)', color: tmpl.c }}
+            >
+              <Zap className="h-4 w-4" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-1">{tmpl.t}</div>
+              <div className="mt-0.5 text-[11.5px] text-3">{tmpl.d}</div>
+            </div>
+            <Btn variant="outline" size="sm">Usar</Btn>
           </div>
-        </>
-      )}
-    </V4Page>
+        ))}
+      </div>
+    </div>
   )
 }

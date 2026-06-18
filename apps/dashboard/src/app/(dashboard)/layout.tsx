@@ -22,8 +22,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-base">
-        <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--brand)' }} />
       </div>
     )
   }
@@ -31,11 +31,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null
 
   return (
-    <div className="flex min-h-screen bg-base">
+    <div className="flex min-h-screen" style={{ background: 'var(--bg-base)' }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <div className="flex-1 md:ml-[72px] flex flex-col min-h-screen">
+      <div className="flex min-h-screen flex-1 flex-col md:ml-[244px]">
         <TopBar onMenuClick={() => setDrawerOpen(true)} />
-        <main className="flex-1 pt-16">{children}</main>
+        <main className="flex-1 fade-in">{children}</main>
       </div>
     </div>
   )
