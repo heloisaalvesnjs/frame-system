@@ -569,3 +569,10 @@ CREATE INDEX IF NOT EXISTS idx_clients_stage ON clients(nutritionist_id, stage);
 -- Local de atendimento por dia da semana
 -- --------------------------------
 ALTER TABLE availability ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
+
+-- --------------------------------
+-- Regras de agendamento (por nutricionista)
+-- --------------------------------
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS buffer_between_minutes  INT DEFAULT 10;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS min_advance_hours        INT DEFAULT 3;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS max_appointments_per_day INT DEFAULT 8;

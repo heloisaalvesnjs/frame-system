@@ -10,7 +10,8 @@ export async function nutritionistRoutes(app: FastifyInstance) {
   app.get('/profile', auth, async (request, reply) => {
     const { id } = (request as any).user
     const nutri = await queryOne(
-      `SELECT id, name, email, phone, specialty, bio, avatar_url, plan, is_active, created_at
+      `SELECT id, name, email, phone, specialty, bio, avatar_url, plan, is_active, created_at,
+              buffer_between_minutes, min_advance_hours, max_appointments_per_day
        FROM nutritionists WHERE id = $1`,
       [id]
     )
@@ -40,6 +41,29 @@ export async function nutritionistRoutes(app: FastifyInstance) {
       [id, body.name, body.phone, body.specialty, body.bio]
     )
     return reply.send(updated)
+  })
+
+  // PUT /api/nutritionists/scheduling-rules
+  app.put('/scheduling-rules', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.object({
+      buffer_between_minutes:  z.number().int().min(0).max(120).optional(),
+      min_advance_hours:        z.number().int().min(0).max(168).optional(),
+      max_appointments_per_day: z.number().int().min(1).max(50).optional(),
+    })
+    const body = schema.parse(request.body)
+
+    const [updated] = await query(
+      `UPDATE nutritionists SET
+        buffer_between_minutes  = COALESCE($2, buffer_between_minutes),
+        min_advance_hours        = COALESCE($3, min_advance_hours),
+        max_appointments_per_day = COALESCE($4, max_appointments_per_day),
+        updated_at = NOW()
+       WHERE id = $1
+       RETURNING buffer_between_minutes, min_advance_hours, max_appointments_per_day`,
+      [id, body.buffer_between_minutes ?? null, body.min_advance_hours ?? null, body.max_appointments_per_day ?? null]
+    )
+    return reply.send({ ok: true, rules: updated })
   })
 
   // POST /api/nutritionists/change-password

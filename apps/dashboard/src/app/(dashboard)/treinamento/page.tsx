@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -202,6 +203,7 @@ function WelcomeSection({ assistant, onSave }: { assistant: any; onSave: () => v
 
 // ─── services section ────────────────────────────────────
 function ServicesSection() {
+  const router = useRouter()
   const { data, isLoading } = useQuery<any[]>({
     queryKey: ['services'],
     queryFn: () => api.get('/api/services').then(r => r.data.services ?? []),
@@ -214,10 +216,13 @@ function ServicesSection() {
   return (
     <Card>
       <SectionTitle title="Serviços oferecidos" hint="O que a assistente pode oferecer e agendar"
-        action={<Btn variant="outline" size="sm">+ Novo serviço</Btn>} />
+        action={<Btn variant="outline" size="sm" onClick={() => router.push('/servicos')}>+ Novo serviço</Btn>} />
       {services.length === 0 ? (
         <div className="py-8 text-center text-[13px] text-3">
-          Nenhum serviço cadastrado. Adicione em <strong>Serviços</strong> no menu.
+          Nenhum serviço cadastrado.{' '}
+          <button className="underline" style={{ color: 'var(--brand)' }} onClick={() => router.push('/servicos')}>
+            Adicionar agora
+          </button>
         </div>
       ) : (
         <div className="divide-y divide-[var(--line-1)]">
@@ -228,7 +233,7 @@ function ServicesSection() {
               control={
                 <div className="flex items-center gap-3">
                   <Badge variant="success">Ativo</Badge>
-                  <Btn variant="ghost" size="sm">Editar</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => router.push('/servicos')}>Editar</Btn>
                 </div>
               }
             />

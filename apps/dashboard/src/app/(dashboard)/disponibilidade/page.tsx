@@ -433,6 +433,12 @@ function LocationCard({ loc, onSave, onDelete }: {
   )
 }
 
+interface SchedulingRules {
+  buffer_between_minutes:  number
+  min_advance_hours:        number
+  max_appointments_per_day: number
+}
+
 // ─── Main Page ────────────────────────────────────────────
 export default function DisponibilidadePage() {
   const qc = useQueryClient()
@@ -444,6 +450,8 @@ export default function DisponibilidadePage() {
   const [days, setDays] = useState<DayConfig[]>(DEFAULT_DAYS)
   const [dirty, setDirty] = useState(false)
   const [newLocItems, setNewLocItems] = useState<{ id: string }[]>([])
+  const [rules, setRules] = useState<SchedulingRules>({ buffer_between_minutes: 10, min_advance_hours: 3, max_appointments_per_day: 8 })
+  const [rulesDirty, setRulesDirty] = useState(false)
 
   // availability
   const { data: availData, isLoading } = useQuery({
@@ -460,6 +468,33 @@ export default function DisponibilidadePage() {
       setDirty(false)
     }
   }, [availData])
+
+  // scheduling rules
+  const { data: profileData } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => api.get('/api/nutritionists/profile').then(r => r.data),
+  })
+  useEffect(() => {
+    if (profileData) {
+      setRules({
+        buffer_between_minutes:  profileData.buffer_between_minutes  ?? 10,
+        min_advance_hours:        profileData.min_advance_hours        ?? 3,
+        max_appointments_per_day: profileData.max_appointments_per_day ?? 8,
+      })
+      setRulesDirty(false)
+    }
+  }, [profileData])
+
+  const saveRulesMut = useMutation({
+    mutationFn: (r: SchedulingRules) => api.put('/api/nutritionists/scheduling-rules', r),
+    onSuccess: () => { toast.success('Regras salvas!'); setRulesDirty(false); qc.invalidateQueries({ queryKey: ['profile'] }) },
+    onError: () => toast.error('Erro ao salvar regras'),
+  })
+
+  function patchRule(field: keyof SchedulingRules, val: number) {
+    setRules(r => ({ ...r, [field]: val }))
+    setRulesDirty(true)
+  }
 
   const saveMut = useMutation({
     mutationFn: (d: DayConfig[]) => api.put('/api/availability', { availability: d.map(configToApi) }),
@@ -545,7 +580,12 @@ export default function DisponibilidadePage() {
       <div className="flex items-center justify-between gap-4 flex-wrap -mt-2">
         <p className="text-[13px] text-2">Calendário, locais de atendimento e horários</p>
         <div className="flex items-center gap-2">
-          <Btn variant="secondary" size="sm">Sincronizar Google</Btn>
+          <Btn variant="secondary" size="sm" onClick={async () => {
+            try {
+              const { data } = await api.get('/api/google-calendar/auth-url')
+              if (data.url) window.location.href = data.url
+            } catch { toast.error('Erro ao conectar Google Calendar') }
+          }}>Sincronizar Google</Btn>
           <Btn variant="primary" size="sm"
             onClick={() => setSelected(
               `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -663,20 +703,44 @@ export default function DisponibilidadePage() {
         </Card>
 
         <Card>
-          <SectionTitle title="Regras de agendamento" />
+          <div className="flex items-center justify-between mb-4">
+            <SectionTitle title="Regras de agendamento" />
+            {rulesDirty && (
+              <Btn variant="primary" size="sm" onClick={() => saveRulesMut.mutate(rules)} disabled={saveRulesMut.isPending}>
+                {saveRulesMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Salvar
+              </Btn>
+            )}
+          </div>
           <div className="space-y-4 text-[13px]">
-            {[
-              { l: 'Duração padrão', v: SLOT_OPTIONS.find(o => o.value === commonSlot)?.label ?? '—' },
-              { l: 'Intervalo entre consultas', v: '—' },
-              { l: 'Antecedência mínima',       v: '—' },
-              { l: 'Antecedência máxima',       v: '60 dias' },
-              { l: 'Limite por dia',            v: '—' },
-            ].map(r => (
-              <div key={r.l} className="flex justify-between items-center pb-3 border-b border-[var(--line-1)] last:border-0 last:pb-0">
-                <span className="text-2">{r.l}</span>
-                <span className="text-1 font-semibold font-mono tabular-nums">{r.v}</span>
+            <div className="flex justify-between items-center pb-3 border-b border-[var(--line-1)]">
+              <span className="text-2">Duração padrão</span>
+              <span className="text-1 font-semibold font-mono tabular-nums">{SLOT_OPTIONS.find(o => o.value === commonSlot)?.label ?? '—'}</span>
+            </div>
+            {([
+              { key: 'buffer_between_minutes' as const,  label: 'Intervalo entre consultas', unit: 'min',  min: 0, max: 120 },
+              { key: 'min_advance_hours' as const,        label: 'Antecedência mínima',       unit: 'h',    min: 0, max: 168 },
+              { key: 'max_appointments_per_day' as const, label: 'Limite por dia',            unit: '/dia', min: 1, max: 50 },
+            ] as const).map(({ key, label, unit, min, max }) => (
+              <div key={key} className="flex justify-between items-center pb-3 border-b border-[var(--line-1)] last:border-0 last:pb-0">
+                <span className="text-2">{label}</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={min} max={max}
+                    value={rules[key]}
+                    onChange={e => patchRule(key, Math.max(min, Math.min(max, Number(e.target.value))))}
+                    className="w-16 h-7 px-2 rounded-md text-[13px] font-semibold font-mono tabular-nums text-1 text-right outline-none focus:border-[var(--brand)]"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}
+                  />
+                  <span className="text-3 text-[11px]">{unit}</span>
+                </div>
               </div>
             ))}
+            <div className="flex justify-between items-center">
+              <span className="text-2">Antecedência máxima</span>
+              <span className="text-1 font-semibold font-mono tabular-nums">60 dias</span>
+            </div>
           </div>
         </Card>
       </div>
