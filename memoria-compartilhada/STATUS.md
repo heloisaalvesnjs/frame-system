@@ -9,13 +9,14 @@
 
 ## Claude Code
 
-- **Ultima atividade**: 2026-06-18 - port Lovable de treinamento/page.tsx concluido: nova estrutura
-  com hero banner (gradiente verde, nome real da assistente, badge Em producao/Pausada), KPI row
-  (4 cards, mensagens reais de convStats), AreaChart de performance (recharts), progress bars de
-  capacidades, cards Base de conhecimento (upload PDF real) e Persona & tom de voz (form real com
-  nome/tom/greeting_message + salvar e publicar). TopBar titulo alterado para "Assistente". tsc e
-  npm run build (40 rotas) ok. Aguardando confirmacao antes do push/deploy.
-- **Pendente**: revisao visual da Heloisa; paginas /relatorios e /configuracoes ainda nao portadas.
+- **Ultima atividade**: 2026-06-18 - sistema funcional completo. Backend atualizado:
+  regras de agendamento (buffer_between_minutes/min_advance_hours/max_appointments_per_day) em
+  nutritionists + PUT /api/nutritionists/scheduling-rules; card Regras em /disponibilidade agora
+  editavel; botao Sincronizar Google funcional (chama auth-url do Google Calendar); botoes
+  Servicos em /treinamento navegam para /servicos via useRouter; POST /conversations/:id/messages
+  (envia WhatsApp); NovoPacienteModal em /clientes; location_id por dia da semana (schema + rotas
+  + UI). tsc + npm run build (40 rotas) ok. Commitado e pushed para origin/main (deploy Vercel).
+- **Pendente**: rodar migrations no banco de producao (schema.sql com ALTER TABLEs acumulados desde 2026-06-13).
 
 ## Claude Code (anterior) - 2026-06-18 - port Lovable pixel-perfect concluido para todas as paginas principais:
   `conversas`, `clientes`, `followup`, `integracoes`, `agenda`, `treinamento`, `disponibilidade`.

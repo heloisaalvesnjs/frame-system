@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-06-18 - Claude Code (backend funcional: regras, Google Calendar, servicos, location/dia)
+
+Sessao focada em deixar o sistema 100% funcional sem tocar no design. Tudo
+commitado e enviado para origin/main (deploy Vercel disparado).
+
+Commits desta sessao:
+- `feat(funcionalidade): conecta conversas, clientes, disponibilidade e local por dia`
+  - POST /api/conversations/:id/messages (envia WhatsApp pela nutri)
+  - NovoPacienteModal em /clientes (POST /api/clients)
+  - location_id por dia da semana (schema + rotas availability + UI DayRow)
+  - /configuracoes conectada a APIs reais (perfil, equipe, senha, webhooks)
+- `feat(backend): regras de agendamento, botao Google Calendar e servicos funcionais`
+  - schema.sql: ADD COLUMN buffer_between_minutes/min_advance_hours/max_appointments_per_day em nutritionists
+  - GET /api/nutritionists/profile retorna as 3 regras
+  - PUT /api/nutritionists/scheduling-rules (novo endpoint)
+  - /disponibilidade: card Regras editavel com save; botao Sincronizar Google funcional
+  - /treinamento: botoes Novo servico e Editar navegam para /servicos
+
+Pendencias tecnicas remanescentes (nao criticas para MVP):
+- Migracoes das novas colunas precisam ser rodadas no banco de producao (schema.sql)
+- KPIs de automacoes (execucoes/conversao) dependem de tracking do n8n, sem solucao no momento
+- Build de producao pode estar em modo development (buildId: "development") - verificar NODE_ENV no Vercel
+
+---
+
 ## 2026-06-17 - Codex (mockup Lovable clean / agenda e disponibilidade)
 
 - Criou `exports/frame-ascend-lovable-clean.html` com uma versao mais limpa
