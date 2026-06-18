@@ -1,17 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   Check, Building2, User, Bell, CreditCard, Users, Shield,
   KeyRound, Database, LogOut, Search, Globe, Upload,
   Smartphone, Mail, MessageSquare, Copy, Trash2, Eye, EyeOff,
-  Download, AlertTriangle, ChevronRight,
+  Download, AlertTriangle, ChevronRight, Plus, Loader2,
 } from 'lucide-react'
 import { Card, SectionTitle, Btn, Badge, Avatar } from '@/components/ui/finance-primitives'
+import { useAuth } from '@/contexts/AuthContext'
+import api from '@/lib/api'
 
 // ── Helper components ────────────────────────────────────────────────────────
 
-function Field({ label, value, hint, type = 'text' }: { label: string; value?: string; hint?: string; type?: string }) {
+function Field({
+  label, value, hint, type = 'text', onChange,
+}: {
+  label: string; value?: string; hint?: string; type?: string
+  onChange?: (v: string) => void
+}) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
@@ -20,30 +29,27 @@ function Field({ label, value, hint, type = 'text' }: { label: string; value?: s
       </div>
       <input
         type={type}
-        defaultValue={value}
+        value={value ?? ''}
+        onChange={e => onChange?.(e.target.value)}
         className="w-full h-9 px-3 rounded-lg text-[13px] outline-none transition focus:ring-2"
-        style={{
-          background: 'var(--raised)',
-          color: 'var(--t1)',
-          border: '1px solid var(--border)',
-        }}
+        style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
       />
     </div>
   )
 }
 
-function SelectField({ label, value, options }: { label: string; value: string; options: string[] }) {
+function SelectField({ label, value, options, onChange }: {
+  label: string; value: string; options: string[]
+  onChange?: (v: string) => void
+}) {
   return (
     <div>
       <label className="text-[11.5px] font-medium mb-1.5 block" style={{ color: 'var(--t3)' }}>{label}</label>
       <select
-        defaultValue={value}
+        value={value}
+        onChange={e => onChange?.(e.target.value)}
         className="w-full h-9 px-3 rounded-lg text-[13px] outline-none transition focus:ring-2"
-        style={{
-          background: 'var(--raised)',
-          color: 'var(--t1)',
-          border: '1px solid var(--border)',
-        }}
+        style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
       >
         {options.map((o) => <option key={o}>{o}</option>)}
       </select>
@@ -51,18 +57,16 @@ function SelectField({ label, value, options }: { label: string; value: string; 
   )
 }
 
-function Toggle({ on }: { on: boolean }) {
+function Toggle({ on, onChange }: { on: boolean; onChange?: (v: boolean) => void }) {
   const [v, setV] = useState(on)
   return (
     <button
-      onClick={() => setV(!v)}
+      onClick={() => { setV(!v); onChange?.(!v) }}
       className="shrink-0 w-9 h-5 rounded-full relative transition-colors"
       style={{ background: v ? 'var(--brand)' : 'var(--border)' }}
     >
-      <span
-        className="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-        style={{ left: v ? '18px' : '2px' }}
-      />
+      <span className="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+        style={{ left: v ? '18px' : '2px' }} />
     </button>
   )
 }
@@ -79,7 +83,7 @@ function Row({ title, desc, on, right }: { title: string; desc?: string; on?: bo
   )
 }
 
-// ── Nav items (sem aparencia e integracoes) ──────────────────────────────────
+// ── Nav ──────────────────────────────────────────────────────────────────────
 
 const NAV = [
   { id: 'workspace',    label: 'Workspace',          icon: Building2 },
@@ -94,23 +98,50 @@ const NAV = [
 
 type SectionId = (typeof NAV)[number]['id']
 
-// ── Sections ────────────────────────────────────────────────────────────────
+// ── WorkspaceSection ─────────────────────────────────────────────────────────
 
 function WorkspaceSection() {
+  const qc = useQueryClient()
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => api.get('/api/nutritionists/profile').then(r => r.data),
+  })
+
+  const [name, setName] = useState('')
+  const [specialty, setSpecialty] = useState('')
+
+  // Sync local state when data loads
+  useState(() => {
+    if (profile) { setName(profile.name ?? ''); setSpecialty(profile.specialty ?? '') }
+  })
+
+  const save = useMutation({
+    mutationFn: () => api.put('/api/nutritionists/profile', { name, specialty }),
+    onSuccess: () => { toast.success('Salvo!'); qc.invalidateQueries({ queryKey: ['profile'] }) },
+    onError: () => toast.error('Erro ao salvar'),
+  })
+
+  if (isLoading) return <Card><div className="text-[13px] py-8 text-center" style={{ color: 'var(--t3)' }}>Carregando…</div></Card>
+
+  const displayName = name || profile?.name || ''
+  const displaySpecialty = specialty || profile?.specialty || ''
+
   return (
     <>
       <Card>
         <SectionTitle
           title="Identidade do workspace"
           hint="Como sua clínica aparece para pacientes e equipe."
-          action={<Btn size="sm" variant="primary">Salvar</Btn>}
+          action={
+            <Btn size="sm" variant="primary" onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Salvar
+            </Btn>
+          }
         />
         <div className="flex items-start gap-5 mb-5 pb-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div
-            className="size-16 rounded-xl grid place-items-center text-white font-bold text-[22px] shadow-lg"
-            style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-soft))' }}
-          >
-            N+
+          <div className="size-16 rounded-xl grid place-items-center text-white font-bold text-[22px] shadow-lg"
+            style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-soft))' }}>
+            {(displayName[0] || 'N').toUpperCase()}
           </div>
           <div className="flex-1">
             <div className="text-[13px] font-medium mb-1" style={{ color: 'var(--t1)' }}>Logo do workspace</div>
@@ -122,9 +153,9 @@ function WorkspaceSection() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Nome da clínica" value="Clínica Nutri Plus" />
-          <Field label="CNPJ" value="12.345.678/0001-90" />
-          <Field label="Subdomínio" value="nutriplus" hint=".frame.app" />
+          <Field label="Nome da clínica" value={displayName} onChange={setName} />
+          <Field label="Especialidade" value={displaySpecialty} onChange={setSpecialty} />
+          <Field label="E-mail" value={profile?.email ?? ''} hint="Não editável" type="email" />
           <SelectField label="Fuso horário" value="América/São Paulo (GMT-3)" options={['América/São Paulo (GMT-3)', 'América/Manaus (GMT-4)', 'América/Belém (GMT-3)']} />
           <SelectField label="Idioma padrão" value="Português (BR)" options={['Português (BR)', 'English (US)', 'Español']} />
           <SelectField label="Moeda" value="Real (BRL)" options={['Real (BRL)', 'US Dollar (USD)', 'Euro (EUR)']} />
@@ -132,22 +163,9 @@ function WorkspaceSection() {
       </Card>
 
       <Card>
-        <SectionTitle title="Endereço comercial" hint="Aparece em notas fiscais e comprovantes." />
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="CEP" value="01310-100" />
-          <Field label="Cidade" value="São Paulo" />
-          <div className="col-span-2"><Field label="Endereço" value="Av. Paulista, 1578 — Conjunto 142" /></div>
-          <Field label="Estado" value="SP" />
-          <Field label="País" value="Brasil" />
-        </div>
-      </Card>
-
-      <Card>
         <SectionTitle title="Zona de perigo" hint="Ações irreversíveis no workspace." />
-        <div
-          className="rounded-lg p-4 flex items-center justify-between gap-4"
-          style={{ border: '1px solid rgba(255,92,92,0.2)', background: 'rgba(255,92,92,0.04)' }}
-        >
+        <div className="rounded-lg p-4 flex items-center justify-between gap-4"
+          style={{ border: '1px solid rgba(255,92,92,0.2)', background: 'rgba(255,92,92,0.04)' }}>
           <div className="flex gap-3">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" style={{ color: '#FF5C5C' }} />
             <div>
@@ -162,55 +180,84 @@ function WorkspaceSection() {
   )
 }
 
+// ── PerfilSection ─────────────────────────────────────────────────────────────
+
 function PerfilSection() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => api.get('/api/nutritionists/profile').then(r => r.data),
+  })
+
+  const [form, setForm] = useState({ name: '', phone: '', specialty: '', bio: '' })
+
+  // Sync once data loads
+  const [synced, setSynced] = useState(false)
+  if (profile && !synced) {
+    setForm({ name: profile.name ?? '', phone: profile.phone ?? '', specialty: profile.specialty ?? '', bio: profile.bio ?? '' })
+    setSynced(true)
+  }
+
+  const save = useMutation({
+    mutationFn: () => api.put('/api/nutritionists/profile', form),
+    onSuccess: () => { toast.success('Perfil atualizado!'); qc.invalidateQueries({ queryKey: ['profile'] }) },
+    onError: () => toast.error('Erro ao salvar perfil'),
+  })
+
+  const f = (field: keyof typeof form) => (v: string) => setForm(prev => ({ ...prev, [field]: v }))
+
+  if (isLoading) return <Card><div className="text-[13px] py-8 text-center" style={{ color: 'var(--t3)' }}>Carregando…</div></Card>
+
   return (
     <>
       <Card>
         <SectionTitle
           title="Perfil pessoal"
           hint="Suas informações como usuário do Frame."
-          action={<Btn size="sm" variant="primary">Salvar</Btn>}
+          action={
+            <Btn size="sm" variant="primary" onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Salvar
+            </Btn>
+          }
         />
         <div className="flex items-center gap-4 mb-5 pb-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <Avatar name="Heloísa Alves" color="green" size={56} />
+          <Avatar name={form.name || 'U'} color="green" size={56} />
           <div className="flex-1">
-            <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Heloísa Alves</div>
-            <div className="text-[12px]" style={{ color: 'var(--t3)' }}>Owner · heloisaalvesnjs@gmail.com</div>
+            <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{form.name}</div>
+            <div className="text-[12px]" style={{ color: 'var(--t3)' }}>Owner · {profile?.email}</div>
           </div>
           <Btn size="sm" variant="secondary"><Upload className="size-3" /> Alterar foto</Btn>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Nome completo" value="Heloísa Alves" />
-          <Field label="E-mail" value="heloisaalvesnjs@gmail.com" type="email" />
-          <Field label="Telefone" value="+55 11 99999-0000" />
-          <Field label="Cargo" value="Nutricionista" />
-          <SelectField label="Idioma" value="Português (BR)" options={['Português (BR)', 'English (US)']} />
-          <SelectField label="Formato de data" value="DD/MM/AAAA" options={['DD/MM/AAAA', 'MM/DD/AAAA', 'AAAA-MM-DD']} />
+          <Field label="Nome completo" value={form.name} onChange={f('name')} />
+          <Field label="E-mail" value={profile?.email ?? ''} hint="Não editável" type="email" />
+          <Field label="Telefone" value={form.phone} onChange={f('phone')} />
+          <Field label="Especialidade" value={form.specialty} onChange={f('specialty')} />
         </div>
-      </Card>
-
-      <Card>
-        <SectionTitle title="Assinatura de e-mail" hint="Usada em mensagens automáticas enviadas em seu nome." />
-        <textarea
-          defaultValue={'Heloísa Alves\nNutricionista — Frame System\n+55 11 99999-0000'}
-          className="w-full h-28 px-3 py-2 rounded-lg text-[13px] outline-none resize-none focus:ring-2 transition"
-          style={{
-            background: 'var(--raised)',
-            color: 'var(--t1)',
-            border: '1px solid var(--border)',
-          }}
-        />
+        <div className="mt-4">
+          <label className="text-[11.5px] font-medium mb-1.5 block" style={{ color: 'var(--t3)' }}>Bio</label>
+          <textarea
+            value={form.bio}
+            onChange={e => f('bio')(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg text-[13px] outline-none resize-none focus:ring-2 transition"
+            style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
+          />
+        </div>
       </Card>
     </>
   )
 }
+
+// ── NotificacoesSection ───────────────────────────────────────────────────────
 
 function NotificacoesSection() {
   return (
     <>
       <Card>
         <SectionTitle title="Canais" hint="Onde você quer ser notificado." />
-        <Row title="E-mail" desc="heloisaalvesnjs@gmail.com" right={<div className="flex items-center gap-2"><Mail className="size-3.5" style={{ color: 'var(--t3)' }} /><Toggle on={true} /></div>} />
+        <Row title="E-mail" desc="Notificações por e-mail" right={<div className="flex items-center gap-2"><Mail className="size-3.5" style={{ color: 'var(--t3)' }} /><Toggle on={true} /></div>} />
         <Row title="Push no navegador" desc="Notificações em tempo real" right={<div className="flex items-center gap-2"><Bell className="size-3.5" style={{ color: 'var(--t3)' }} /><Toggle on={true} /></div>} />
         <Row title="SMS" desc="Apenas para urgências (custo adicional)" right={<div className="flex items-center gap-2"><Smartphone className="size-3.5" style={{ color: 'var(--t3)' }} /><Toggle on={false} /></div>} />
         <Row title="WhatsApp interno" desc="Resumo diário via WhatsApp" right={<div className="flex items-center gap-2"><MessageSquare className="size-3.5" style={{ color: 'var(--t3)' }} /><Toggle on={true} /></div>} />
@@ -221,8 +268,6 @@ function NotificacoesSection() {
         <Row title="Nova conversa" desc="Quando um paciente inicia uma conversa" on={true} />
         <Row title="Agendamento confirmado" desc="Paciente confirma horário" on={true} />
         <Row title="Agendamento cancelado" desc="Paciente cancela ou remarca" on={true} />
-        <Row title="Pagamento recebido" desc="Confirmação automática via gateway" on={true} />
-        <Row title="Pagamento atrasado" desc="Alerta após 3 dias do vencimento" on={true} />
         <Row title="Frame AI sugere resposta" desc="Quando a IA sugere uma ação relevante" on={false} />
         <Row title="Relatório semanal" desc="Resumo de performance toda segunda" on={true} />
       </Card>
@@ -238,140 +283,184 @@ function NotificacoesSection() {
   )
 }
 
+// ── FaturamentoSection ────────────────────────────────────────────────────────
+
 function FaturamentoSection() {
   return (
     <>
       <Card>
         <SectionTitle title="Plano atual" action={<Badge variant="success">Ativo</Badge>} />
-        <div
-          className="rounded-xl p-5"
-          style={{ background: 'var(--brand-soft)', border: '1px solid var(--brand-ring)' }}
-        >
+        <div className="rounded-xl p-5" style={{ background: 'var(--brand-soft)', border: '1px solid var(--brand-ring)' }}>
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand)' }}>Frame Growth</div>
               <div className="text-[28px] font-semibold tracking-tight tabular-nums" style={{ color: 'var(--t1)' }}>
                 R$ 297<span className="text-[14px] font-normal" style={{ color: 'var(--t3)' }}>/mês</span>
               </div>
-              <div className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>Próxima cobrança em 15 de julho · R$ 297,00</div>
               <ul className="text-[12.5px] mt-3 space-y-1" style={{ color: 'var(--t2)' }}>
                 <li className="flex items-center gap-1.5"><Check className="size-3" style={{ color: 'var(--brand)' }} /> Pacientes ilimitados</li>
                 <li className="flex items-center gap-1.5"><Check className="size-3" style={{ color: 'var(--brand)' }} /> Frame AI premium · 10k mensagens/mês</li>
-                <li className="flex items-center gap-1.5"><Check className="size-3" style={{ color: 'var(--brand)' }} /> Integrações ilimitadas</li>
                 <li className="flex items-center gap-1.5"><Check className="size-3" style={{ color: 'var(--brand)' }} /> 5 usuários incluídos</li>
               </ul>
             </div>
-            <div className="flex flex-col gap-2">
-              <Btn variant="primary">Fazer upgrade</Btn>
-              <Btn variant="ghost" size="sm">Alterar plano</Btn>
-            </div>
+            <Btn variant="primary">Fazer upgrade</Btn>
           </div>
         </div>
       </Card>
 
       <Card>
-        <SectionTitle title="Forma de pagamento" action={<Btn size="sm" variant="secondary">Adicionar cartão</Btn>} />
-        <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-          <div className="h-8 w-12 rounded grid place-items-center text-white text-[10px] font-bold" style={{ background: 'linear-gradient(135deg, #1A1F36, #635BFF)' }}>VISA</div>
-          <div className="flex-1">
-            <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>•••• •••• •••• 4242</div>
-            <div className="text-[11.5px]" style={{ color: 'var(--t3)' }}>Expira 09/2027 · Heloísa Alves</div>
-          </div>
-          <Badge variant="default">Padrão</Badge>
-          <Btn size="sm" variant="ghost">Remover</Btn>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle title="Histórico de faturas" action={<Btn size="sm" variant="ghost"><Download className="size-3" /> Exportar tudo</Btn>} />
-        <div className="overflow-hidden rounded-lg" style={{ border: '1px solid var(--border)' }}>
-          <table className="w-full text-[12.5px]">
-            <thead style={{ background: 'var(--raised)', color: 'var(--t3)' }}>
-              <tr>
-                <th className="text-left font-medium px-3 py-2 text-[11px] uppercase tracking-wider">Fatura</th>
-                <th className="text-left font-medium px-3 py-2 text-[11px] uppercase tracking-wider">Data</th>
-                <th className="text-left font-medium px-3 py-2 text-[11px] uppercase tracking-wider">Valor</th>
-                <th className="text-left font-medium px-3 py-2 text-[11px] uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { id: 'INV-2026-006', date: '15 jun 2026', val: 'R$ 297,00', status: 'Pago' },
-                { id: 'INV-2026-005', date: '15 mai 2026', val: 'R$ 297,00', status: 'Pago' },
-                { id: 'INV-2026-004', date: '15 abr 2026', val: 'R$ 297,00', status: 'Pago' },
-                { id: 'INV-2026-003', date: '15 mar 2026', val: 'R$ 297,00', status: 'Pago' },
-              ].map((r) => (
-                <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td className="px-3 py-2.5 font-medium tabular-nums" style={{ color: 'var(--t1)' }}>{r.id}</td>
-                  <td className="px-3 py-2.5" style={{ color: 'var(--t2)' }}>{r.date}</td>
-                  <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--t1)' }}>{r.val}</td>
-                  <td className="px-3 py-2.5"><Badge variant="success">{r.status}</Badge></td>
-                  <td className="px-3 py-2.5 text-right"><Btn size="sm" variant="ghost"><Download className="size-3" /></Btn></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <SectionTitle title="Histórico de faturas" hint="Integração com gateway de pagamento em breve." />
+        <div className="py-6 text-center text-[13px]" style={{ color: 'var(--t3)' }}>
+          Nenhuma fatura disponível ainda.
         </div>
       </Card>
     </>
   )
 }
 
+// ── EquipeSection ─────────────────────────────────────────────────────────────
+
 function EquipeSection() {
-  const members = [
-    { name: 'Heloísa Alves', email: 'heloisaalvesnjs@gmail.com', role: 'Owner', color: 'green' as const },
-    { name: 'Marina Costa', email: 'marina@nutriplus.com.br', role: 'Admin', color: 'blue' as const },
-    { name: 'Rafael Lima', email: 'rafael@nutriplus.com.br', role: 'Operador', color: 'purple' as const },
-  ]
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['team'],
+    queryFn: () => api.get('/api/team').then(r => r.data),
+  })
+
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'receptionist' | 'viewer'>('receptionist')
+  const [showInvite, setShowInvite] = useState(false)
+
+  const invite = useMutation({
+    mutationFn: () => api.post('/api/team/invite', { email: inviteEmail, role: inviteRole }),
+    onSuccess: () => {
+      toast.success('Convite enviado!')
+      setInviteEmail(''); setShowInvite(false)
+      qc.invalidateQueries({ queryKey: ['team'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error ?? 'Erro ao convidar'),
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/team/${id}`),
+    onSuccess: () => { toast.success('Membro removido'); qc.invalidateQueries({ queryKey: ['team'] }) },
+    onError: () => toast.error('Erro ao remover'),
+  })
+
+  const members: any[] = data?.members ?? []
+  const active = members.filter((m: any) => m.status !== 'pending')
+  const pending = members.filter((m: any) => m.status === 'pending')
+
+  const roleLabel: Record<string, string> = { owner: 'Owner', admin: 'Admin', receptionist: 'Recepcionista', viewer: 'Visualizador' }
+  const roleVariant: Record<string, any> = { owner: 'success', admin: 'info', receptionist: 'default', viewer: 'default' }
+  const colors = ['green', 'blue', 'purple', 'orange'] as const
+
   return (
     <>
       <Card>
         <SectionTitle
           title="Membros"
-          hint={`${members.length} de 5 usuários incluídos no plano.`}
-          action={<Btn size="sm" variant="primary">Convidar membro</Btn>}
+          hint={`${active.length} membro(s) ativo(s)`}
+          action={<Btn size="sm" variant="primary" onClick={() => setShowInvite(true)}><Plus className="size-3" /> Convidar</Btn>}
         />
-        <div className="space-y-1">
-          {members.map((m) => (
-            <div key={m.email} className="flex items-center gap-3 p-2.5 rounded-lg transition hover:opacity-80">
-              <Avatar name={m.name} color={m.color} size={36} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>{m.name}</div>
-                <div className="text-[12px] truncate" style={{ color: 'var(--t3)' }}>{m.email}</div>
-              </div>
-              <Badge variant={m.role === 'Owner' ? 'success' : m.role === 'Admin' ? 'info' : 'default'}>{m.role}</Badge>
-              <Btn size="sm" variant="ghost">Gerenciar</Btn>
+
+        {showInvite && (
+          <div className="mb-4 p-4 rounded-lg space-y-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+            <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Novo convite</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="E-mail" value={inviteEmail} onChange={setInviteEmail} type="email" />
+              <SelectField
+                label="Papel"
+                value={inviteRole}
+                options={['receptionist', 'admin', 'viewer']}
+                onChange={v => setInviteRole(v as any)}
+              />
             </div>
-          ))}
-        </div>
+            <div className="flex gap-2">
+              <Btn size="sm" variant="primary" onClick={() => invite.mutate()} disabled={!inviteEmail || invite.isPending}>
+                {invite.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Enviar convite
+              </Btn>
+              <Btn size="sm" variant="ghost" onClick={() => setShowInvite(false)}>Cancelar</Btn>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-6 text-center text-[13px]" style={{ color: 'var(--t3)' }}>Carregando…</div>
+        ) : (
+          <div className="space-y-1">
+            {active.map((m: any, i: number) => (
+              <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-lg transition hover:opacity-80">
+                <Avatar name={m.name || m.email} color={colors[i % colors.length]} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>{m.name || m.email}</div>
+                  <div className="text-[12px] truncate" style={{ color: 'var(--t3)' }}>{m.email}</div>
+                </div>
+                <Badge variant={roleVariant[m.role] ?? 'default'}>{roleLabel[m.role] ?? m.role}</Badge>
+                {m.role !== 'owner' && (
+                  <Btn size="sm" variant="ghost" onClick={() => remove.mutate(m.id)}><Trash2 className="size-3" /></Btn>
+                )}
+              </div>
+            ))}
+            {active.length === 0 && (
+              <div className="py-4 text-center text-[13px]" style={{ color: 'var(--t3)' }}>Nenhum membro ainda.</div>
+            )}
+          </div>
+        )}
       </Card>
 
-      <Card>
-        <SectionTitle title="Convites pendentes" />
-        <div className="flex items-center gap-3 p-2.5 rounded-lg" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-          <Mail className="size-4" style={{ color: 'var(--t3)' }} />
-          <div className="flex-1">
-            <div className="text-[13px]" style={{ color: 'var(--t1)' }}>carolina@nutriplus.com.br</div>
-            <div className="text-[11.5px]" style={{ color: 'var(--t3)' }}>Convidada como Operador · há 2 dias</div>
+      {pending.length > 0 && (
+        <Card>
+          <SectionTitle title="Convites pendentes" />
+          <div className="space-y-2">
+            {pending.map((m: any) => (
+              <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-lg" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                <Mail className="size-4" style={{ color: 'var(--t3)' }} />
+                <div className="flex-1">
+                  <div className="text-[13px]" style={{ color: 'var(--t1)' }}>{m.email}</div>
+                  <div className="text-[11.5px]" style={{ color: 'var(--t3)' }}>Convidado como {roleLabel[m.role] ?? m.role}</div>
+                </div>
+                <Btn size="sm" variant="ghost" onClick={() => remove.mutate(m.id)}><Trash2 className="size-3" /></Btn>
+              </div>
+            ))}
           </div>
-          <Btn size="sm" variant="ghost">Reenviar</Btn>
-          <Btn size="sm" variant="ghost"><Trash2 className="size-3" /></Btn>
-        </div>
-      </Card>
+        </Card>
+      )}
     </>
   )
 }
 
+// ── SegurancaSection ──────────────────────────────────────────────────────────
+
 function SegurancaSection() {
   const [show, setShow] = useState(false)
+  const [form, setForm] = useState({ current_password: '', new_password: '', confirm: '' })
+
+  const save = useMutation({
+    mutationFn: () => api.post('/api/nutritionists/change-password', {
+      current_password: form.current_password,
+      new_password: form.new_password,
+    }),
+    onSuccess: () => {
+      toast.success('Senha atualizada!')
+      setForm({ current_password: '', new_password: '', confirm: '' })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error ?? 'Erro ao atualizar senha'),
+  })
+
+  const canSave = form.current_password && form.new_password.length >= 8 && form.new_password === form.confirm
+
   return (
     <>
       <Card>
         <SectionTitle
           title="Senha"
           hint="Recomendamos atualizar a cada 90 dias."
-          action={<Btn size="sm" variant="primary">Atualizar</Btn>}
+          action={
+            <Btn size="sm" variant="primary" onClick={() => save.mutate()} disabled={!canSave || save.isPending}>
+              {save.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Atualizar
+            </Btn>
+          }
         />
         <div className="grid grid-cols-1 gap-4 max-w-md">
           <div>
@@ -379,7 +468,8 @@ function SegurancaSection() {
             <div className="relative">
               <input
                 type={show ? 'text' : 'password'}
-                defaultValue="••••••••••••"
+                value={form.current_password}
+                onChange={e => setForm(p => ({ ...p, current_password: e.target.value }))}
                 className="w-full h-9 px-3 pr-9 rounded-lg text-[13px] outline-none focus:ring-2 transition"
                 style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
               />
@@ -388,92 +478,79 @@ function SegurancaSection() {
               </button>
             </div>
           </div>
-          <Field label="Nova senha" type="password" />
-          <Field label="Confirmar nova senha" type="password" />
+          <div>
+            <label className="text-[11.5px] font-medium mb-1.5 block" style={{ color: 'var(--t3)' }}>Nova senha</label>
+            <input
+              type="password"
+              value={form.new_password}
+              onChange={e => setForm(p => ({ ...p, new_password: e.target.value }))}
+              className="w-full h-9 px-3 rounded-lg text-[13px] outline-none focus:ring-2 transition"
+              style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
+            />
+            {form.new_password && form.new_password.length < 8 && (
+              <p className="text-[11px] mt-1" style={{ color: '#FF5C5C' }}>Mínimo 8 caracteres</p>
+            )}
+          </div>
+          <div>
+            <label className="text-[11.5px] font-medium mb-1.5 block" style={{ color: 'var(--t3)' }}>Confirmar nova senha</label>
+            <input
+              type="password"
+              value={form.confirm}
+              onChange={e => setForm(p => ({ ...p, confirm: e.target.value }))}
+              className="w-full h-9 px-3 rounded-lg text-[13px] outline-none focus:ring-2 transition"
+              style={{ background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }}
+            />
+            {form.confirm && form.confirm !== form.new_password && (
+              <p className="text-[11px] mt-1" style={{ color: '#FF5C5C' }}>As senhas não coincidem</p>
+            )}
+          </div>
         </div>
       </Card>
 
       <Card>
-        <SectionTitle
-          title="Autenticação em dois fatores"
-          hint="Camada extra de proteção no login."
-          action={<Badge variant="success">Ativo</Badge>}
-        />
-        <Row title="App autenticador (TOTP)" desc="Google Authenticator, 1Password, Authy" on={true} />
-        <Row title="SMS" desc="Código enviado para +55 11 ••••-4321" on={false} />
-        <Row title="Chave de segurança (FIDO2)" desc="YubiKey, Touch ID, Windows Hello" on={false} />
-      </Card>
-
-      <Card>
-        <SectionTitle
-          title="Sessões ativas"
-          hint="Dispositivos atualmente conectados."
-          action={<Btn size="sm" variant="outline">Encerrar todas</Btn>}
-        />
-        {[
-          { d: 'MacBook Pro · Chrome', l: 'São Paulo, BR · agora', current: true },
-          { d: 'iPhone 15 · Safari',   l: 'São Paulo, BR · há 12 min', current: false },
-          { d: 'Windows · Edge',       l: 'Rio de Janeiro, BR · há 3 dias', current: false },
-        ].map((s) => (
-          <Row
-            key={s.d}
-            title={s.d}
-            desc={s.l}
-            right={s.current ? <Badge variant="success">Esta sessão</Badge> : <Btn size="sm" variant="ghost">Encerrar</Btn>}
-          />
-        ))}
-      </Card>
-
-      <Card>
-        <SectionTitle title="Log de atividades" hint="Eventos recentes de segurança." />
-        <div className="space-y-2 text-[12.5px]">
-          {[
-            { e: 'Login bem-sucedido', w: 'MacBook · São Paulo', t: 'agora' },
-            { e: '2FA habilitado', w: 'via app autenticador', t: 'há 2 dias' },
-            { e: 'Senha alterada', w: 'MacBook · São Paulo', t: 'há 21 dias' },
-            { e: 'Novo dispositivo confiável', w: 'iPhone 15', t: 'há 1 mês' },
-          ].map((l) => (
-            <div key={l.e} className="flex items-center justify-between py-1.5">
-              <div className="flex items-center gap-2">
-                <div className="size-1.5 rounded-full" style={{ background: 'var(--brand)' }} />
-                <span style={{ color: 'var(--t1)' }}>{l.e}</span>
-                <span style={{ color: 'var(--t3)' }}>— {l.w}</span>
-              </div>
-              <span style={{ color: 'var(--t3)' }}>{l.t}</span>
-            </div>
-          ))}
-        </div>
+        <SectionTitle title="Autenticação em dois fatores" hint="Em breve." action={<Badge variant="default">Em breve</Badge>} />
+        <div className="py-4 text-[13px]" style={{ color: 'var(--t3)' }}>Autenticação de dois fatores será disponibilizada em breve.</div>
       </Card>
     </>
   )
 }
 
+// ── ApiSection ────────────────────────────────────────────────────────────────
+
 function ApiSection() {
+  const qc = useQueryClient()
+  const { data: webhooks, isLoading } = useQuery({
+    queryKey: ['webhooks'],
+    queryFn: () => api.get('/api/integrations').then(r => r.data),
+  })
+
+  const [showNew, setShowNew] = useState(false)
+  const [newUrl, setNewUrl] = useState('')
+
+  const create = useMutation({
+    mutationFn: () => api.post('/api/integrations', { url: newUrl, events: ['*'] }),
+    onSuccess: () => {
+      toast.success('Webhook criado!')
+      setNewUrl(''); setShowNew(false)
+      qc.invalidateQueries({ queryKey: ['webhooks'] })
+    },
+    onError: () => toast.error('Erro ao criar webhook'),
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/integrations/${id}`),
+    onSuccess: () => { toast.success('Removido'); qc.invalidateQueries({ queryKey: ['webhooks'] }) },
+    onError: () => toast.error('Erro ao remover'),
+  })
+
+  const list: any[] = Array.isArray(webhooks) ? webhooks : (webhooks?.integrations ?? [])
+
   return (
     <>
       <Card>
-        <SectionTitle
-          title="Chaves de API"
-          hint="Use para integrar o Frame com seus sistemas."
-          action={<Btn size="sm" variant="primary">Nova chave</Btn>}
-        />
-        <div className="space-y-2">
-          {[
-            { name: 'Produção', key: 'fk_live_••••••••••••••••3a9f', created: '12 fev 2026', last: 'há 2 min' },
-            { name: 'Sandbox',  key: 'fk_test_••••••••••••••••7c2e', created: '08 jan 2026', last: 'há 5 dias' },
-          ].map((k) => (
-            <div key={k.name} className="p-3 rounded-lg flex items-center gap-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-              <KeyRound className="size-4" style={{ color: 'var(--t3)' }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium flex items-center gap-2" style={{ color: 'var(--t1)' }}>
-                  {k.name} <Badge variant="default">{k.last}</Badge>
-                </div>
-                <div className="text-[12px] font-mono truncate" style={{ color: 'var(--t3)' }}>{k.key} · criada {k.created}</div>
-              </div>
-              <Btn size="sm" variant="ghost"><Copy className="size-3" /></Btn>
-              <Btn size="sm" variant="ghost"><Trash2 className="size-3" /></Btn>
-            </div>
-          ))}
+        <SectionTitle title="Chaves de API" hint="Integração de chaves em breve." />
+        <div className="py-4 text-[13px]" style={{ color: 'var(--t3)' }}>
+          Gerenciamento de chaves de API será disponibilizado em breve.
         </div>
       </Card>
 
@@ -481,49 +558,48 @@ function ApiSection() {
         <SectionTitle
           title="Webhooks"
           hint="Receba eventos em tempo real nos seus endpoints."
-          action={<Btn size="sm" variant="secondary">Novo endpoint</Btn>}
+          action={<Btn size="sm" variant="secondary" onClick={() => setShowNew(true)}><Plus className="size-3" /> Novo endpoint</Btn>}
         />
-        <div className="space-y-2">
-          {[
-            { url: 'https://api.nutriplus.com.br/hooks/frame', events: 'conversation.*, appointment.*', ok: true },
-            { url: 'https://hooks.zapier.com/hooks/catch/1234567/abc', events: 'payment.received', ok: true },
-          ].map((w) => (
-            <div key={w.url} className="p-3 rounded-lg flex items-center gap-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-              <Globe className="size-4" style={{ color: 'var(--t3)' }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[12.5px] font-mono truncate" style={{ color: 'var(--t1)' }}>{w.url}</div>
-                <div className="text-[11.5px] truncate" style={{ color: 'var(--t3)' }}>Eventos: {w.events}</div>
-              </div>
-              <Badge variant={w.ok ? 'success' : 'danger'}>{w.ok ? '200 OK' : 'Falha'}</Badge>
-              <Btn size="sm" variant="ghost">Editar</Btn>
-            </div>
-          ))}
-        </div>
-      </Card>
 
-      <Card>
-        <SectionTitle title="Limites e uso" hint="Janela atual: 1 jun – 30 jun." />
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { l: 'Requests / mês',      v: '84.230',  m: '200.000', p: 42 },
-            { l: 'Webhooks entregues',  v: '12.401',  m: '50.000',  p: 25 },
-            { l: 'Tokens Frame AI',     v: '4.2M',    m: '10M',     p: 42 },
-          ].map((u) => (
-            <div key={u.l}>
-              <div className="text-[11.5px] mb-1" style={{ color: 'var(--t3)' }}>{u.l}</div>
-              <div className="text-[16px] font-semibold tabular-nums" style={{ color: 'var(--t1)' }}>
-                {u.v} <span className="text-[11.5px] font-normal" style={{ color: 'var(--t3)' }}>/ {u.m}</span>
-              </div>
-              <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                <div className="h-full rounded-full" style={{ width: u.p + '%', background: 'var(--brand)' }} />
-              </div>
+        {showNew && (
+          <div className="mb-4 p-4 rounded-lg space-y-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+            <Field label="URL do endpoint" value={newUrl} onChange={setNewUrl} />
+            <div className="flex gap-2">
+              <Btn size="sm" variant="primary" onClick={() => create.mutate()} disabled={!newUrl || create.isPending}>
+                {create.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Criar
+              </Btn>
+              <Btn size="sm" variant="ghost" onClick={() => setShowNew(false)}>Cancelar</Btn>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-4 text-center text-[13px]" style={{ color: 'var(--t3)' }}>Carregando…</div>
+        ) : list.length === 0 ? (
+          <div className="py-4 text-center text-[13px]" style={{ color: 'var(--t3)' }}>Nenhum webhook configurado.</div>
+        ) : (
+          <div className="space-y-2">
+            {list.map((w: any) => (
+              <div key={w.id} className="p-3 rounded-lg flex items-center gap-3" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                <Globe className="size-4" style={{ color: 'var(--t3)' }} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12.5px] font-mono truncate" style={{ color: 'var(--t1)' }}>{w.url}</div>
+                  <div className="text-[11.5px] truncate" style={{ color: 'var(--t3)' }}>Eventos: {Array.isArray(w.events) ? w.events.join(', ') : w.events ?? '*'}</div>
+                </div>
+                <Badge variant={w.last_status === 200 || !w.last_status ? 'success' : 'danger'}>
+                  {w.last_status ? `${w.last_status}` : 'Novo'}
+                </Badge>
+                <Btn size="sm" variant="ghost" onClick={() => remove.mutate(w.id)}><Trash2 className="size-3" /></Btn>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </>
   )
 }
+
+// ── DadosSection ──────────────────────────────────────────────────────────────
 
 function DadosSection() {
   return (
@@ -535,15 +611,7 @@ function DadosSection() {
           action={<Btn size="sm" variant="secondary"><Download className="size-3" /> Solicitar export</Btn>}
         />
         <div className="text-[12.5px]" style={{ color: 'var(--t2)' }}>
-          Última exportação: <span style={{ color: 'var(--t1)' }}>12 mai 2026</span> · 84,2 MB
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle title="Retenção de dados" hint="Por quanto tempo manter conversas e logs." />
-        <div className="grid grid-cols-2 gap-4">
-          <SelectField label="Conversas arquivadas" value="2 anos" options={['6 meses', '1 ano', '2 anos', 'Indefinido']} />
-          <SelectField label="Logs de auditoria" value="1 ano" options={['3 meses', '6 meses', '1 ano', '2 anos']} />
+          Exportação de dados será disponibilizada em breve.
         </div>
       </Card>
 
@@ -556,10 +624,8 @@ function DadosSection() {
 
       <Card>
         <SectionTitle title="Excluir conta" />
-        <div
-          className="rounded-lg p-4 flex items-center justify-between gap-4"
-          style={{ border: '1px solid rgba(255,92,92,0.2)', background: 'rgba(255,92,92,0.04)' }}
-        >
+        <div className="rounded-lg p-4 flex items-center justify-between gap-4"
+          style={{ border: '1px solid rgba(255,92,92,0.2)', background: 'rgba(255,92,92,0.04)' }}>
           <div className="flex gap-3">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" style={{ color: '#FF5C5C' }} />
             <div>
@@ -574,27 +640,22 @@ function DadosSection() {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
   const [section, setSection] = useState<SectionId>('workspace')
 
   return (
     <div>
-      {/* Sub-header */}
-      <div
-        className="flex items-center justify-between px-8 py-4"
-        style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}
-      >
+      <div className="flex items-center justify-between px-8 py-4"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
         <div>
           <h1 className="text-[18px] font-semibold" style={{ color: 'var(--t1)' }}>Configurações</h1>
           <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Workspace · Frame System</p>
         </div>
       </div>
 
-      {/* Body */}
       <div className="px-6 py-6 max-w-[1180px] mx-auto grid gap-8" style={{ gridTemplateColumns: '240px minmax(0,1fr)' }}>
-        {/* Sidebar nav */}
         <aside className="space-y-4 sticky top-4 self-start">
           <div className="relative">
             <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--t3)' }} />
@@ -631,7 +692,6 @@ export default function ConfiguracoesPage() {
           </div>
         </aside>
 
-        {/* Content */}
         <div className="space-y-4 min-w-0">
           {section === 'workspace'    && <WorkspaceSection />}
           {section === 'perfil'       && <PerfilSection />}
