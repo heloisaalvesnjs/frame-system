@@ -15,7 +15,6 @@ import {
   Settings,
   ChevronsLeft,
   Plus,
-  BarChart2,
 } from 'lucide-react'
 
 const groups: Array<{
@@ -43,7 +42,6 @@ const groups: Array<{
     items: [
       { href: '/disponibilidade', label: 'Disponibilidade', icon: Clock },
       { href: '/integracoes',     label: 'Integrações',     icon: Plug },
-      { href: '/relatorios',      label: 'Relatórios',      icon: BarChart2 },
       { href: '/configuracoes',   label: 'Configurações',   icon: Settings },
     ],
   },
