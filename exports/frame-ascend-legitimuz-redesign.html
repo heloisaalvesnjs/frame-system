@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frame System - Redesign Legitimuz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0A0D14;
+      --bg2:#111621;
+      --bg3:#1B211E;
+      --bg4:#262D26;
+      --card:rgba(17,22,33,.82);
+      --card-2:rgba(27,33,30,.75);
+      --line:rgba(255,255,255,.08);
+      --line-2:rgba(255,255,255,.12);
+      --text:#F4F7F3;
+      --muted:#9BA5B0;
+      --muted-2:#77808B;
+      --green:#61D836;
+      --green-2:#A8F13C;
+      --lime:#D7FF5B;
+      --soft:#F2FF9C;
+      --danger:#E35D5D;
+      --shadow:0 24px 80px rgba(0,0,0,.45);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 18% 8%, rgba(97,216,54,.16), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(168,241,60,.10), transparent 26%),
+        linear-gradient(180deg, #070910 0%, var(--bg) 100%);
+      overflow:hidden;
+    }
+    .shell{
+      display:grid;
+      grid-template-columns: 84px 1fr;
+      height:100vh;
+    }
+    .sidebar{
+      border-right:1px solid rgba(255,255,255,.06);
+      background:rgba(8,10,15,.86);
+      backdrop-filter: blur(18px);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:18px 0 16px;
+      gap:14px;
+    }
+    .logoMark{
+      width:42px;height:42px;border-radius:14px;
+      background:rgba(18,24,38,.92);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 0 0 1px rgba(97,216,54,.16), 0 0 38px rgba(97,216,54,.16);
+      display:grid;place-items:center;
+      overflow:hidden;
+    }
+    .logoMark img{width:30px;height:30px;object-fit:contain}
+    .nav{
+      display:flex;flex-direction:column;gap:10px;margin-top:6px;flex:1;justify-content:center
+    }
+    .navItem{
+      width:44px;height:44px;border-radius:14px;
+      display:grid;place-items:center;color:#8E97A3;
+      border:1px solid transparent;background:transparent;
+    }
+    .navItem.active{
+      background:rgba(97,216,54,.12);
+      border-color:rgba(97,216,54,.18);
+      color:var(--soft);
+      box-shadow:0 0 0 1px rgba(97,216,54,.10) inset;
+    }
+    .navItem svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .sidebarBottom{
+      margin-top:auto;
+      display:flex;flex-direction:column;gap:10px;align-items:center;
+    }
+    .workspace{
+      display:flex;flex-direction:column;min-width:0;
+    }
+    .topbar{
+      height:68px;min-height:68px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background:rgba(10,13,20,.72);
+      backdrop-filter: blur(18px);
+      display:flex;align-items:center;gap:16px;padding:0 24px;
+    }
+    .crumb{
+      display:flex;align-items:center;gap:10px;min-width:0;
+      font-size:14px;font-weight:600;color:#DFE5EA;
+    }
+    .crumb .pill{
+      padding:7px 10px;border-radius:999px;
+      border:1px solid rgba(97,216,54,.18);
+      color:var(--lime);background:rgba(97,216,54,.08);
+      font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    }
+    .grow{flex:1}
+    .search{
+      width:min(400px, 100%);
+      height:42px;border-radius:14px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      color:#B5BCC6;
+      display:flex;align-items:center;gap:10px;padding:0 14px;
+      font-size:13px;
+    }
+    .search svg,.btn svg,.mini svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .btn{
+      height:42px;border-radius:14px;padding:0 14px;
+      display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);color:var(--text);font-weight:700;font-size:13px;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg, var(--green) 0%, var(--lime) 100%);
+      color:#07100A;border-color:transparent;
+      box-shadow:0 10px 30px rgba(97,216,54,.22);
+    }
+    .content{
+      padding:24px;
+      overflow:auto;
+      height:calc(100vh - 68px);
+    }
+    .hero{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .panel{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .heroLeft{
+      padding:26px;
+      min-height:220px;
+      position:relative;
+      overflow:hidden;
+    }
+    .eyebrow{
+      color:var(--green-2);
+      text-transform:uppercase;
+      letter-spacing:.22em;
+      font-size:11px;
+      font-weight:700;
+      display:flex;align-items:center;gap:10px;
+    }
+    .eyebrow:after{
+      content:"";height:1px;width:64px;background:linear-gradient(90deg,var(--green-2),transparent)
+    }
+    h1{
+      margin:14px 0 10px;
+      font-size:42px;line-height:1.02;letter-spacing:-.04em;
+      max-width:580px;
+    }
+    .heroCopy{
+      max-width:640px;
+      color:#B8C0C9;
+      font-size:15px;
+      line-height:1.6;
+    }
+    .heroMeta{
+      display:flex;gap:10px;flex-wrap:wrap;margin-top:18px
+    }
+    .chip{
+      height:34px;padding:0 12px;border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      color:#D8DEE5;font-size:12px;font-weight:600;
+      display:inline-flex;align-items:center;gap:8px;
+    }
+    .chip.green{background:rgba(97,216,54,.10);border-color:rgba(97,216,54,.16);color:#E9FFD9}
+    .heroLogo{
+      position:absolute;right:24px;top:24px;
+      width:150px;height:150px;border-radius:30px;
+      background:rgba(6,9,14,.92);
+      border:1px solid rgba(97,216,54,.14);
+      box-shadow:0 0 0 1px rgba(97,216,54,.06) inset, 0 0 60px rgba(97,216,54,.12);
+      display:grid;place-items:center;
+    }
+    .heroLogo img{width:110px;height:110px;object-fit:contain}
+    .heroRight{
+      padding:20px;
+      display:grid;gap:14px;
+      min-height:220px;
+    }
+    .metricGrid{
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+    }
+    .metric{
+      padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+    }
+    .metric label{display:block;color:#9DA6B0;font-size:12px;font-weight:600;margin-bottom:10px}
+    .metric .value{font-size:28px;font-weight:800;letter-spacing:-.04em}
+    .metric .sub{margin-top:4px;color:#8A93A0;font-size:12px}
+    .gauge{
+      display:flex;align-items:center;gap:16px;padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      min-height:122px;
+    }
+    .gauge svg{width:126px;height:126px;flex:0 0 auto}
+    .gaugeText{min-width:0}
+    .gaugeText h3{margin:0 0 6px;font-size:18px;letter-spacing:-.03em}
+    .gaugeText p{margin:0;color:#A6AFB9;line-height:1.55;font-size:13px}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:18px;
+      align-items:start;
+    }
+    .section{
+      padding:22px;
+    }
+    .sectionHeader{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px
+    }
+    .sectionHeader h2{margin:0;font-size:18px;letter-spacing:-.03em}
+    .sectionHeader .desc{color:#95A0AC;font-size:13px;line-height:1.5;max-width:460px}
+    .segments{display:flex;gap:8px;flex-wrap:wrap}
+    .segment{
+      padding:9px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
+      color:#D5DADF;font-size:12px;font-weight:600;
+    }
+    .segment.active{background:rgba(97,216,54,.12);border-color:rgba(97,216,54,.2);color:#EDFDE1}
+    .agenda{
+      display:grid;grid-template-columns: repeat(7, minmax(0,1fr));gap:10px;
+    }
+    .day{
+      padding:14px 12px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      min-height:132px;
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .day .name{font-size:11px;color:#A7B0B8;text-transform:uppercase;letter-spacing:.15em}
+    .day .date{font-size:18px;font-weight:800;letter-spacing:-.03em}
+    .day .slot{font-size:12px;color:#CAD1D8;line-height:1.45}
+    .day .loc{margin-top:auto;display:flex;flex-wrap:wrap;gap:6px}
+    .locTag{padding:6px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#DDE3E8}
+    .locTag.green{background:rgba(97,216,54,.12);border-color:rgba(97,216,54,.18);color:#ECFDE0}
+    .locTag.dark{background:rgba(255,255,255,.04)}
+    .availability{
+      display:grid;gap:12px;
+    }
+    .availabilityRow{
+      padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);
+      display:grid;gap:12px;
+    }
+    .availabilityRowTop{
+      display:flex;align-items:center;justify-content:space-between;gap:12px
+    }
+    .availabilityRowTop strong{font-size:14px}
+    .availabilityRowTop span{color:#9DA6B0;font-size:12px}
+    .timeline{
+      height:10px;border-radius:999px;background:#111826;overflow:hidden;border:1px solid rgba(255,255,255,.05)
+    }
+    .fill{
+      height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--lime));
+    }
+    .availabilityGrid{
+      display:flex;flex-wrap:wrap;gap:8px
+    }
+    .formCard{
+      padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      display:grid;gap:12px;
+    }
+    .field{
+      display:grid;gap:6px
+    }
+    .field label{font-size:12px;font-weight:700;color:#C6CED5}
+    .input{
+      height:42px;border-radius:14px;padding:0 12px;
+      border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#F4F7F3;
+      font:inherit;outline:none;
+    }
+    .input::placeholder{color:#66707B}
+    .matrix{
+      display:grid;gap:10px
+    }
+    .matrixRow{
+      display:grid;grid-template-columns: 112px 1fr 170px;gap:10px;align-items:center;
+      padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+    }
+    .matrixRow .dayName{font-size:13px;font-weight:800;letter-spacing:-.02em}
+    .matrixRow .locWrap{display:flex;flex-wrap:wrap;gap:8px}
+    .matrixRow .time{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .mini{
+      height:36px;border-radius:12px;padding:0 10px;
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#E5EBF0;font-size:12px;font-weight:600;
+    }
+    .mini.active{background:rgba(97,216,54,.12);border-color:rgba(97,216,54,.18);color:#F0FFE8}
+    .mini.danger{background:rgba(227,93,93,.10);border-color:rgba(227,93,93,.16);color:#FFD8D8}
+    .bottomGrid{
+      display:grid;grid-template-columns: 1fr 1fr; gap:18px; margin-top:18px;
+    }
+    .list{
+      display:grid;gap:10px;
+    }
+    .row{
+      padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      display:flex;align-items:center;gap:12px;
+    }
+    .avatar{
+      width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg, rgba(97,216,54,.28), rgba(17,22,33,.85));
+      border:1px solid rgba(97,216,54,.18);
+      flex:0 0 auto;
+    }
+    .row .title{font-size:14px;font-weight:700}
+    .row .meta{font-size:12px;color:#9AA4AE;margin-top:4px}
+    .row .right{margin-left:auto;text-align:right}
+    .row .right b{display:block;font-size:12px}
+    .row .right span{font-size:11px;color:#9AA4AE}
+    .note{
+      color:#A0A9B2;
+      font-size:12px;line-height:1.5;
+    }
+    @media (max-width: 1220px){
+      body{overflow:auto}
+      .shell{grid-template-columns: 1fr}
+      .sidebar{display:none}
+      .hero,.grid,.bottomGrid{grid-template-columns:1fr}
+      .agenda{grid-template-columns: repeat(2, minmax(0,1fr))}
+      .matrixRow{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="logoMark"><img src="file:///C:/Users/Heloisa/Documents/HELOISA/Group%201.png" alt="Frame System"></div>
+      <div class="nav">
+        <div class="navItem active"><svg viewBox="0 0 24 24"><path d="M4 11h16M4 7h16M4 15h9"/><circle cx="19" cy="15" r="1"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M7 10h10"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-4 3 3 5-7"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M12 4v16"/><circle cx="12" cy="12" r="3"/></svg></div>
+      </div>
+      <div class="sidebarBottom">
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M7 4h10v16H7z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg></div>
+        <div class="navItem"><svg viewBox="0 0 24 24"><path d="M5 20l14-16"/><path d="M9 4h10v10"/></svg></div>
+      </div>
+    </aside>
+    <main class="workspace">
+      <div class="topbar">
+        <div class="crumb">
+          <span class="pill">Frame System</span>
+          <span>Operação premium para nutricionistas</span>
+        </div>
+        <div class="grow"></div>
+        <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Buscar paciente, lead ou local...</div>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Bloquear data</button>
+        <button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Salvar agenda</button>
+      </div>
+      <div class="content">
+        <section class="hero">
+          <div class="panel heroLeft">
+            <div class="eyebrow">Legitimuz-style / clean / minimal</div>
+            <h1>Uma central simples de usar. Sem nada que não ajude a nutri a atender melhor.</h1>
+            <div class="heroCopy">
+              Interface pensada para rotina real: agenda, conversas, pacientes e disponibilidade por local em um único lugar.
+              A IA só oferece o que faz sentido para aquele dia, naquele endereço.
+            </div>
+            <div class="heroMeta">
+              <div class="chip green">Inter</div>
+              <div class="chip">Dark premium</div>
+              <div class="chip">Local por dia</div>
+              <div class="chip">Menos ruído</div>
+            </div>
+            <div class="heroLogo"><img src="file:///C:/Users/Heloisa/Documents/HELOISA/Group%201.png" alt="Frame System logo"></div>
+          </div>
+          <div class="panel heroRight">
+            <div class="metricGrid">
+              <div class="metric">
+                <label>Leads respondidos hoje</label>
+                <div class="value">42</div>
+                <div class="sub">Tempo médio: 18s</div>
+              </div>
+              <div class="metric">
+                <label>Consultas agendadas</label>
+                <div class="value">14</div>
+                <div class="sub">+3 vs ontem</div>
+              </div>
+              <div class="metric">
+                <label>Locais ativos</label>
+                <div class="value">3</div>
+                <div class="sub">Agenda por endereço</div>
+              </div>
+              <div class="metric">
+                <label>Risco de perda</label>
+                <div class="value" style="color:var(--lime)">2</div>
+                <div class="sub">Leads sem resposta</div>
+              </div>
+            </div>
+            <div class="gauge">
+              <svg viewBox="0 0 140 140" aria-hidden="true">
+                <defs>
+                  <linearGradient id="arc" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#61D836"/>
+                    <stop offset="100%" stop-color="#D7FF5B"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="70" cy="70" r="48" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="14"/>
+                <path d="M22 70a48 48 0 0 1 96 0" fill="none" stroke="url(#arc)" stroke-width="14" stroke-linecap="round"/>
+                <path d="M116 70a48 48 0 0 1 -4 18" fill="none" stroke="#E35D5D" stroke-width="14" stroke-linecap="round"/>
+                <text x="70" y="67" text-anchor="middle" fill="#F4F7F3" font-size="28" font-weight="800">98.5%</text>
+                <text x="70" y="89" text-anchor="middle" fill="#AAB3BC" font-size="11" font-weight="600">respostas aprovadas</text>
+              </svg>
+              <div class="gaugeText">
+                <h3>Fluxo de atendimento sem esforço</h3>
+                <p>A agenda respeita a disponibilidade do dia e o local correto, evitando que a IA marque algo fora do consultório certo.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid">
+          <div class="panel section">
+            <div class="sectionHeader">
+              <div>
+                <h2>Agenda do dia</h2>
+                <div class="desc">Visual em blocos, com status claro e local visível. A nutri decide onde atende e a IA segue isso.</div>
+              </div>
+              <div class="segments">
+                <div class="segment active">Hoje</div>
+                <div class="segment">Semana</div>
+                <div class="segment">Mês</div>
+              </div>
+            </div>
+            <div class="agenda">
+              <div class="day">
+                <div class="name">Segunda</div><div class="date">17</div>
+                <div class="slot">09:00 · Paula</div><div class="slot">14:00 · Lucas</div>
+                <div class="loc"><span class="locTag green">Clínica Centro</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Terça</div><div class="date">18</div>
+                <div class="slot">08:30 · reunião</div><div class="slot">11:00 · Mariana</div>
+                <div class="loc"><span class="locTag">Online</span><span class="locTag green">Consultório B</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Quarta</div><div class="date">19</div>
+                <div class="slot">10:00 · Pedro</div><div class="slot">15:30 · Ana</div>
+                <div class="loc"><span class="locTag green">Consultório B</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Quinta</div><div class="date">20</div>
+                <div class="slot">09:30 · Gabriela</div><div class="slot">16:00 · Igor</div>
+                <div class="loc"><span class="locTag">Online</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Sexta</div><div class="date">21</div>
+                <div class="slot">08:00 · bloqueio</div><div class="slot">13:00 · Camila</div>
+                <div class="loc"><span class="locTag green">Clínica Centro</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Sábado</div><div class="date">22</div>
+                <div class="slot">09:00 · Sofia</div><div class="slot">11:30 · Henrique</div>
+                <div class="loc"><span class="locTag green">Clínica Centro</span></div>
+              </div>
+              <div class="day">
+                <div class="name">Domingo</div><div class="date">23</div>
+                <div class="slot">Fechado</div><div class="slot">IA responde leads</div>
+                <div class="loc"><span class="locTag dark">Sem atendimento</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section">
+            <div class="sectionHeader">
+              <div>
+                <h2>Disponibilidade por local</h2>
+                <div class="desc">Além de bloquear horário, a nutri informa onde está naquele dia. A IA não oferece local errado.</div>
+              </div>
+            </div>
+            <div class="availability">
+              <div class="availabilityRow">
+                <div class="availabilityRowTop">
+                  <strong>Segunda-feira</strong>
+                  <span>Atende em: Clínica Centro</span>
+                </div>
+                <div class="timeline"><div class="fill" style="width:72%"></div></div>
+                <div class="availabilityGrid">
+                  <span class="locTag green">Clínica Centro</span>
+                  <span class="locTag">08:00 - 12:00</span>
+                  <span class="locTag">14:00 - 18:00</span>
+                </div>
+              </div>
+              <div class="availabilityRow">
+                <div class="availabilityRowTop">
+                  <strong>Terça-feira</strong>
+                  <span>Atende em: Online + Consultório B</span>
+                </div>
+                <div class="timeline"><div class="fill" style="width:58%"></div></div>
+                <div class="availabilityGrid">
+                  <span class="locTag">Online</span>
+                  <span class="locTag green">Consultório B</span>
+                  <span class="locTag">09:00 - 12:00</span>
+                </div>
+              </div>
+              <div class="availabilityRow">
+                <div class="availabilityRowTop">
+                  <strong>Quarta-feira</strong>
+                  <span>Atende em: Consultório B</span>
+                </div>
+                <div class="timeline"><div class="fill" style="width:84%"></div></div>
+                <div class="availabilityGrid">
+                  <span class="locTag green">Consultório B</span>
+                  <span class="locTag">10:00 - 16:30</span>
+                </div>
+              </div>
+              <div class="note">Exemplo funcional: se a quinta estiver marcada como "Online", a IA não oferece endereço físico nessa data.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottomGrid">
+          <div class="panel section">
+            <div class="sectionHeader">
+              <div>
+                <h2>Leads e conversas</h2>
+                <div class="desc">Fila simples, sem visual de CRM pesado. Só o que importa para responder rápido.</div>
+              </div>
+            </div>
+            <div class="list">
+              <div class="row">
+                <div class="avatar"></div>
+                <div>
+                  <div class="title">Larissa Mendes</div>
+                  <div class="meta">Quer emagrecimento · respondeu às 17:12</div>
+                </div>
+                <div class="right">
+                  <b class="green">Pronto para agendar</b>
+                  <span>Consultório Centro</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="avatar"></div>
+                <div>
+                  <div class="title">Bruno Alves</div>
+                  <div class="meta">Busca plano alimentar · sem resposta há 24 min</div>
+                </div>
+                <div class="right">
+                  <b style="color:var(--lime)">IA em atendimento</b>
+                  <span>Local correto aplicado</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="avatar"></div>
+                <div>
+                  <div class="title">Tatiane Rocha</div>
+                  <div class="meta">Pediu horários da próxima semana</div>
+                </div>
+                <div class="right">
+                  <b>Consulta sugerida</b>
+                  <span>Quarta · Consultório B</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section">
+            <div class="sectionHeader">
+              <div>
+                <h2>O que a IA pode oferecer hoje</h2>
+                <div class="desc">Regras simples para evitar conflito entre agenda, local e atendimento.</div>
+              </div>
+            </div>
+            <div class="formCard">
+              <div class="field">
+                <label>Local do dia</label>
+                <input class="input" value="Consultório B - Rua das Flores, 120" />
+              </div>
+              <div class="field">
+                <label>Exceções</label>
+                <input class="input" placeholder="Ex: quarta à tarde indisponível, feriado, viagem..." value="Sexta 08:00 - 12:00 bloqueado" />
+              </div>
+              <div class="field">
+                <label>Regras da IA</label>
+                <div class="availabilityGrid">
+                  <span class="mini active"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Usar local certo</span>
+                  <span class="mini active"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Respeitar bloqueios</span>
+                  <span class="mini"><svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M12 3v18"/></svg>Oferecer online</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Mapeamento por dia</label>
+                <div class="matrix">
+                  <div class="matrixRow">
+                    <div class="dayName">Segunda</div>
+                    <div class="locWrap"><span class="locTag green">Clínica Centro</span><span class="locTag">08:00 - 18:00</span></div>
+                    <div class="time"><span class="mini">Editar</span></div>
+                  </div>
+                  <div class="matrixRow">
+                    <div class="dayName">Terça</div>
+                    <div class="locWrap"><span class="locTag">Online</span><span class="locTag green">Consultório B</span></div>
+                    <div class="time"><span class="mini">Editar</span></div>
+                  </div>
+                  <div class="matrixRow">
+                    <div class="dayName">Quarta</div>
+                    <div class="locWrap"><span class="locTag green">Consultório B</span></div>
+                    <div class="time"><span class="mini">Editar</span></div>
+                  </div>
+                  <div class="matrixRow">
+                    <div class="dayName">Quinta</div>
+                    <div class="locWrap"><span class="locTag">Online</span></div>
+                    <div class="time"><span class="mini danger">Bloqueado</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Frame System — Redesign V2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;background:#F5F6F4;color:#111827}
+button{cursor:pointer;font-family:'Inter',sans-serif;border:none;outline:none;background:none}
+input,textarea,select{font-family:'Inter',sans-serif;outline:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px}
+
+/* ── TOKENS ── */
+:root{
+  --page:#F5F6F4;
+  --surface:#FFFFFF;
+  --surface-2:#F9FAF8;
+  --border:rgba(0,0,0,.08);
+  --border-md:rgba(0,0,0,.13);
+  --t1:#0D0F14;
+  --t2:#4B5563;
+  --t3:#9CA3AF;
+  --brand:#2E7D32;
+  --brand-mid:#61D836;
+  --brand-light:#A8F13C;
+  --brand-pale:#F0FDF4;
+  --brand-bg:rgba(97,216,54,.10);
+  --brand-border:rgba(46,125,50,.22);
+  --red:#DC2626;
+  --red-bg:rgba(220,38,38,.08);
+  --amber:#B45309;
+  --amber-bg:rgba(180,83,9,.08);
+  --blue:#1D4ED8;
+  --blue-bg:rgba(29,78,216,.08);
+  --r:8px;
+  --r-lg:12px;
+  --r-xl:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+}
+
+/* ── SHELL ── */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:52px;flex-shrink:0;display:flex;flex-direction:column;background:#FFFFFF;border-right:1px solid var(--border);position:relative;z-index:50;transition:.2s}
+.sidebar:hover,.sidebar.expanded{width:220px}
+
+.sb-logo{height:52px;display:flex;align-items:center;padding:0 13px;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0;overflow:hidden}
+.sb-logo-mark{width:26px;height:26px;border-radius:7px;background:var(--brand);display:grid;place-items:center;flex-shrink:0}
+.sb-logo-mark svg{width:14px;height:14px;fill:#fff}
+.sb-logo-text{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;opacity:0;transition:.15s .05s}
+.sidebar:hover .sb-logo-text,.sidebar.expanded .sb-logo-text{opacity:1}
+
+.sb-nav{flex:1;overflow:hidden;padding:8px 6px;display:flex;flex-direction:column;gap:1px}
+.sb-divider{height:1px;background:var(--border);margin:6px 0;flex-shrink:0}
+.sb-group-label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:8px 8px 4px;white-space:nowrap;overflow:hidden;opacity:0;transition:.15s .05s;height:28px}
+.sidebar:hover .sb-group-label,.sidebar.expanded .sb-group-label{opacity:1}
+
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r);color:var(--t2);cursor:pointer;transition:.12s;position:relative;overflow:hidden;flex-shrink:0;text-decoration:none;white-space:nowrap}
+.sb-item:hover{background:var(--surface-2);color:var(--t1)}
+.sb-item.active{background:var(--brand-bg);color:var(--brand)}
+.sb-item.active .sb-icon{color:var(--brand)}
+.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:16px;background:var(--brand);border-radius:0 2px 2px 0}
+.sb-icon{width:16px;height:16px;flex-shrink:0;stroke-width:1.8;transition:.12s}
+.sb-label{font-size:12.5px;font-weight:500;opacity:0;transition:.15s .05s;flex:1}
+.sidebar:hover .sb-label,.sidebar.expanded .sb-label{opacity:1}
+.sb-badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px;background:var(--brand-bg);color:var(--brand);opacity:0;transition:.15s .05s}
+.sidebar:hover .sb-badge,.sidebar.expanded .sb-badge{opacity:1}
+
+.sb-footer{padding:8px 6px 10px;border-top:1px solid var(--border);flex-shrink:0;overflow:hidden}
+.sb-user{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:var(--r);cursor:pointer;transition:.12s}
+.sb-user:hover{background:var(--surface-2)}
+.sb-avatar{width:26px;height:26px;border-radius:99px;background:linear-gradient(135deg,#60A5FA,#A78BFA);display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.sb-user-info{opacity:0;transition:.15s .05s;min-width:0}
+.sidebar:hover .sb-user-info,.sidebar.expanded .sb-user-info{opacity:1}
+.sb-user-name{font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap}
+.sb-user-role{font-size:11px;color:var(--t3);white-space:nowrap}
+.sb-online{width:6px;height:6px;border-radius:99px;background:var(--brand-mid);flex-shrink:0;opacity:0;transition:.15s .05s}
+.sidebar:hover .sb-online,.sidebar.expanded .sb-online{opacity:1}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── TOPBAR ── */
+.topbar{height:52px;flex-shrink:0;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:#fff;gap:12px}
+.topbar-title{font-size:14px;font-weight:600;color:var(--t1);letter-spacing:-.015em;flex:1}
+.topbar-sub{font-size:12px;color:var(--t3);margin-left:8px;font-weight:400}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── PAGE ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;border-radius:var(--r);font-size:12.5px;font-weight:500;transition:.12s;white-space:nowrap}
+.btn svg{width:13px;height:13px;stroke-width:2;flex-shrink:0}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn-md{height:32px;padding:0 14px}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:#1B5E20}
+.btn-secondary{background:var(--surface);color:var(--t1);border:1px solid var(--border-md)}
+.btn-secondary:hover{background:var(--surface-2)}
+.btn-ghost{color:var(--t2)}
+.btn-ghost:hover{background:var(--surface-2);color:var(--t1)}
+.btn-outline{border:1px solid var(--border-md);color:var(--t1)}
+.btn-outline:hover{background:var(--surface-2)}
+.btn-danger{color:var(--red);border:1px solid rgba(220,38,38,.18)}
+.btn-danger:hover{background:var(--red-bg)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:11px;font-weight:500;white-space:nowrap;line-height:1.4}
+.badge svg{width:9px;height:9px}
+.badge-success{background:var(--brand-bg);color:var(--brand);border:1px solid var(--brand-border)}
+.badge-default{background:rgba(0,0,0,.05);color:var(--t2);border:1px solid var(--border)}
+.badge-warning{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(180,83,9,.18)}
+.badge-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.18)}
+.badge-info{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(29,78,216,.18)}
+.badge-ia{background:var(--brand-pale);color:var(--brand);border:1px solid var(--brand-border);display:flex;align-items:center;gap:4px}
+.badge-ia::before{content:'';width:5px;height:5px;border-radius:99px;background:var(--brand-mid);display:inline-block}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow)}
+.card-sm{padding:14px 16px}
+.card-title{font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-.01em}
+.card-sub{font-size:11.5px;color:var(--t3);margin-top:2px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+
+/* ── KPI STRIP ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.kpi{padding:16px 20px;border-right:1px solid var(--border);position:relative}
+.kpi:last-child{border-right:none}
+.kpi-val{font-size:24px;font-weight:700;color:var(--t1);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-val.accent{color:var(--brand)}
+.kpi-val.danger{color:var(--red)}
+.kpi-label{font-size:11px;color:var(--t3);margin-top:5px}
+.kpi-unit{font-size:14px;font-weight:600;color:var(--t2)}
+
+/* ── FORM ── */
+.field-label{font-size:11.5px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.input{background:var(--surface);border:1px solid var(--border-md);border-radius:var(--r);padding:0 11px;height:32px;font-size:13px;color:var(--t1);width:100%;transition:.12s;font-family:'Inter',sans-serif}
+.input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(46,125,50,.1)}
+.input::placeholder{color:var(--t3)}
+.input-sm{height:28px;font-size:12px}
+select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px}
+
+/* ── TOGGLE ── */
+.toggle{width:32px;height:17px;border-radius:99px;background:rgba(0,0,0,.15);border:none;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle.on{background:var(--brand)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:99px;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on::after{transform:translateX(15px)}
+
+/* ── TIME CHIP ── */
+.time-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--brand-pale);border:1px solid var(--brand-border);border-radius:5px;font-size:11.5px;font-weight:500;color:var(--brand);font-variant-numeric:tabular-nums}
+.time-chip-gray{background:var(--surface-2);border-color:var(--border);color:var(--t2)}
+
+/* ── TABLE ── */
+.table{width:100%;border-collapse:collapse}
+.table th{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:var(--surface-2)}
+
+/* ── MISC ── */
+.flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.gap-1{gap:4px}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}.flex-1{flex:1}.min-w-0{min-width:0}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mt-5{margin-top:20px}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+.text-t1{color:var(--t1)}.text-t2{color:var(--t2)}.text-t3{color:var(--t3)}.text-brand{color:var(--brand)}.text-red{color:var(--red)}
+.font-400{font-weight:400}.font-500{font-weight:500}.font-600{font-weight:600}.font-700{font-weight:700}
+.text-11{font-size:11px}.text-12{font-size:12px}.text-13{font-size:13px}.text-14{font-size:14px}.text-16{font-size:16px}.text-22{font-size:22px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.space-y-2>*+*{margin-top:8px}.space-y-3>*+*{margin-top:12px}.space-y-4>*+*{margin-top:16px}
+hr.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.w-full{width:100%}
+
+/* ── DISPONIBILIDADE SPECIFIC ── */
+.avail-grid{display:grid;grid-template-columns:1fr 264px;gap:16px}
+.day-row{display:grid;grid-template-columns:72px 1fr auto auto;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.day-row:last-child{border-bottom:none}
+.day-name{font-size:12.5px;font-weight:500;color:var(--t1)}
+.day-slots{display:flex;flex-wrap:wrap;gap:5px}
+
+/* CALENDAR */
+.cal-wrap{user-select:none}
+.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-nav-btn{width:26px;height:26px;border-radius:var(--r);border:1px solid var(--border-md);background:var(--surface);display:grid;place-items:center;cursor:pointer;transition:.12s;color:var(--t2)}
+.cal-nav-btn:hover{background:var(--surface-2);color:var(--t1)}
+.cal-nav-btn svg{width:12px;height:12px;stroke-width:2.5}
+.cal-month-label{font-size:13px;font-weight:600;color:var(--t1)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-size:10.5px;font-weight:600;color:var(--t3);padding:4px 0 8px;text-transform:uppercase;letter-spacing:.03em}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:var(--r);font-size:12.5px;font-weight:500;color:var(--t2);cursor:pointer;transition:.12s;position:relative}
+.cal-day:hover:not(.empty):not(.blocked):not(.partial){background:var(--surface-2);color:var(--t1)}
+.cal-day.other-month{color:var(--t3);opacity:.5}
+.cal-day.today{font-weight:700;color:var(--brand)}
+.cal-day.today::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:99px;background:var(--brand)}
+.cal-day.blocked{background:var(--red-bg);color:var(--red);font-weight:600}
+.cal-day.partial{background:var(--amber-bg);color:var(--amber);font-weight:600}
+.cal-day.selected{background:var(--brand);color:#fff;font-weight:600}
+.cal-day.empty{cursor:default}
+
+/* BLOCK PANEL */
+.block-panel{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-top:12px;animation:slideDown .15s ease-out}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.block-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.block-panel-title{font-size:12.5px;font-weight:600;color:var(--t1)}
+.block-panel-date{font-size:11.5px;color:var(--t3)}
+
+/* LOCAL CHIP */
+.loc-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--border-md);transition:.12s}
+.loc-chip:hover{border-color:var(--brand-border);background:var(--brand-pale)}
+.loc-chip.active{background:var(--brand-pale);border-color:var(--brand-border);color:var(--brand)}
+.loc-dot{width:6px;height:6px;border-radius:99px;flex-shrink:0}
+
+/* LOCAL CARD */
+.loc-card{display:flex;align-items:flex-start;gap:11px;padding:12px;border:1px solid var(--border);border-radius:var(--r-lg);transition:.12s;cursor:pointer}
+.loc-card:hover{border-color:var(--border-md);box-shadow:var(--shadow)}
+.loc-icon{width:36px;height:36px;border-radius:var(--r);display:grid;place-items:center;flex-shrink:0}
+.loc-icon svg{width:16px;height:16px}
+.loc-name{font-size:12.5px;font-weight:600;color:var(--t1)}
+.loc-addr{font-size:11.5px;color:var(--t3);margin-top:1px;line-height:1.4}
+.loc-price{font-size:13px;font-weight:600;color:var(--t1);margin-left:auto;white-space:nowrap}
+.loc-type{font-size:11px;font-weight:500;margin-top:2px;text-align:right}
+
+/* BLOCKED LIST */
+.blocked-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);transition:.12s}
+.blocked-item:hover{border-color:var(--border-md)}
+.blocked-date{font-size:12.5px;font-weight:600;color:var(--t1)}
+.blocked-motivo{font-size:11.5px;color:var(--t3);margin-top:1px}
+
+/* AVATAR */
+.avatar{border-radius:99px;display:grid;place-items:center;font-weight:700;flex-shrink:0}
+.av-sm{width:28px;height:28px;font-size:10px}
+.av-md{width:34px;height:34px;font-size:12px}
+.av-lg{width:44px;height:44px;font-size:15px}
+.av-purple{background:linear-gradient(135deg,#C4B5FD,#8B5CF6);color:#fff}
+.av-blue{background:linear-gradient(135deg,#93C5FD,#3B82F6);color:#fff}
+.av-green{background:linear-gradient(135deg,var(--brand-mid),var(--brand));color:#fff}
+.av-orange{background:linear-gradient(135deg,#FDE68A,#F59E0B);color:#fff}
+.av-pink{background:linear-gradient(135deg,#FBCFE8,#EC4899);color:#fff}
+
+/* INBOX */
+.inbox-shell{display:grid;grid-template-columns:280px 1fr 280px;height:calc(100vh - 52px);gap:0;margin:-24px}
+.thread-pane{border-right:1px solid var(--border);background:var(--surface);overflow-y:auto}
+.thread-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.12s;border-left:2px solid transparent}
+.thread-item:hover{background:var(--surface-2)}
+.thread-item.active{border-left-color:var(--brand);background:var(--brand-pale)}
+.t-name{font-size:13px;font-weight:500;color:var(--t1)}
+.t-last{font-size:12px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.t-meta{display:flex;align-items:center;gap:5px;margin-top:6px}
+.unread{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--brand);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;margin-left:auto}
+.chat-pane{display:flex;flex-direction:column;background:var(--page);overflow:hidden}
+.chat-hd{height:52px;padding:0 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);flex-shrink:0}
+.chat-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.msg-them{align-self:flex-start;max-width:65%}
+.msg-me{align-self:flex-end;max-width:65%}
+.bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg-them .bubble{background:#fff;color:var(--t1);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.msg-me .bubble{background:var(--brand);color:#fff;border-bottom-right-radius:4px}
+.ai-label{font-size:10.5px;color:var(--brand);margin-bottom:3px;display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.msg-time{font-size:10.5px;color:var(--t3);margin-top:3px}
+.composer{padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.composer-box{background:var(--surface-2);border:1px solid var(--border-md);border-radius:var(--r-lg);overflow:hidden}
+.composer-input{width:100%;background:none;border:none;padding:10px 14px;font-size:13px;color:var(--t1);resize:none;display:block;font-family:'Inter',sans-serif}
+.composer-input::placeholder{color:var(--t3)}
+.composer-foot{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--border)}
+.detail-pane{border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;padding:20px}
+
+/* AGENDA WEEK */
+.week-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow)}
+.week-days-header{display:grid;grid-template-columns:52px repeat(7,1fr);border-bottom:1px solid var(--border)}
+.wd{padding:10px 8px;text-align:center}
+.wd-name{font-size:10.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.04em}
+.wd-num{font-size:18px;font-weight:700;color:var(--t1);margin-top:2px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:99px}
+.wd-num.today{background:var(--brand);color:#fff}
+.week-body{display:grid;grid-template-columns:52px repeat(7,1fr);overflow-y:auto;max-height:440px}
+.time-col .tl{font-size:10.5px;color:var(--t3);height:52px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 8px 0 0;font-variant-numeric:tabular-nums}
+.hour-cell{border-left:1px solid var(--border);border-bottom:1px solid rgba(0,0,0,.04);min-height:52px;position:relative}
+.appt{position:absolute;left:4px;right:4px;border-radius:var(--r);padding:4px 8px;font-size:11.5px;cursor:pointer;transition:.12s;overflow:hidden}
+.appt:hover{filter:brightness(.96)}
+.appt-name{font-weight:600;line-height:1.3}
+.appt-time{font-size:10.5px;opacity:.75;margin-top:1px}
+.appt-g{background:#DCFCE7;color:#166534;border-left:2px solid var(--brand)}
+.appt-b{background:#DBEAFE;color:#1E40AF;border-left:2px solid var(--blue)}
+.appt-p{background:#EDE9FE;color:#6D28D9;border-left:2px solid #8B5CF6}
+.appt-a{background:#FEF3C7;color:#92400E;border-left:2px solid #F59E0B}
+
+/* PACIENTES TABLE */
+.pt-row{display:grid;grid-template-columns:1fr 1fr 100px 90px 60px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);transition:.12s;gap:8px}
+.pt-row:last-child{border-bottom:none}
+.pt-row:hover{background:var(--surface-2)}
+.pt-head{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 100px 90px 60px;gap:8px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">
+      <svg viewBox="0 0 14 14"><path d="M7 1L12.5 4.25V10.75L7 14L1.5 10.75V4.25L7 1Z"/></svg>
+    </div>
+    <span class="sb-logo-text">Frame System</span>
+  </div>
+
+  <nav class="sb-nav">
+    <a class="sb-item active" onclick="nav('dashboard',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span class="sb-label">Painel</span>
+    </a>
+    <a class="sb-item" onclick="nav('conversas',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="sb-label">Conversas</span>
+      <span class="sb-badge">12</span>
+    </a>
+    <a class="sb-item" onclick="nav('agenda',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <span class="sb-label">Agenda</span>
+    </a>
+    <a class="sb-item" onclick="nav('pacientes',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="sb-label">Pacientes</span>
+    </a>
+    <a class="sb-item" onclick="nav('automacoes',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span class="sb-label">Automações</span>
+    </a>
+
+    <div class="sb-divider"></div>
+    <div class="sb-group-label">Operação</div>
+
+    <a class="sb-item" onclick="nav('ia',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      <span class="sb-label">Assistente IA</span>
+    </a>
+    <a class="sb-item" onclick="nav('disponibilidade',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="sb-label">Disponibilidade</span>
+    </a>
+    <a class="sb-item" onclick="nav('integracoes',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span class="sb-label">Integrações</span>
+    </a>
+
+    <div class="sb-divider"></div>
+
+    <a class="sb-item" onclick="nav('configuracoes',this)">
+      <svg class="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="sb-label">Configurações</span>
+    </a>
+  </nav>
+
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="sb-avatar">DR</div>
+      <div class="sb-user-info flex-1 min-w-0">
+        <div class="sb-user-name truncate">Dra. Renata</div>
+        <div class="sb-user-role">Nutricionista</div>
+      </div>
+      <div class="sb-online"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-title" id="tb-title">Painel<span class="topbar-sub" id="tb-sub">Visão geral</span></div>
+    <div class="flex gap-2" id="tb-actions">
+      <span class="badge badge-ia">IA ativa</span>
+      <button class="btn btn-sm btn-secondary">Últimos 7 dias</button>
+      <button class="btn btn-sm btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo
+      </button>
+    </div>
+  </header>
+
+  <div class="content" id="content">
+
+<!-- ══ DASHBOARD ══ -->
+<div class="page active" id="page-dashboard">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px 28px;margin-bottom:20px;box-shadow:var(--shadow);position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(97,216,54,.08),transparent 70%);pointer-events:none"></div>
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-12 text-t3 flex items-center gap-2 mb-3">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Frame AI · Resumo do dia
+        </div>
+        <h2 style="font-size:20px;font-weight:700;letter-spacing:-.03em;line-height:1.3;color:var(--t1)">
+          Bom dia, Renata. Sua clínica cresceu
+          <span style="color:var(--brand)"> 17% esta semana</span>.
+        </h2>
+        <p class="text-12 text-t2 mt-2">3 pacientes aguardam follow-up · R$ 2.400 em consultas recuperáveis.</p>
+      </div>
+      <div class="flex gap-2" style="flex-shrink:0">
+        <button class="btn btn-md btn-secondary">Ver insights</button>
+        <button class="btn btn-md btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Follow-up
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-val">R$ 42k</div><div class="kpi-label">Receita MRR ↑ 12%</div></div>
+    <div class="kpi"><div class="kpi-val">84</div><div class="kpi-label">Novos pacientes ↑ 8%</div></div>
+    <div class="kpi"><div class="kpi-val">94%</div><div class="kpi-label">Taxa de resposta</div></div>
+    <div class="kpi"><div class="kpi-val">2.1%</div><div class="kpi-label">Churn · meta &lt;3%</div></div>
+    <div class="kpi"><div class="kpi-val accent">3</div><div class="kpi-label">Follow-ups pendentes</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Insights inteligentes</div><div class="card-sub">Recomendações da Frame AI</div></div><button class="btn btn-sm btn-ghost">Ver todos</button></div>
+      <div class="space-y-2">
+        <div class="flex items-start gap-3" style="padding:10px;background:var(--surface-2);border-radius:var(--r-lg);border:1px solid var(--border)">
+          <div style="width:28px;height:28px;border-radius:var(--r);background:var(--amber-bg);display:grid;place-items:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="flex-1"><div class="text-13 font-500 text-t1">3 pacientes sem resposta há 48h</div><div class="text-11 text-t3 mt-1">Marina S., Felipe K. e mais 1 — risco de abandono.</div></div>
+          <span class="badge badge-warning">Urgente</span>
+        </div>
+        <div class="flex items-start gap-3" style="padding:10px;background:var(--surface-2);border-radius:var(--r-lg);border:1px solid var(--border)">
+          <div style="width:28px;height:28px;border-radius:var(--r);background:var(--brand-bg);display:grid;place-items:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+          <div class="flex-1"><div class="text-13 font-500 text-t1">R$ 2.400 em consultas recuperáveis</div><div class="text-11 text-t3 mt-1">5 leads em proposta sem retorno há 5+ dias.</div></div>
+          <span class="badge badge-success">Agir</span>
+        </div>
+        <div class="flex items-start gap-3" style="padding:10px;background:var(--surface-2);border-radius:var(--r-lg);border:1px solid var(--border)">
+          <div style="width:28px;height:28px;border-radius:var(--r);background:var(--blue-bg);display:grid;place-items:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="flex-1"><div class="text-13 font-500 text-t1">Taxa de resposta +17% esta semana</div><div class="text-11 text-t3 mt-1">"Boas-vindas v3" superou a automação anterior.</div></div>
+          <span class="badge badge-info">Melhoria</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Próximas consultas</div></div>
+      <div class="space-y-3">
+        <div class="flex items-center gap-3"><div class="avatar av-md av-purple">MS</div><div class="flex-1 min-w-0"><div class="text-13 font-500 text-t1 truncate">Marina Silva</div><div class="text-11 text-t3">Acompanhamento</div></div><div class="text-12 text-t2 font-500">09:30</div></div>
+        <div class="flex items-center gap-3"><div class="avatar av-md av-blue">FK</div><div class="flex-1 min-w-0"><div class="text-13 font-500 text-t1 truncate">Felipe Kruger</div><div class="text-11 text-t3">Avaliação inicial</div></div><div class="text-12 text-t2 font-500">10:00</div></div>
+        <div class="flex items-center gap-3"><div class="avatar av-md av-green">AP</div><div class="flex-1 min-w-0"><div class="text-13 font-500 text-t1 truncate">Ana Pereira</div><div class="text-11 text-t3">Retorno</div></div><div class="text-12 text-t2 font-500">11:15</div></div>
+        <div class="flex items-center gap-3"><div class="avatar av-md av-orange">CM</div><div class="flex-1 min-w-0"><div class="text-13 font-500 text-t1 truncate">Caio Mendes</div><div class="text-11 text-t3">Avaliação</div></div><div class="text-12 text-t2 font-500">14:00</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONVERSAS ══ -->
+<div class="page" id="page-conversas">
+  <div class="inbox-shell">
+    <div class="thread-pane">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border)">
+        <div class="flex items-center gap-2" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:0 10px;height:30px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--t3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Buscar…" style="background:none;border:none;font-size:12.5px;color:var(--t1);flex:1;font-family:'Inter',sans-serif"/>
+        </div>
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-sm btn-secondary">Todas</button>
+          <button class="btn btn-sm btn-ghost">Não lidas</button>
+          <button class="btn btn-sm btn-ghost">IA ativa</button>
+        </div>
+      </div>
+      <div class="thread-item active"><div class="flex items-center gap-2"><div class="avatar av-sm av-purple">MS</div><div class="flex-1 min-w-0"><div class="t-name">Marina Silva</div></div><div class="text-11 text-t3">agora</div></div><div class="t-last mt-1">Perfeito, confirmo às 9h então 🙏</div><div class="t-meta"><span class="badge badge-default">WhatsApp</span><span class="badge badge-ia" style="font-size:10.5px">IA</span><span class="unread">2</span></div></div>
+      <div class="thread-item"><div class="flex items-center gap-2"><div class="avatar av-sm av-blue">FK</div><div class="flex-1 min-w-0"><div class="t-name">Felipe Kruger</div></div><div class="text-11 text-t3">5min</div></div><div class="t-last mt-1">Pode me mandar o plano novo?</div><div class="t-meta"><span class="badge badge-default">WhatsApp</span><span class="badge badge-ia" style="font-size:10.5px">IA</span><span class="unread">1</span></div></div>
+      <div class="thread-item"><div class="flex items-center gap-2"><div class="avatar av-sm av-green">AP</div><div class="flex-1 min-w-0"><div class="t-name">Ana Pereira</div></div><div class="text-11 text-t3">1h</div></div><div class="t-last mt-1">Obrigada, doutora!</div><div class="t-meta"><span class="badge badge-default">Instagram</span></div></div>
+      <div class="thread-item"><div class="flex items-center gap-2"><div class="avatar av-sm av-orange">CM</div><div class="flex-1 min-w-0"><div class="t-name">Caio Mendes</div></div><div class="text-11 text-t3">2h</div></div><div class="t-last mt-1">Quero agendar uma avaliação</div><div class="t-meta"><span class="badge badge-default">WhatsApp</span></div></div>
+      <div class="thread-item"><div class="flex items-center gap-2"><div class="avatar av-sm av-pink">JC</div><div class="flex-1 min-w-0"><div class="t-name">Júlia Castro</div></div><div class="text-11 text-t3">ontem</div></div><div class="t-last mt-1">Vou pensar e te aviso</div><div class="t-meta"><span class="badge badge-default">WhatsApp</span></div></div>
+    </div>
+    <div class="chat-pane">
+      <div class="chat-hd"><div class="avatar av-md av-purple">MS</div><div class="flex-1"><div class="text-13 font-600 text-t1">Marina Silva</div><div class="text-11 text-t3 flex items-center gap-1" style="margin-top:1px"><span style="width:5px;height:5px;border-radius:99px;background:var(--brand-mid);display:inline-block"></span>Online · WhatsApp</div></div><button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.9 2 2 0 0 1 3.6 2.68h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.1a16 16 0 0 0 6 6l.61-.61a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17.92z"/></svg></button><button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button></div>
+      <div class="chat-msgs">
+        <div class="msg-them"><div class="bubble">Oi Dra. Renata! Tudo bem?</div><div class="msg-time">09:12</div></div>
+        <div class="msg-me"><div class="ai-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Resposta da IA</div><div class="bubble">Olá, Marina! Tudo ótimo. Sua consulta é amanhã às 9h — posso confirmar?</div><div class="msg-time" style="text-align:right">09:12</div></div>
+        <div class="msg-them"><div class="bubble">Sim! Só estava em dúvida sobre o jejum.</div><div class="msg-time">09:14</div></div>
+        <div class="msg-me"><div class="ai-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Resposta da IA</div><div class="bubble">Pra essa consulta não precisa de jejum. Pode tomar café normalmente 😊</div><div class="msg-time" style="text-align:right">09:14</div></div>
+        <div class="msg-them"><div class="bubble">Perfeito, confirmo às 9h então 🙏</div><div class="msg-time">09:30</div></div>
+      </div>
+      <div class="composer"><div class="composer-box"><textarea class="composer-input" rows="2" placeholder="Escreva uma mensagem… ⌘J para sugestões da IA"></textarea><div class="composer-foot"><button class="btn btn-sm btn-ghost text-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Sugerir</button><button class="btn btn-sm btn-primary" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Enviar</button></div></div></div>
+    </div>
+    <div class="detail-pane">
+      <div class="flex items-center gap-3 mb-4"><div class="avatar av-lg av-purple">MS</div><div><div class="text-14 font-600 text-t1">Marina Silva</div><div class="text-11 text-t3">Paciente desde Mar 2024</div></div></div>
+      <div class="grid-2 mb-4"><button class="btn btn-sm btn-secondary w-full">Ver perfil</button><button class="btn btn-sm btn-outline w-full">Agendar</button></div>
+      <hr class="divider"/>
+      <div class="text-11 font-600 text-t3 mb-3 mt-3" style="text-transform:uppercase;letter-spacing:.06em">Detalhes</div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-12"><span class="text-t3">Estágio</span><span class="badge badge-success">Ativo</span></div>
+        <div class="flex justify-between text-12"><span class="text-t3">Objetivo</span><span class="font-500 text-t1">Emagrecimento</span></div>
+        <div class="flex justify-between text-12"><span class="text-t3">Plano</span><span class="font-500 text-t1">Premium</span></div>
+        <div class="flex justify-between text-12"><span class="text-t3">LTV</span><span class="font-500 text-t1">R$ 3.200</span></div>
+        <div class="flex justify-between text-12"><span class="text-t3">Próximo retorno</span><span class="font-500 text-t1">18/06 · 09:30</span></div>
+      </div>
+      <hr class="divider mt-3"/>
+      <div class="text-11 font-600 text-t3 mt-3 mb-3" style="text-transform:uppercase;letter-spacing:.06em">Histórico</div>
+      <div style="position:relative;padding-left:14px">
+        <div style="position:absolute;left:3px;top:4px;bottom:0;width:1px;background:var(--border)"></div>
+        <div class="mb-3" style="position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--brand)"></div><div class="text-12 text-t1">Confirmou consulta amanhã</div><div class="text-11 text-t3">agora</div></div>
+        <div class="mb-3" style="position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--border-md)"></div><div class="text-12 text-t1">Pagamento mensal</div><div class="text-11 text-t3">3 dias atrás</div></div>
+        <div style="position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--border-md)"></div><div class="text-12 text-t1">Plano alimentar enviado</div><div class="text-11 text-t3">1 semana atrás</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AGENDA ══ -->
+<div class="page" id="page-agenda">
+  <div class="week-wrap mb-4">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)">
+      <div><div class="text-13 font-600 text-t1">Semana de 15 a 21 de junho</div><div class="text-11 text-t3 mt-1">3 consultas hoje · 14 na semana</div></div>
+      <div class="flex gap-2"><button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg></button><button class="btn btn-sm btn-secondary">Hoje</button><button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg></button><button class="btn btn-sm btn-primary">+ Consulta</button><button class="btn btn-sm btn-secondary">Bloquear horário</button></div>
+    </div>
+    <div class="week-days-header">
+      <div></div>
+      <div class="wd"><div class="wd-name">Seg</div><div class="flex" style="justify-content:center"><div class="wd-num">15</div></div></div>
+      <div class="wd"><div class="wd-name">Ter</div><div class="flex" style="justify-content:center"><div class="wd-num">16</div></div></div>
+      <div class="wd"><div class="wd-name">Qua</div><div class="flex" style="justify-content:center"><div class="wd-num today">17</div></div></div>
+      <div class="wd"><div class="wd-name">Qui</div><div class="flex" style="justify-content:center"><div class="wd-num">18</div></div></div>
+      <div class="wd"><div class="wd-name">Sex</div><div class="flex" style="justify-content:center"><div class="wd-num">19</div></div></div>
+      <div class="wd"><div class="wd-name">Sáb</div><div class="flex" style="justify-content:center"><div class="wd-num">20</div></div></div>
+      <div class="wd"><div class="wd-name">Dom</div><div class="flex" style="justify-content:center"><div class="wd-num">21</div></div></div>
+    </div>
+    <div class="week-body">
+      <div class="time-col"><div class="tl">08:00</div><div class="tl">09:00</div><div class="tl">10:00</div><div class="tl">11:00</div><div class="tl">12:00</div><div class="tl">13:00</div><div class="tl">14:00</div><div class="tl">15:00</div></div>
+      <div style="position:relative"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="appt appt-p" style="position:absolute;top:52px;left:4px;right:4px;height:44px"><div class="appt-name">Marina Silva</div><div class="appt-time">09:00–09:50</div></div><div class="appt appt-b" style="position:absolute;top:156px;left:4px;right:4px;height:44px"><div class="appt-name">Felipe K.</div><div class="appt-time">11:00–11:50</div></div></div>
+      <div style="position:relative"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="appt appt-g" style="position:absolute;top:104px;left:4px;right:4px;height:44px"><div class="appt-name">Ana Pereira</div><div class="appt-time">10:00–10:50</div></div></div>
+      <div style="position:relative;background:rgba(97,216,54,.025)"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="appt appt-g" style="position:absolute;top:54px;left:4px;right:4px;height:44px"><div class="appt-name">Marina Silva</div><div class="appt-time">09:30–10:20</div></div><div class="appt appt-b" style="position:absolute;top:104px;left:4px;right:4px;height:44px"><div class="appt-name">Felipe Kruger</div><div class="appt-time">10:00–10:50</div></div><div class="appt appt-p" style="position:absolute;top:160px;left:4px;right:4px;height:44px"><div class="appt-name">Ana Pereira</div><div class="appt-time">11:15–12:05</div></div><div class="appt appt-a" style="position:absolute;top:314px;left:4px;right:4px;height:44px"><div class="appt-name">Caio Mendes</div><div class="appt-time">14:00–14:50</div></div></div>
+      <div style="position:relative"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="appt appt-a" style="position:absolute;top:210px;left:4px;right:4px;height:44px"><div class="appt-name">Caio Mendes</div><div class="appt-time">12:00–12:50</div></div></div>
+      <div style="position:relative"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="appt appt-b" style="position:absolute;top:52px;left:4px;right:4px;height:44px"><div class="appt-name">Júlia Castro</div><div class="appt-time">09:00–09:50</div></div></div>
+      <div style="position:relative"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div></div>
+      <div style="position:relative;background:rgba(0,0,0,.015)"><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div><div class="hour-cell"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PACIENTES ══ -->
+<div class="page" id="page-pacientes">
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Todos os pacientes</div><div class="card-sub">84 ativos · 12 leads</div></div>
+      <div class="flex gap-2"><div class="flex items-center gap-2" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:0 10px;height:30px;width:200px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--t3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input placeholder="Buscar paciente…" style="background:none;border:none;font-size:12.5px;color:var(--t1);flex:1;font-family:'Inter',sans-serif"/></div><button class="btn btn-sm btn-primary">+ Novo paciente</button></div>
+    </div>
+    <div class="pt-head"><span>Nome</span><span>Objetivo</span><span>LTV</span><span>Status</span><span></span></div>
+    <div id="pat-rows"></div>
+  </div>
+</div>
+
+<!-- ══ AUTOMAÇÕES ══ -->
+<div class="page" id="page-automacoes">
+  <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+    <div class="kpi"><div class="kpi-val">6</div><div class="kpi-label">Fluxos ativos</div></div>
+    <div class="kpi"><div class="kpi-val">248</div><div class="kpi-label">Execuções (7 dias)</div></div>
+    <div class="kpi"><div class="kpi-val">34%</div><div class="kpi-label">Conversão média ↑ 8%</div></div>
+    <div class="kpi"><div class="kpi-val">18h</div><div class="kpi-label">Tempo economizado</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Fluxos de automação</div><div class="flex gap-1"><button class="btn btn-sm btn-secondary">Todos</button><button class="btn btn-sm btn-ghost">Ativos</button><button class="btn btn-sm btn-ghost">Pausados</button><button class="btn btn-sm btn-primary" style="margin-left:8px">+ Novo fluxo</button></div></div>
+    <table class="table w-full">
+      <thead><tr><th>Fluxo</th><th>Gatilho</th><th style="text-align:right">Execuções</th><th style="text-align:right">Conversão</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><div class="text-13 font-500 text-t1">Boas-vindas automático</div><div class="text-11 text-t3">WhatsApp · novo lead</div></td><td><span class="text-12 text-t2">Ao entrar lead</span></td><td class="text-right text-13 font-500">84</td><td class="text-right text-13 font-500 text-brand">48%</td><td><span class="badge badge-success">Ativo</span></td></tr>
+        <tr><td><div class="text-13 font-500 text-t1">Follow-up pós-consulta</div><div class="text-11 text-t3">E-mail + WhatsApp</div></td><td><span class="text-12 text-t2">24h após consulta</span></td><td class="text-right text-13 font-500">62</td><td class="text-right text-13 font-500 text-brand">31%</td><td><span class="badge badge-success">Ativo</span></td></tr>
+        <tr><td><div class="text-13 font-500 text-t1">Lembrete de consulta</div><div class="text-11 text-t3">WhatsApp</div></td><td><span class="text-12 text-t2">2h antes da consulta</span></td><td class="text-right text-13 font-500">102</td><td class="text-right text-13 font-500 text-t3">—</td><td><span class="badge badge-success">Ativo</span></td></tr>
+        <tr><td><div class="text-13 font-500 text-t1">Reengajamento inativo</div><div class="text-11 text-t3">WhatsApp</div></td><td><span class="text-12 text-t2">14 dias sem resposta</span></td><td class="text-right text-13 font-500">0</td><td class="text-right text-13 font-500 text-t3">—</td><td><span class="badge badge-default">Pausado</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ IA ══ -->
+<div class="page" id="page-ia">
+  <div class="grid-2">
+    <div class="card"><div class="card-head"><div><div class="card-title">Perfil da assistente</div><div class="card-sub">Como a IA se apresenta</div></div></div><div class="space-y-3"><div><div class="field-label">Nome</div><input class="input" value="Assistente Frame"/></div><div><div class="field-label">Tom de voz</div><select class="input"><option>Profissional e acolhedor</option><option>Formal</option><option>Casual</option></select></div><div><div class="field-label">Saudação inicial</div><textarea class="input" style="height:80px;padding-top:8px;resize:none">Olá! Sou a assistente virtual da Dra. Renata. Como posso te ajudar hoje?</textarea></div><button class="btn btn-md btn-primary mt-2">Salvar</button></div></div>
+    <div class="card"><div class="card-head"><div><div class="card-title">Base de conhecimento</div><div class="card-sub">O que a IA sabe sobre você</div></div></div><div style="padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:12px"><div class="text-12 text-t3">manual.pdf · 10 jun · 12 páginas</div></div><button class="btn btn-sm btn-outline w-full mb-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Enviar PDF</button><button class="btn btn-sm btn-ghost w-full"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Entrevista guiada</button></div>
+  </div>
+</div>
+
+<!-- ══ DISPONIBILIDADE ══ -->
+<div class="page" id="page-disponibilidade">
+
+  <!-- KPI strip -->
+  <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+    <div class="kpi"><div class="kpi-val">6</div><div class="kpi-label">Dias ativos</div></div>
+    <div class="kpi"><div class="kpi-val">42<span class="kpi-unit">h</span></div><div class="kpi-label">Disponíveis/semana</div></div>
+    <div class="kpi"><div class="kpi-val">50<span class="kpi-unit">min</span></div><div class="kpi-label">Por consulta</div></div>
+    <div class="kpi"><div class="kpi-val">3</div><div class="kpi-label">Locais cadastrados</div></div>
+    <div class="kpi"><div class="kpi-val danger" id="kpi-bloqueios">2</div><div class="kpi-label">Bloqueios ativos</div></div>
+  </div>
+
+  <div class="avail-grid">
+    <!-- LEFT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- Horário semanal -->
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Horário semanal</div><div class="card-sub">A IA oferece slots dentro dessas janelas</div></div>
+          <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
+        </div>
+        <div id="day-rows"></div>
+      </div>
+
+      <!-- Calendário de bloqueios -->
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Bloquear datas</div><div class="card-sub">Dias inteiros sem atendimento</div></div>
+          <div id="blocked-count-badge"></div>
+        </div>
+        <div class="cal-wrap" id="cal"></div>
+        <div id="block-form"></div>
+
+        <div id="blocked-list-section" class="mt-4"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- Parâmetros -->
+      <div class="card card-sm">
+        <div class="card-head" style="margin-bottom:14px"><div class="card-title">Parâmetros</div><div class="card-sub">Regras de agendamento</div></div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-12"><span class="text-t2">Duração padrão</span><span class="font-600 text-t1">50 min</span></div>
+          <div class="flex justify-between text-12"><span class="text-t2">Buffer</span><span class="font-600 text-t1">10 min</span></div>
+          <div class="flex justify-between text-12"><span class="text-t2">Antecedência min.</span><span class="font-600 text-t1">3 h</span></div>
+          <div class="flex justify-between text-12"><span class="text-t2">Limite por dia</span><span class="font-600 text-t1">12</span></div>
+        </div>
+        <button class="btn btn-sm btn-ghost mt-3 text-12">Editar parâmetros</button>
+      </div>
+
+      <!-- Local por dia -->
+      <div class="card card-sm">
+        <div class="card-head" style="margin-bottom:14px">
+          <div><div class="card-title">Local por dia</div><div class="card-sub">Onde você atende cada dia</div></div>
+        </div>
+        <div id="local-por-dia"></div>
+      </div>
+
+      <!-- Locais de atendimento -->
+      <div class="card card-sm">
+        <div class="card-head" style="margin-bottom:14px">
+          <div><div class="card-title">Locais de atendimento</div><div class="card-sub">Onde a IA pode agendar consultas</div></div>
+          <button class="btn btn-sm btn-primary" onclick="addLocation()">+ Novo</button>
+        </div>
+        <div id="locations-list" class="space-y-2"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ INTEGRAÇÕES ══ -->
+<div class="page" id="page-integracoes">
+  <div class="grid-2">
+    <div class="card flex items-center gap-4"><div style="width:42px;height:42px;border-radius:var(--r-lg);background:#25D366;display:grid;place-items:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></div><div class="flex-1"><div class="text-13 font-600 text-t1">WhatsApp</div><div class="text-11 text-t3 mt-1">Evolution API · conectado</div></div><span class="badge badge-success">Conectado</span></div>
+    <div class="card flex items-center gap-4"><div style="width:42px;height:42px;border-radius:var(--r-lg);background:#4285F4;display:grid;place-items:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19 4H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 2v2H5V6h14zM5 20V10h14v10H5z"/></svg></div><div class="flex-1"><div class="text-13 font-600 text-t1">Google Calendar</div><div class="text-11 text-t3 mt-1">Sincronização bidirecional</div></div><span class="badge badge-warning">Configurar</span></div>
+    <div class="card flex items-center gap-4" style="opacity:.55"><div style="width:42px;height:42px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="flex-1"><div class="text-13 font-600 text-t1">n8n Automações</div><div class="text-11 text-t3 mt-1">Em breve</div></div><span class="badge badge-default">Em breve</span></div>
+    <div class="card flex items-center gap-4" style="opacity:.55"><div style="width:42px;height:42px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="flex-1"><div class="text-13 font-600 text-t1">Pagamentos</div><div class="text-11 text-t3 mt-1">Stripe · Mercado Pago</div></div><span class="badge badge-default">Em breve</span></div>
+  </div>
+</div>
+
+<!-- ══ CONFIGURAÇÕES ══ -->
+<div class="page" id="page-configuracoes">
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px">
+    <button class="btn btn-ghost" style="border-bottom:2px solid var(--brand);border-radius:0;padding:8px 14px;color:var(--t1);font-weight:500" onclick="cfgTab(this)">Perfil</button>
+    <button class="btn btn-ghost" style="border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;color:var(--t2)" onclick="cfgTab(this)">Consultório</button>
+    <button class="btn btn-ghost" style="border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;color:var(--t2)" onclick="cfgTab(this)">Segurança</button>
+    <button class="btn btn-ghost" style="border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;color:var(--t2)" onclick="cfgTab(this)">Notificações</button>
+  </div>
+  <div style="max-width:520px">
+    <div class="card">
+      <div class="flex items-center gap-4 mb-5"><div class="avatar av-lg" style="background:linear-gradient(135deg,#93C5FD,#8B5CF6);color:#fff;width:52px;height:52px;font-size:16px">DR</div><div><button class="btn btn-sm btn-secondary">Trocar foto</button><div class="text-11 text-t3 mt-1">JPG ou PNG, máx. 2MB</div></div></div>
+      <div class="space-y-3">
+        <div class="grid-2"><div><div class="field-label">Nome</div><input class="input" value="Renata Oliveira"/></div><div><div class="field-label">CRN</div><input class="input" value="CRN-3 12345"/></div></div>
+        <div><div class="field-label">E-mail</div><input class="input" value="renata@nutriplus.com.br"/></div>
+        <div><div class="field-label">WhatsApp profissional</div><input class="input" value="+55 11 99999-9999"/></div>
+        <div><div class="field-label">Bio curta</div><textarea class="input" style="height:70px;padding-top:8px;resize:none">Nutricionista especialista em nutrição esportiva e emagrecimento saudável.</textarea></div>
+        <button class="btn btn-md btn-primary mt-2">Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ── NAV ──
+const pagesMeta={
+  dashboard:{title:'Painel',sub:'Quinta-feira, 17 de junho de 2026'},
+  conversas:{title:'Conversas',sub:'12 não lidas · 4 conversas ativas'},
+  agenda:{title:'Agenda',sub:'Semana de 15 a 21 de junho'},
+  pacientes:{title:'Pacientes',sub:'84 ativos · 12 leads'},
+  automacoes:{title:'Automações',sub:'6 fluxos · última execução há 3min'},
+  ia:{title:'Assistente IA',sub:'Treinamento e configuração'},
+  disponibilidade:{title:'Disponibilidade',sub:'Horários, bloqueios e locais de atendimento'},
+  integracoes:{title:'Integrações',sub:'Conexões externas'},
+  configuracoes:{title:'Configurações',sub:'Conta e preferências'},
+};
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const m=pagesMeta[id]||{};
+  document.getElementById('tb-title').innerHTML=m.title+`<span class="topbar-sub" id="tb-sub"> ${m.sub||''}</span>`;
+  const c=document.getElementById('content');
+  if(id==='conversas'){c.style.padding='0';c.style.overflow='hidden';}
+  else{c.style.padding='24px';c.style.overflow='auto';}
+  if(id==='disponibilidade') initDisp();
+  if(id==='pacientes') initPat();
+}
+
+// ── PATIENTS ──
+const PATIENTS=[
+  {n:'Marina Silva',av:'av-purple',i:'MS',obj:'Emagrecimento',ltv:'R$ 3.200',st:'Ativo',sv:'success'},
+  {n:'Felipe Kruger',av:'av-blue',i:'FK',obj:'Hipertrofia',ltv:'R$ 1.600',st:'Ativo',sv:'success'},
+  {n:'Ana Pereira',av:'av-green',i:'AP',obj:'Saúde geral',ltv:'R$ 2.400',st:'Ativo',sv:'success'},
+  {n:'Caio Mendes',av:'av-orange',i:'CM',obj:'Emagrecimento',ltv:'R$ 960',st:'Lead',sv:'warning'},
+  {n:'Júlia Castro',av:'av-pink',i:'JC',obj:'Vegetarianismo',ltv:'R$ 640',st:'Inativo',sv:'default'},
+  {n:'Rafael Lima',av:'av-blue',i:'RL',obj:'Ganho de massa',ltv:'R$ 1.920',st:'Ativo',sv:'success'},
+];
+function initPat(){
+  const el=document.getElementById('pat-rows');
+  if(!el||el.dataset.init)return;
+  el.dataset.init='1';
+  el.innerHTML=PATIENTS.map(p=>`<div class="pt-row"><div class="flex items-center gap-2"><div class="avatar av-sm ${p.av}">${p.i}</div><div class="text-13 font-500 text-t1">${p.n}</div></div><div class="text-12 text-t2">${p.obj}</div><div class="text-12 font-500 text-t1">${p.ltv}</div><div><span class="badge badge-${p.sv}">${p.st}</span></div><div style="text-align:right"><button class="btn btn-sm btn-ghost">Ver</button></div></div>`).join('');
+}
+
+// ── DISPONIBILIDADE DATA ──
+const DAYS=[
+  {d:'Segunda',slots:['08:00–12:00','14:00–19:00'],on:true,locId:1},
+  {d:'Terça',slots:['08:00–12:00','14:00–19:00'],on:true,locId:1},
+  {d:'Quarta',slots:['14:00–20:00'],on:true,locId:2},
+  {d:'Quinta',slots:['08:00–12:00','14:00–19:00'],on:true,locId:1},
+  {d:'Sexta',slots:['08:00–14:00'],on:true,locId:2},
+  {d:'Sábado',slots:['09:00–12:00'],on:true,locId:1},
+  {d:'Domingo',slots:[],on:false,locId:null},
+];
+let LOCS=[
+  {id:1,name:'Consultório Centro',addr:'Av. Paulista, 1578 — Conj. 142, São Paulo',color:'#2E7D32',icon:'presencial',price:'R$ 280',type:'Presencial'},
+  {id:2,name:'Online — Google Meet',addr:'meet.google.com/abc-defg · link fixo',color:'#1D4ED8',icon:'online',price:'R$ 220',type:'Online'},
+];
+let BLOCKS={
+  '2026-06-24':{motivo:'Congresso SBAN',tipo:'full',locId:null},
+  '2026-07-12':{motivo:'Feriado',tipo:'full',locId:null},
+};
+let calY=2026,calM=5,selDate=null; // M=5 → junho (0-indexed)
+
+function initDisp(){
+  renderDayRows();
+  renderLocalPorDia();
+  renderLocations();
+  renderCal();
+  updateKpi();
+}
+
+function renderDayRows(){
+  const el=document.getElementById('day-rows');
+  if(!el)return;
+  el.innerHTML=DAYS.map(d=>`
+    <div class="day-row">
+      <div class="day-name">${d.d}</div>
+      <div class="day-slots">
+        ${d.slots.length===0?'<span class="text-11 text-t3">sem atendimento</span>':d.slots.map(s=>`<span class="time-chip">${s}</span>`).join('')}
+      </div>
+      <span class="badge badge-${d.on?'success':'default'}" style="font-size:11px">${d.on?'Ativo':'Folga'}</span>
+    </div>`).join('');
+}
+
+function renderLocalPorDia(){
+  const el=document.getElementById('local-por-dia');
+  if(!el)return;
+  el.innerHTML=DAYS.map(d=>{
+    const loc=d.locId?LOCS.find(l=>l.id===d.locId):null;
+    if(!d.on) return `<div class="flex items-center justify-between text-12 py-2 border-b border-gray-100" style="border-bottom:1px solid var(--border)"><span class="font-500 text-t2">${d.d}</span><span class="text-t3">—</span></div>`;
+    const chipColor=loc?loc.color:'#9CA3AF';
+    const chipLabel=loc?loc.name:'Não definido';
+    return `<div class="flex items-center justify-between py-2" style="border-bottom:1px solid var(--border)">
+      <span class="font-500 text-12 text-t2">${d.d}</span>
+      <span class="loc-chip" style="color:${chipColor};border-color:${chipColor}20;background:${chipColor}10">
+        <span class="loc-dot" style="background:${chipColor}"></span>${chipLabel}
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function renderLocations(){
+  const el=document.getElementById('locations-list');
+  if(!el)return;
+  el.innerHTML=LOCS.map(l=>`
+    <div class="loc-card">
+      <div class="loc-icon" style="background:${l.color}15;border:1px solid ${l.color}25">
+        ${l.icon==='online'
+          ?`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${l.color}" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`
+          :`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${l.color}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="loc-name">${l.name}</div>
+        <div class="loc-addr">${l.addr}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="loc-price">${l.price}</div>
+        <div class="loc-type" style="color:${l.color}">${l.type}</div>
+      </div>
+    </div>`).join('');
+  // add button
+  el.innerHTML+=`<button class="btn btn-sm btn-outline w-full mt-2" onclick="addLocation()" style="justify-content:center">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Adicionar local
+  </button>`;
+}
+
+function renderCal(){
+  const el=document.getElementById('cal');
+  if(!el)return;
+  const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DOW=['D','S','T','Q','Q','S','S'];
+  const first=new Date(calY,calM,1);
+  const lastDay=new Date(calY,calM+1,0).getDate();
+  const today=new Date();
+  let html=`<div class="cal-nav-row">
+    <button class="cal-nav-btn" onclick="calNav(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="cal-month-label">${MONTHS[calM]} ${calY}</div>
+    <button class="cal-nav-btn" onclick="calNav(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg></button>
+  </div>
+  <div class="cal-grid">
+    ${DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('')}`;
+  const startDow=first.getDay();
+  for(let i=0;i<startDow;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=lastDay;d++){
+    const ds=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const bl=BLOCKS[ds];
+    const isToday=today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
+    const isSel=selDate===ds;
+    let cls='cal-day';
+    if(isToday&&!bl&&!isSel) cls+=' today';
+    if(bl) cls+=' '+(bl.tipo==='full'?'blocked':'partial');
+    if(isSel) cls+=' selected';
+    html+=`<div class="${cls}" onclick="calClick('${ds}')">${d}</div>`;
+  }
+  html+=`</div>`;
+  el.innerHTML=html;
+  renderBlockForm();
+  renderBlockedList();
+  updateKpi();
+}
+
+function calNav(d){
+  calM+=d;
+  if(calM<0){calM=11;calY--;}
+  if(calM>11){calM=0;calY++;}
+  selDate=null;
+  renderCal();
+}
+
+function calClick(ds){
+  selDate=selDate===ds?null:ds;
+  renderCal();
+}
+
+function renderBlockForm(){
+  const el=document.getElementById('block-form');
+  if(!el)return;
+  if(!selDate){el.innerHTML='';return;}
+  const bl=BLOCKS[selDate]||{};
+  const d=new Date(selDate+'T12:00:00');
+  const label=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const isFull=bl.tipo!=='partial';
+  const locOpts=`<option value="">— Não especificado —</option>`+LOCS.map(l=>`<option value="${l.id}" ${bl.locId===l.id?'selected':''}>${l.name}</option>`).join('');
+  el.innerHTML=`<div class="block-panel">
+    <div class="block-panel-header">
+      <div class="block-panel-title">${bl.motivo?'Editar bloqueio':'Novo bloqueio'}</div>
+      <div class="block-panel-date">${label}</div>
+    </div>
+    <div class="mb-3"><div class="field-label">Motivo (opcional)</div><input id="bp-motivo" class="input input-sm" placeholder="Ex: congresso, viagem, feriado…" value="${bl.motivo||''}"/></div>
+    <div class="flex items-center justify-between mb-3" style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">
+      <span class="text-12 font-500 text-t1">Dia inteiro</span>
+      <button id="bp-toggle" class="toggle ${isFull?'on':''}" onclick="bpToggle(this)"></button>
+    </div>
+    <div id="bp-time" style="display:${isFull?'none':'block'};margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div class="field-label">Início</div><input id="bp-start" type="time" class="input input-sm" value="${bl.start||'08:00'}"/></div>
+        <div><div class="field-label">Fim</div><input id="bp-end" type="time" class="input input-sm" value="${bl.end||'12:00'}"/></div>
+      </div>
+    </div>
+    <div class="mb-4"><div class="field-label">Local de atendimento neste dia</div><select id="bp-loc" class="input input-sm">${locOpts}</select></div>
+    <div class="flex gap-2">
+      <button class="btn btn-sm btn-primary" onclick="saveBlock('${selDate}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+        ${bl.motivo?'Atualizar':'Bloquear dia'}
+      </button>
+      ${bl.motivo?`<button class="btn btn-sm btn-danger" onclick="removeBlock('${selDate}')">Remover</button>`:''}
+      <button class="btn btn-sm btn-ghost" onclick="selDate=null;renderCal()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function bpToggle(btn){
+  btn.classList.toggle('on');
+  const t=document.getElementById('bp-time');
+  if(t) t.style.display=btn.classList.contains('on')?'none':'block';
+}
+
+function saveBlock(ds){
+  const motivo=document.getElementById('bp-motivo').value.trim()||'Bloqueio';
+  const isFull=document.getElementById('bp-toggle').classList.contains('on');
+  const locId=document.getElementById('bp-loc').value?parseInt(document.getElementById('bp-loc').value):null;
+  if(isFull){
+    BLOCKS[ds]={motivo,tipo:'full',locId};
+  }else{
+    const s=document.getElementById('bp-start').value;
+    const e=document.getElementById('bp-end').value;
+    BLOCKS[ds]={motivo,tipo:'partial',start:s,end:e,locId};
+  }
+  selDate=null;
+  renderCal();
+}
+
+function removeBlock(ds){
+  delete BLOCKS[ds];
+  selDate=null;
+  renderCal();
+}
+
+function renderBlockedList(){
+  const el=document.getElementById('blocked-list-section');
+  if(!el)return;
+  const entries=Object.entries(BLOCKS).sort((a,b)=>a[0].localeCompare(b[0]));
+  // badge count
+  const bc=document.getElementById('blocked-count-badge');
+  if(bc) bc.innerHTML=entries.length>0?`<span class="badge badge-danger">${entries.length} bloqueio${entries.length>1?'s':''}</span>`:'';
+  if(entries.length===0){el.innerHTML='';return;}
+  el.innerHTML=`<div class="text-11 font-600 text-t3 mb-2" style="text-transform:uppercase;letter-spacing:.06em">DIAS BLOQUEADOS</div>
+  <div class="space-y-2">`+entries.map(([ds,b])=>{
+    const d=new Date(ds+'T12:00:00');
+    const label=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+    const loc=b.locId?LOCS.find(l=>l.id===b.locId):null;
+    return `<div class="blocked-item">
+      <div>
+        <div class="blocked-date">${label}</div>
+        <div class="blocked-motivo">${b.motivo}${loc?' · '+loc.name:''}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-${b.tipo==='full'?'danger':'warning'}">${b.tipo==='full'?'dia todo':b.start+' – '+b.end}</span>
+        <button class="btn btn-sm btn-ghost" onclick="calClick('${ds}')" style="color:var(--t3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function updateKpi(){
+  const el=document.getElementById('kpi-bloqueios');
+  if(el) el.textContent=Object.keys(BLOCKS).length;
+}
+
+function addLocation(){
+  const name=prompt('Nome do local (ex: Consultório Norte):');
+  if(!name||!name.trim())return;
+  const addr=prompt('Endereço ou link:');
+  const price=prompt('Valor da consulta (ex: R$ 250):');
+  const COLORS=['#2E7D32','#1D4ED8','#9333EA','#B45309','#DC2626'];
+  LOCS.push({id:Date.now(),name:name.trim(),addr:addr||'',color:COLORS[LOCS.length%COLORS.length],icon:'presencial',price:price||'—',type:'Presencial'});
+  renderLocations();
+  renderLocalPorDia();
+}
+
+// ── CONFIG TABS ──
+function cfgTab(btn){
+  document.querySelectorAll('[onclick="cfgTab(this)"]').forEach(b=>{b.style.borderBottomColor='transparent';b.style.color='var(--t2)';b.style.fontWeight='400'});
+  btn.style.borderBottomColor='var(--brand)';btn.style.color='var(--t1)';btn.style.fontWeight='500';
+}
+
+// ── INIT ──
+initPat();
+</script>
+</body>
+</html>

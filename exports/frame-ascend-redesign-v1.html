@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frame System — Redesign V1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0A0D14;
+  --bg1:#111621;
+  --bg2:#1B211E;
+  --bg3:#262D26;
+  --lime0:#2E7D32;
+  --lime1:#61D836;
+  --lime2:#A8F13C;
+  --lime3:#D7FF5B;
+  --lime4:#F2FF9C;
+  --t1:#F0F2F5;
+  --t2:#8A94A6;
+  --t3:#4E5A6B;
+  --t4:#2E3542;
+  --l1:rgba(255,255,255,0.05);
+  --l2:rgba(255,255,255,0.09);
+  --l3:rgba(255,255,255,0.15);
+  --brand:var(--lime1);
+  --brand-bg:rgba(97,216,54,0.08);
+  --brand-ring:rgba(97,216,54,0.25);
+  --red:#FF5567;
+  --amber:#FFB454;
+  --blue:#60A5FA;
+  --purple:#A78BFA;
+  --r-sm:6px;
+  --r-md:10px;
+  --r-lg:14px;
+  --r-xl:18px;
+}
+html,body{height:100%;background:var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;line-height:1.5}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,textarea,select{font-family:inherit;outline:none}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--l2);border-radius:99px}
+
+/* ── SHELL ── */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:232px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg0);border-right:1px solid var(--l1);overflow:hidden}
+.sidebar-logo{padding:16px 14px 10px;display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;border-radius:var(--r-md);background:var(--lime1);display:grid;place-items:center;flex-shrink:0}
+.logo-mark svg{width:18px;height:18px;fill:var(--bg0)}
+.logo-text{font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-0.01em}
+.logo-sub{font-size:11px;color:var(--t3);margin-top:1px}
+
+.sidebar-search{padding:8px 10px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--l1);border:1px solid var(--l1);border-radius:var(--r-md);padding:0 10px;height:32px;transition:.15s}
+.search-box:hover{border-color:var(--l2)}
+.search-box svg{width:13px;height:13px;color:var(--t3);flex-shrink:0}
+.search-box input{background:none;border:none;color:var(--t1);font-size:12.5px;flex:1;width:0}
+.search-box input::placeholder{color:var(--t3)}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:4px 8px 8px}
+.nav-group{margin-bottom:2px}
+.nav-label{font-size:10px;font-weight:600;color:var(--t4);text-transform:uppercase;letter-spacing:.08em;padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;transition:.12s;position:relative;text-decoration:none;user-select:none}
+.nav-item:hover{background:var(--l1);color:var(--t1)}
+.nav-item.active{background:rgba(97,216,54,0.08);color:var(--t1)}
+.nav-item.active .nav-icon{color:var(--lime1)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:16px;background:var(--lime1);border-radius:0 2px 2px 0;box-shadow:0 0 8px var(--lime1)}
+.nav-icon{width:15px;height:15px;flex-shrink:0;color:var(--t3);stroke-width:1.8}
+.nav-badge{margin-left:auto;font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:99px;background:var(--brand-bg);color:var(--lime1)}
+.nav-dot{margin-left:auto;width:6px;height:6px;border-radius:99px;background:var(--lime1);box-shadow:0 0 6px var(--lime1)}
+
+.sidebar-footer{padding:10px 10px 12px;border-top:1px solid var(--l1)}
+.user-row{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:var(--r-md);cursor:pointer;transition:.12s}
+.user-row:hover{background:var(--l1)}
+.user-avatar{width:30px;height:30px;border-radius:99px;background:linear-gradient(135deg,#60A5FA,#A78BFA);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:12.5px;font-weight:500;color:var(--t1)}
+.user-role{font-size:11px;color:var(--t3)}
+.online-dot{width:6px;height:6px;border-radius:99px;background:var(--lime1);margin-left:auto;box-shadow:0 0 6px var(--lime1)}
+
+/* ── TOPBAR ── */
+.topbar{height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--l1);background:var(--bg0)}
+.page-title{font-size:15px;font-weight:600;color:var(--t1);letter-spacing:-.015em}
+.page-sub{font-size:12px;color:var(--t3);margin-top:1px}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;transition:.15s;white-space:nowrap;cursor:pointer}
+.btn svg{width:13px;height:13px;stroke-width:2;flex-shrink:0}
+.btn-sm{height:30px;padding:0 10px;font-size:12px}
+.btn-md{height:34px;padding:0 14px}
+.btn-primary{background:var(--lime1);color:var(--bg0);border:none}
+.btn-primary:hover{background:var(--lime2)}
+.btn-secondary{background:var(--l1);color:var(--t1);border:1px solid var(--l2)}
+.btn-secondary:hover{background:var(--l2);border-color:var(--l3)}
+.btn-ghost{background:none;color:var(--t2);border:none}
+.btn-ghost:hover{background:var(--l1);color:var(--t1)}
+.btn-outline{background:none;color:var(--t1);border:1px solid var(--l2)}
+.btn-outline:hover{border-color:var(--l3);background:var(--l1)}
+.btn-danger{background:rgba(255,85,103,0.1);color:var(--red);border:1px solid rgba(255,85,103,0.2)}
+.btn-danger:hover{background:rgba(255,85,103,0.18)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge svg{width:10px;height:10px}
+.badge-default{background:rgba(255,255,255,0.06);color:var(--t2);border:1px solid var(--l1)}
+.badge-success{background:var(--brand-bg);color:var(--lime1);border:1px solid var(--brand-ring)}
+.badge-warning{background:rgba(255,180,84,0.1);color:var(--amber);border:1px solid rgba(255,180,84,0.2)}
+.badge-danger{background:rgba(255,85,103,0.1);color:var(--red);border:1px solid rgba(255,85,103,0.2)}
+.badge-info{background:rgba(96,165,250,0.1);color:var(--blue);border:1px solid rgba(96,165,250,0.2)}
+.badge-purple{background:rgba(167,139,250,0.1);color:var(--purple);border:1px solid rgba(167,139,250,0.2)}
+
+/* ── CARDS ── */
+.card{background:var(--bg1);border:1px solid var(--l1);border-radius:var(--r-xl);padding:20px;position:relative}
+.card-sm{padding:14px 16px}
+.card-title{font-size:12.5px;font-weight:600;color:var(--t1);letter-spacing:-.01em}
+.card-hint{font-size:11.5px;color:var(--t3);margin-top:2px}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+
+/* ── MAIN CONTENT ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg0)}
+.content-area{flex:1;overflow-y:auto;padding:24px}
+
+/* ── PAGE (hidden/shown) ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── KPI ROW ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--bg1);border:1px solid var(--l1);border-radius:var(--r-xl);padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(97,216,54,0.2),transparent)}
+.kpi-label{font-size:10.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.07em}
+.kpi-value{font-size:26px;font-weight:700;color:var(--t1);letter-spacing:-.03em;margin-top:8px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-delta{font-size:11.5px;font-weight:600;margin-left:6px;vertical-align:middle}
+.kpi-delta.pos{color:var(--lime1)}
+.kpi-delta.neg{color:var(--red)}
+.kpi-hint{font-size:11px;color:var(--t3);margin-top:4px}
+
+/* ── DIVIDER ── */
+.divider{border:none;border-top:1px solid var(--l1);margin:0}
+
+/* ── INPUT ── */
+.input{background:var(--bg1);border:1px solid var(--l2);border-radius:var(--r-md);padding:0 12px;height:34px;font-size:13px;color:var(--t1);width:100%;transition:.15s}
+.input:focus{border-color:var(--brand-ring);box-shadow:0 0 0 3px rgba(97,216,54,0.08)}
+.input::placeholder{color:var(--t3)}
+.input-sm{height:30px;font-size:12.5px}
+select.input{appearance:none;cursor:pointer}
+
+/* ── GRID UTILITIES ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.col-2{grid-column:span 2}
+.col-3{grid-column:span 3}
+
+/* ── SECTION HEADING ── */
+.section-title{font-size:12.5px;font-weight:600;color:var(--t1)}
+.section-sub{font-size:11.5px;color:var(--t3);margin-top:2px}
+
+/* ── HERO CARD ── */
+.hero-card{background:var(--bg1);border:1px solid var(--l1);border-radius:var(--r-xl);padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero-card::after{content:'';position:absolute;top:-60px;right:-40px;width:260px;height:260px;background:radial-gradient(circle,rgba(97,216,54,0.07) 0%,transparent 70%);pointer-events:none}
+
+/* ── DISPONIBILIDADE SPECIFIC ── */
+.avail-layout{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.day-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--l1)}
+.day-row:last-child{border-bottom:none}
+.day-name{width:80px;font-size:12.5px;font-weight:500;color:var(--t1)}
+.day-slots{flex:1;display:flex;flex-wrap:wrap;gap:6px}
+.slot-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--bg2);border:1px solid var(--l2);border-radius:var(--r-sm);font-size:11.5px;color:var(--t2);font-family:'JetBrains Mono',monospace}
+.slot-chip svg{width:11px;height:11px;color:var(--lime1)}
+
+/* MINI CALENDAR */
+.mini-cal{user-select:none}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav{width:26px;height:26px;border-radius:var(--r-sm);background:none;border:1px solid var(--l2);color:var(--t2);display:grid;place-items:center;cursor:pointer;transition:.12s}
+.cal-nav:hover{background:var(--l1);color:var(--t1);border-color:var(--l3)}
+.cal-nav svg{width:12px;height:12px}
+.cal-month{font-size:13px;font-weight:600;color:var(--t1)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dow{text-align:center;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;padding:4px 0 6px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;position:relative;transition:.12s}
+.cal-day:hover:not(.empty):not(.blocked){background:var(--l1);color:var(--t1)}
+.cal-day.today{color:var(--lime1);font-weight:700}
+.cal-day.today::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:99px;background:var(--lime1)}
+.cal-day.blocked{background:rgba(255,85,103,0.12);color:var(--red);border-radius:var(--r-sm)}
+.cal-day.blocked::before{content:'';position:absolute;top:2px;right:2px;width:4px;height:4px;border-radius:99px;background:var(--red)}
+.cal-day.partial{background:rgba(255,180,84,0.1);color:var(--amber)}
+.cal-day.empty{cursor:default}
+.cal-day.selected{background:var(--brand-bg);color:var(--lime1);border:1px solid var(--brand-ring)}
+
+/* BLOCK FORM PANEL */
+.block-panel{background:var(--bg2);border:1px solid var(--l2);border-radius:var(--r-lg);padding:16px;margin-top:12px;animation:slideDown .15s ease-out}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.block-panel-title{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.block-panel-title svg{width:14px;height:14px;color:var(--red)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.field-label{font-size:11px;color:var(--t3);margin-bottom:4px;font-weight:500}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.toggle-label{font-size:12.5px;color:var(--t1)}
+.toggle{width:34px;height:18px;border-radius:99px;background:var(--l2);border:none;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle.on{background:var(--lime1)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:99px;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle.on::after{transform:translateX(16px)}
+
+/* LOCATIONS LIST */
+.loc-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--l1)}
+.loc-item:last-child{border-bottom:none}
+.loc-dot{width:8px;height:8px;border-radius:99px;flex-shrink:0}
+.loc-name{font-size:12.5px;font-weight:500;color:var(--t1);flex:1}
+.loc-addr{font-size:11px;color:var(--t3)}
+
+/* ── CONVERSAS ── */
+.inbox-layout{display:grid;grid-template-columns:300px 1fr 300px;height:100%;gap:0}
+.thread-list{border-right:1px solid var(--l1);overflow-y:auto}
+.thread-item{padding:12px 14px;border-bottom:1px solid var(--l1);cursor:pointer;transition:.12s;border-left:2px solid transparent}
+.thread-item:hover{background:rgba(255,255,255,.02)}
+.thread-item.active{background:rgba(97,216,54,0.04);border-left-color:var(--lime1)}
+.t-name{font-size:13px;font-weight:500;color:var(--t1)}
+.t-last{font-size:12px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-meta{display:flex;align-items:center;gap:6px;margin-top:6px}
+.t-time{font-size:10.5px;color:var(--t3)}
+.unread{width:18px;height:18px;border-radius:99px;background:var(--lime1);color:var(--bg0);font-size:10px;font-weight:700;display:grid;place-items:center;margin-left:auto}
+.chat-area{display:flex;flex-direction:column;overflow:hidden}
+.chat-header{height:52px;padding:0 20px;border-bottom:1px solid var(--l1);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:65%}
+.msg-them{align-self:flex-start}
+.msg-me{align-self:flex-end}
+.msg-bubble{padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.5}
+.msg-them .msg-bubble{background:var(--bg2);color:var(--t1);border-bottom-left-radius:4px;border:1px solid var(--l1)}
+.msg-me .msg-bubble{background:var(--lime1);color:var(--bg0);font-weight:500;border-bottom-right-radius:4px}
+.msg-ai-label{font-size:10.5px;color:var(--lime1);margin-bottom:3px;display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.msg-time{font-size:10px;color:var(--t3);margin-top:3px}
+.chat-composer{padding:14px 20px;border-top:1px solid var(--l1);flex-shrink:0}
+.composer-box{background:var(--bg1);border:1px solid var(--l2);border-radius:var(--r-lg);overflow:hidden}
+.composer-textarea{width:100%;background:none;border:none;padding:10px 14px;font-size:13px;color:var(--t1);resize:none;display:block}
+.composer-textarea::placeholder{color:var(--t3)}
+.composer-actions{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--l1)}
+.detail-panel{border-left:1px solid var(--l1);overflow-y:auto;padding:20px}
+
+/* ── AGENDA ── */
+.week-header{display:grid;grid-template-columns:64px repeat(7,1fr);border-bottom:1px solid var(--l1);margin-bottom:0}
+.week-day{padding:10px 0;text-align:center}
+.wd-name{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.wd-num{font-size:18px;font-weight:700;color:var(--t1);margin-top:2px}
+.wd-num.today{color:var(--lime1)}
+.week-grid{display:grid;grid-template-columns:64px repeat(7,1fr)}
+.time-label{font-size:10.5px;color:var(--t3);font-family:'JetBrains Mono',monospace;padding:4px 8px 4px 0;text-align:right;position:relative;top:-6px}
+.hour-cell{border-left:1px solid var(--l1);min-height:52px;position:relative}
+.hour-cell:first-of-type{border-left:none}
+.appt{position:absolute;left:3px;right:3px;border-radius:var(--r-md);padding:5px 8px;font-size:11.5px;overflow:hidden;cursor:pointer;transition:.12s}
+.appt:hover{filter:brightness(1.15)}
+.appt-name{font-weight:600;line-height:1.3}
+.appt-time{font-size:10.5px;opacity:.75;margin-top:1px}
+.appt-green{background:rgba(97,216,54,0.15);color:var(--lime1);border-left:2px solid var(--lime1)}
+.appt-blue{background:rgba(96,165,250,0.15);color:var(--blue);border-left:2px solid var(--blue)}
+.appt-purple{background:rgba(167,139,250,0.15);color:var(--purple);border-left:2px solid var(--purple)}
+.appt-amber{background:rgba(255,180,84,0.15);color:var(--amber);border-left:2px solid var(--amber)}
+
+/* ── LOADING BAR ── */
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.skeleton{background:linear-gradient(90deg,var(--bg1) 0%,var(--bg2) 50%,var(--bg1) 100%);background-size:1200px 100%;animation:shimmer 1.5s infinite;border-radius:var(--r-sm)}
+
+/* ── AUTOMAÇÕES ── */
+.flow-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--l1)}
+.flow-row:last-child{border-bottom:none}
+.flow-icon{width:34px;height:34px;border-radius:var(--r-md);display:grid;place-items:center;flex-shrink:0}
+.flow-icon svg{width:16px;height:16px}
+.flow-name{font-size:13px;font-weight:500;color:var(--t1)}
+.flow-desc{font-size:11.5px;color:var(--t3);margin-top:1px}
+.flow-stats{display:flex;align-items:center;gap:16px;margin-left:auto;text-align:right}
+.flow-stat-val{font-size:13px;font-weight:600;color:var(--t1);font-family:'JetBrains Mono',monospace}
+.flow-stat-label{font-size:10.5px;color:var(--t3)}
+
+/* ── CONFIGURAÇÕES ── */
+.config-tabs{display:flex;gap:2px;padding:0 0 0;margin-bottom:20px;border-bottom:1px solid var(--l1)}
+.config-tab{padding:8px 14px;font-size:13px;font-weight:500;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s;background:none;border-top:none;border-left:none;border-right:none}
+.config-tab:hover{color:var(--t2)}
+.config-tab.active{color:var(--t1);border-bottom-color:var(--lime1)}
+.config-section{max-width:560px}
+.config-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--l1)}
+.config-row:last-child{border-bottom:none}
+.config-key{font-size:13px;color:var(--t1)}
+.config-desc{font-size:11.5px;color:var(--t3);margin-top:2px}
+
+/* ── AVATAR ── */
+.avatar{border-radius:99px;display:grid;place-items:center;font-weight:700;flex-shrink:0}
+.av-sm{width:28px;height:28px;font-size:10px}
+.av-md{width:34px;height:34px;font-size:12px}
+.av-lg{width:44px;height:44px;font-size:14px}
+.av-purple{background:linear-gradient(135deg,#A78BFA,#7C5FE0);color:#fff}
+.av-blue{background:linear-gradient(135deg,#60A5FA,#3B82F6);color:#fff}
+.av-green{background:linear-gradient(135deg,var(--lime1),var(--lime2));color:var(--bg0)}
+.av-orange{background:linear-gradient(135deg,#FFB454,#F97316);color:#fff}
+.av-pink{background:linear-gradient(135deg,#F9A8D4,#EC4899);color:#fff}
+
+/* ── MISC ── */
+.flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}.gap-1{gap:4px}.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}.flex-1{flex:1}.min-w-0{min-width:0}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.text-right{text-align:right}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.text-lime{color:var(--lime1)}.text-red{color:var(--red)}.text-amber{color:var(--amber)}.text-blue{color:var(--blue)}.text-purple{color:var(--purple)}
+.text-t1{color:var(--t1)}.text-t2{color:var(--t2)}.text-t3{color:var(--t3)}
+.font-500{font-weight:500}.font-600{font-weight:600}.font-700{font-weight:700}
+.text-xs{font-size:11px}.text-sm{font-size:12px}.text-base{font-size:13px}.text-md{font-size:14px}.text-lg{font-size:16px}.text-xl{font-size:20px}.text-2xl{font-size:26px}
+
+/* spacer */
+.space-y-2>*+*{margin-top:8px}
+.space-y-3>*+*{margin-top:12px}
+.space-y-4>*+*{margin-top:16px}
+
+/* tag / pill */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 18 18"><path d="M9 2L15.5 6V12L9 16L2.5 12V6L9 2Z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">Frame System</div>
+      <div class="logo-sub">Clínica Nutri Plus</div>
+    </div>
+  </div>
+
+  <div class="sidebar-search">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Buscar… ⌘K" />
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <a class="nav-item active" onclick="showPage('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Painel
+        <span class="nav-dot"></span>
+      </a>
+      <a class="nav-item" onclick="showPage('conversas')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Conversas
+        <span class="nav-badge">12</span>
+      </a>
+      <a class="nav-item" onclick="showPage('agenda')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Agenda
+      </a>
+      <a class="nav-item" onclick="showPage('pacientes')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="7" r="4"/><path d="M5 20v-1a7 7 0 0 1 14 0v1"/></svg>
+        Pacientes
+      </a>
+      <a class="nav-item" onclick="showPage('automacoes')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Automações
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Operação</div>
+      <a class="nav-item" onclick="showPage('ia')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a9 9 0 0 1 9 9 9 9 0 0 1-9 9A9 9 0 0 1 3 11 9 9 0 0 1 12 2"/><path d="M8 12h8M12 8v8"/></svg>
+        Assistente IA
+      </a>
+      <a class="nav-item" onclick="showPage('disponibilidade')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Disponibilidade
+      </a>
+      <a class="nav-item" onclick="showPage('integracoes')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Integrações
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <a class="nav-item" onclick="showPage('configuracoes')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+        Configurações
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar av-md av-blue">DR</div>
+      <div class="min-w-0">
+        <div class="user-name">Dra. Renata</div>
+        <div class="user-role">Nutricionista</div>
+      </div>
+      <div class="online-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<div class="main">
+
+<!-- ─── TOPBAR ─── -->
+<header class="topbar" id="topbar">
+  <div>
+    <div class="page-title" id="page-title">Painel</div>
+    <div class="page-sub" id="page-sub">Visão geral — Quinta-feira, 17 de junho</div>
+  </div>
+  <div class="topbar-actions" id="topbar-actions">
+    <button class="btn btn-sm btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+    </button>
+    <button class="btn btn-sm btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Relatório
+    </button>
+    <button class="btn btn-sm btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Novo
+    </button>
+  </div>
+</header>
+
+<div class="content-area" id="content-area">
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div class="page active" id="page-dashboard">
+
+  <div class="hero-card">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-t3 text-xs mb-3">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Frame AI · Resumo do dia
+        </div>
+        <h2 style="font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.3;max-width:520px">
+          Bom dia, Renata. Sua clínica cresceu
+          <span style="color:var(--lime1)"> 17% esta semana</span> em respostas automatizadas.
+        </h2>
+        <p class="text-t2 text-sm mt-2">3 pacientes aguardam follow-up e há R$ 2.400 em consultas recuperáveis.</p>
+      </div>
+      <div class="flex gap-2" style="flex-shrink:0">
+        <button class="btn btn-md btn-secondary">Ver insights</button>
+        <button class="btn btn-md btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Follow-up
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Receita MRR</div>
+      <div class="kpi-value">R$ 42.180<span class="kpi-delta pos">↑ 12%</span></div>
+      <div class="kpi-hint">vs. semana anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Novos pacientes</div>
+      <div class="kpi-value">84<span class="kpi-delta pos">↑ 8%</span></div>
+      <div class="kpi-hint">últimos 7 dias</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Taxa de resposta</div>
+      <div class="kpi-value">94.2%<span class="kpi-delta pos">↑ 17%</span></div>
+      <div class="kpi-hint">IA + humano</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Churn</div>
+      <div class="kpi-value">2.1%<span class="kpi-delta neg">↑ 0.4%</span></div>
+      <div class="kpi-hint">meta &lt; 3%</div>
+    </div>
+  </div>
+
+  <div class="grid-2 mt-4">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Insights inteligentes</div><div class="card-hint">Recomendações da Frame AI</div></div>
+        <button class="btn btn-sm btn-ghost">Ver todos</button>
+      </div>
+      <div class="space-y-2">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r-lg);border:1px solid var(--l1)">
+          <div style="width:30px;height:30px;border-radius:var(--r-md);background:rgba(255,180,84,0.12);display:grid;place-items:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1">3 pacientes sem resposta nas últimas 48h</div>
+            <div class="text-xs text-t3 mt-1">Marina S., Felipe K. e mais 1 — risco de abandono.</div>
+          </div>
+          <span class="badge badge-warning">Urgente</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r-lg);border:1px solid var(--l1)">
+          <div style="width:30px;height:30px;border-radius:var(--r-md);background:var(--brand-bg);display:grid;place-items:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lime1)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1">R$ 2.400 em consultas recuperáveis</div>
+            <div class="text-xs text-t3 mt-1">5 leads em proposta sem retorno há 5+ dias.</div>
+          </div>
+          <span class="badge badge-success">Oportunidade</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r-lg);border:1px solid var(--l1)">
+          <div style="width:30px;height:30px;border-radius:var(--r-md);background:rgba(96,165,250,0.1);display:grid;place-items:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1">Taxa de resposta +17% esta semana</div>
+            <div class="text-xs text-t3 mt-1">"Boas-vindas v3" superou a anterior em conversão.</div>
+          </div>
+          <span class="badge badge-info">Melhoria</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Próximas consultas</div><div class="card-hint">Hoje</div></div>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="avatar av-md av-purple">MS</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1 truncate">Marina Silva</div>
+            <div class="text-xs text-t3">Acompanhamento</div>
+          </div>
+          <div class="text-sm mono text-t2 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            09:30
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="avatar av-md av-blue">FK</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1 truncate">Felipe Kruger</div>
+            <div class="text-xs text-t3">Avaliação inicial</div>
+          </div>
+          <div class="text-sm mono text-t2 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            10:00
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="avatar av-md av-green">AP</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1 truncate">Ana Pereira</div>
+            <div class="text-xs text-t3">Retorno</div>
+          </div>
+          <div class="text-sm mono text-t2 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            11:15
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="avatar av-md av-orange">CM</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-500 text-t1 truncate">Caio Mendes</div>
+            <div class="text-xs text-t3">Avaliação</div>
+          </div>
+          <div class="text-sm mono text-t2 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            14:00
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dashboard -->
+
+<!-- ══════════ CONVERSAS ══════════ -->
+<div class="page" id="page-conversas" style="margin:-24px;height:calc(100vh - 52px)">
+  <div class="inbox-layout" style="height:100%">
+
+    <div class="thread-list" style="background:var(--bg0)">
+      <div style="padding:12px;border-bottom:1px solid var(--l1)">
+        <div class="search-box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input placeholder="Buscar…"/></div>
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-sm btn-secondary">Todas</button>
+          <button class="btn btn-sm btn-ghost">Não lidas</button>
+          <button class="btn btn-sm btn-ghost">IA ativa</button>
+        </div>
+      </div>
+      <div class="thread-item active">
+        <div class="flex items-center gap-2 mb-1"><div class="avatar av-sm av-purple">MS</div><div class="flex-1 min-w-0"><div class="t-name truncate">Marina Silva</div></div><div class="t-time">agora</div></div>
+        <div class="t-last">Perfeito, confirmo às 9h então 🙏</div>
+        <div class="t-meta"><span class="badge badge-default">WhatsApp</span><span class="badge badge-success"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>IA</span><span class="unread">2</span></div>
+      </div>
+      <div class="thread-item">
+        <div class="flex items-center gap-2 mb-1"><div class="avatar av-sm av-blue">FK</div><div class="flex-1 min-w-0"><div class="t-name truncate">Felipe Kruger</div></div><div class="t-time">5min</div></div>
+        <div class="t-last">Pode me mandar o plano novo?</div>
+        <div class="t-meta"><span class="badge badge-default">WhatsApp</span><span class="badge badge-success"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>IA</span><span class="unread">1</span></div>
+      </div>
+      <div class="thread-item">
+        <div class="flex items-center gap-2 mb-1"><div class="avatar av-sm av-green">AP</div><div class="flex-1 min-w-0"><div class="t-name truncate">Ana Pereira</div></div><div class="t-time">1h</div></div>
+        <div class="t-last">Obrigada, doutora!</div>
+        <div class="t-meta"><span class="badge badge-default">Instagram</span></div>
+      </div>
+      <div class="thread-item">
+        <div class="flex items-center gap-2 mb-1"><div class="avatar av-sm av-orange">CM</div><div class="flex-1 min-w-0"><div class="t-name truncate">Caio Mendes</div></div><div class="t-time">2h</div></div>
+        <div class="t-last">Quero agendar uma avaliação</div>
+        <div class="t-meta"><span class="badge badge-default">WhatsApp</span><span class="badge badge-success"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>IA</span></div>
+      </div>
+      <div class="thread-item">
+        <div class="flex items-center gap-2 mb-1"><div class="avatar av-sm av-pink" style="background:linear-gradient(135deg,#F9A8D4,#EC4899)">JC</div><div class="flex-1 min-w-0"><div class="t-name truncate">Júlia Castro</div></div><div class="t-time">ontem</div></div>
+        <div class="t-last">Vou pensar e te aviso</div>
+        <div class="t-meta"><span class="badge badge-default">WhatsApp</span></div>
+      </div>
+    </div>
+
+    <div class="chat-area" style="background:var(--bg0)">
+      <div class="chat-header">
+        <div class="avatar av-md av-purple">MS</div>
+        <div class="flex-1">
+          <div class="font-600 text-t1">Marina Silva</div>
+          <div class="text-xs text-t3 flex items-center gap-1"><span style="width:6px;height:6px;border-radius:99px;background:var(--lime1);display:inline-block;box-shadow:0 0 6px var(--lime1)"></span>Online · WhatsApp</div>
+        </div>
+        <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.9 2 2 0 0 1 3.6 2.68h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.1a16 16 0 0 0 6 6l.61-.61a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17.92z"/></svg></button>
+        <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+      <div class="chat-messages">
+        <div class="msg msg-them"><div class="msg-bubble">Oi Dra. Renata! Tudo bem?</div><div class="msg-time">09:12</div></div>
+        <div class="msg msg-me"><div class="msg-ai-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Resposta da IA</div><div class="msg-bubble">Olá, Marina! Tudo ótimo, e com você? Vi que sua consulta é amanhã às 9h — posso confirmar?</div><div class="msg-time" style="text-align:right">09:12</div></div>
+        <div class="msg msg-them"><div class="msg-bubble">Sim! Só estava em dúvida sobre o jejum.</div><div class="msg-time">09:14</div></div>
+        <div class="msg msg-me"><div class="msg-ai-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Resposta da IA</div><div class="msg-bubble">Pra essa consulta não é necessário jejum. Pode tomar café normalmente 😊</div><div class="msg-time" style="text-align:right">09:14</div></div>
+        <div class="msg msg-them"><div class="msg-bubble">Perfeito, confirmo às 9h então 🙏</div><div class="msg-time">09:30</div></div>
+      </div>
+      <div class="chat-composer">
+        <div class="composer-box">
+          <textarea class="composer-textarea" rows="2" placeholder="Escreva uma mensagem… ⌘+J para sugestões da IA"></textarea>
+          <div class="composer-actions">
+            <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <button class="btn btn-sm btn-ghost text-lime"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Sugerir</button>
+            <button class="btn btn-sm btn-primary" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-panel" style="background:var(--bg0)">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="avatar av-lg av-purple">MS</div>
+        <div>
+          <div class="font-600 text-t1" style="font-size:14px">Marina Silva</div>
+          <div class="text-xs text-t3">Paciente desde Mar 2024</div>
+        </div>
+      </div>
+      <div class="grid-2 mb-4">
+        <button class="btn btn-sm btn-secondary w-full">Ver perfil</button>
+        <button class="btn btn-sm btn-outline w-full">Agendar</button>
+      </div>
+      <hr class="divider mb-4"/>
+      <div class="text-xs font-600 text-t3 mb-3" style="text-transform:uppercase;letter-spacing:.06em">Detalhes</div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm"><span class="text-t3">Estágio</span><span class="badge badge-success">Ativo</span></div>
+        <div class="flex justify-between text-sm"><span class="text-t3">Objetivo</span><span class="text-t1 font-500">Emagrecimento</span></div>
+        <div class="flex justify-between text-sm"><span class="text-t3">Plano</span><span class="text-t1 font-500">Premium</span></div>
+        <div class="flex justify-between text-sm"><span class="text-t3">LTV</span><span class="text-t1 font-500 mono">R$ 3.200</span></div>
+        <div class="flex justify-between text-sm"><span class="text-t3">Próximo retorno</span><span class="text-t1 font-500">18/06 · 09:30</span></div>
+      </div>
+      <hr class="divider mt-4 mb-4"/>
+      <div class="text-xs font-600 text-t3 mb-3" style="text-transform:uppercase;letter-spacing:.06em">Histórico</div>
+      <div style="position:relative;padding-left:14px">
+        <div style="position:absolute;left:3px;top:4px;bottom:0;width:1px;background:var(--l2)"></div>
+        <div style="margin-bottom:12px;position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--lime1);box-shadow:0 0 6px var(--lime1)"></div><div class="text-sm text-t1">Confirmou consulta amanhã</div><div class="text-xs text-t3">agora</div></div>
+        <div style="margin-bottom:12px;position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--l2)"></div><div class="text-sm text-t1">Pagamento mensal recebido</div><div class="text-xs text-t3">3 dias atrás</div></div>
+        <div style="position:relative"><div style="position:absolute;left:-14px;top:4px;width:6px;height:6px;border-radius:99px;background:var(--l2)"></div><div class="text-sm text-t1">Plano alimentar enviado</div><div class="text-xs text-t3">1 semana atrás</div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /conversas -->
+
+<!-- ══════════ AGENDA ══════════ -->
+<div class="page" id="page-agenda">
+  <div class="card mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="card-title">Semana de 15 a 21 de junho</div>
+        <div class="card-hint">3 consultas hoje · 14 na semana</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="btn btn-sm btn-secondary">Hoje</button>
+        <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <button class="btn btn-sm btn-primary">+ Novo</button>
+      </div>
+    </div>
+
+    <div class="week-header">
+      <div></div>
+      <div class="week-day"><div class="wd-name">Seg</div><div class="wd-num">15</div></div>
+      <div class="week-day"><div class="wd-name">Ter</div><div class="wd-num">16</div></div>
+      <div class="week-day"><div class="wd-name">Qua</div><div class="wd-num today">17</div></div>
+      <div class="week-day"><div class="wd-name">Qui</div><div class="wd-num">18</div></div>
+      <div class="week-day"><div class="wd-name">Sex</div><div class="wd-num">19</div></div>
+      <div class="week-day"><div class="wd-name">Sáb</div><div class="wd-num">20</div></div>
+      <div class="week-day"><div class="wd-name">Dom</div><div class="wd-num">21</div></div>
+    </div>
+
+    <div class="week-grid" style="overflow-y:auto;max-height:480px">
+      <div style="border-right:1px solid var(--l1)">
+        <div class="time-label">08:00</div><div class="time-label">09:00</div><div class="time-label">10:00</div>
+        <div class="time-label">11:00</div><div class="time-label">12:00</div><div class="time-label">13:00</div>
+        <div class="time-label">14:00</div><div class="time-label">15:00</div><div class="time-label">16:00</div>
+      </div>
+      <!-- SEG -->
+      <div class="hour-cell" style="position:relative;height:468px">
+        <div class="appt appt-purple" style="top:52px;height:46px"><div class="appt-name">Marina Silva</div><div class="appt-time">09:00 – 09:50</div></div>
+        <div class="appt appt-blue" style="top:154px;height:46px"><div class="appt-name">Felipe K.</div><div class="appt-time">11:00 – 11:50</div></div>
+      </div>
+      <div class="hour-cell" style="height:468px">
+        <div class="appt appt-green" style="top:100px;height:46px"><div class="appt-name">Ana Pereira</div><div class="appt-time">10:00 – 10:50</div></div>
+      </div>
+      <!-- QUA (hoje) -->
+      <div class="hour-cell" style="background:rgba(97,216,54,0.025);height:468px">
+        <div class="appt appt-green" style="top:52px;height:46px"><div class="appt-name">Marina Silva</div><div class="appt-time">09:30 – 10:20</div></div>
+        <div class="appt appt-blue" style="top:100px;height:46px"><div class="appt-name">Felipe Kruger</div><div class="appt-time">10:00 – 10:50</div></div>
+        <div class="appt appt-purple" style="top:154px;height:46px"><div class="appt-name">Ana Pereira</div><div class="appt-time">11:15 – 12:05</div></div>
+        <div class="appt appt-amber" style="top:312px;height:46px"><div class="appt-name">Caio Mendes</div><div class="appt-time">14:00 – 14:50</div></div>
+      </div>
+      <div class="hour-cell" style="height:468px">
+        <div class="appt appt-amber" style="top:208px;height:46px"><div class="appt-name">Caio Mendes</div><div class="appt-time">12:00 – 12:50</div></div>
+      </div>
+      <div class="hour-cell" style="height:468px">
+        <div class="appt appt-blue" style="top:52px;height:46px"><div class="appt-name">Júlia Castro</div><div class="appt-time">09:00 – 09:50</div></div>
+      </div>
+      <div class="hour-cell" style="height:468px"></div>
+      <div class="hour-cell" style="height:468px"></div>
+    </div>
+  </div>
+</div><!-- /agenda -->
+
+<!-- ══════════ PACIENTES ══════════ -->
+<div class="page" id="page-pacientes">
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Todos os pacientes</div><div class="card-hint">84 pacientes ativos</div></div>
+      <div class="flex gap-2">
+        <div class="search-box" style="width:200px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input placeholder="Buscar paciente…"/></div>
+        <button class="btn btn-sm btn-primary">+ Novo paciente</button>
+      </div>
+    </div>
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 120px 100px 80px;gap:0;padding:8px 12px;border-bottom:1px solid var(--l2)">
+        <div class="text-xs font-600 text-t3" style="text-transform:uppercase;letter-spacing:.06em">Nome</div>
+        <div class="text-xs font-600 text-t3" style="text-transform:uppercase;letter-spacing:.06em">Objetivo</div>
+        <div class="text-xs font-600 text-t3" style="text-transform:uppercase;letter-spacing:.06em">LTV</div>
+        <div class="text-xs font-600 text-t3" style="text-transform:uppercase;letter-spacing:.06em">Status</div>
+        <div></div>
+      </div>
+      <div id="pat-table"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ AUTOMAÇÕES ══════════ -->
+<div class="page" id="page-automacoes">
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi"><div class="kpi-label">Fluxos ativos</div><div class="kpi-value">6<span class="kpi-delta pos">↑ 2</span></div></div>
+    <div class="kpi"><div class="kpi-label">Execuções (7d)</div><div class="kpi-value">248</div></div>
+    <div class="kpi"><div class="kpi-label">Conversão média</div><div class="kpi-value">34%<span class="kpi-delta pos">↑ 8%</span></div></div>
+    <div class="kpi"><div class="kpi-label">Tempo economizado</div><div class="kpi-value">18h</div></div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header"><div class="card-title">Fluxos de automação</div><div class="flex gap-2"><button class="btn btn-sm btn-ghost">Todos</button><button class="btn btn-sm btn-ghost">Ativos</button><button class="btn btn-sm btn-ghost">Pausados</button></div></div>
+    <div>
+      <div class="flow-row">
+        <div class="flow-icon" style="background:var(--brand-bg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lime1)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="flex-1"><div class="flow-name">Boas-vindas automático</div><div class="flow-desc">Dispara ao entrar novo lead · WhatsApp</div></div>
+        <div class="flow-stats"><div><div class="flow-stat-val">84</div><div class="flow-stat-label">execuções</div></div><div><div class="flow-stat-val">48%</div><div class="flow-stat-label">conversão</div></div></div>
+        <span class="badge badge-success ml-3">Ativo</span>
+      </div>
+      <div class="flow-row">
+        <div class="flow-icon" style="background:rgba(96,165,250,0.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div class="flex-1"><div class="flow-name">Follow-up pós-consulta</div><div class="flow-desc">24h após consulta · E-mail + WhatsApp</div></div>
+        <div class="flow-stats"><div><div class="flow-stat-val">62</div><div class="flow-stat-label">execuções</div></div><div><div class="flow-stat-val">31%</div><div class="flow-stat-label">conversão</div></div></div>
+        <span class="badge badge-success ml-3">Ativo</span>
+      </div>
+      <div class="flow-row">
+        <div class="flow-icon" style="background:rgba(255,180,84,0.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="flex-1"><div class="flow-name">Lembrete de consulta</div><div class="flow-desc">2h antes da consulta · WhatsApp</div></div>
+        <div class="flow-stats"><div><div class="flow-stat-val">102</div><div class="flow-stat-label">execuções</div></div><div><div class="flow-stat-val">—</div><div class="flow-stat-label">conversão</div></div></div>
+        <span class="badge badge-success ml-3">Ativo</span>
+      </div>
+      <div class="flow-row">
+        <div class="flow-icon" style="background:rgba(167,139,250,0.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/></svg></div>
+        <div class="flex-1"><div class="flow-name">Reengajamento inativo</div><div class="flow-desc">14 dias sem resposta · WhatsApp</div></div>
+        <div class="flow-stats"><div><div class="flow-stat-val">0</div><div class="flow-stat-label">execuções</div></div><div><div class="flow-stat-val">—</div><div class="flow-stat-label">conversão</div></div></div>
+        <span class="badge badge-default ml-3">Pausado</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ IA ══════════ -->
+<div class="page" id="page-ia">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Perfil da assistente</div><div class="card-hint">Como a IA se apresenta aos pacientes</div></div></div>
+      <div class="space-y-3">
+        <div><div class="field-label">Nome</div><input class="input" value="Assistente Frame"/></div>
+        <div><div class="field-label">Tom de voz</div><select class="input"><option>Profissional e acolhedor</option><option>Formal</option><option>Casual e próximo</option></select></div>
+        <div><div class="field-label">Saudação inicial</div><textarea class="input" style="height:80px;padding-top:8px;resize:none">Olá! Sou a assistente virtual da Dra. Renata. Como posso te ajudar hoje?</textarea></div>
+        <button class="btn btn-md btn-primary mt-2">Salvar alterações</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Base de conhecimento</div><div class="card-hint">Informações que a IA usa para responder</div></div></div>
+      <div style="padding:16px;background:var(--bg2);border-radius:var(--r-lg);border:1px solid var(--l2);margin-bottom:12px">
+        <div class="text-sm text-t3 mb-1">manual.pdf</div>
+        <div class="text-xs text-t3">Carregado em 10 jun · 12 páginas</div>
+      </div>
+      <div class="space-y-2">
+        <button class="btn btn-sm btn-outline" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Enviar PDF</button>
+        <button class="btn btn-sm btn-ghost" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Entrevista guiada</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ DISPONIBILIDADE ══════════ -->
+<div class="page" id="page-disponibilidade">
+  <div class="avail-layout">
+
+    <!-- LEFT: weekly + calendar -->
+    <div class="space-y-4">
+
+      <!-- Horário semanal -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Horário semanal padrão</div><div class="card-hint">Slots disponíveis para agendamento automático</div></div>
+          <button class="btn btn-sm btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
+        </div>
+        <div id="day-rows"></div>
+      </div>
+
+      <!-- Calendário de bloqueios -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Bloqueios de data</div><div class="card-hint">Clique em uma data para bloquear ou ver detalhes</div></div>
+          <div class="flex items-center gap-3 text-xs text-t3">
+            <span class="flex items-center gap-1.5"><span style="width:8px;height:8px;border-radius:99px;background:var(--red);display:inline-block"></span>Bloqueado</span>
+            <span class="flex items-center gap-1.5"><span style="width:8px;height:8px;border-radius:99px;background:var(--amber);display:inline-block"></span>Parcial</span>
+          </div>
+        </div>
+        <div class="mini-cal" id="mini-cal"></div>
+        <div id="block-form-container"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: rules + locations -->
+    <div class="space-y-4">
+
+      <!-- Regras -->
+      <div class="card card-sm">
+        <div class="card-header" style="margin-bottom:12px"><div class="card-title">Regras</div></div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm"><span class="text-t3">Duração padrão</span><span class="mono text-t1 font-500">50 min</span></div>
+          <div class="flex justify-between text-sm"><span class="text-t3">Buffer entre consultas</span><span class="mono text-t1 font-500">10 min</span></div>
+          <div class="flex justify-between text-sm"><span class="text-t3">Antecedência mínima</span><span class="mono text-t1 font-500">3 h</span></div>
+          <div class="flex justify-between text-sm"><span class="text-t3">Limite por dia</span><span class="mono text-t1 font-500">12</span></div>
+        </div>
+        <button class="btn btn-sm btn-ghost mt-3 text-xs">Editar regras</button>
+      </div>
+
+      <!-- Locais de atendimento -->
+      <div class="card card-sm">
+        <div class="card-header" style="margin-bottom:12px">
+          <div><div class="card-title">Locais de atendimento</div><div class="card-hint">Onde você atende — use ao bloquear datas</div></div>
+          <button class="btn btn-sm btn-primary" onclick="addLocation()">+ Novo</button>
+        </div>
+        <div id="locations-list"></div>
+      </div>
+
+      <!-- Exceções próximas -->
+      <div class="card card-sm">
+        <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Próximos bloqueios</div><div class="card-hint">60 dias</div></div></div>
+        <div id="upcoming-blocks" class="space-y-2"></div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /disponibilidade -->
+
+<!-- ══════════ INTEGRAÇÕES ══════════ -->
+<div class="page" id="page-integracoes">
+  <div class="grid-2">
+    <div class="card flex items-center gap-4">
+      <div style="width:44px;height:44px;border-radius:var(--r-lg);background:#25D366;display:grid;place-items:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></div>
+      <div class="flex-1"><div class="font-600 text-t1">WhatsApp</div><div class="text-xs text-t3 mt-1">Evolution API · conectado</div></div>
+      <span class="badge badge-success">Conectado</span>
+    </div>
+    <div class="card flex items-center gap-4">
+      <div style="width:44px;height:44px;border-radius:var(--r-lg);background:#4285F4;display:grid;place-items:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M19 4H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 2v2H5V6h14zM5 20V10h14v10H5z"/></svg></div>
+      <div class="flex-1"><div class="font-600 text-t1">Google Calendar</div><div class="text-xs text-t3 mt-1">Sincronização bidirecional</div></div>
+      <span class="badge badge-warning">Configurar</span>
+    </div>
+    <div class="card flex items-center gap-4" style="opacity:.6">
+      <div style="width:44px;height:44px;border-radius:var(--r-lg);background:var(--bg3);display:grid;place-items:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div class="flex-1"><div class="font-600 text-t1">n8n Automações</div><div class="text-xs text-t3 mt-1">Em breve</div></div>
+      <span class="badge badge-default">Em breve</span>
+    </div>
+    <div class="card flex items-center gap-4" style="opacity:.6">
+      <div style="width:44px;height:44px;border-radius:var(--r-lg);background:var(--bg3);display:grid;place-items:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+      <div class="flex-1"><div class="font-600 text-t1">Pagamentos</div><div class="text-xs text-t3 mt-1">Stripe · Mercado Pago</div></div>
+      <span class="badge badge-default">Em breve</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CONFIGURAÇÕES ══════════ -->
+<div class="page" id="page-configuracoes">
+  <div style="border-bottom:1px solid var(--l1);margin-bottom:24px;margin-top:-4px">
+    <div class="config-tabs">
+      <button class="config-tab active">Perfil</button>
+      <button class="config-tab">Consultório</button>
+      <button class="config-tab">Segurança</button>
+      <button class="config-tab">Notificações</button>
+      <button class="config-tab">Aparência</button>
+    </div>
+  </div>
+  <div class="config-section">
+    <div class="card">
+      <div class="flex items-center gap-4 mb-6">
+        <div class="avatar" style="width:60px;height:60px;font-size:20px;background:linear-gradient(135deg,#60A5FA,#A78BFA);color:#fff">DR</div>
+        <div>
+          <button class="btn btn-sm btn-secondary">Trocar foto</button>
+          <div class="text-xs text-t3 mt-1">JPG ou PNG, máx. 2MB</div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="grid-2"><div><div class="field-label">Nome</div><input class="input" value="Renata Oliveira"/></div><div><div class="field-label">CRN</div><input class="input" value="CRN-3 12345"/></div></div>
+        <div><div class="field-label">E-mail</div><input class="input" value="renata@nutriplus.com.br"/></div>
+        <div><div class="field-label">WhatsApp profissional</div><input class="input" value="+55 11 99999-9999"/></div>
+        <div><div class="field-label">Bio curta</div><textarea class="input" style="height:70px;padding-top:8px;resize:none">Nutricionista especialista em nutrição esportiva e emagrecimento saudável.</textarea></div>
+        <button class="btn btn-md btn-primary">Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content-area -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ─── PAGE ROUTING ───
+const pages = {
+  dashboard:{title:'Painel',sub:'Visão geral — Quinta-feira, 17 de junho'},
+  conversas:{title:'Inbox',sub:'12 não lidas · 4 conversas ativas'},
+  agenda:{title:'Agenda',sub:'17 de junho de 2026'},
+  pacientes:{title:'Pacientes',sub:'84 ativos · 12 leads'},
+  automacoes:{title:'Automações',sub:'6 fluxos ativos'},
+  ia:{title:'Assistente IA',sub:'Configuração e treinamento'},
+  disponibilidade:{title:'Disponibilidade',sub:'Horários e bloqueios de atendimento'},
+  integracoes:{title:'Integrações',sub:'Conexões externas'},
+  configuracoes:{title:'Configurações',sub:'Conta e preferências'},
+};
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  event&&event.currentTarget&&event.currentTarget.classList.add('active');
+  const p=pages[id]||{};
+  document.getElementById('page-title').textContent=p.title||id;
+  document.getElementById('page-sub').textContent=p.sub||'';
+  if(id==='conversas'){
+    document.getElementById('content-area').style.padding='0';
+    document.getElementById('content-area').style.overflow='hidden';
+  }else{
+    document.getElementById('content-area').style.padding='24px';
+    document.getElementById('content-area').style.overflow='auto';
+  }
+  if(id==='disponibilidade') renderDisponibilidade();
+  if(id==='pacientes') renderPatients();
+}
+
+// ─── PATIENTS ───
+const patients=[
+  {n:'Marina Silva',av:'av-purple',i:'MS',obj:'Emagrecimento',ltv:'R$ 3.200',st:'Ativo',sv:'success'},
+  {n:'Felipe Kruger',av:'av-blue',i:'FK',obj:'Hipertrofia',ltv:'R$ 1.600',st:'Ativo',sv:'success'},
+  {n:'Ana Pereira',av:'av-green',i:'AP',obj:'Saúde geral',ltv:'R$ 2.400',st:'Ativo',sv:'success'},
+  {n:'Caio Mendes',av:'av-orange',i:'CM',obj:'Emagrecimento',ltv:'R$ 960',st:'Lead',sv:'warning'},
+  {n:'Júlia Castro',av:'av-pink',i:'JC',obj:'Vegetarianismo',ltv:'R$ 640',st:'Inativo',sv:'default'},
+];
+function renderPatients(){
+  const t=document.getElementById('pat-table');
+  if(!t)return;
+  t.innerHTML=patients.map(p=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr 120px 100px 80px;gap:0;padding:10px 12px;border-bottom:1px solid var(--l1);align-items:center">
+      <div style="display:flex;align-items:center;gap:9px"><div class="avatar av-sm ${p.av}">${p.i}</div><div class="text-base font-500 text-t1">${p.n}</div></div>
+      <div class="text-sm text-t2">${p.obj}</div>
+      <div class="text-sm mono text-t1">${p.ltv}</div>
+      <div><span class="badge badge-${p.sv}">${p.st}</span></div>
+      <div style="text-align:right"><button class="btn btn-sm btn-ghost">Ver</button></div>
+    </div>`).join('');
+}
+
+// ─── DISPONIBILIDADE ───
+const daysData=[
+  {d:'Segunda',slots:['08:00 – 12:00','14:00 – 19:00'],on:true},
+  {d:'Terça',slots:['08:00 – 12:00','14:00 – 19:00'],on:true},
+  {d:'Quarta',slots:['14:00 – 20:00'],on:true},
+  {d:'Quinta',slots:['08:00 – 12:00','14:00 – 19:00'],on:true},
+  {d:'Sexta',slots:['08:00 – 14:00'],on:true},
+  {d:'Sábado',slots:['09:00 – 12:00'],on:true},
+  {d:'Domingo',slots:[],on:false},
+];
+const locationsData=[
+  {id:1,name:'Consultório Principal',addr:'R. das Flores, 120 – SP',color:'#61D836'},
+  {id:2,name:'Clínica Saúde Total',addr:'Av. Paulista, 1000 – SP',color:'#60A5FA'},
+  {id:3,name:'Online (Telenutri)',addr:'Plataforma Google Meet',color:'#A78BFA'},
+];
+let blockedDates={
+  '2026-06-24':{motivo:'Congresso SBAN',tipo:'full',loc:1},
+  '2026-07-12':{motivo:'Feriado',tipo:'full',loc:null},
+  '2026-08-02':{motivo:'Manhã indisponível',tipo:'partial',start:'08:00',end:'12:00',loc:2},
+};
+let calYear=2026, calMonth=5; // 0-indexed month (5 = June)
+let selectedDate=null;
+
+function renderDisponibilidade(){
+  // Days
+  const dr=document.getElementById('day-rows');
+  if(dr) dr.innerHTML=daysData.map(d=>`
+    <div class="day-row">
+      <div class="day-name">${d.d}</div>
+      <div class="day-slots">
+        ${d.slots.length===0?'<span class="text-xs text-t3">Folga</span>':d.slots.map(s=>`<span class="slot-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${s}</span>`).join('')}
+      </div>
+      <span class="badge badge-${d.on?'success':'default'}">${d.on?'Ativo':'Pausado'}</span>
+    </div>`).join('');
+
+  // Locations
+  renderLocations();
+  // Upcoming
+  renderUpcoming();
+  // Cal
+  renderCal();
+}
+
+function renderLocations(){
+  const ll=document.getElementById('locations-list');
+  if(!ll)return;
+  ll.innerHTML=locationsData.map(l=>`
+    <div class="loc-item">
+      <div class="loc-dot" style="background:${l.color}"></div>
+      <div class="flex-1"><div class="loc-name">${l.name}</div><div class="loc-addr">${l.addr}</div></div>
+      <button class="btn btn-sm btn-ghost" style="color:var(--t3)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+    </div>`).join('');
+}
+
+function renderUpcoming(){
+  const ub=document.getElementById('upcoming-blocks');
+  if(!ub)return;
+  const entries=Object.entries(blockedDates).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,5);
+  if(entries.length===0){ub.innerHTML='<div class="text-xs text-t3">Nenhum bloqueio nos próximos 60 dias.</div>';return;}
+  ub.innerHTML=entries.map(([dt,b])=>{
+    const d=new Date(dt+'T12:00:00');
+    const label=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+    const loc=b.loc?locationsData.find(l=>l.id===b.loc):null;
+    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div>
+        <div class="text-sm font-500 text-t1">${label}</div>
+        <div class="text-xs text-t3">${b.motivo}${loc?' · '+loc.name:''}</div>
+      </div>
+      <span class="badge badge-${b.tipo==='full'?'danger':'warning'}">${b.tipo==='full'?'Dia todo':'Parcial'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCal(){
+  const el=document.getElementById('mini-cal');
+  if(!el)return;
+  const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DOWS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const first=new Date(calYear,calMonth,1);
+  const last=new Date(calYear,calMonth+1,0);
+  const today=new Date();
+  let html=`<div class="cal-header">
+    <button class="cal-nav" onclick="calNav(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="cal-month">${MONTHS[calMonth]} ${calYear}</div>
+    <button class="cal-nav" onclick="calNav(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+  </div>
+  <div class="cal-grid">
+    ${DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}`;
+
+  const startDow=first.getDay();
+  for(let i=0;i<startDow;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=last.getDate();d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const bd=blockedDates[dateStr];
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const isSel=selectedDate===dateStr;
+    let cls='cal-day';
+    if(isToday) cls+=' today';
+    if(bd) cls+=' '+(bd.tipo==='full'?'blocked':'partial');
+    if(isSel) cls+=' selected';
+    html+=`<div class="${cls}" onclick="calDayClick('${dateStr}')">${d}</div>`;
+  }
+  html+='</div>';
+  el.innerHTML=html;
+  renderBlockForm();
+}
+
+function calNav(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--;}
+  if(calMonth>11){calMonth=0;calYear++;}
+  renderCal();
+}
+
+function calDayClick(dateStr){
+  selectedDate=selectedDate===dateStr?null:dateStr;
+  renderCal();
+}
+
+function renderBlockForm(){
+  const c=document.getElementById('block-form-container');
+  if(!c)return;
+  if(!selectedDate){c.innerHTML='';return;}
+  const bd=blockedDates[selectedDate]||{};
+  const d=new Date(selectedDate+'T12:00:00');
+  const label=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const isFull=bd.tipo==='full'||(bd.tipo===undefined);
+  const locOpts=locationsData.map(l=>`<option value="${l.id}" ${bd.loc===l.id?'selected':''}>${l.name}</option>`).join('');
+  c.innerHTML=`<div class="block-panel">
+    <div class="block-panel-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+      ${bd.motivo?'Editar bloqueio':'Bloquear data'} · ${label}
+    </div>
+    <div><div class="field-label">Motivo</div><input class="input input-sm mb-3" placeholder="Ex: Congresso, feriado, viagem…" value="${bd.motivo||''}"/></div>
+    <div class="toggle-row">
+      <span class="toggle-label">Dia inteiro</span>
+      <button class="toggle ${isFull?'on':''}" id="full-day-toggle" onclick="toggleFullDay(this)"></button>
+    </div>
+    <div id="time-range" style="display:${isFull?'none':'block'}">
+      <div class="field-row">
+        <div><div class="field-label">Início</div><input type="time" class="input input-sm" value="${bd.start||'08:00'}"/></div>
+        <div><div class="field-label">Fim</div><input type="time" class="input input-sm" value="${bd.end||'12:00'}"/></div>
+      </div>
+    </div>
+    <div class="mt-2 mb-3">
+      <div class="field-label">Local de atendimento neste dia</div>
+      <select class="input input-sm"><option value="">— Não especificado —</option>${locOpts}</select>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-sm btn-danger" onclick="saveBlock('${selectedDate}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        Bloquear
+      </button>
+      ${bd.motivo?`<button class="btn btn-sm btn-ghost text-red" onclick="removeBlock('${selectedDate}')">Remover</button>`:''}
+      <button class="btn btn-sm btn-ghost" onclick="selectedDate=null;renderCal()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function toggleFullDay(btn){
+  btn.classList.toggle('on');
+  const tr=document.getElementById('time-range');
+  if(tr) tr.style.display=btn.classList.contains('on')?'none':'block';
+}
+
+function saveBlock(dateStr){
+  const panel=document.querySelector('.block-panel');
+  const motivo=panel.querySelector('input[placeholder]').value||'Bloqueio';
+  const isFull=panel.querySelector('#full-day-toggle').classList.contains('on');
+  const locSel=panel.querySelector('select');
+  const locId=locSel.value?parseInt(locSel.value):null;
+  if(isFull){
+    blockedDates[dateStr]={motivo,tipo:'full',loc:locId};
+  }else{
+    const times=panel.querySelectorAll('input[type=time]');
+    blockedDates[dateStr]={motivo,tipo:'partial',start:times[0].value,end:times[1].value,loc:locId};
+  }
+  selectedDate=null;
+  renderCal();
+  renderUpcoming();
+}
+
+function removeBlock(dateStr){
+  delete blockedDates[dateStr];
+  selectedDate=null;
+  renderCal();
+  renderUpcoming();
+}
+
+function addLocation(){
+  const name=prompt('Nome do local:');
+  if(!name)return;
+  const addr=prompt('Endereço:');
+  const colors=['#61D836','#60A5FA','#A78BFA','#FFB454','#FF5567','#F9A8D4'];
+  locationsData.push({id:Date.now(),name,addr:addr||'',color:colors[locationsData.length%colors.length]});
+  renderLocations();
+}
+
+// ─── CONFIG TABS ───
+document.querySelectorAll('.config-tab').forEach(t=>{
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.config-tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ─── INIT ───
+renderPatients();
+</script>
+</body>
+</html>

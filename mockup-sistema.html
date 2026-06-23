@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frame System — Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #00C27C;
+    --brand-d: #00A86B;
+    --brand-s: rgba(0,194,124,0.08);
+    --sidebar: #141414;
+    --sidebar-hover: rgba(255,255,255,0.05);
+    --sidebar-active: rgba(0,194,124,0.12);
+    --bg: #F5F5F7;
+    --surface: #ffffff;
+    --raised: #F0F0F2;
+    --border: #E5E5EA;
+    --t1: #1D1D1F;
+    --t2: #6E6E73;
+    --t3: #AEAEB2;
+    --red: #FF453A;
+    --orange: #FF9F0A;
+    --blue: #0A84FF;
+    --purple: #BF5AF2;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--t1); display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px; min-width: 220px; background: var(--sidebar);
+    display: flex; flex-direction: column; padding: 20px 12px;
+    gap: 2px; overflow-y: auto;
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 8px 20px; margin-bottom: 4px;
+  }
+  .sidebar-logo .icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: var(--brand); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; color: #fff; flex-shrink: 0;
+  }
+  .sidebar-logo .name { font-size: 14px; font-weight: 600; color: #fff; }
+  .sidebar-logo .sub { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.45);
+    transition: all .15s; user-select: none; border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--sidebar-hover); color: rgba(255,255,255,0.75); }
+  .nav-item.active { background: var(--sidebar-active); color: var(--brand); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+  .nav-item.active svg { opacity: 1; }
+
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 0; }
+  .nav-section { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.2); letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px 4px; }
+
+  .sidebar-bottom { margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .user-chip { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .user-chip:hover { background: var(--sidebar-hover); }
+  .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .user-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.65); }
+
+  /* ── MAIN ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 56px; min-height: 56px; background: rgba(245,245,247,0.85);
+    backdrop-filter: blur(12px); display: flex; align-items: center;
+    justify-content: space-between; padding: 0 28px;
+    border-bottom: 1px solid var(--border); position: relative; z-index: 10;
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; color: var(--t1); }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--t2);
+    transition: background .15s;
+  }
+  .icon-btn:hover { background: var(--raised); }
+
+  .content { flex: 1; overflow-y: auto; padding: 28px; display: none; }
+  .content.active { display: block; }
+
+  /* ── COMPONENTS ── */
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--t1); }
+  .page-sub { font-size: 13px; color: var(--t2); margin-top: 3px; }
+
+  .card {
+    background: var(--surface); border-radius: 16px;
+    border: 1px solid var(--border); padding: 20px;
+  }
+  .card-sm { padding: 16px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .card-value { font-size: 32px; font-weight: 700; color: var(--t1); line-height: 1; }
+  .card-sub { font-size: 12px; color: var(--t2); margin-top: 6px; }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .grid-2-3 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .tag-green { background: rgba(0,194,124,0.1); color: var(--brand); }
+  .tag-orange { background: rgba(255,159,10,0.1); color: var(--orange); }
+  .tag-red { background: rgba(255,69,58,0.1); color: var(--red); }
+  .tag-blue { background: rgba(10,132,255,0.1); color: var(--blue); }
+  .tag-gray { background: var(--raised); color: var(--t2); }
+  .tag-purple { background: rgba(191,90,242,0.1); color: var(--purple); }
+
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .avatar-sm { width: 28px; height: 28px; font-size: 10px; }
+
+  .row-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .row-item:last-child { border-bottom: none; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-d); }
+  .btn-secondary { background: var(--raised); color: var(--t1); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+
+  .input {
+    width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 13px; color: var(--t1); outline: none; font-family: inherit;
+  }
+  .input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,194,124,0.1); }
+
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Metric card accent */
+  .metric-accent { width: 3px; border-radius: 3px; height: 36px; flex-shrink: 0; }
+
+  /* Progress bar */
+  .progress-bar { height: 5px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: var(--brand); }
+
+  /* Toggle */
+  .toggle { width: 36px; height: 20px; border-radius: 20px; background: var(--border); position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+  .toggle.on { background: var(--brand); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* Appointment block */
+  .appt-block { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); margin-bottom: 8px; }
+  .appt-time { font-size: 13px; font-weight: 700; color: var(--t1); min-width: 42px; }
+  .appt-bar { width: 3px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+  .appt-name { font-size: 13px; font-weight: 600; color: var(--t1); }
+  .appt-type { font-size: 11px; color: var(--t2); }
+
+  /* Chat bubble */
+  .chat-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+  .chat-row:hover { background: var(--raised); margin: 0 -16px; padding: 11px 16px; border-radius: 10px; border-bottom-color: transparent; }
+  .chat-row:last-child { border-bottom: none; }
+  .chat-meta { margin-left: auto; text-align: right; }
+  .chat-time { font-size: 11px; color: var(--t3); }
+  .unread-badge { background: var(--brand); color: #fff; border-radius: 20px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-top: 3px; display: inline-block; }
+
+  /* Timeline */
+  .timeline-line { position: absolute; left: 17px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+  .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); position: relative; z-index: 1; flex-shrink: 0; margin-top: 4px; }
+
+  /* Week calendar */
+  .week-grid { display: grid; grid-template-columns: 48px repeat(7, 1fr); }
+  .week-col-header { text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 600; color: var(--t2); }
+  .week-hour { font-size: 10px; color: var(--t3); text-align: right; padding-right: 8px; line-height: 1; margin-top: -5px; }
+  .week-cell { border-left: 1px solid var(--border); height: 48px; position: relative; }
+  .week-event { position: absolute; left: 3px; right: 3px; border-radius: 6px; padding: 3px 6px; font-size: 10px; font-weight: 600; overflow: hidden; cursor: pointer; }
+
+  /* Stat row */
+  .stat-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 13px; color: var(--t2); }
+  .stat-value { font-size: 13px; font-weight: 600; color: var(--t1); }
+
+  /* Integration card */
+  .integration-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+  .integration-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+
+  /* Automation card */
+  .auto-card { padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+  .auto-trigger { font-size: 11px; font-weight: 600; color: var(--t3); text-transform: uppercase; letter-spacing: .05em; }
+  .auto-title { font-size: 14px; font-weight: 600; color: var(--t1); margin: 4px 0; }
+  .auto-desc { font-size: 12px; color: var(--t2); }
+
+  /* Plan card */
+  .plan-card { padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px 20px; color: var(--t3); font-size: 13px; }
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Topbar search */
+  .search-box { display: flex; align-items: center; gap: 8px; background: var(--raised); border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; color: var(--t3); font-size: 13px; cursor: text; min-width: 200px; }
+
+  /* Section header */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--t1); }
+  .section-link { font-size: 12px; font-weight: 600; color: var(--brand); cursor: pointer; }
+
+  /* Pill filter */
+  .pill-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); color: var(--t2); background: var(--surface); transition: all .15s; }
+  .pill.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* Settings section */
+  .settings-group { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 13px; font-weight: 500; color: var(--t1); }
+  .settings-sub { font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+  /* Time slot grid */
+  .time-slot { padding: 6px 10px; border-radius: 8px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--t2); text-align: center; cursor: pointer; transition: all .15s; border: 1px solid transparent; }
+  .time-slot.available { background: rgba(0,194,124,0.08); color: var(--brand); border-color: rgba(0,194,124,0.2); }
+  .time-slot.busy { background: rgba(255,69,58,0.07); color: var(--red); }
+
+  /* Chip */
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--raised); color: var(--t2); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ SIDEBAR ══════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">F</div>
+    <div>
+      <div class="name">Frame System</div>
+      <div class="sub">Nutrição Inteligente</div>
+    </div>
+  </div>
+
+  <button class="nav-item active" onclick="nav('painel',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    Painel
+  </button>
+  <button class="nav-item" onclick="nav('conversas',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    Conversas
+    <span style="margin-left:auto;background:var(--brand);color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px;">5</span>
+  </button>
+  <button class="nav-item" onclick="nav('agenda',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Agenda
+  </button>
+  <button class="nav-item" onclick="nav('clientes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    Clientes
+  </button>
+  <button class="nav-item" onclick="nav('planos',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+    Planos
+  </button>
+  <button class="nav-item" onclick="nav('automacoes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    Automações
+  </button>
+
+  <div class="nav-divider"></div>
+
+  <button class="nav-item" onclick="nav('assistente',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Assistente IA
+  </button>
+  <button class="nav-item" onclick="nav('disponibilidade',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Disponibilidade
+  </button>
+  <button class="nav-item" onclick="nav('equipe',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    Equipe
+  </button>
+  <button class="nav-item" onclick="nav('integracoes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+    Integrações
+  </button>
+  <button class="nav-item" onclick="nav('configuracoes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Configurações
+  </button>
+
+  <div class="nav-divider"></div>
+
+  <button class="nav-item" onclick="nav('admin',this)" style="color:rgba(255,193,7,0.6)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Admin
+  </button>
+
+  <div class="sidebar-bottom">
+    <div class="user-chip">
+      <div class="user-avatar">H</div>
+      <div>
+        <div class="user-name">Heloísa</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════ MAIN ══════════════════════════════════ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div id="topbar-title" style="display:none"></div>
+    <div class="topbar-right">
+      <div class="search-box">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Buscar...
+      </div>
+      <button class="icon-btn" style="position:relative">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg)"></span>
+      </button>
+      <div class="user-avatar" style="width:32px;height:32px;font-size:12px;cursor:pointer">H</div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: PAINEL ═══════ -->
+  <div class="content active" id="page-painel">
+    <div class="page-header">
+      <div class="page-title">Bom dia, Heloísa 👋</div>
+      <div class="page-sub">Sábado, 7 de junho de 2026</div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="grid-4">
+      <div class="card card-sm">
+        <div class="card-title">Clientes ativos</div>
+        <div class="card-value">24</div>
+        <div class="card-sub" style="color:var(--brand)">↑ +2 esta semana</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Consultas hoje</div>
+        <div class="card-value">3</div>
+        <div class="card-sub">Próxima às 14h00</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Mensagens</div>
+        <div class="card-value">12</div>
+        <div class="card-sub" style="color:var(--orange)">5 não lidas</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Follow-ups</div>
+        <div class="card-value">8</div>
+        <div class="card-sub">Pendentes hoje</div>
+      </div>
+    </div>
+
+    <div class="grid-2-3">
+      <!-- Activity -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Atividade recente</div>
+          <div class="section-link">Ver tudo</div>
+        </div>
+        <div>
+          <div class="chat-row">
+            <div class="avatar" style="background:#8B5CF6">MS</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Maria Silva</div>
+              <div style="font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Oi, posso trocar o horário de amanhã?</div>
+            </div>
+            <div class="chat-meta"><div class="chat-time">agora</div><div class="unread-badge">2</div></div>
+          </div>
+          <div class="chat-row">
+            <div class="avatar" style="background:#F59E0B">JC</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">João Costa</div>
+              <div style="font-size:12px;color:var(--t2)">Obrigado pela dieta! Já comecei 💪</div>
+            </div>
+            <div class="chat-meta"><div class="chat-time">12 min</div></div>
+          </div>
+          <div class="chat-row">
+            <div class="avatar" style="background:#EF4444">AM</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Ana Mendes</div>
+              <div style="font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assistente: Olá Ana! Sua consulta está confirmada para...</div>
+            </div>
+            <div class="chat-meta"><div class="chat-time">1h</div></div>
+          </div>
+          <div class="chat-row">
+            <div class="avatar" style="background:#10B981">LR</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Luana Ramos</div>
+              <div style="font-size:12px;color:var(--t2)">Tudo bem! Vou estar lá na hora certa</div>
+            </div>
+            <div class="chat-meta"><div class="chat-time">3h</div></div>
+          </div>
+          <div class="chat-row">
+            <div class="avatar" style="background:#3B82F6">PF</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Pedro Faria</div>
+              <div style="font-size:12px;color:var(--t2)">Posso fazer o pagamento pelo pix?</div>
+            </div>
+            <div class="chat-meta"><div class="chat-time">ontem</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <!-- Agenda -->
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Agenda de hoje</div>
+            <div class="section-link">Abrir agenda</div>
+          </div>
+          <div class="appt-block">
+            <div class="appt-time">09h00</div>
+            <div class="appt-bar" style="background:var(--brand)"></div>
+            <div style="flex:1"><div class="appt-name">Maria Silva</div><div class="appt-type">Consulta de retorno · 50 min</div></div>
+            <span class="tag tag-green">Confirmada</span>
+          </div>
+          <div class="appt-block">
+            <div class="appt-time">14h00</div>
+            <div class="appt-bar" style="background:var(--blue)"></div>
+            <div style="flex:1"><div class="appt-name">João Costa</div><div class="appt-type">Primeira consulta · 50 min</div></div>
+            <span class="tag tag-blue">Agendada</span>
+          </div>
+          <div class="appt-block">
+            <div class="appt-time">16h30</div>
+            <div class="appt-bar" style="background:var(--orange)"></div>
+            <div style="flex:1"><div class="appt-name">Ana Mendes</div><div class="appt-type">Acompanhamento · 50 min</div></div>
+            <span class="tag tag-orange">Pendente</span>
+          </div>
+        </div>
+
+        <!-- AI Stats -->
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Assistente IA</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--brand)"><div class="badge-dot" style="background:var(--brand)"></div>Ativo</div>
+          </div>
+          <div class="stat-row"><span class="stat-label">Mensagens hoje</span><span class="stat-value">47</span></div>
+          <div class="stat-row"><span class="stat-label">Resolvidas pela IA</span><span class="stat-value" style="color:var(--brand)">38 (81%)</span></div>
+          <div class="stat-row"><span class="stat-label">Modo férias</span><span class="stat-value" style="color:var(--t3)">Desativado</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: CONVERSAS ═══════ -->
+  <div class="content" id="page-conversas">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Conversas</div>
+          <div class="page-sub">47 mensagens hoje · 5 não lidas</div>
+        </div>
+        <button class="btn btn-primary btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Nova conversa
+        </button>
+      </div>
+    </div>
+
+    <div class="pill-group">
+      <div class="pill active">Todas</div>
+      <div class="pill">Não lidas</div>
+      <div class="pill">Aguardando</div>
+      <div class="pill">IA ativa</div>
+      <div class="pill">Arquivadas</div>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns:320px 1fr;height:calc(100vh - 240px);gap:0;margin:0">
+      <!-- List -->
+      <div class="card" style="border-radius:16px 0 0 16px;border-right:none;overflow-y:auto;padding:0">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)">
+          <div class="search-box" style="min-width:unset">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Buscar conversa...
+          </div>
+        </div>
+
+        <div style="padding:0 4px">
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border-bottom:1px solid var(--border);background:rgba(0,194,124,0.04);border-radius:0;cursor:pointer">
+            <div style="position:relative">
+              <div class="avatar" style="background:#8B5CF6">MS</div>
+              <div class="badge-dot" style="background:var(--brand);position:absolute;bottom:0;right:0;border:1.5px solid var(--surface)"></div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:700;color:var(--t1)">Maria Silva</span>
+                <span style="font-size:11px;color:var(--t3)">agora</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Oi, posso trocar o horário de amanhã?</div>
+            </div>
+            <div class="unread-badge">2</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+            <div class="avatar" style="background:#F59E0B">JC</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">João Costa</span>
+                <span style="font-size:11px;color:var(--t3)">12 min</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px">Obrigado pela dieta! Já comecei 💪</div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+            <div class="avatar" style="background:#EF4444">AM</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">Ana Mendes</span>
+                <span style="font-size:11px;color:var(--t3)">1h</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assistente: Olá Ana! Sua consulta está confirmada...</div>
+            </div>
+            <div class="unread-badge" style="background:var(--t3)">IA</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+            <div class="avatar" style="background:#10B981">LR</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">Luana Ramos</span>
+                <span style="font-size:11px;color:var(--t3)">3h</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px">Tudo bem! Vou estar lá na hora certa</div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 12px;cursor:pointer">
+            <div class="avatar" style="background:#3B82F6">PF</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">Pedro Faria</span>
+                <span style="font-size:11px;color:var(--t3)">ontem</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px">Posso fazer o pagamento pelo pix?</div>
+            </div>
+            <div class="unread-badge">1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat window -->
+      <div class="card" style="border-radius:0 16px 16px 0;display:flex;flex-direction:column;padding:0;overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px">
+          <div style="position:relative">
+            <div class="avatar" style="background:#8B5CF6">MS</div>
+            <div class="badge-dot" style="background:var(--brand);position:absolute;bottom:0;right:0;border:1.5px solid var(--surface)"></div>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">Maria Silva</div>
+            <div style="font-size:11px;color:var(--brand)">Online agora</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <span class="tag tag-green">IA ativa</span>
+            <button class="btn btn-secondary btn-sm">Ver perfil</button>
+          </div>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:9px;align-items:flex-end">
+            <div class="avatar avatar-sm" style="background:#8B5CF6">MS</div>
+            <div style="background:var(--raised);border-radius:14px 14px 14px 4px;padding:10px 14px;max-width:65%">
+              <div style="font-size:13px;color:var(--t1)">Oi, posso trocar o horário de amanhã?</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:4px">09:42</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:9px;align-items:flex-end;flex-direction:row-reverse">
+            <div style="background:var(--brand);border-radius:14px 14px 4px 14px;padding:10px 14px;max-width:65%">
+              <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:3px">Assistente IA</div>
+              <div style="font-size:13px;color:#fff">Olá Maria! Claro, que horário seria melhor para você? Temos disponibilidade amanhã às 10h, 15h ou 17h.</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:4px">09:42 · IA</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:9px;align-items:flex-end">
+            <div class="avatar avatar-sm" style="background:#8B5CF6">MS</div>
+            <div style="background:var(--raised);border-radius:14px 14px 14px 4px;padding:10px 14px;max-width:65%">
+              <div style="font-size:13px;color:var(--t1)">15h está ótimo! Pode confirmar?</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:4px">09:43</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center">
+          <input class="input" placeholder="Escreva uma mensagem..." style="flex:1" />
+          <button class="btn btn-primary btn-sm" style="height:36px">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: AGENDA ═══════ -->
+  <div class="content" id="page-agenda">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Agenda</div>
+          <div class="page-sub">Junho 2026 · 3 consultas hoje</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="pill-group" style="margin:0">
+            <div class="pill active">Semana</div>
+            <div class="pill">Mês</div>
+            <div class="pill">Lista</div>
+          </div>
+          <button class="btn btn-primary btn-sm">+ Nova consulta</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <!-- Week header -->
+      <div style="display:grid;grid-template-columns:60px repeat(7,1fr);border-bottom:1px solid var(--border)">
+        <div></div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">DOM</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">1</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">SEG</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">2</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">TER</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">3</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">QUA</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">4</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">QUI</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">5</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2)">SEX</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t2);margin-top:2px">6</div>
+        </div>
+        <div style="text-align:center;padding:12px 8px;background:rgba(0,194,124,0.06)">
+          <div style="font-size:11px;font-weight:600;color:var(--brand)">SÁB</div>
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:2px auto 0">7</div>
+        </div>
+      </div>
+
+      <!-- Time grid -->
+      <div style="overflow-y:auto;max-height:420px">
+        <div style="display:grid;grid-template-columns:60px repeat(7,1fr)">
+          <!-- Hours -->
+          <div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">08h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">09h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">10h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">11h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">12h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">13h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">14h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">15h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">16h</span></div>
+            <div style="height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px 10px 0 0"><span style="font-size:10px;color:var(--t3)">17h</span></div>
+          </div>
+          <!-- Days cols (simplified) -->
+          <div style="border-left:1px solid var(--border)"><div style="height:480px"></div></div>
+          <div style="border-left:1px solid var(--border);position:relative">
+            <div style="height:480px"></div>
+            <div class="week-event" style="top:48px;height:38px;background:rgba(0,194,124,0.15);color:var(--brand);border-left:2px solid var(--brand)">Maria S.<br><span style="font-weight:400;opacity:.7">09h · 50min</span></div>
+          </div>
+          <div style="border-left:1px solid var(--border)"><div style="height:480px"></div></div>
+          <div style="border-left:1px solid var(--border);position:relative">
+            <div style="height:480px"></div>
+            <div class="week-event" style="top:192px;height:38px;background:rgba(10,132,255,0.12);color:var(--blue);border-left:2px solid var(--blue)">João C.<br><span style="font-weight:400;opacity:.7">12h · 50min</span></div>
+          </div>
+          <div style="border-left:1px solid var(--border)"><div style="height:480px"></div></div>
+          <div style="border-left:1px solid var(--border)"><div style="height:480px"></div></div>
+          <div style="border-left:1px solid var(--border);background:rgba(0,194,124,0.03);position:relative">
+            <div style="height:480px"></div>
+            <div class="week-event" style="top:48px;height:38px;background:rgba(0,194,124,0.15);color:var(--brand);border-left:2px solid var(--brand)">Maria S.<br><span style="font-weight:400;opacity:.7">09h · 50min</span></div>
+            <div class="week-event" style="top:288px;height:38px;background:rgba(10,132,255,0.12);color:var(--blue);border-left:2px solid var(--blue)">João C.<br><span style="font-weight:400;opacity:.7">14h · 50min</span></div>
+            <div class="week-event" style="top:384px;height:38px;background:rgba(255,159,10,0.12);color:var(--orange);border-left:2px solid var(--orange)">Ana M.<br><span style="font-weight:400;opacity:.7">16h30 · 50min</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: CLIENTES ═══════ -->
+  <div class="content" id="page-clientes">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Clientes</div>
+          <div class="page-sub">24 pacientes ativos</div>
+        </div>
+        <button class="btn btn-primary btn-sm">+ Novo cliente</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <div class="search-box" style="flex:1;min-width:unset;background:var(--surface);border:1px solid var(--border)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Buscar por nome, email ou telefone...
+      </div>
+      <div class="pill-group" style="margin:0">
+        <div class="pill active">Todos</div>
+        <div class="pill">Ativos</div>
+        <div class="pill">Inativos</div>
+        <div class="pill">Novos</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--raised)">
+            <th style="text-align:left;padding:11px 18px;font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Paciente</th>
+            <th style="text-align:left;padding:11px 18px;font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Contato</th>
+            <th style="text-align:left;padding:11px 18px;font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Última consulta</th>
+            <th style="text-align:left;padding:11px 18px;font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Próxima</th>
+            <th style="text-align:left;padding:11px 18px;font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Status</th>
+            <th style="padding:11px 18px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--raised)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 18px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-sm" style="background:#8B5CF6">MS</div><div><div style="font-size:13px;font-weight:600;color:var(--t1)">Maria Silva</div><div style="font-size:11px;color:var(--t2)">Emagrecimento</div></div></div></td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">(11) 99999-0001</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">01 jun 2026</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t1);font-weight:500">07 jun · 09h</td>
+            <td style="padding:13px 18px"><span class="tag tag-green">Ativa</span></td>
+            <td style="padding:13px 18px"><button class="btn btn-secondary btn-sm">Ver</button></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--raised)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 18px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-sm" style="background:#F59E0B">JC</div><div><div style="font-size:13px;font-weight:600;color:var(--t1)">João Costa</div><div style="font-size:11px;color:var(--t2)">Ganho de massa</div></div></div></td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">(21) 99999-0002</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">28 mai 2026</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t1);font-weight:500">07 jun · 14h</td>
+            <td style="padding:13px 18px"><span class="tag tag-green">Ativo</span></td>
+            <td style="padding:13px 18px"><button class="btn btn-secondary btn-sm">Ver</button></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--raised)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 18px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-sm" style="background:#EF4444">AM</div><div><div style="font-size:13px;font-weight:600;color:var(--t1)">Ana Mendes</div><div style="font-size:11px;color:var(--t2)">Saúde geral</div></div></div></td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">(31) 99999-0003</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">15 mai 2026</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t1);font-weight:500">07 jun · 16h30</td>
+            <td style="padding:13px 18px"><span class="tag tag-orange">Pendente</span></td>
+            <td style="padding:13px 18px"><button class="btn btn-secondary btn-sm">Ver</button></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--raised)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 18px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-sm" style="background:#10B981">LR</div><div><div style="font-size:13px;font-weight:600;color:var(--t1)">Luana Ramos</div><div style="font-size:11px;color:var(--t2)">Reeducação alimentar</div></div></div></td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">(41) 99999-0004</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">10 mai 2026</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t3)">—</td>
+            <td style="padding:13px 18px"><span class="tag tag-gray">Inativa</span></td>
+            <td style="padding:13px 18px"><button class="btn btn-secondary btn-sm">Ver</button></td>
+          </tr>
+          <tr style="cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--raised)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 18px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-sm" style="background:#3B82F6">PF</div><div><div style="font-size:13px;font-weight:600;color:var(--t1)">Pedro Faria</div><div style="font-size:11px;color:var(--t2)">Performance</div></div></div></td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">(51) 99999-0005</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t2)">20 mai 2026</td>
+            <td style="padding:13px 18px;font-size:12px;color:var(--t1);font-weight:500">14 jun · 10h</td>
+            <td style="padding:13px 18px"><span class="tag tag-green">Ativo</span></td>
+            <td style="padding:13px 18px"><button class="btn btn-secondary btn-sm">Ver</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: PLANOS ═══════ -->
+  <div class="content" id="page-planos">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Planos</div>
+        <div class="page-sub">Configure os planos que você oferece e as mensagens automáticas de entrega</div>
+      </div>
+    </div>
+
+    <!-- Modalidades de atendimento -->
+    <div class="section-header"><div class="section-title">Modalidades de atendimento</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+
+      <!-- Online -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(10,132,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px">🌐</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">Online</div>
+            <div style="font-size:11px;color:var(--t2)">Teleconsulta / remoto</div>
+          </div>
+          <div class="toggle on" style="margin-left:auto"></div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px">ARQUIVO DO PLANO</div>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer" onmouseenter="this.style.borderColor='var(--brand)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="font-size:20px;margin-bottom:6px">📄</div>
+            <div style="font-size:12px;font-weight:600;color:var(--t2)">Arraste PDF ou imagem</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">ou clique para selecionar</div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:10px">Selecionar arquivo</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--t3)">Aceita: PDF, JPG, PNG · Máx. 10MB</div>
+      </div>
+
+      <!-- Presencial -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,194,124,0.1);display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">Presencial</div>
+            <div style="font-size:11px;color:var(--t2)">Consultório / clínica</div>
+          </div>
+          <div class="toggle on" style="margin-left:auto"></div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px">ARQUIVO DO PLANO</div>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(0,194,124,0.03)" onmouseenter="this.style.borderColor='var(--brand)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="font-size:20px;margin-bottom:6px">📋</div>
+            <div style="font-size:12px;font-weight:600;color:var(--brand)">plano-presencial-2025.pdf</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">1 arquivo carregado</div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:10px">Trocar arquivo</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--t3)">Aceita: PDF, JPG, PNG · Máx. 10MB</div>
+      </div>
+
+      <!-- Geral -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(191,90,242,0.1);display:flex;align-items:center;justify-content:center;font-size:18px">✨</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">Geral</div>
+            <div style="font-size:11px;color:var(--t2)">Ambas as modalidades</div>
+          </div>
+          <div class="toggle" style="margin-left:auto"></div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px">ARQUIVO DO PLANO</div>
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;opacity:.5">
+            <div style="font-size:20px;margin-bottom:6px">📄</div>
+            <div style="font-size:12px;font-weight:600;color:var(--t2)">Desativado</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">Ative para usar este plano</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--t3)">Aceita: PDF, JPG, PNG · Máx. 10MB</div>
+      </div>
+    </div>
+
+    <!-- Mensagens dos planos -->
+    <div class="section-header"><div class="section-title">Mensagens dos planos</div><div class="section-link">Como funciona?</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <div class="settings-group" style="margin-bottom:0">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Mensagem planos Online</div>
+            <div class="settings-sub">Enviada automaticamente ao entregar o plano para pacientes online</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="tag tag-gray">INATIVO</span>
+            <div class="toggle"></div>
+          </div>
+        </div>
+        <div style="padding:12px 18px;background:var(--raised)">
+          <textarea class="input" rows="2" style="resize:none;font-size:12px;opacity:.5" disabled>Olá {nome}! Seu plano alimentar online está pronto. Acesse pelo link abaixo e qualquer dúvida é só me chamar! 💚</textarea>
+        </div>
+      </div>
+
+      <div class="settings-group" style="margin-bottom:0">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Mensagem planos Presenciais</div>
+            <div class="settings-sub">Enviada automaticamente ao entregar o plano para pacientes presenciais</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="tag tag-gray">INATIVO</span>
+            <div class="toggle"></div>
+          </div>
+        </div>
+        <div style="padding:12px 18px;background:var(--raised)">
+          <textarea class="input" rows="2" style="resize:none;font-size:12px;opacity:.5" disabled>Oi {nome}! Segue seu plano alimentar conforme combinamos na consulta. Estou disponível para tirar dúvidas. 😊</textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: AUTOMAÇÕES ═══════ -->
+  <div class="content" id="page-automacoes">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Automações</div>
+        <div class="page-sub">Fluxos de atendimento automático via WhatsApp</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+      <!-- Left: automation cards -->
+      <div>
+        <!-- Status da IA -->
+        <div class="card card-sm" style="margin-bottom:14px;background:rgba(0,194,124,0.04);border-color:rgba(0,194,124,0.2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">Status da IA</div>
+            <span class="tag tag-green">4/4 ativos</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px"><div class="badge-dot" style="background:var(--brand)"></div><span style="font-size:12px;color:var(--t1)">Sem resposta</span><span style="margin-left:auto;font-size:11px;color:var(--t2)">✓ ativo</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div class="badge-dot" style="background:var(--brand)"></div><span style="font-size:12px;color:var(--t1)">Pós-consulta</span><span style="margin-left:auto;font-size:11px;color:var(--t2)">✓ ativo</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div class="badge-dot" style="background:var(--brand)"></div><span style="font-size:12px;color:var(--t1)">Lembrete</span><span style="margin-left:auto;font-size:11px;color:var(--t2)">✓ ativo</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div class="badge-dot" style="background:var(--brand)"></div><span style="font-size:12px;color:var(--t1)">Retorno</span><span style="margin-left:auto;font-size:11px;color:var(--t2)">✓ ativo</span></div>
+          </div>
+        </div>
+
+        <!-- 4 Automações -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div class="auto-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+              <div>
+                <div class="auto-trigger">Gatilho: 3+ dias sem resposta</div>
+                <div class="auto-title">Sem resposta</div>
+                <div class="auto-desc">Reengaja leads parados. Envia mensagem gentil perguntando se o paciente tem dúvidas ou precisa de ajuda.</div>
+              </div>
+              <div class="toggle on" style="margin-left:12px;margin-top:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+              <span class="tag tag-green">Ativa</span>
+              <span style="font-size:11px;color:var(--t2)">31 ativações este mês</span>
+              <button class="btn btn-secondary btn-sm" style="margin-left:auto">Editar</button>
+            </div>
+          </div>
+
+          <div class="auto-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+              <div>
+                <div class="auto-trigger">Gatilho: Após a consulta</div>
+                <div class="auto-title">Pós-consulta</div>
+                <div class="auto-desc">Pergunta como foi o atendimento. Coleta feedback do paciente e reforça os próximos passos do plano.</div>
+              </div>
+              <div class="toggle on" style="margin-left:12px;margin-top:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+              <span class="tag tag-green">Ativa</span>
+              <span style="font-size:11px;color:var(--t2)">19 ativações este mês</span>
+              <button class="btn btn-secondary btn-sm" style="margin-left:auto">Editar</button>
+            </div>
+          </div>
+
+          <div class="auto-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+              <div>
+                <div class="auto-trigger">Gatilho: 24h antes da consulta</div>
+                <div class="auto-title">Lembrete</div>
+                <div class="auto-desc">Avisa o paciente antes da consulta. Confirma horário e envia instruções de preparo quando necessário.</div>
+              </div>
+              <div class="toggle on" style="margin-left:12px;margin-top:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+              <span class="tag tag-green">Ativa</span>
+              <span style="font-size:11px;color:var(--t2)">43 ativações este mês</span>
+              <button class="btn btn-secondary btn-sm" style="margin-left:auto">Editar</button>
+            </div>
+          </div>
+
+          <div class="auto-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+              <div>
+                <div class="auto-trigger">Gatilho: Paciente inativo há 30+ dias</div>
+                <div class="auto-title">Retorno</div>
+                <div class="auto-desc">Reativa pacientes sumidos. Envia mensagem carinhosa lembrando da importância do acompanhamento nutricional.</div>
+              </div>
+              <div class="toggle on" style="margin-left:12px;margin-top:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+              <span class="tag tag-green">Ativa</span>
+              <span style="font-size:11px;color:var(--t2)">8 ativações este mês</span>
+              <button class="btn btn-secondary btn-sm" style="margin-left:auto">Editar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right: Como funciona -->
+      <div>
+        <div class="card" style="position:sticky;top:0">
+          <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Como funciona</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Os fluxos são executados automaticamente pela IA via WhatsApp</div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:12px">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(0,194,124,0.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--brand);flex-shrink:0">1</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">Gatilho detectado</div>
+                <div style="font-size:12px;color:var(--t2);margin-top:2px">O sistema monitora eventos como consultas, silêncio do paciente e retorno</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(0,194,124,0.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--brand);flex-shrink:0">2</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">IA envia mensagem</div>
+                <div style="font-size:12px;color:var(--t2);margin-top:2px">A assistente envia automaticamente pelo WhatsApp com o tom configurado</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(0,194,124,0.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--brand);flex-shrink:0">3</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">Você é notificada</div>
+                <div style="font-size:12px;color:var(--t2);margin-top:2px">Recebe alerta quando o paciente responde ou quando precisa de atenção especial</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div style="padding:12px;border-radius:10px;background:var(--raised)">
+            <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">ESTE MÊS</div>
+            <div class="stat-row" style="padding:6px 0"><span class="stat-label">Total de ativações</span><span class="stat-value">101</span></div>
+            <div class="stat-row" style="padding:6px 0"><span class="stat-label">Pacientes reengajados</span><span class="stat-value" style="color:var(--brand)">14</span></div>
+            <div class="stat-row" style="padding:6px 0;border-bottom:none"><span class="stat-label">Consultas geradas</span><span class="stat-value" style="color:var(--brand)">6</span></div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 12px;border-radius:10px;background:rgba(10,132,255,0.06);border:1px solid rgba(10,132,255,0.15)">
+            <div style="font-size:12px;color:var(--blue)">💡 Os fluxos usam n8n como motor de automação. Para editar os gatilhos avançados, acesse o painel n8n.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ PAGE: ASSISTENTE ═══════ -->
+  <div class="content" id="page-assistente">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Assistente IA</div>
+          <div class="page-sub">Seu recepcionista virtual inteligente</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(0,194,124,0.08);border:1px solid rgba(0,194,124,0.2)">
+          <div class="badge-dot" style="background:var(--brand)"></div>
+          <span style="font-size:13px;font-weight:600;color:var(--brand)">Assistente ativo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid-3">
+      <div class="card card-sm">
+        <div class="card-title">Mensagens hoje</div>
+        <div class="card-value">47</div>
+        <div class="card-sub" style="color:var(--brand)">↑ 12% vs ontem</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Resolvidas pela IA</div>
+        <div class="card-value" style="color:var(--brand)">81%</div>
+        <div class="card-sub">38 de 47 mensagens</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Tempo médio de resposta</div>
+        <div class="card-value">8s</div>
+        <div class="card-sub" style="color:var(--brand)">Resposta instantânea</div>
+      </div>
+    </div>
+
+    <!-- ── Treinamento ── -->
+    <div class="section-header" style="margin-bottom:4px">
+      <div class="section-title">Treinamento</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--t2)">5 de 8 perguntas respondidas</span>
+        <div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:62%"></div></div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Responda o quiz abaixo para ensinar a IA como você quer ser atendida. Quanto mais completo, mais fiel ao seu estilo ela será.</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:0">
+
+        <!-- Q1 — Tom de atendimento -->
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px">1</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Como você quer que a IA se comunique com seus pacientes?</div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Escolha o estilo de comunicação mais próximo do seu</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--brand);background:rgba(0,194,124,0.06);cursor:pointer">
+                  <input type="radio" name="q1" checked style="accent-color:var(--brand)" />
+                  <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Profissional e calorosa</div><div style="font-size:11px;color:var(--t2)">Formal mas acolhedora, usa emojis com moderação 😊</div></div>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                  <input type="radio" name="q1" style="accent-color:var(--brand)" />
+                  <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Descontraída e próxima</div><div style="font-size:11px;color:var(--t2)">Como uma amiga que entende de nutrição, usa muitos emojis</div></div>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                  <input type="radio" name="q1" style="accent-color:var(--brand)" />
+                  <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Técnica e objetiva</div><div style="font-size:11px;color:var(--t2)">Respostas diretas, sem firulas, foco na informação</div></div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q2 — Apresentação -->
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px">2</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Como a IA deve se apresentar quando receber um novo paciente?</div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Escreva como se fosse você mesma recebendo um paciente novo no WhatsApp</div>
+              <textarea class="input" rows="3" style="resize:none">Olá! 😊 Que bom ter você aqui! Sou a assistente da Heloísa, nutricionista especializada em emagrecimento e reeducação alimentar. Como posso te ajudar hoje?</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q3 — Situações delicadas -->
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px">3</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">O que a IA NUNCA deve fazer ou dizer?</div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Situações que você quer que sejam redirecionadas para você</div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);cursor:pointer"><input type="checkbox" checked style="accent-color:var(--brand)" /> Mencionar valores de consulta sem minha autorização</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);cursor:pointer"><input type="checkbox" checked style="accent-color:var(--brand)" /> Dar diagnósticos ou prescrever suplementos</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);cursor:pointer"><input type="checkbox" checked style="accent-color:var(--brand)" /> Responder reclamações sobre o atendimento</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);cursor:pointer"><input type="checkbox" style="accent-color:var(--brand)" /> Discutir cancelamentos ou reembolsos</label>
+              </div>
+              <input class="input" placeholder="Outro: descreva aqui..." style="font-size:12px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Q4 — Prioridade de resposta -->
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px">4</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Quando um paciente manda mensagem, qual a prioridade da IA?</div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:10px">A IA tentará lidar com isso antes de passar para você</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--brand);background:rgba(0,194,124,0.06);cursor:pointer">
+                  <input type="radio" name="q4" checked style="accent-color:var(--brand)" />
+                  <span style="font-size:13px;color:var(--t1)">Agendar consulta → Tirar dúvidas → Encaminhar para mim</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                  <input type="radio" name="q4" style="accent-color:var(--brand)" />
+                  <span style="font-size:13px;color:var(--t1)">Tirar dúvidas → Agendar consulta → Encaminhar para mim</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                  <input type="radio" name="q4" style="accent-color:var(--brand)" />
+                  <span style="font-size:13px;color:var(--t1)">Só agendamento — qualquer dúvida encaminha para mim</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q5 — Especialidade -->
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px">5</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Quais são seus focos de atendimento? (selecione todos)</div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:10px">A IA usará isso para qualificar e orientar os pacientes</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--brand);background:rgba(0,194,124,0.08);cursor:pointer;font-size:12px;font-weight:600;color:var(--brand)"><input type="checkbox" checked style="accent-color:var(--brand);width:12px" /> Emagrecimento</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--brand);background:rgba(0,194,124,0.08);cursor:pointer;font-size:12px;font-weight:600;color:var(--brand)"><input type="checkbox" checked style="accent-color:var(--brand);width:12px" /> Reeducação alimentar</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2)"><input type="checkbox" style="accent-color:var(--brand);width:12px" /> Hipertrofia</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2)"><input type="checkbox" style="accent-color:var(--brand);width:12px" /> Gestantes</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2)"><input type="checkbox" style="accent-color:var(--brand);width:12px" /> Patologias</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2)"><input type="checkbox" style="accent-color:var(--brand);width:12px" /> Esportistas</label>
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2)"><input type="checkbox" style="accent-color:var(--brand);width:12px" /> Idosos</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q6-8 locked -->
+        <div style="padding:18px 0;opacity:.45">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0">6</div>
+            <div style="font-size:13px;color:var(--t3)">O que fazer quando o paciente pede cancelamento? <span style="background:var(--raised);border-radius:4px;padding:1px 6px;font-size:11px">Responda a pergunta 5 para liberar</span></div>
+          </div>
+        </div>
+        <div style="padding:12px 0;opacity:.35;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0">7</div>
+            <div style="font-size:13px;color:var(--t3)">Como responder pacientes que somem por mais de 30 dias?</div>
+          </div>
+        </div>
+        <div style="padding:12px 0;opacity:.35">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0">8</div>
+            <div style="font-size:13px;color:var(--t3)">Alguma palavra-chave que deve sempre chamar sua atenção?</div>
+          </div>
+        </div>
+
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--t2)">Treinamento salvo automaticamente a cada resposta</div>
+        <button class="btn btn-primary">Finalizar treinamento</button>
+      </div>
+    </div>
+
+    <!-- ── Configurações + Tom ── -->
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="section-title" style="margin-bottom:16px">Configurações do assistente</div>
+        <div class="settings-group" style="margin-bottom:0">
+          <div class="settings-row">
+            <div><div class="settings-label">Assistente ativo</div><div class="settings-sub">Responde automaticamente os pacientes</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Modo férias</div><div class="settings-sub">Informa disponibilidade limitada</div></div>
+            <div class="toggle"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Responder fora do horário</div><div class="settings-sub">Mensagens à noite e fins de semana</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Agendamento automático</div><div class="settings-sub">Permite que a IA agende consultas</div></div>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-bottom:16px">Tom e personalidade</div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Nome do assistente</div>
+          <input class="input" value="Nutri Assistente" />
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Tom de voz</div>
+          <div class="pill-group" style="margin:0">
+            <div class="pill active">Profissional e caloroso</div>
+            <div class="pill">Formal</div>
+            <div class="pill">Descontraído</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Horário de funcionamento da IA ── -->
+    <div class="section-header" style="margin-bottom:8px">
+      <div class="section-title">Horário de funcionamento da IA</div>
+    </div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">A IA só agenda consultas dentro destes horários. Fora deles, ela responde normalmente mas avisa que agendamentos só serão confirmados no próximo horário disponível.</div>
+
+    <!-- 24/7 toggle card -->
+    <div class="card card-sm" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:20px">🕐</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Disponível 24/7</div>
+          <div style="font-size:12px;color:var(--t2)">A IA atende e agenda qualquer hora do dia, todos os dias — sem restrição de horário</div>
+        </div>
+      </div>
+      <div class="toggle" id="toggle-24h" onclick="toggle24h(this)" style="flex-shrink:0"></div>
+    </div>
+
+    <!-- Schedule grid (shown when 24/7 is OFF) -->
+    <div id="horario-grid">
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px">
+          <!-- Segunda -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">SEG</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="08:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="18:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <!-- Terça -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">TER</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="08:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="18:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <!-- Quarta -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">QUA</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="08:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="13:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <!-- Quinta -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">QUI</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="08:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="18:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <!-- Sexta -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">SEX</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="08:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="17:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <!-- Sábado -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">SÁB</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="09:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="13:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option selected>1h</option><option>30 min</option><option>50 min</option></select>
+          </div>
+          <!-- Domingo -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--t2)">DOM</span><input type="checkbox" checked style="accent-color:var(--brand)" /></div>
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="09:00" />
+            <input class="input" style="padding:5px 7px;font-size:12px;text-align:center" value="12:00" />
+            <select class="input" style="padding:5px 7px;font-size:11px"><option selected>1h</option><option>30 min</option><option>50 min</option></select>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--t2)">Fora desses horários a IA continua respondendo, mas só agenda dentro da janela configurada</div>
+          <button class="btn btn-primary btn-sm">Salvar horários</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mensagem fora do horário -->
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Mensagem fora do horário</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Enviada quando o paciente manda mensagem fora da sua janela de atendimento</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <textarea class="input" rows="3" style="resize:none">Olá! 😊 Recebi sua mensagem e já vi aqui. Nosso horário de atendimento é de segunda a sexta, das 8h às 18h. Assim que possível retorno com tudo certinho! 💚</textarea>
+      <div style="font-size:11px;color:var(--t3);margin-top:6px">Use <span style="font-weight:600;color:var(--t2)">{nome}</span> para personalizar com o nome do paciente</div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:10px">Salvar mensagem</button>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: DISPONIBILIDADE ═══════ -->
+  <div class="content" id="page-disponibilidade">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Disponibilidade</div>
+          <div class="page-sub">Configure seus horários, pausas e dias sem atendimento</div>
+        </div>
+        <button class="btn btn-primary btn-sm">Salvar alterações</button>
+      </div>
+    </div>
+
+    <!-- DIAS ÚTEIS -->
+    <div class="section-header" style="margin-bottom:12px"><div class="section-title">Dias úteis</div></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:0">
+
+        <!-- Row helper macro — replicated for each day -->
+        <!-- Segunda -->
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Segunda</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="08:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="18:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle on" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="12:00" />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="13:00" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Terça -->
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Terça</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="08:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="18:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle on" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="12:00" />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="13:00" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Quarta -->
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Quarta</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="08:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="13:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+            </div>
+          </div>
+        </div>
+
+        <!-- Quinta -->
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Quinta</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="08:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="18:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle on" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="12:00" />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="13:30" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Sexta -->
+        <div style="padding:12px 0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Sexta</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="08:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="17:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option>50 min</option><option>30 min</option><option>1h</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle on" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="12:00" />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px" value="13:00" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FIM DE SEMANA -->
+    <div class="section-header" style="margin-bottom:12px"><div class="section-title">Fim de semana</div></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:0">
+
+        <!-- Sábado -->
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Sábado</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="09:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="13:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option selected>1h</option><option>30 min</option><option>50 min</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+            </div>
+          </div>
+        </div>
+
+        <!-- Domingo -->
+        <div style="padding:12px 0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="toggle on" style="flex-shrink:0"></div>
+            <div style="min-width:68px;font-size:13px;font-weight:600;color:var(--t1)">Domingo</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="09:00" />
+              <span style="color:var(--t3);font-size:12px">até</span>
+              <input class="input" style="width:76px;text-align:center;padding:5px 8px" value="12:00" />
+            </div>
+            <select class="input" style="width:90px;padding:5px 8px;font-size:12px"><option selected>1h</option><option>30 min</option><option>50 min</option></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+              <span style="font-size:11px;color:var(--t3)">Almoço</span>
+              <div class="toggle" style="width:30px;height:17px"></div>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+              <span style="color:var(--t3);font-size:11px">–</span>
+              <input class="input" style="width:68px;text-align:center;padding:4px 6px;font-size:11px;opacity:.4" value="–" disabled />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- DIAS SEM ATENDIMENTO -->
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">Dias sem atendimento</div>
+      <button class="btn btn-secondary btn-sm">+ Adicionar data</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <!-- Mini calendar — Junho 2026 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <button class="icon-btn">‹</button>
+          <span style="font-size:14px;font-weight:700;color:var(--t1)">Junho 2026</span>
+          <button class="icon-btn">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center">
+          <!-- Headers -->
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">D</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">S</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">T</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">Q</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">Q</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">S</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t3);padding:4px">S</div>
+          <!-- Week 1 -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;color:var(--t3)"></div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">1</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">2</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">3</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">4</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">5</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">6</div>
+          <!-- Week 2 -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">7</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">8</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">9</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">10</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">11</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">12</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">13</div>
+          <!-- Week 3 -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">14</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">15</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">16</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">17</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">18</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">19</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">20</div>
+          <!-- Week 4 -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">21</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">22</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">23</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">24</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">25</div>
+          <!-- 26 and 27 marked as blocked -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;background:rgba(255,69,58,0.1);color:var(--red);font-weight:600">26</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;background:rgba(255,69,58,0.1);color:var(--red);font-weight:600">27</div>
+          <!-- Week 5 -->
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">28</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">29</div>
+          <div style="font-size:12px;padding:6px 4px;border-radius:6px;cursor:pointer;color:var(--t2)">30</div>
+        </div>
+        <div style="margin-top:12px;padding:8px 10px;border-radius:8px;background:rgba(255,69,58,0.06);font-size:11px;color:var(--t3)">
+          Clique em uma data para marcar como dia sem atendimento. Dias em vermelho estão bloqueados.
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:12px">Datas bloqueadas</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,69,58,0.06);border:1px solid rgba(255,69,58,0.15)">
+            <div style="font-size:20px">🚫</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Sáb–Dom, 26–27 jun</div>
+              <div style="font-size:11px;color:var(--t2)">Final de semana bloqueado</div>
+            </div>
+            <button class="icon-btn" style="color:var(--red)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,159,10,0.06);border:1px solid rgba(255,159,10,0.2)">
+            <div style="font-size:20px">🏖️</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">Seg–Sex, 14–18 jul</div>
+              <div style="font-size:11px;color:var(--t2)">Férias — 5 dias</div>
+            </div>
+            <button class="icon-btn" style="color:var(--red)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:4px">+ Adicionar período</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:12px">Intervalo entre consultas</div>
+        <div class="pill-group" style="margin:0">
+          <div class="pill">5 min</div>
+          <div class="pill active">10 min</div>
+          <div class="pill">15 min</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: EQUIPE ═══════ -->
+  <div class="content" id="page-equipe">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title">Equipe</div>
+          <div class="page-sub">3 membros ativos</div>
+        </div>
+        <button class="btn btn-primary btn-sm">+ Convidar membro</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:16px">Membros da equipe</div>
+      <div class="row-item">
+        <div class="avatar" style="background:var(--brand)">H</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:var(--t1)">Heloísa (você)</div>
+          <div style="font-size:12px;color:var(--t2)">heloisa@framesystem.com.br</div>
+        </div>
+        <span class="tag tag-purple">Proprietária</span>
+      </div>
+      <div class="row-item">
+        <div class="avatar" style="background:#3B82F6">CA</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:var(--t1)">Carla Alves</div>
+          <div style="font-size:12px;color:var(--t2)">carla@framesystem.com.br</div>
+        </div>
+        <span class="tag tag-blue" style="margin-right:8px">Nutricionista</span>
+        <button class="btn btn-secondary btn-sm">Gerenciar</button>
+      </div>
+      <div class="row-item">
+        <div class="avatar" style="background:#F59E0B">RM</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:var(--t1)">Rafael Moura</div>
+          <div style="font-size:12px;color:var(--t2)">rafael@framesystem.com.br</div>
+        </div>
+        <span class="tag tag-orange" style="margin-right:8px">Assistente</span>
+        <button class="btn btn-secondary btn-sm">Gerenciar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-bottom:16px">Convites pendentes</div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:var(--raised)">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">fernanda@email.com</div>
+          <div style="font-size:11px;color:var(--t2)">Nutricionista · Convite enviado há 2 dias</div>
+        </div>
+        <span class="tag tag-orange">Pendente</span>
+        <button class="btn btn-secondary btn-sm">Reenviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: INTEGRAÇÕES ═══════ -->
+  <div class="content" id="page-integracoes">
+    <div class="page-header">
+      <div class="page-title">Integrações</div>
+      <div class="page-sub">Conecte suas ferramentas favoritas</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div class="integration-card">
+        <div class="integration-icon" style="background:#F0FDF4;font-size:22px">📅</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Google Calendar</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Sincroniza consultas automaticamente</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+
+      <div class="integration-card">
+        <div class="integration-icon" style="background:#EFF6FF;font-size:22px">💬</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">WhatsApp Business</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Mensagens via WhatsApp API</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+
+      <div class="integration-card">
+        <div class="integration-icon" style="background:#FFF7ED;font-size:22px">📧</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Gmail</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Envio de planos e relatórios</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+
+      <div class="integration-card" style="opacity:.6">
+        <div class="integration-icon" style="background:#F5F3FF;font-size:22px">🎥</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Google Meet</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Links automáticos para teleconsulta</div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+
+      <div class="integration-card" style="opacity:.6">
+        <div class="integration-icon" style="background:#FDF2F8;font-size:22px">💳</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Stripe</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Cobranças e pagamentos online</div>
+        </div>
+        <button class="btn btn-secondary btn-sm">Conectar</button>
+      </div>
+
+      <div class="integration-card" style="opacity:.6">
+        <div class="integration-icon" style="background:#FFF9E6;font-size:22px">📊</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Google Sheets</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Exportar dados de pacientes</div>
+        </div>
+        <button class="btn btn-secondary btn-sm">Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PAGE: CONFIGURAÇÕES ═══════ -->
+  <div class="content" id="page-configuracoes">
+    <div class="page-header">
+      <div class="page-title">Configurações</div>
+      <div class="page-sub">Gerencie seu perfil, segurança e preferências</div>
+    </div>
+
+    <!-- ── PERFIL ── -->
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">Perfil</div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <!-- Avatar row -->
+      <div style="display:flex;align-items:center;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+        <div style="width:72px;height:72px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;flex-shrink:0">H</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">Heloísa</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">heloisa@framesystem.com.br</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">CRN-3 · 12345</div>
+        </div>
+        <button class="btn btn-secondary btn-sm">Alterar foto</button>
+      </div>
+      <!-- Fields grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Nome completo</div>
+          <input class="input" value="Heloísa Rodrigues" />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">E-mail</div>
+          <input class="input" value="heloisa@framesystem.com.br" />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">CRN</div>
+          <input class="input" value="CRN-3 · 12345" />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Telefone / WhatsApp</div>
+          <input class="input" value="+55 (11) 99999-0000" />
+        </div>
+        <div style="grid-column:1/-1">
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Link da agenda pública</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="input" value="framesystem.com.br/heloisa" style="flex:1" />
+            <button class="btn btn-secondary btn-sm">Copiar</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-primary btn-sm">Salvar perfil</button>
+      </div>
+    </div>
+
+    <!-- ── SEGURANÇA ── -->
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">Segurança</div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <!-- Alterar senha -->
+      <div style="padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Alterar senha</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Última alteração há 3 meses</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Senha atual</div>
+            <input class="input" type="password" placeholder="••••••••" />
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Nova senha</div>
+            <input class="input" type="password" placeholder="••••••••" />
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Confirmar senha</div>
+            <input class="input" type="password" placeholder="••••••••" />
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-primary btn-sm">Atualizar senha</button>
+        </div>
+      </div>
+      <!-- 2FA -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Autenticação em 2 fatores</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Adicione uma camada extra de segurança com código via SMS ou app</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:var(--t3)">Desativado</span>
+          <div class="toggle"></div>
+        </div>
+      </div>
+      <!-- Sessões ativas -->
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:12px">Sessões ativas</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:18px">💻</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Chrome · MacBook Pro</div><div style="font-size:11px;color:var(--t2)">São Paulo, BR · Agora</div></div>
+          </div>
+          <span class="tag tag-green">Esta sessão</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:18px">📱</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Safari · iPhone 15</div><div style="font-size:11px;color:var(--t2)">São Paulo, BR · há 2 horas</div></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="color:var(--red);border-color:var(--red)">Encerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICAÇÕES ── -->
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">Notificações</div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="settings-group" style="margin:0">
+        <div class="settings-row">
+          <div><div class="settings-label">Novas mensagens</div><div class="settings-sub">Push e email quando chegar mensagem nova</div></div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Lembretes de consulta</div><div class="settings-sub">1h antes da consulta agendada</div></div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Follow-ups vencidos</div><div class="settings-sub">Resumo diário às 9h</div></div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Relatório semanal</div><div class="settings-sub">Toda segunda-feira com resumo da semana</div></div>
+          <div class="toggle"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ PAGE: ADMIN ═══════ -->
+  <div class="content" id="page-admin">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div class="page-title">Admin</div>
+        <span class="tag tag-orange">Modo restrito</span>
+      </div>
+      <div class="page-sub">Visão geral da plataforma · Acesso administrativo</div>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="card card-sm">
+        <div class="card-title">Total de usuários</div>
+        <div class="card-value">142</div>
+        <div class="card-sub" style="color:var(--brand)">↑ +8 este mês</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">MRR</div>
+        <div class="card-value" style="font-size:26px">R$18.4k</div>
+        <div class="card-sub" style="color:var(--brand)">↑ +12%</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Churn rate</div>
+        <div class="card-value" style="color:var(--red)">2.1%</div>
+        <div class="card-sub">3 cancelamentos</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Msgs processadas</div>
+        <div class="card-value">48k</div>
+        <div class="card-sub">Este mês</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title" style="margin-bottom:14px">Usuários recentes</div>
+        <div class="row-item">
+          <div class="avatar avatar-sm" style="background:#8B5CF6">AS</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">Amanda Santos</div><div style="font-size:11px;color:var(--t2)">amanda@nutriplus.com.br</div></div>
+          <span class="tag tag-green">Pro</span>
+          <span style="font-size:11px;color:var(--t3);margin-left:8px">hoje</span>
+        </div>
+        <div class="row-item">
+          <div class="avatar avatar-sm" style="background:#3B82F6">LF</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">Lucas Ferreira</div><div style="font-size:11px;color:var(--t2)">lucas@nutrivida.com</div></div>
+          <span class="tag tag-blue">Starter</span>
+          <span style="font-size:11px;color:var(--t3);margin-left:8px">2d</span>
+        </div>
+        <div class="row-item">
+          <div class="avatar avatar-sm" style="background:#F59E0B">PR</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">Patricia Rocha</div><div style="font-size:11px;color:var(--t2)">patricia@clinicaverde.com</div></div>
+          <span class="tag tag-green">Pro</span>
+          <span style="font-size:11px;color:var(--t3);margin-left:8px">3d</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:14px">Status do sistema</div>
+        <div class="stat-row"><span class="stat-label">API</span><div style="display:flex;align-items:center;gap:5px"><div class="badge-dot" style="background:var(--brand)"></div><span class="stat-value" style="color:var(--brand)">Operacional</span></div></div>
+        <div class="stat-row"><span class="stat-label">Banco de dados</span><div style="display:flex;align-items:center;gap:5px"><div class="badge-dot" style="background:var(--brand)"></div><span class="stat-value" style="color:var(--brand)">Operacional</span></div></div>
+        <div class="stat-row"><span class="stat-label">IA / LLM</span><div style="display:flex;align-items:center;gap:5px"><div class="badge-dot" style="background:var(--brand)"></div><span class="stat-value" style="color:var(--brand)">Operacional</span></div></div>
+        <div class="stat-row"><span class="stat-label">WhatsApp API</span><div style="display:flex;align-items:center;gap:5px"><div class="badge-dot" style="background:var(--orange)"></div><span class="stat-value" style="color:var(--orange)">Degradado</span></div></div>
+        <div class="stat-row"><span class="stat-label">Email</span><div style="display:flex;align-items:center;gap:5px"><div class="badge-dot" style="background:var(--brand)"></div><span class="stat-value" style="color:var(--brand)">Operacional</span></div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+  const titles = {
+    painel: 'Painel',
+    conversas: 'Conversas',
+    agenda: 'Agenda',
+    clientes: 'Clientes',
+    planos: 'Planos Alimentares',
+    automacoes: 'Automações',
+    assistente: 'Assistente IA',
+    disponibilidade: 'Disponibilidade',
+    equipe: 'Equipe',
+    integracoes: 'Integrações',
+    configuracoes: 'Configurações',
+    admin: 'Admin'
+  };
+
+  function nav(page, el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-' + page).classList.add('active');
+  }
+
+  function toggle24h(el) {
+    const on = el.classList.toggle('on');
+    const grid = document.getElementById('horario-grid');
+    if (grid) grid.style.display = on ? 'none' : '';
+  }
+
+  function switchTab(tab) {
+    ['entrevista','manual'].forEach(t => {
+      document.getElementById('tabcontent-' + t).style.display = t === tab ? '' : 'none';
+      const tabEl = document.getElementById('tab-' + t);
+      if (t === tab) {
+        tabEl.style.color = 'var(--brand)';
+        tabEl.style.borderBottom = '2px solid var(--brand)';
+      } else {
+        tabEl.style.color = 'var(--t3)';
+        tabEl.style.borderBottom = '2px solid transparent';
+      }
+    });
+  }
+</script>
+</body>
+</html>

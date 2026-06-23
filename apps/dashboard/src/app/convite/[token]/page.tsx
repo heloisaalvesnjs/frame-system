@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import Cookies from 'js-cookie'
 import api from '@/lib/api'
 
 const ROLE_LABELS: Record<string, string> = {
@@ -39,7 +40,7 @@ export default function ConvitePage() {
     setError('')
     try {
       const { data } = await api.post(`/api/team/join/${token}`, { name: name.trim(), password: pass })
-      localStorage.setItem('token', data.token)
+      Cookies.set('token', data.token, { expires: 7 })
       setDone(true)
       setTimeout(() => router.push('/dashboard'), 1500)
     } catch (err: any) {

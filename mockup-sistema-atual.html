@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frame System — Mockup do sistema atual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lexend:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0C0E;
+    --surface: #141618;
+    --raised: #1E2124;
+    --raised-2: #25282C;
+    --t1: #F4F5F0;
+    --t2: #A1A6AE;
+    --t3: #6B7280;
+    --t4: #4A5159;
+    --brand: #00C27C;
+    --brand-h: #00E892;
+    --brand-s: rgba(0, 194, 124, 0.12);
+    --brand-ring: rgba(0, 194, 124, 0.28);
+    --line-1: rgba(255,255,255,0.06);
+    --line-2: rgba(255,255,255,0.10);
+    --line-3: rgba(255,255,255,0.16);
+    --danger: #FF5C5C;
+    --warning: #F5A623;
+    --info: #5AA9FF;
+    --purple: #B69CFF;
+
+    --sidebar-bg: #111113;
+    --sidebar-border: rgba(255,255,255,0.06);
+    --sidebar-text: rgba(255,255,255,0.55);
+    --sidebar-active: rgba(255,255,255,0.95);
+    --sidebar-hover: rgba(255,255,255,0.07);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-display { font-family: 'Lexend', 'Inter', sans-serif; }
+
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ===== LAYOUT ===== */
+  .app { display: flex; min-height: 100vh; }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: #0E0F11;
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+  }
+  .sb-logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 12px 12px;
+  }
+  .sb-logo .mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #00C27C, #00E892);
+    color: #02140C; font-weight: 800; font-size: 11px;
+  }
+  .sb-logo .txt { min-width: 0; }
+  .sb-logo .txt .name { font-size: 13px; font-weight: 500; color: #fff; }
+  .sb-logo .txt .clinic { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+  .sb-new {
+    margin: 0 12px 12px;
+    height: 32px;
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 12px; font-weight: 500;
+    color: rgba(255,255,255,0.6);
+  }
+  .sb-new kbd {
+    margin-left: auto; font-family: monospace; font-size: 10px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .sb-nav { flex: 1; overflow-y: auto; padding: 0 8px 16px; }
+  .sb-group { margin-bottom: 4px; }
+  .sb-group-label {
+    padding: 12px 12px 6px;
+    font-size: 10.5px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.35);
+  }
+  .sb-link {
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 6px; padding: 6px 8px;
+    font-size: 13px; font-weight: 500;
+    color: var(--sidebar-text);
+  }
+  .sb-link .icon {
+    width: 15px; height: 15px; flex-shrink: 0;
+    color: rgba(255,255,255,0.35);
+  }
+  .sb-link.active {
+    background: var(--sidebar-hover);
+    color: var(--sidebar-active);
+  }
+  .sb-link.active .icon { color: var(--brand); }
+  .sb-link.active::after {
+    content: '';
+    margin-left: auto;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 8px var(--brand);
+  }
+
+  .sb-theme {
+    margin: 0 12px 12px;
+    display: flex; gap: 2px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px; padding: 2px;
+  }
+  .sb-theme button {
+    flex: 1; height: 28px; border: none; background: transparent;
+    border-radius: 6px; font-size: 11.5px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    color: rgba(255,255,255,0.35);
+  }
+  .sb-theme button.on {
+    background: rgba(255,255,255,0.07); color: #fff;
+  }
+
+  .sb-user {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sb-user .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #6AA9FF, #B69CFF);
+    color: #fff; font-size: 11px; font-weight: 600;
+  }
+  .sb-user .info { min-width: 0; flex: 1; }
+  .sb-user .info .name { font-size: 12.5px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sb-user .info .email { font-size: 11px; color: rgba(255,255,255,0.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sb-user .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+
+  /* ===== MAIN ===== */
+  .main { margin-left: 240px; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    height: 56px;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line-1);
+  }
+  .topbar .title-block { flex-shrink: 0; }
+  .topbar .title-block h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--t1); }
+  .topbar .title-block p { margin: 0; font-size: 11px; color: var(--t3); }
+  .topbar .search {
+    flex: 1; max-width: 420px;
+    display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line-1);
+    background: var(--surface);
+    color: var(--t3); font-size: 12.5px;
+  }
+  .topbar .search kbd {
+    margin-left: auto; font-family: monospace; font-size: 10px;
+    border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px;
+    color: var(--t3);
+  }
+  .topbar .actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .topbar .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: grid; place-items: center;
+    border: 1px solid transparent;
+    color: var(--t3); background: transparent;
+    position: relative;
+  }
+  .topbar .icon-btn:hover { background: var(--raised); color: var(--t1); }
+  .topbar .icon-btn .dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand); box-shadow: 0 0 6px var(--brand);
+  }
+
+  /* ===== CONTENT ===== */
+  .content { padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .page { display: none; flex-direction: column; gap: 16px; }
+  .page.active { display: flex; }
+
+  /* ===== PRIMITIVES ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line-1);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .surface-2 {
+    background: var(--raised);
+    border-radius: 12px;
+  }
+  .section-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px; gap: 12px;
+  }
+  .section-title h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--t1); }
+  .section-title .hint { font-size: 11.5px; color: var(--t3); }
+  .section-title .action { margin-left: auto; }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: var(--raised); color: var(--t2);
+    border: 1px solid var(--line-1);
+  }
+  .badge.success { background: var(--brand-s); color: var(--brand); border-color: var(--brand-ring); }
+  .badge.info { background: rgba(90,169,255,0.12); color: var(--info); border-color: rgba(90,169,255,0.25); }
+  .badge.warning { background: rgba(245,166,35,0.12); color: var(--warning); border-color: rgba(245,166,35,0.25); }
+  .badge.danger { background: rgba(255,92,92,0.12); color: var(--danger); border-color: rgba(255,92,92,0.25); }
+  .badge.purple { background: rgba(182,156,255,0.12); color: var(--purple); border-color: rgba(182,156,255,0.25); }
+
+  .kpi {
+    background: var(--surface); border: 1px solid var(--line-1);
+    border-radius: 16px; padding: 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .kpi .label { font-size: 12px; color: var(--t3); }
+  .kpi .value { font-size: 24px; font-weight: 700; font-family: 'Lexend', sans-serif; color: var(--t1); }
+  .kpi .hint { font-size: 11.5px; color: var(--t3); }
+  .kpi .hint.positive { color: var(--brand); }
+  .kpi .hint.negative { color: var(--danger); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 8px; font-size: 12.5px; font-weight: 500;
+    padding: 6px 12px; border: 1px solid transparent;
+  }
+  .btn.primary { background: var(--brand); color: #02140C; }
+  .btn.secondary { background: var(--raised); color: var(--t1); border-color: var(--line-1); }
+  .btn.ghost { background: transparent; color: var(--brand); }
+  .btn.outline { background: transparent; color: var(--t2); border-color: var(--line-2); }
+
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0;
+  }
+  .avatar.blue { background: linear-gradient(135deg,#5AA9FF,#3D7FD9); }
+  .avatar.green { background: linear-gradient(135deg,#00C27C,#00E892); color:#02140C; }
+  .avatar.purple { background: linear-gradient(135deg,#B69CFF,#8C6FE0); }
+  .avatar.orange { background: linear-gradient(135deg,#F5A623,#E08A00); }
+  .avatar.pink { background: linear-gradient(135deg,#FF8AB4,#E0608F); }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .grid-3-even { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 1100px) {
+    .grid-4, .grid-3, .grid-2, .grid-3-even { grid-template-columns: 1fr; }
+  }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-radius: 10px; }
+  .row:hover { background: rgba(255,255,255,0.015); }
+  .row .name { font-size: 13px; font-weight: 500; color: var(--t1); }
+  .row .sub { font-size: 12px; color: var(--t3); margin-top: 2px; }
+  .row .meta { margin-left: auto; font-size: 11px; color: var(--t3); flex-shrink: 0; }
+
+  .hero {
+    border-radius: 16px; border: 1px solid var(--line-1); padding: 24px;
+    background: radial-gradient(120% 80% at 10% 0%, var(--brand-s) 0%, transparent 50%), var(--surface);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  .hero .eyebrow { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t3); }
+  .hero h1 { margin: 8px 0 4px; font-size: 24px; font-weight: 700; color: var(--t1); }
+  .hero p { margin: 0; font-size: 13px; color: var(--t2); max-width: 520px; }
+  .hero .actions { display: flex; gap: 8px; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--t2); margin-bottom: 6px; }
+  .field .hintline { font-size: 11px; color: var(--t3); margin-top: 4px; }
+  .field input, .field textarea, .field select {
+    width: 100%; background: var(--raised); border: 1px solid var(--line-1);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--t1);
+    font-family: inherit;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+
+  .tabbar { display: flex; gap: 4px; border-bottom: 1px solid var(--line-1); margin-bottom: 4px; }
+  .tabbar button {
+    border: none; background: transparent; padding: 8px 14px;
+    font-size: 12.5px; font-weight: 500; color: var(--t3);
+    border-bottom: 2px solid transparent;
+  }
+  .tabbar button.on { color: var(--t1); border-color: var(--brand); }
+
+  .progress { height: 6px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+  .progress > span { display: block; height: 100%; background: var(--brand); }
+
+  .empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center; color: var(--t3);
+  }
+  .empty .ico {
+    width: 40px; height: 40px; border-radius: 12px; margin-bottom: 12px;
+    background: var(--raised); display: grid; place-items: center;
+  }
+  .empty .t { font-size: 13px; font-weight: 600; color: var(--t1); }
+  .empty .d { font-size: 12px; max-width: 320px; margin-top: 4px; }
+
+  /* Conversas layout */
+  .conv-layout { display: grid; grid-template-columns: 320px 1fr 280px; gap: 16px; min-height: 560px; }
+  .conv-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .conv-item { display: flex; gap: 10px; padding: 10px; border-radius: 10px; cursor: pointer; }
+  .conv-item.active { background: var(--raised); }
+  .conv-item .top { display: flex; justify-content: space-between; align-items: center; }
+  .conv-item .top .name { font-size: 13px; font-weight: 500; }
+  .conv-item .top .time { font-size: 10.5px; color: var(--t3); }
+  .conv-item .preview { font-size: 12px; color: var(--t3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-header { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line-1); margin-bottom: 12px; }
+  .chat-body { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  .bubble { max-width: 70%; padding: 8px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.5; }
+  .bubble.in { background: var(--raised); color: var(--t1); align-self: flex-start; }
+  .bubble.out { background: var(--brand-s); color: var(--t1); align-self: flex-end; border: 1px solid var(--brand-ring); }
+  .chat-input { margin-top: 12px; display: flex; gap: 8px; }
+  .chat-input input { flex: 1; }
+
+  /* Agenda */
+  .agenda-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .agenda-day { background: var(--raised); border-radius: 10px; padding: 8px; min-height: 140px; }
+  .agenda-day .dow { font-size: 10.5px; color: var(--t3); text-transform: uppercase; }
+  .agenda-day .num { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 6px; }
+  .agenda-slot { font-size: 10.5px; padding: 4px 6px; border-radius: 6px; background: var(--surface); border-left: 2px solid var(--brand); margin-bottom: 4px; color: var(--t2); }
+
+  /* Disponibilidade */
+  .day-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line-1); }
+  .day-row:last-child { border-bottom: none; }
+  .day-row .dayname { width: 100px; font-size: 13px; font-weight: 500; }
+  .toggle { width: 32px; height: 18px; border-radius: 999px; background: var(--brand); position: relative; flex-shrink: 0; }
+  .toggle.off { background: var(--raised-2); }
+  .toggle span { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .toggle.off span { left: 2px; right: auto; background: var(--t3); }
+
+  .gap-list { display: flex; flex-direction: column; gap: 8px; }
+
+  footer.note {
+    font-size: 11px; color: var(--t4); text-align: center; padding: 24px 0 8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="mark">FS</div>
+      <div class="txt">
+        <div class="name">Frame System</div>
+        <div class="clinic">Clínica Nutri Plus</div>
+      </div>
+    </div>
+
+    <button class="sb-new">
+      <span>+</span>
+      <span>Novo</span>
+      <kbd>Ctrl N</kbd>
+    </button>
+
+    <nav class="sb-nav">
+      <div class="sb-group">
+        <a class="sb-link active" data-page="dashboard"><span class="icon">▦</span>Painel</a>
+        <a class="sb-link" data-page="conversas"><span class="icon">💬</span>Conversas</a>
+        <a class="sb-link" data-page="agenda"><span class="icon">📅</span>Agenda</a>
+        <a class="sb-link" data-page="clientes"><span class="icon">👥</span>Clientes</a>
+        <a class="sb-link" data-page="financeiro"><span class="icon">💰</span>Financeiro</a>
+        <a class="sb-link" data-page="followup"><span class="icon">⚙</span>Automações</a>
+      </div>
+      <div class="sb-group">
+        <div class="sb-group-label">Operação</div>
+        <a class="sb-link" data-page="treinamento"><span class="icon">✨</span>Assistente IA</a>
+        <a class="sb-link" data-page="servicos"><span class="icon">💳</span>Planos</a>
+        <a class="sb-link" data-page="disponibilidade"><span class="icon">🕐</span>Disponibilidade</a>
+        <a class="sb-link" data-page="equipe"><span class="icon">🧑‍💼</span>Equipe</a>
+        <a class="sb-link" data-page="integracoes"><span class="icon">🔌</span>Integrações</a>
+      </div>
+      <div class="sb-group">
+        <div class="sb-group-label">Workspace</div>
+        <a class="sb-link" data-page="configuracoes"><span class="icon">⚙</span>Configurações</a>
+      </div>
+    </nav>
+
+    <div class="sb-theme">
+      <button class="on">🌙 Dark</button>
+      <button>☀ Light</button>
+    </div>
+
+    <div class="sb-user">
+      <div class="avatar">HA</div>
+      <div class="info">
+        <div class="name">Heloísa Alves</div>
+        <div class="email">heloisa@framesystem.com.br</div>
+      </div>
+      <div class="dot"></div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+    <!-- ===================== TOPBAR ===================== -->
+    <header class="topbar">
+      <div class="title-block">
+        <h1 id="page-title">Painel</h1>
+        <p id="page-subtitle">Operação do consultório</p>
+      </div>
+      <div class="search">
+        🔍 Buscar pacientes, conversas, ações...
+        <kbd>Ctrl K</kbd>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" title="Frame AI">✨</button>
+        <button class="icon-btn" title="Ajuda">❓</button>
+        <button class="icon-btn" title="Notificações">🔔<span class="dot"></span></button>
+        <button class="icon-btn" title="Configurações">⚙</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===================== DASHBOARD (Painel) ===================== -->
+      <section class="page active" id="page-dashboard">
+        <div class="hero">
+          <div>
+            <div class="eyebrow">✨ Frame AI · Quinta-feira, 11 de junho</div>
+            <h1>Bom dia, Heloísa.</h1>
+            <p>Acompanhe leads, agenda e performance da assistente sem perder o controle do consultório.</p>
+          </div>
+          <div class="actions">
+            <button class="btn secondary">📅 Agenda</button>
+            <button class="btn primary">💬 Conversas</button>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="kpi"><div class="label">Clientes ativos</div><div class="value">24</div><div class="hint">3 novos leads esta semana</div></div>
+          <div class="kpi"><div class="label">Agenda de hoje</div><div class="value">3</div><div class="hint">Próxima consulta às 14:00</div></div>
+          <div class="kpi"><div class="label">Conversas abertas</div><div class="value">7</div><div class="hint">Podem virar consulta</div></div>
+          <div class="kpi"><div class="label">Taxa de conversão</div><div class="value">42%</div><div class="hint">5 agendamentos / 7 dias</div></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <div class="section-title">
+              <h2>Linha do tempo comercial</h2>
+              <span class="hint">Leads e agendamentos recentes</span>
+              <span class="action"><button class="btn ghost">Ver conversas →</button></span>
+            </div>
+            <div class="row">
+              <div class="avatar green">MS</div>
+              <div><div class="name">Mariana Souza</div><div class="sub">Novo lead iniciou conversa pelo WhatsApp</div></div>
+              <span class="badge success">Lead</span>
+              <div class="meta">há 12 min</div>
+            </div>
+            <div class="row">
+              <div class="avatar blue">JP</div>
+              <div><div class="name">João Pereira</div><div class="sub">Consulta agendada para 12/06 às 09:00</div></div>
+              <span class="badge info">Agenda</span>
+              <div class="meta">há 1h</div>
+            </div>
+            <div class="row">
+              <div class="avatar purple">CL</div>
+              <div><div class="name">Carla Lima</div><div class="sub">Novo lead iniciou conversa pelo WhatsApp</div></div>
+              <span class="badge success">Lead</span>
+              <div class="meta">há 3h</div>
+            </div>
+            <div class="row">
+              <div class="avatar orange">RT</div>
+              <div><div class="name">Rafael Torres</div><div class="sub">Consulta agendada pela assistente</div></div>
+              <span class="badge info">Agenda</span>
+              <div class="meta">ontem</div>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div class="card">
+              <div class="section-title"><h2>Agenda de hoje</h2><span class="action"><button class="btn ghost">Abrir →</button></span></div>
+              <div class="surface-2" style="display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:8px; border-left:3px solid var(--info); border-radius:10px;">
+                <div style="width:48px; font-family:monospace; font-size:12px; font-weight:500;">09:00</div>
+                <div><div class="name">João Pereira</div><div class="sub">Consulta · 50 min</div></div>
+                <span class="badge info">Agendada</span>
+              </div>
+              <div class="surface-2" style="display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:8px; border-left:3px solid var(--brand); border-radius:10px;">
+                <div style="width:48px; font-family:monospace; font-size:12px; font-weight:500;">14:00</div>
+                <div><div class="name">Beatriz Nogueira</div><div class="sub">Retorno · 30 min</div></div>
+                <span class="badge success">Confirmada</span>
+              </div>
+              <div class="surface-2" style="display:flex; align-items:center; gap:12px; padding:10px 12px; border-left:3px solid var(--info); border-radius:10px;">
+                <div style="width:48px; font-family:monospace; font-size:12px; font-weight:500;">16:30</div>
+                <div><div class="name">Felipe Andrade</div><div class="sub">Consulta online · 50 min</div></div>
+                <span class="badge info">Agendada</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-title"><h2>Saúde da assistente</h2><span class="hint">IA</span></div>
+              <div style="display:flex; gap:10px; padding:10px; border-radius:10px; background:var(--brand-s); border:1px solid var(--brand-ring); margin-bottom:12px;">
+                <div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center; color:var(--brand); flex-shrink:0;">🤖</div>
+                <div>
+                  <div style="font-size:13px; font-weight:500;">Recepcionista ativa</div>
+                  <div style="font-size:12px; color:var(--t3); margin-top:2px;">A IA está pronta para qualificar leads, tirar dúvidas e conduzir agendamentos.</div>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 2px; font-size:12.5px; color:var(--t2);"><span>Conversas sob controle</span><span style="font-family:monospace; color:var(--t1);">7</span></div>
+              <div style="display:flex; justify-content:space-between; padding:6px 2px; font-size:12.5px; color:var(--t2);"><span>Agendamentos na semana</span><span style="font-family:monospace; color:var(--t1);">5</span></div>
+              <div style="display:flex; justify-content:space-between; padding:6px 2px; font-size:12.5px; color:var(--t2);"><span>Consultas realizadas no mês</span><span style="font-family:monospace; color:var(--t1);">18</span></div>
+              <div style="margin-top:8px;"><a href="#" class="btn ghost" style="padding:0;">Ajustar treinamento →</a></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3-even">
+          <a class="card" href="#"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center; margin-bottom:12px;">⚡</div><div style="font-size:13px; font-weight:600;">Velocidade de resposta</div><div style="font-size:12.5px; color:var(--t3); margin-top:6px;">Acompanhe se a recepcionista está absorvendo a demanda antes que leads esfriem.</div></a>
+          <a class="card" href="#"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center; margin-bottom:12px;">✨</div><div style="font-size:13px; font-weight:600;">Qualidade do treinamento</div><div style="font-size:12.5px; color:var(--t3); margin-top:6px;">Revise tom, limites e respostas da IA para manter a experiência com cara de consultório premium.</div></a>
+          <a class="card" href="#"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center; margin-bottom:12px;">🕐</div><div style="font-size:13px; font-weight:600;">Follow-ups planejados</div><div style="font-size:12.5px; color:var(--t3); margin-top:6px;">Use automações para recuperar interessados que ainda não marcaram consulta.</div></a>
+        </div>
+      </section>
+
+      <!-- ===================== CONVERSAS ===================== -->
+      <section class="page" id="page-conversas">
+        <div class="grid-4">
+          <div class="kpi"><div class="label">Resolvidas</div><div class="value">38</div><div class="hint">últimos 30 dias</div></div>
+          <div class="kpi"><div class="label">Agendamentos</div><div class="value">14</div><div class="hint">via IA</div></div>
+          <div class="kpi"><div class="label">Vendas</div><div class="value">9</div><div class="hint">conversões diretas</div></div>
+          <div class="kpi"><div class="label">Sem retorno</div><div class="value">5</div><div class="hint">aguardando resposta</div></div>
+        </div>
+
+        <div class="card">
+          <div class="conv-layout">
+            <div class="conv-list">
+              <div class="conv-item active">
+                <div class="avatar green">MS</div>
+                <div style="flex:1; min-width:0;">
+                  <div class="top"><span class="name">Mariana Souza</span><span class="time">12:32</span></div>
+                  <div class="preview">Oi, gostaria de saber sobre os planos de acompanhamento...</div>
+                </div>
+              </div>
+              <div class="conv-item">
+                <div class="avatar blue">JP</div>
+                <div style="flex:1; min-width:0;">
+                  <div class="top"><span class="name">João Pereira</span><span class="time">11:05</span></div>
+                  <div class="preview">✅ Consulta confirmada para 12/06 às 09:00</div>
+                </div>
+              </div>
+              <div class="conv-item">
+                <div class="avatar purple">CL</div>
+                <div style="flex:1; min-width:0;">
+                  <div class="top"><span class="name">Carla Lima</span><span class="time">09:48</span></div>
+                  <div class="preview">Qual o valor da consulta com retorno incluso?</div>
+                </div>
+              </div>
+              <div class="conv-item">
+                <div class="avatar orange">RT</div>
+                <div style="flex:1; min-width:0;">
+                  <div class="top"><span class="name">Rafael Torres</span><span class="time">ontem</span></div>
+                  <div class="preview">Obrigado, até sábado!</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column;">
+              <div class="chat-header">
+                <div class="avatar green">MS</div>
+                <div>
+                  <div class="name">Mariana Souza</div>
+                  <div class="sub">+55 11 98888-1234 · modo: automático</div>
+                </div>
+                <span class="badge success" style="margin-left:auto;">Em andamento</span>
+              </div>
+              <div class="chat-body">
+                <div class="bubble in">Oi! Gostaria de saber sobre os planos de acompanhamento nutricional.</div>
+                <div class="bubble out">Olá, Mariana! 😊 Temos planos mensais e trimestrais, com consultas presenciais ou online. Posso te explicar os valores e formatos?</div>
+                <div class="bubble in">Sim, por favor!</div>
+                <div class="bubble out">Perfeito! O plano mensal inclui 1 consulta + acompanhamento via WhatsApp. Quer que eu já verifique horários disponíveis para essa semana?</div>
+              </div>
+              <div class="chat-input">
+                <input placeholder="Digite uma mensagem..." />
+                <button class="btn primary">Enviar</button>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div class="surface-2" style="padding:12px;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--t2);">Detalhes do lead</div>
+                <div style="font-size:12.5px; color:var(--t3); display:flex; flex-direction:column; gap:6px;">
+                  <span>Origem: WhatsApp</span>
+                  <span>Primeiro contato: hoje</span>
+                  <span>Status: lead novo</span>
+                </div>
+              </div>
+              <div class="surface-2" style="padding:12px;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--t2);">Classificar conversa</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <button class="btn outline">Agendou</button>
+                  <button class="btn outline">Comprou</button>
+                  <button class="btn outline">Não avançou</button>
+                  <button class="btn outline">Sem resposta</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== AGENDA ===================== -->
+      <section class="page" id="page-agenda">
+        <div class="card">
+          <div class="section-title">
+            <h2>Agenda — semana de 09 a 15 de junho</h2>
+            <span class="action"><button class="btn secondary">+ Novo agendamento</button></span>
+          </div>
+          <div class="agenda-grid">
+            <div class="agenda-day"><div class="dow">SEG</div><div class="num">09</div>
+              <div class="agenda-slot">09:00 João Pereira</div>
+            </div>
+            <div class="agenda-day"><div class="dow">TER</div><div class="num">10</div>
+              <div class="agenda-slot">10:30 Beatriz N.</div>
+              <div class="agenda-slot">15:00 Felipe A.</div>
+            </div>
+            <div class="agenda-day"><div class="dow">QUA</div><div class="num">11</div>
+              <div class="agenda-slot">09:00 João Pereira</div>
+              <div class="agenda-slot">14:00 Beatriz N.</div>
+              <div class="agenda-slot">16:30 Felipe A.</div>
+            </div>
+            <div class="agenda-day"><div class="dow">QUI</div><div class="num">12</div>
+              <div class="agenda-slot">11:00 Mariana S.</div>
+            </div>
+            <div class="agenda-day"><div class="dow">SEX</div><div class="num">13</div>
+              <div class="agenda-slot">09:30 Carla Lima</div>
+              <div class="agenda-slot">13:00 Rafael T.</div>
+            </div>
+            <div class="agenda-day"><div class="dow">SÁB</div><div class="num">14</div>
+              <div class="agenda-slot">10:00 Rafael T.</div>
+            </div>
+            <div class="agenda-day"><div class="dow">DOM</div><div class="num">15</div></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title"><h2>Próximos agendamentos</h2></div>
+            <div class="row"><div style="width:48px; font-family:monospace; font-size:12px;">QUA 09:00</div><div><div class="name">João Pereira</div><div class="sub">Consulta · 50 min</div></div><span class="badge info">Agendada</span></div>
+            <div class="row"><div style="width:48px; font-family:monospace; font-size:12px;">QUA 14:00</div><div><div class="name">Beatriz Nogueira</div><div class="sub">Retorno · 30 min</div></div><span class="badge success">Confirmada</span></div>
+            <div class="row"><div style="width:48px; font-family:monospace; font-size:12px;">QUA 16:30</div><div><div class="name">Felipe Andrade</div><div class="sub">Consulta online · 50 min</div></div><span class="badge info">Agendada</span></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><h2>Bloqueios e folgas</h2></div>
+            <div class="row"><div><div class="name">Almoço</div><div class="sub">Seg a sex · 12:00–13:00</div></div><span class="badge">Bloqueado</span></div>
+            <div class="row"><div><div class="name">Domingo</div><div class="sub">Dia inteiro</div></div><span class="badge">Bloqueado</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== CLIENTES ===================== -->
+      <section class="page" id="page-clientes">
+        <div class="grid-4">
+          <div class="kpi"><div class="label">Total de clientes</div><div class="value">24</div><div class="hint">ativos na base</div></div>
+          <div class="kpi"><div class="label">Novos esta semana</div><div class="value">3</div><div class="hint positive">+12%</div></div>
+          <div class="kpi"><div class="label">Em acompanhamento</div><div class="value">18</div><div class="hint">plano ativo</div></div>
+          <div class="kpi"><div class="label">Inativos</div><div class="value">6</div><div class="hint">sem consulta há 60+ dias</div></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2>Todos os clientes</h2>
+            <span class="action"><button class="btn secondary">+ Novo cliente</button></span>
+          </div>
+          <div class="row"><div class="avatar green">MS</div><div><div class="name">Mariana Souza</div><div class="sub">(11) 98888-1234 · plano mensal</div></div><span class="badge success">Ativo</span></div>
+          <div class="row"><div class="avatar blue">JP</div><div><div class="name">João Pereira</div><div class="sub">(11) 97777-5678 · plano trimestral</div></div><span class="badge success">Ativo</span></div>
+          <div class="row"><div class="avatar purple">CL</div><div><div class="name">Carla Lima</div><div class="sub">(21) 96666-9012 · avulso</div></div><span class="badge info">Lead</span></div>
+          <div class="row"><div class="avatar orange">RT</div><div><div class="name">Rafael Torres</div><div class="sub">(31) 95555-3456 · plano mensal</div></div><span class="badge success">Ativo</span></div>
+          <div class="row"><div class="avatar pink">BN</div><div><div class="name">Beatriz Nogueira</div><div class="sub">(11) 94444-7890 · plano mensal</div></div><span class="badge success">Ativo</span></div>
+          <div class="row"><div class="avatar blue">FA</div><div><div class="name">Felipe Andrade</div><div class="sub">(11) 93333-2345 · avulso</div></div><span class="badge warning">Sem retorno</span></div>
+        </div>
+      </section>
+
+      <!-- ===================== FINANCEIRO ===================== -->
+      <section class="page" id="page-financeiro">
+        <div class="grid-4">
+          <div class="kpi"><div class="label">MRR</div><div class="value">R$ 16.842</div><div class="hint positive">+9,1%</div></div>
+          <div class="kpi"><div class="label">Receita 6m</div><div class="value">R$ 88.812</div><div class="hint positive">+14,8%</div></div>
+          <div class="kpi"><div class="label">Inadimplência</div><div class="value">3,2%</div><div class="hint negative">+0,4%</div></div>
+          <div class="kpi"><div class="label">Ticket médio</div><div class="value">R$ 632</div><div class="hint positive">+3,1%</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title"><h2>Mix por plano</h2><span class="hint">% MRR</span></div>
+            <div class="row"><div><div class="name">Plano Mensal</div></div><div class="progress" style="width:140px;"><span style="width:58%;"></span></div><span class="meta">58%</span></div>
+            <div class="row"><div><div class="name">Plano Trimestral</div></div><div class="progress" style="width:140px;"><span style="width:30%;"></span></div><span class="meta">30%</span></div>
+            <div class="row"><div><div class="name">Avulso</div></div><div class="progress" style="width:140px;"><span style="width:12%;"></span></div><span class="meta">12%</span></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><h2>Recebimentos por método</h2><span class="hint">Últimos 30 dias</span></div>
+            <div class="row"><div><div class="name">Pix</div></div><span class="meta">R$ 9.420</span></div>
+            <div class="row"><div><div class="name">Cartão de crédito</div></div><span class="meta">R$ 5.880</span></div>
+            <div class="row"><div><div class="name">Boleto</div></div><span class="meta">R$ 1.542</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><h2>Últimos lançamentos</h2></div>
+          <div class="row"><div><div class="name">Mariana Souza</div><div class="sub">Plano mensal · Pix</div></div><span class="badge success">Pago</span><span class="meta">R$ 350,00</span></div>
+          <div class="row"><div><div class="name">João Pereira</div><div class="sub">Plano trimestral · Cartão</div></div><span class="badge success">Pago</span><span class="meta">R$ 990,00</span></div>
+          <div class="row"><div><div class="name">Felipe Andrade</div><div class="sub">Avulso · Boleto</div></div><span class="badge warning">Pendente</span><span class="meta">R$ 250,00</span></div>
+        </div>
+      </section>
+
+      <!-- ===================== AUTOMAÇÕES (Followup) ===================== -->
+      <section class="page" id="page-followup">
+        <div class="card">
+          <div class="section-title">
+            <h2>Automações de follow-up</h2>
+            <span class="action"><button class="btn secondary">+ Nova automação</button></span>
+          </div>
+          <div class="row"><div><div class="name">Lead sem resposta há 24h</div><div class="sub">Envia mensagem de retomada automática</div></div><span class="badge success">Ativa</span></div>
+          <div class="row"><div><div class="name">Consulta agendada — lembrete 1 dia antes</div><div class="sub">Confirma presença via WhatsApp</div></div><span class="badge success">Ativa</span></div>
+          <div class="row"><div><div class="name">Pós-consulta — pedir feedback</div><div class="sub">Enviada 2h após o horário da consulta</div></div><span class="badge success">Ativa</span></div>
+          <div class="row"><div><div class="name">Reativação de inativos (60 dias)</div><div class="sub">Mensagem de reengajamento mensal</div></div><span class="badge">Pausada</span></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><h2>Fila de respostas pendentes</h2><span class="hint">aguardando aprovação da nutri</span></div>
+          <div class="empty">
+            <div class="ico">✅</div>
+            <div class="t">Nenhuma resposta pendente</div>
+            <div class="d">Quando a assistente estiver em modo copiloto, as respostas que precisam de aprovação aparecem aqui.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== ASSISTENTE IA (Treinamento) ===================== -->
+      <section class="page" id="page-treinamento">
+        <div class="tabbar">
+          <button class="on">Manual</button>
+          <button>Automações</button>
+          <button>Testar atendimento</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title"><h2>Perfil da assistente</h2></div>
+            <div class="field"><label>Nome da assistente</label><input value="Ana" /></div>
+            <div class="field"><label>Como o nutricionista deve ser chamado</label><input placeholder="Se vazio, usa o nome da sua conta." /></div>
+            <div class="field"><label>Mensagem de boas-vindas</label><textarea>Olá! Sou a Ana, assistente virtual da Clínica Nutri Plus 🌿 Como posso te ajudar hoje?</textarea><div class="hintline">Enviada no primeiro contato do cliente</div></div>
+            <div class="field"><label>Mensagem de despedida</label><textarea>Foi um prazer falar com você! Qualquer dúvida, estou por aqui 💚</textarea><div class="hintline">Sugestão de como a assistente encerra a conversa</div></div>
+            <div class="field"><label>Especialidades</label><input value="Nutrição clínica, esportiva, emagrecimento" /><div class="hintline">A assistente usará isso para apresentar seu trabalho</div></div>
+          </div>
+
+          <div class="card">
+            <div class="section-title"><h2>Regras e estilo</h2></div>
+            <div class="field"><label>Frases proibidas</label><textarea placeholder="Uma por linha — palavras ou expressões que a assistente nunca deve usar"></textarea></div>
+            <div class="field"><label>Frases preferidas</label><textarea placeholder="Uma por linha — expressões que combinam com o tom da sua marca"></textarea></div>
+            <div class="field"><label>Objeções personalizadas</label><textarea placeholder="situação :: resposta"></textarea><div class="hintline">A assistente já tem respostas padrão para preço, hesitação, etc — use isto para casos específicos.</div></div>
+            <div class="field"><label>Exemplos de conversas</label><textarea placeholder="situação :: resposta ideal"></textarea></div>
+            <div class="field"><label>Regras clínicas / limites adicionais</label><textarea placeholder="Uma por linha — temas que a assistente deve evitar ou encaminhar para você"></textarea></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><h2>Locais de atendimento</h2><span class="action"><button class="btn secondary">+ Novo local</button></span></div>
+          <div class="grid-2">
+            <div class="field"><label>Nome do local</label><input value="Consultório Central" /></div>
+            <div class="field"><label>Cidade</label><input value="São Paulo" /></div>
+          </div>
+          <div class="field"><label>Endereço completo</label><input value="Av. Paulista, 1000 — Bela Vista" /></div>
+          <div class="grid-2">
+            <div class="field"><label>Modalidade</label><select><option>Presencial</option><option>Online</option><option>Ambos</option></select></div>
+            <div class="field"><label>Valor da consulta</label><input value="R$ 350,00" /></div>
+          </div>
+          <div class="field"><label>Mensagem de confirmação de agendamento</label><textarea>✅ Consulta confirmada para {data} às {hora}. Te espero!</textarea><div class="hintline">Enviada automaticamente após o paciente agendar</div></div>
+        </div>
+      </section>
+
+      <!-- ===================== PLANOS (Servicos) ===================== -->
+      <section class="page" id="page-servicos">
+        <div class="card">
+          <div class="section-title">
+            <h2>Planos e preços</h2>
+            <span class="action"><button class="btn secondary">+ Novo plano</button></span>
+          </div>
+          <div class="row"><div><div class="name">Consulta avulsa</div><div class="sub">Presencial ou online · 50 min</div></div><span class="meta">R$ 350,00</span></div>
+          <div class="row"><div><div class="name">Plano mensal</div><div class="sub">1 consulta + acompanhamento via WhatsApp</div></div><span class="meta">R$ 350,00 / mês</span></div>
+          <div class="row"><div><div class="name">Plano trimestral</div><div class="sub">3 consultas + plano alimentar revisado</div></div><span class="meta">R$ 990,00 / trimestre</span></div>
+          <div class="row"><div><div class="name">Retorno</div><div class="sub">Presencial ou online · 30 min</div></div><span class="meta">R$ 180,00</span></div>
+        </div>
+      </section>
+
+      <!-- ===================== DISPONIBILIDADE ===================== -->
+      <section class="page" id="page-disponibilidade">
+        <div class="card">
+          <div class="section-title"><h2>Horários de atendimento</h2></div>
+          <div class="day-row"><div class="dayname">Segunda</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="08:00" /> – <input style="width:90px;" value="18:00" /></div></div>
+          <div class="day-row"><div class="dayname">Terça</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="08:00" /> – <input style="width:90px;" value="18:00" /></div></div>
+          <div class="day-row"><div class="dayname">Quarta</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="08:00" /> – <input style="width:90px;" value="18:00" /></div></div>
+          <div class="day-row"><div class="dayname">Quinta</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="08:00" /> – <input style="width:90px;" value="18:00" /></div></div>
+          <div class="day-row"><div class="dayname">Sexta</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="08:00" /> – <input style="width:90px;" value="16:00" /></div></div>
+          <div class="day-row"><div class="dayname">Sábado</div><div class="toggle"><span></span></div><div class="field" style="margin:0; display:flex; gap:8px; align-items:center;"><input style="width:90px;" value="09:00" /> – <input style="width:90px;" value="12:00" /></div></div>
+          <div class="day-row"><div class="dayname">Domingo</div><div class="toggle off"><span></span></div><div style="font-size:12px; color:var(--t3);">Sem atendimento</div></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><h2>Pausa para almoço</h2></div>
+          <div class="grid-2">
+            <div class="field"><label>Início pausa</label><input value="12:00" /></div>
+            <div class="field"><label>Fim pausa</label><input value="13:00" /></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== EQUIPE ===================== -->
+      <section class="page" id="page-equipe">
+        <div class="card">
+          <div class="section-title">
+            <h2>Membros da equipe</h2>
+            <span class="action"><button class="btn secondary">+ Convidar membro</button></span>
+          </div>
+          <div class="row"><div class="avatar green">HA</div><div><div class="name">Heloísa Alves</div><div class="sub">heloisa@framesystem.com.br</div></div><span class="badge success">Admin</span></div>
+          <div class="row"><div class="avatar blue">SM</div><div><div class="name">Sofia Martins</div><div class="sub">sofia@framesystem.com.br</div></div><span class="badge">Recepção</span></div>
+          <div class="row"><div class="avatar purple">PC</div><div><div class="name">Pedro Costa</div><div class="sub">pedro@framesystem.com.br</div></div><span class="badge">Nutricionista</span></div>
+        </div>
+      </section>
+
+      <!-- ===================== INTEGRAÇÕES ===================== -->
+      <section class="page" id="page-integracoes">
+        <div class="card">
+          <div class="section-title"><h2>WhatsApp</h2></div>
+          <div class="row"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center;">📱</div><div><div class="name">Evolution API</div><div class="sub">+55 11 98888-1234</div></div><span class="badge success">Conectado</span></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h2>Frame AI</h2></div>
+          <div class="row"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center;">✨</div><div><div class="name">Assistente de atendimento</div><div class="sub">Modo automático</div></div><span class="badge success">Ativo</span></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h2>Automação (n8n)</h2></div>
+          <div class="row"><div class="surface-2" style="width:36px; height:36px; display:grid; place-items:center;">🔁</div><div><div class="name">Webhook de mensagens</div><div class="sub">n8n.framesystem.com.br</div></div><span class="badge success">Conectado</span></div>
+        </div>
+      </section>
+
+      <!-- ===================== CONFIGURAÇÕES ===================== -->
+      <section class="page" id="page-configuracoes">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title"><h2>Dados da conta</h2></div>
+            <div class="field"><label>Nome</label><input value="Heloísa Alves" /></div>
+            <div class="field"><label>E-mail</label><input value="heloisa@framesystem.com.br" /></div>
+            <div class="field"><label>Nome da clínica</label><input value="Clínica Nutri Plus" /></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><h2>Segurança</h2></div>
+            <div class="field"><label>Senha atual</label><input type="password" value="••••••••" /></div>
+            <div class="field"><label>Nova senha</label><input type="password" placeholder="••••••••" /></div>
+            <div class="field"><label>Confirmar nova senha</label><input type="password" placeholder="••••••••" /></div>
+            <button class="btn primary">Salvar alterações</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="note">Mockup estático — espelha a estrutura atual do dashboard Frame System (sidebar, topbar e páginas reais) para referência de design.</footer>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.sb-link').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.sb-link').forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      const page = link.dataset.page;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+
+      const titles = {
+        dashboard: ['Painel', 'Operação do consultório'],
+        conversas: ['Conversas', 'Mensagens e atendimento via WhatsApp'],
+        agenda: ['Agenda', 'Consultas e horários'],
+        clientes: ['Clientes', 'Base de pacientes e leads'],
+        financeiro: ['Financeiro', 'Receita, planos e recebimentos'],
+        followup: ['Automações', 'Follow-ups e fluxos automáticos'],
+        treinamento: ['Assistente IA', 'Treinamento e configuração da recepcionista'],
+        servicos: ['Planos', 'Serviços e preços'],
+        disponibilidade: ['Disponibilidade', 'Horários de atendimento'],
+        equipe: ['Equipe', 'Membros e permissões'],
+        integracoes: ['Integrações', 'WhatsApp, IA e automações'],
+        configuracoes: ['Configurações', 'Conta e segurança'],
+      };
+      const [title, sub] = titles[page] || ['Painel', 'Operação do consultório'];
+      document.getElementById('page-title').textContent = title;
+      document.getElementById('page-subtitle').textContent = sub;
+    });
+  });
+</script>
+</body>
+</html>

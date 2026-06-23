@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Cookies from 'js-cookie'
+import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePatient, patientApi } from '@/contexts/PatientContext'
 import { Loader2, Eye, EyeOff, ArrowRight, Bot, Calendar, Users } from 'lucide-react'
@@ -136,7 +138,7 @@ export default function LoginPage() {
   const { setSession } = usePatient()
   const router = useRouter()
 
-  const [tab, setTab] = useState<'nutri' | 'patient'>('nutri')
+  const [tab, setTab] = useState<'nutri' | 'patient' | 'team'>('nutri')
 
   const [nutriEmail,   setNutriEmail]   = useState('')
   const [nutriPass,    setNutriPass]    = useState('')
@@ -147,6 +149,11 @@ export default function LoginPage() {
   const [patPass,    setPatPass]    = useState('')
   const [patLoading, setPatLoading] = useState(false)
   const [patError,   setPatError]   = useState('')
+
+  const [teamEmail,   setTeamEmail]   = useState('')
+  const [teamPass,    setTeamPass]    = useState('')
+  const [teamLoading, setTeamLoading] = useState(false)
+  const [teamError,   setTeamError]   = useState('')
 
   async function handleNutriLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -159,6 +166,21 @@ export default function LoginPage() {
       setNutriError(err?.response?.data?.error ?? 'E-mail ou senha incorretos')
     } finally {
       setNutriLoading(false)
+    }
+  }
+
+  async function handleTeamLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setTeamError('')
+    setTeamLoading(true)
+    try {
+      const { data } = await api.post('/api/team/login', { email: teamEmail, password: teamPass })
+      Cookies.set('token', data.token, { expires: 7 })
+      router.push('/dashboard')
+    } catch (err: any) {
+      setTeamError(err?.response?.data?.error ?? 'E-mail ou senha incorretos')
+    } finally {
+      setTeamLoading(false)
     }
   }
 
@@ -218,11 +240,12 @@ export default function LoginPage() {
           >
             {[
               { key: 'nutri',   label: 'Nutricionista' },
+              { key: 'team',    label: 'Equipe' },
               { key: 'patient', label: 'Paciente' },
             ].map(t => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key as 'nutri' | 'patient')}
+                onClick={() => setTab(t.key as 'nutri' | 'team' | 'patient')}
                 className="flex-1 py-2 text-[13px] font-semibold rounded-lg transition-all duration-150"
                 style={tab === t.key
                   ? { background: 'var(--surface)', color: 'var(--t1)', boxShadow: 'var(--shadow-sm)' }
@@ -285,6 +308,47 @@ export default function LoginPage() {
                 <Link href="/cadastro" className="font-semibold transition-colors hover:opacity-70" style={{ color: 'var(--brand)' }}>
                   Solicitar acesso
                 </Link>
+              </p>
+            </form>
+          )}
+
+          {/* ── Form: Equipe ── */}
+          {tab === 'team' && (
+            <form onSubmit={handleTeamLogin} className="flex flex-col gap-4">
+              <div
+                className="rounded-xl px-4 py-3 text-[13px]"
+                style={{ background: 'var(--raised)', border: '1px solid var(--border)', color: 'var(--t3)' }}
+              >
+                Acesso exclusivo para colaboradores convidados pela nutricionista.
+              </div>
+              <div>
+                <label className="field-label">E-mail</label>
+                <input
+                  type="email" required placeholder="voce@exemplo.com"
+                  value={teamEmail} onChange={e => setTeamEmail(e.target.value)}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="field-label">Senha</label>
+                <PasswordInput value={teamPass} onChange={setTeamPass} />
+              </div>
+              {teamError && (
+                <div
+                  className="rounded-xl px-4 py-3 text-[13px] font-medium"
+                  style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}
+                >
+                  {teamError}
+                </div>
+              )}
+              <button type="submit" disabled={teamLoading} className="btn-primary w-full mt-1">
+                {teamLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <><span>Entrar</span><ArrowRight className="w-4 h-4" /></>
+                }
+              </button>
+              <p className="text-center text-[13px] mt-1" style={{ color: 'var(--t3)' }}>
+                Primeiro acesso? Use o link de convite enviado pela nutricionista.
               </p>
             </form>
           )}

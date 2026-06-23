@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frame System - Instagram Carousel 01</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0C0E;
+      --surface: #141618;
+      --surface2: #1A1D20;
+      --border: #1E2124;
+      --brand: #00C27C;
+      --brand2: #00E892;
+      --text: #F4F5F0;
+      --muted: #6B7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lora', serif;
+      -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(circle, rgba(244,245,240,.022) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .sheet { padding: 32px; overflow-x: auto; }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(6, 1080px);
+      gap: 32px;
+      width: max-content;
+      margin: 0 auto;
+    }
+    .slide {
+      width: 1080px;
+      height: 1350px;
+      position: relative;
+      background: linear-gradient(180deg, #0B0C0E 0%, #0A0B0D 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,.48);
+      isolation: isolate;
+    }
+    .glow {
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .glow.one {
+      width: 760px; height: 520px; left: 160px; top: -140px;
+      background: radial-gradient(circle at center, rgba(0,232,146,.16), transparent 62%);
+      filter: blur(40px);
+    }
+    .glow.two {
+      width: 440px; height: 340px; right: -40px; bottom: 40px;
+      background: radial-gradient(circle at center, rgba(0,194,124,.12), transparent 65%);
+      filter: blur(44px);
+    }
+    .pill {
+      position: absolute;
+      left: 72px; top: 46px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(20,22,24,.88);
+      border: 1px solid rgba(0,194,124,.26);
+      color: var(--brand);
+      font: 500 11px/1 'DM Mono', monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
+    .page {
+      position: absolute;
+      right: 72px; top: 54px;
+      color: var(--muted);
+      font: 500 11px/1 'DM Mono', monospace;
+      letter-spacing: .16em;
+    }
+    .title {
+      position: absolute;
+      left: 72px;
+      top: 144px;
+      width: 860px;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: .94;
+      font-size: 78px;
+      color: var(--text);
+      white-space: pre-line;
+    }
+    .title.small { font-size: 72px; }
+    .subtitle {
+      position: absolute;
+      left: 72px;
+      top: 320px;
+      width: 860px;
+      font-family: 'Lora', serif;
+      font-size: 22px;
+      line-height: 1.55;
+      color: #B1B8C2;
+    }
+    .brand-word {
+      position: absolute;
+      left: 72px;
+      bottom: 110px;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .brand-word .dot { color: var(--brand); }
+    .hint {
+      position: absolute;
+      right: 72px;
+      bottom: 124px;
+      font: 500 11px/1 'DM Mono', monospace;
+      letter-spacing: .14em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .dots {
+      position: absolute;
+      left: 72px;
+      bottom: 118px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .dots span {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: #1E2124;
+    }
+    .dots span.active { width: 18px; background: var(--brand); }
+    .card {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 28px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.3);
+      overflow: hidden;
+    }
+    .card.dark { background: #0B0C0E; }
+    .card.soft { background: var(--surface2); }
+    .mono {
+      font: 500 11px/1 'DM Mono', monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .text {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: .98;
+    }
+    .body {
+      font-family: 'Lora', serif;
+      line-height: 1.55;
+      color: #B1B8C2;
+    }
+    .chip {
+      position: absolute;
+      height: 36px;
+      border-radius: 999px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      color: #B1B8C2;
+      font: 500 12px/1 'DM Mono', monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .chip.active {
+      color: var(--brand);
+      border-color: rgba(0,194,124,.26);
+      background: rgba(0,41,28,.88);
+    }
+    .metric {
+      position: absolute;
+      border-radius: 22px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 18px;
+    }
+    .metric .label { font: 500 11px/1 'DM Mono', monospace; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+    .metric .value { margin-top: 12px; font: 800 31px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -0.05em; color: var(--text); }
+    .metric .note { margin-top: 14px; font-size: 12px; color: #B1B8C2; line-height: 1.45; }
+    .metric .dot { position: absolute; right: 18px; top: 18px; width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
+    .msg { position: absolute; border-radius: 18px; border: 1px solid rgba(255,255,255,.08); padding: 14px 16px; }
+    .msg.left { background: #121416; }
+    .msg.right { background: rgba(0,41,28,.95); border-color: rgba(0,194,124,.35); }
+    .msg .role { font: 500 10px/1 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .msg .role.brand { color: var(--brand); }
+    .msg .txt { margin-top: 10px; font-size: 15px; line-height: 1.45; color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="row">
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>Carousel 01</div>
+        <div class="page">01 / 06</div>
+        <div class="title">Frame System</div>
+        <div class="subtitle">O sistema que estrutura o cuidado. IA para nutricionistas, com agenda, follow-up e atendimento no mesmo fluxo.</div>
+        <div class="card dark" style="left:72px;top:360px;width:936px;height:740px;">
+          <div class="chip active" style="left:34px;top:44px;">WhatsApp</div>
+          <div class="chip" style="left:148px;top:44px;">Agenda</div>
+          <div class="chip" style="left:260px;top:44px;">Follow-up</div>
+          <div class="text" style="position:absolute;left:34px;top:118px;width:500px;font-size:66px;line-height:.94;">Atende.<br>Agenda.<br>Recupera.</div>
+          <div class="body" style="position:absolute;left:34px;top:378px;width:500px;font-size:22px;">Frame System e a recepcionista virtual com IA que responde pelo seu numero, qualifica leads e agenda a proxima consulta sem parecer robo.</div>
+          <div class="card" style="left:570px;top:118px;width:332px;height:540px;background:#0B0C0E;">
+            <div class="card soft" style="left:18px;top:18px;width:296px;height:42px;border-radius:14px;">
+              <div class="mono" style="position:absolute;left:14px;top:13px;">app.framesystem.com.br / inbox</div>
+            </div>
+            <div class="msg left" style="left:18px;top:78px;width:296px;height:92px;">
+              <div class="role">Paciente</div>
+              <div class="txt">Oi, queria saber se ainda tem vaga para esta semana.</div>
+            </div>
+            <div class="msg right" style="left:42px;top:186px;width:254px;height:112px;">
+              <div class="role brand">Frame AI</div>
+              <div class="txt">Claro. Tenho quinta as 14h ou sexta as 10h. Qual prefere?</div>
+            </div>
+            <div class="metric" style="left:18px;top:320px;width:296px;height:112px;">
+              <div class="dot"></div>
+              <div class="label">consulta agendada</div>
+              <div class="value" style="font-size:34px;">14h</div>
+              <div class="note" style="color:var(--brand);">+ lembrete enviado</div>
+            </div>
+            <div class="card soft" style="left:18px;top:458px;width:296px;height:54px;border-radius:16px;">
+              <div class="mono" style="position:absolute;left:16px;top:18px;">24 horas por dia - pelo seu numero - com a sua identidade</div>
+            </div>
+          </div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Deslize</div>
+        <div class="dots"><span class="active"></span><span></span><span></span><span></span><span></span><span></span></div>
+      </section>
+
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>A dor</div>
+        <div class="page">02 / 06</div>
+        <div class="title small">Lead sem resposta =<br>paciente perdido.</div>
+        <div class="subtitle">O problema nao e falta de consulta. E demora. Quando o WhatsApp atrasa, a conversa esfria e a pessoa procura outra clinica.</div>
+        <div class="card" style="left:72px;top:372px;width:424px;height:730px;background:var(--surface);">
+          <div class="card dark" style="left:28px;top:28px;width:368px;height:102px;border-radius:22px;">
+            <div class="mono" style="position:absolute;left:18px;top:16px;color:var(--brand);">09:12</div>
+            <div class="text" style="position:absolute;left:18px;top:38px;font-size:18px;">Lead entrou no WhatsApp</div>
+          </div>
+          <div class="card dark" style="left:28px;top:150px;width:368px;height:102px;border-radius:22px;">
+            <div class="mono" style="position:absolute;left:18px;top:16px;color:#F5A30B;">11:40</div>
+            <div class="text" style="position:absolute;left:18px;top:38px;font-size:18px;">Resposta so depois do almoco</div>
+          </div>
+          <div class="card" style="left:28px;top:272px;width:368px;height:168px;border-radius:22px;background:#101112;">
+            <div class="mono" style="position:absolute;left:18px;top:18px;color:#F5A30B;">11:41</div>
+            <div class="text" style="position:absolute;left:18px;top:42px;width:320px;font-size:24px;line-height:1.08;">Ela ja marcou com outra clinica.</div>
+            <div class="chip" style="left:18px;top:114px;">perda silenciosa</div>
+          </div>
+        </div>
+        <div class="card" style="left:520px;top:372px;width:488px;height:730px;background:var(--surface);">
+          <div class="text" style="position:absolute;left:28px;top:30px;width:390px;font-size:54px;line-height:.98;">2 minutos de atraso podem custar a consulta.</div>
+          <div class="body" style="position:absolute;left:28px;top:198px;width:392px;font-size:20px;">O lead nao espera. Ele compara. E, quando a resposta demora, a confianca cai antes mesmo da primeira conversa.</div>
+          <div class="card dark" style="left:28px;top:366px;width:392px;height:260px;border-radius:24px;">
+            <div class="chip active" style="left:18px;top:18px;">o que acontece</div>
+            <div class="text" style="position:absolute;left:18px;top:82px;font-size:15px;">Lead chegando</div>
+            <div class="body" style="position:absolute;left:18px;top:132px;font-size:15px;">Resposta atrasada</div>
+            <div class="text" style="position:absolute;left:18px;top:182px;font-size:15px;color:#F5A30B;">Perda de intencao</div>
+            <div class="number" style="position:absolute;left:252px;top:116px;font:500 11px/1 'DM Mono', monospace;color:var(--brand);">-&gt;</div>
+            <div class="number" style="position:absolute;left:252px;top:166px;font:500 11px/1 'DM Mono', monospace;color:#F5A30B;">-&gt;</div>
+            <div class="number" style="position:absolute;left:252px;top:216px;font:500 11px/1 'DM Mono', monospace;color:var(--brand2);">-&gt;</div>
+          </div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Deslize</div>
+        <div class="dots"><span></span><span class="active"></span><span></span><span></span><span></span><span></span></div>
+      </section>
+
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>Definicao</div>
+        <div class="page">03 / 06</div>
+        <div class="title small">O que e o Frame System?</div>
+        <div class="subtitle">E uma recepcionista virtual com IA desenhada para nutricionistas: atende, entende, agenda e acompanha com a voz da clinica.</div>
+        <div class="card" style="left:208px;top:360px;width:664px;height:548px;background:var(--surface);border-radius:34px;">
+          <div class="chip active" style="left:32px;top:34px;">Pelo seu numero. Com a sua identidade.</div>
+          <div class="text" style="position:absolute;left:32px;top:98px;width:520px;font-size:44px;line-height:1;">Uma IA que trabalha como a sua secretaria.</div>
+          <div class="body" style="position:absolute;left:32px;top:190px;width:520px;font-size:20px;">Sem parecer robo. Sem numero generico. Sem perder o fio da conversa.</div>
+          <div class="card dark" style="left:32px;top:278px;width:260px;height:88px;border-radius:20px;">
+            <div class="text" style="position:absolute;left:16px;top:16px;font-size:16px;">Atende 24h</div>
+            <div class="body" style="position:absolute;left:16px;top:44px;font-size:12px;">responde quando voce nao esta online</div>
+          </div>
+          <div class="card dark" style="left:326px;top:278px;width:260px;height:88px;border-radius:20px;">
+            <div class="text" style="position:absolute;left:16px;top:16px;font-size:16px;">Agenda consulta</div>
+            <div class="body" style="position:absolute;left:16px;top:44px;font-size:12px;">encontra encaixe e confirma horario</div>
+          </div>
+          <div class="card dark" style="left:32px;top:386px;width:260px;height:88px;border-radius:20px;">
+            <div class="text" style="position:absolute;left:16px;top:16px;font-size:16px;">Faz follow-up</div>
+            <div class="body" style="position:absolute;left:16px;top:44px;font-size:12px;">lembra retorno e reativa inativos</div>
+          </div>
+          <div class="card dark" style="left:326px;top:386px;width:260px;height:88px;border-radius:20px;">
+            <div class="text" style="position:absolute;left:16px;top:16px;font-size:16px;">Protege a operacao</div>
+            <div class="body" style="position:absolute;left:16px;top:44px;font-size:12px;">padroniza a resposta da clinica</div>
+          </div>
+          <div class="mono" style="position:absolute;left:32px;top:476px;color:var(--brand);">Frame System = estrutura de crescimento, nao so automacao.</div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Deslize</div>
+        <div class="dots"><span></span><span></span><span class="active"></span><span></span><span></span><span></span></div>
+      </section>
+
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>Fluxo</div>
+        <div class="page">04 / 06</div>
+        <div class="title small">Como funciona</div>
+        <div class="subtitle">Quatro passos. Uma conversa. Um lead que deixa de ficar parado no WhatsApp.</div>
+        <div class="card" style="left:72px;top:392px;width:936px;height:542px;background:var(--surface);border-radius:30px;">
+          <div class="card dark" style="left:34px;top:34px;width:198px;height:400px;border-radius:24px;">
+            <div class="mono" style="position:absolute;left:18px;top:18px;color:var(--brand);">01</div>
+            <div class="text" style="position:absolute;left:18px;top:50px;font-size:20px;">Lead entra</div>
+            <div class="body" style="position:absolute;left:18px;top:112px;font-size:13px;">A paciente chama no seu numero.</div>
+            <div class="card soft" style="left:18px;top:190px;width:162px;height:148px;border-radius:20px;"></div>
+            <div class="chip active" style="left:18px;top:356px;">WhatsApp</div>
+          </div>
+          <div class="card dark" style="left:262px;top:34px;width:198px;height:400px;border-radius:24px;">
+            <div class="mono" style="position:absolute;left:18px;top:18px;color:var(--brand2);">02</div>
+            <div class="text" style="position:absolute;left:18px;top:50px;font-size:20px;">IA qualifica</div>
+            <div class="body" style="position:absolute;left:18px;top:112px;font-size:13px;">Pergunta o necessario e entende a intencao.</div>
+            <div class="card soft" style="left:18px;top:190px;width:162px;height:148px;border-radius:20px;"></div>
+            <div class="chip" style="left:18px;top:356px;">pergunta</div>
+          </div>
+          <div class="card dark" style="left:490px;top:34px;width:198px;height:400px;border-radius:24px;">
+            <div class="mono" style="position:absolute;left:18px;top:18px;color:var(--brand);">03</div>
+            <div class="text" style="position:absolute;left:18px;top:50px;font-size:20px;">Agenda</div>
+            <div class="body" style="position:absolute;left:18px;top:112px;font-size:13px;">Mostra horarios e fecha a consulta.</div>
+            <div class="card soft" style="left:18px;top:190px;width:162px;height:148px;border-radius:20px;"></div>
+            <div class="chip" style="left:18px;top:356px;">agenda</div>
+          </div>
+          <div class="card dark" style="left:718px;top:34px;width:198px;height:400px;border-radius:24px;">
+            <div class="mono" style="position:absolute;left:18px;top:18px;color:var(--brand2);">04</div>
+            <div class="text" style="position:absolute;left:18px;top:50px;font-size:20px;">Follow-up</div>
+            <div class="body" style="position:absolute;left:18px;top:112px;font-size:13px;">Confirma, lembra e acompanha depois.</div>
+            <div class="card soft" style="left:18px;top:190px;width:162px;height:148px;border-radius:20px;"></div>
+            <div class="chip" style="left:18px;top:356px;">retorno</div>
+          </div>
+          <div class="mono" style="position:absolute;left:242px;top:232px;color:var(--brand);">-&gt;</div>
+          <div class="mono" style="position:absolute;left:470px;top:232px;color:var(--brand);">-&gt;</div>
+          <div class="mono" style="position:absolute;left:698px;top:232px;color:var(--brand);">-&gt;</div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Deslize</div>
+        <div class="dots"><span></span><span></span><span></span><span class="active"></span><span></span><span></span></div>
+      </section>
+
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>Beneficios</div>
+        <div class="page">05 / 06</div>
+        <div class="title small">O efeito no consultorio.</div>
+        <div class="subtitle">Menos tempo no WhatsApp. Mais consultas agendadas. Menos faltas. Mais previsibilidade.</div>
+        <div class="card" style="left:72px;top:372px;width:936px;height:730px;background:var(--surface);border-radius:30px;">
+          <div class="metric" style="left:32px;top:38px;width:404px;height:120px;">
+            <div class="dot"></div><div class="label">consultas</div><div class="value">+38%</div><div class="note">+ consultas agendadas</div>
+          </div>
+          <div class="metric" style="left:468px;top:38px;width:404px;height:120px;">
+            <div class="dot" style="background:var(--brand2)"></div><div class="label">tempo</div><div class="value">-12h</div><div class="note">por semana no WhatsApp</div>
+          </div>
+          <div class="metric" style="left:32px;top:208px;width:404px;height:120px;">
+            <div class="dot" style="background:var(--brand2)"></div><div class="label">faltas</div><div class="value">-64%</div><div class="note">menos no-shows</div>
+          </div>
+          <div class="metric" style="left:468px;top:208px;width:404px;height:120px;">
+            <div class="dot"></div><div class="label">receita</div><div class="value">+27%</div><div class="note">mais faturamento</div>
+          </div>
+          <div class="card dark" style="left:32px;top:380px;width:872px;height:250px;border-radius:26px;">
+            <div class="text" style="position:absolute;left:28px;top:34px;width:770px;font-size:34px;line-height:1.05;">Voce cuida do paciente. O Frame cuida do que vem antes e depois da consulta.</div>
+            <div class="body" style="position:absolute;left:28px;top:162px;width:760px;font-size:18px;">A operacao fica mais leve. O atendimento fica mais rapido. O consultorio fica mais previsivel.</div>
+          </div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Deslize</div>
+        <div class="dots"><span></span><span></span><span></span><span></span><span class="active"></span><span></span></div>
+      </section>
+
+      <section class="slide">
+        <div class="glow one"></div>
+        <div class="glow two"></div>
+        <div class="pill"><span class="dot"></span>CTA</div>
+        <div class="page">06 / 06</div>
+        <div class="title small">Quer ver ao vivo?</div>
+        <div class="subtitle">Mande "FRAME" no direct e veja como a IA atende, agenda e acompanha com a identidade da sua clinica.</div>
+        <div class="card" style="left:72px;top:372px;width:936px;height:730px;background:var(--surface);border-radius:32px;">
+          <div class="card dark" style="left:34px;top:34px;width:510px;height:662px;border-radius:28px;">
+            <div class="text" style="position:absolute;left:28px;top:28px;font-size:28px;">Frame System<span style="color:var(--brand)">.</span></div>
+            <div class="body" style="position:absolute;left:28px;top:74px;font-size:18px;">Recepcionista virtual para nutricionistas.</div>
+            <div class="chip active" style="left:28px;top:138px;">WhatsApp proprio</div>
+            <div class="chip" style="left:164px;top:138px;">nome que voce escolhe</div>
+            <div class="chip" style="left:366px;top:138px;">24h por dia</div>
+            <div class="card" style="left:28px;top:204px;width:454px;height:388px;background:#0B0C0E;border-radius:24px;">
+              <div class="msg left" style="left:18px;top:18px;width:290px;height:78px;">
+                <div class="role">Paciente</div><div class="txt">Tem horario esta semana?</div>
+              </div>
+              <div class="msg right" style="left:102px;top:110px;width:332px;height:120px;">
+                <div class="role brand">Frame AI</div><div class="txt">Tenho quinta as 14h ou sexta as 10h. Qual prefere?</div>
+              </div>
+              <div class="metric" style="left:18px;top:248px;width:286px;height:92px;">
+                <div class="label">resultado</div><div class="value" style="font-size:26px;color:var(--brand2)">consulta agendada</div>
+              </div>
+            </div>
+          </div>
+          <div class="card soft" style="left:568px;top:34px;width:334px;height:662px;border-radius:28px;">
+            <div class="metric" style="left:28px;top:28px;width:278px;height:120px;background:#0B0C0E;">
+              <div class="dot"></div><div class="label">1</div><div class="value" style="font-size:26px;">pelo seu numero</div>
+            </div>
+            <div class="metric" style="left:28px;top:164px;width:278px;height:120px;background:#0B0C0E;">
+              <div class="dot" style="background:var(--brand2)"></div><div class="label">2</div><div class="value" style="font-size:26px;">com o seu nome</div>
+            </div>
+            <div class="metric" style="left:28px;top:300px;width:278px;height:120px;background:#0B0C0E;">
+              <div class="dot"></div><div class="label">3</div><div class="value" style="font-size:26px;">24h por dia</div>
+            </div>
+            <div class="card" style="left:28px;top:466px;width:278px;height:140px;background:rgba(0,41,28,.92);border-radius:24px;border:1px solid rgba(0,194,124,.35);">
+              <div class="text" style="position:absolute;left:18px;top:18px;font-size:24px;line-height:1.08;">Mande "FRAME"<br>no direct.</div>
+              <div class="mono" style="position:absolute;left:18px;top:92px;color:var(--brand);">e eu te mostro o fluxo ao vivo.</div>
+            </div>
+          </div>
+        </div>
+        <div class="brand-word">Frame<span class="dot">.</span></div>
+        <div class="hint">Salve este post</div>
+        <div class="dots"><span></span><span></span><span></span><span></span><span></span><span class="active"></span></div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

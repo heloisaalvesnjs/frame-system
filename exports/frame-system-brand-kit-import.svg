@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="2280" viewBox="0 0 1920 2280">
+  <defs>
+    <linearGradient id="bgGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E892" stop-opacity="0.18"/>
+      <stop offset="55%" stop-color="#00C27C" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#00C27C" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="darkEmblem" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#F4F5F0"/>
+      <stop offset="42%" stop-color="#00E892"/>
+      <stop offset="78%" stop-color="#00C27C"/>
+      <stop offset="100%" stop-color="#0B2E1E"/>
+    </linearGradient>
+
+    <linearGradient id="lightEmblem" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#141618"/>
+      <stop offset="50%" stop-color="#0B2E1E"/>
+      <stop offset="100%" stop-color="#00C27C"/>
+    </linearGradient>
+
+    <linearGradient id="greenEmblem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B0C0E"/>
+      <stop offset="100%" stop-color="#141618"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="24" flood-color="#0B0C0E" flood-opacity="0.12"/>
+    </filter>
+
+    <style>
+      .title { font: 700 52px Inter, Arial, sans-serif; fill: #141618; letter-spacing: -0.02em; }
+      .subtitle { font: 400 22px Inter, Arial, sans-serif; fill: #6B7280; }
+      .label { font: 600 22px Inter, Arial, sans-serif; fill: #141618; letter-spacing: -0.01em; }
+      .meta { font: 500 16px "DM Mono", Consolas, monospace; fill: #6B7280; }
+      .swatchTitle { font: 600 18px Inter, Arial, sans-serif; fill: #141618; }
+      .swatchHex { font: 500 14px "DM Mono", Consolas, monospace; fill: #6B7280; }
+    </style>
+
+    <!-- Core mark built from flowing strokes so it imports into Figma as editable vector paths -->
+    <g id="frameMark" fill="none">
+      <path d="M240 86
+               C188 82 160 112 160 162
+               C160 222 218 252 272 274
+               C328 296 362 336 364 388
+               C368 470 290 522 206 536"
+            stroke="currentColor" stroke-width="86" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M422 84
+               C476 86 512 120 512 170
+               C512 242 444 288 380 320
+               C316 352 286 392 282 454
+               C276 516 320 558 392 566"
+            stroke="currentColor" stroke-width="86" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M214 566
+               C250 520 304 494 364 494
+               C438 494 494 530 530 590"
+            stroke="currentColor" stroke-width="86" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1920" height="2280" fill="#F4F5F0"/>
+  <rect x="0" y="0" width="1920" height="2280" fill="url(#bgGlow)"/>
+
+  <!-- Header -->
+  <text x="120" y="122" class="title">Frame System</text>
+  <text x="120" y="162" class="subtitle">Brand kit vetorial para importacao no Figma</text>
+  <text x="120" y="198" class="meta">logos, favicon e paleta nova</text>
+
+  <!-- Card 1: Dark logo -->
+  <g filter="url(#softShadow)">
+    <rect x="120" y="260" width="820" height="760" rx="36" fill="#141618"/>
+    <rect x="120" y="260" width="820" height="760" rx="36" fill="url(#bgGlow)" opacity="0.85"/>
+  </g>
+  <text x="160" y="320" class="label" fill="#F4F5F0">Logo escura</text>
+  <text x="160" y="350" class="meta" fill="#A3AAB4">fundo escuro, marca clara + verde premium</text>
+  <g transform="translate(310 394) scale(0.88)">
+    <circle cx="280" cy="280" r="260" fill="#0B2E1E"/>
+    <circle cx="280" cy="280" r="260" fill="url(#bgGlow)" opacity="0.38"/>
+    <g transform="translate(-40 -18)" style="color:#F4F5F0">
+      <use href="#frameMark"/>
+    </g>
+  </g>
+
+  <!-- Card 2: Green logo -->
+  <g filter="url(#softShadow)">
+    <rect x="980" y="260" width="820" height="760" rx="36" fill="#00C27C"/>
+  </g>
+  <text x="1020" y="320" class="label">Logo verde</text>
+  <text x="1020" y="350" class="meta">fundo verde, marca preta para contraste forte</text>
+  <g transform="translate(1170 394) scale(0.88)">
+    <circle cx="280" cy="280" r="260" fill="#00E892" opacity="0.15"/>
+    <g transform="translate(-40 -18)" style="color:#0B0C0E">
+      <use href="#frameMark"/>
+    </g>
+  </g>
+
+  <!-- Card 3: Favicon / icon -->
+  <g filter="url(#softShadow)">
+    <rect x="120" y="1090" width="500" height="500" rx="36" fill="#FFFFFF"/>
+  </g>
+  <text x="160" y="1150" class="label">Favicon</text>
+  <text x="160" y="1180" class="meta">para site, app e avatar pequeno</text>
+  <g transform="translate(200 1232) scale(0.56)">
+    <circle cx="280" cy="280" r="260" fill="#0B0C0E"/>
+    <g transform="translate(-40 -18)" style="color:#00C27C">
+      <use href="#frameMark"/>
+    </g>
+  </g>
+
+  <!-- Card 4: Palette -->
+  <g filter="url(#softShadow)">
+    <rect x="660" y="1090" width="1140" height="500" rx="36" fill="#FFFFFF"/>
+  </g>
+  <text x="700" y="1150" class="label">Nova paleta</text>
+  <text x="700" y="1180" class="meta">base neutra + verde de acao e destaque</text>
+
+  <g transform="translate(700 1220)">
+    <rect width="170" height="170" rx="22" fill="#F4F5F0" stroke="#E5E7E2"/>
+    <text x="18" y="212" class="swatchTitle">Background</text>
+    <text x="18" y="236" class="swatchHex">#F4F5F0</text>
+
+    <g transform="translate(210 0)">
+      <rect width="170" height="170" rx="22" fill="#FFFFFF" stroke="#E5E7E2"/>
+      <text x="18" y="212" class="swatchTitle">Surface</text>
+      <text x="18" y="236" class="swatchHex">#FFFFFF</text>
+    </g>
+
+    <g transform="translate(420 0)">
+      <rect width="170" height="170" rx="22" fill="#FAFBF8" stroke="#E5E7E2"/>
+      <text x="18" y="212" class="swatchTitle">Surface 2</text>
+      <text x="18" y="236" class="swatchHex">#FAFBF8</text>
+    </g>
+
+    <g transform="translate(630 0)">
+      <rect width="170" height="170" rx="22" fill="#E5E7E2" stroke="#E5E7E2"/>
+      <text x="18" y="212" class="swatchTitle">Border</text>
+      <text x="18" y="236" class="swatchHex">#E5E7E2</text>
+    </g>
+
+    <g transform="translate(840 0)">
+      <rect width="170" height="170" rx="22" fill="#141618"/>
+      <text x="18" y="212" class="swatchTitle">Ink</text>
+      <text x="18" y="236" class="swatchHex">#141618</text>
+    </g>
+
+    <g transform="translate(1050 0)">
+      <rect width="170" height="170" rx="22" fill="#0B2E1E"/>
+      <text x="18" y="212" class="swatchTitle">Deep Green</text>
+      <text x="18" y="236" class="swatchHex">#0B2E1E</text>
+    </g>
+
+    <g transform="translate(0 290)">
+      <rect width="170" height="170" rx="22" fill="#00C27C"/>
+      <text x="18" y="212" class="swatchTitle">Frame Green</text>
+      <text x="18" y="236" class="swatchHex">#00C27C</text>
+    </g>
+
+    <g transform="translate(210 290)">
+      <rect width="170" height="170" rx="22" fill="#00E892"/>
+      <text x="18" y="212" class="swatchTitle">Bright Green</text>
+      <text x="18" y="236" class="swatchHex">#00E892</text>
+    </g>
+
+    <g transform="translate(420 290)">
+      <rect width="170" height="170" rx="22" fill="#0B0C0E"/>
+      <text x="18" y="212" class="swatchTitle">Carbon</text>
+      <text x="18" y="236" class="swatchHex">#0B0C0E</text>
+    </g>
+
+    <g transform="translate(630 290)">
+      <rect width="170" height="170" rx="22" fill="#6B7280"/>
+      <text x="18" y="212" class="swatchTitle">Muted</text>
+      <text x="18" y="236" class="swatchHex">#6B7280</text>
+    </g>
+  </g>
+
+  <!-- Notes -->
+  <text x="120" y="1760" class="label">Como importar</text>
+  <text x="120" y="1802" class="subtitle">
+    Salve este arquivo como .svg e arraste para o Figma. Ele entra como vetor e pode ser desagrupado.
+  </text>
+  <text x="120" y="1842" class="subtitle">
+    Se quiser, eu tambem posso separar isso em arquivos individuais de logo, favicon e paleta.
+  </text>
+</svg>

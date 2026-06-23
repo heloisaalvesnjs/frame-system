@@ -573,6 +573,15 @@ ALTER TABLE availability ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES lo
 -- --------------------------------
 -- Regras de agendamento (por nutricionista)
 -- --------------------------------
+-- Formulários de onboarding
+CREATE TABLE IF NOT EXISTS onboarding_forms (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  slug         TEXT NOT NULL,
+  data         JSONB NOT NULL DEFAULT '{}',
+  processed    BOOLEAN DEFAULT false,
+  submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS buffer_between_minutes  INT DEFAULT 10;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS min_advance_hours        INT DEFAULT 3;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS max_appointments_per_day INT DEFAULT 8;

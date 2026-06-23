@@ -26,6 +26,7 @@ import { availabilityRoutes } from './routes/availability.routes'
 import { teamRoutes } from './routes/team.routes'
 import { integrationsRoutes } from './routes/integrations.routes'
 import { followupSequencesRoutes } from './routes/followup-sequences.routes'
+import { onboardingFormRoutes } from './routes/onboarding-form.routes'
 import { runFollowupSequences, runAppointmentReminders, runPosConsulta, runRetorno } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
 import { readFileSync } from 'fs'
@@ -102,6 +103,7 @@ app.register(locationsRoutes,       { prefix: '/api/locations' })
 app.register(availabilityRoutes,    { prefix: '/api/availability' })
 app.register(integrationsRoutes,         { prefix: '/api/integrations' })
 app.register(followupSequencesRoutes,    { prefix: '/api/followup-sequences' })
+app.register(onboardingFormRoutes,       { prefix: '/api/onboarding-form' })
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))

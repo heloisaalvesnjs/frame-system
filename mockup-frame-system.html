@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame System — Mockup Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #F5F5F7; color: #1D1D1F; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 210px; background: #1D1D1F;
+    display: flex; flex-direction: column;
+    padding: 20px 0; z-index: 100;
+  }
+  .sidebar-logo-wrap {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 16px; margin-bottom: 28px;
+  }
+  .sidebar-logo {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: #00C27C; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: white;
+  }
+  .sidebar-logo-text { color: white; font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+  .sidebar-logo-sub { color: #555; font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; margin-top: -2px; }
+
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; width: 100%; padding: 0 10px; overflow-y: auto; }
+  .nav-item {
+    height: 38px; border-radius: 10px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 10px;
+    cursor: pointer; transition: all 0.15s;
+    color: #6B6B6B; font-size: 13px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: #E5E5E7; }
+  .nav-item.active { background: rgba(0,194,124,0.15); color: #00C27C; }
+  .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+  /* Divisor nav */
+  .nav-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 6px 10px; }
+
+  /* Admin item */
+  .nav-item.admin { color: #FF9F0A; }
+  .nav-item.admin:hover { background: rgba(255,159,10,0.10); color: #FF9F0A; }
+
+  .sidebar-bottom { padding: 0 10px 4px; }
+  .sidebar-avatar-row {
+    height: 44px; border-radius: 10px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 10px; cursor: pointer;
+  }
+  .sidebar-avatar-row:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #00C27C, #00a066);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: white;
+  }
+  .sidebar-avatar-name { font-size: 13px; font-weight: 500; color: #A0A0A0; }
+
+  /* ── Main ── */
+  .main { margin-left: 210px; min-height: 100vh; padding: 32px 32px 32px 32px; }
+
+  /* ── Header ── */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; }
+  .header-left h1 { font-size: 24px; font-weight: 700; color: #1D1D1F; letter-spacing: -0.3px; }
+  .header-left p { font-size: 14px; color: #6E6E73; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: white; border: 1px solid #E5E5EA;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #6E6E73;
+  }
+  .header-btn:hover { background: #F5F5F7; }
+  .notif-dot {
+    position: relative;
+  }
+  .notif-dot::after {
+    content: ''; position: absolute; top: 6px; right: 6px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #FF3B30; border: 1.5px solid white;
+  }
+
+  /* ── Metrics ── */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .metric-card {
+    background: white; border: 1px solid #E5E5EA; border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .metric-label { font-size: 12px; font-weight: 500; color: #6E6E73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .metric-label svg { width: 14px; height: 14px; }
+  .metric-value { font-size: 34px; font-weight: 700; color: #1D1D1F; letter-spacing: -1px; line-height: 1; }
+  .metric-sub { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .metric-sub.green { color: #00C27C; }
+  .metric-sub.orange { color: #FF9500; }
+  .metric-sub.gray { color: #6E6E73; }
+  .metric-sub svg { width: 12px; height: 12px; }
+
+  /* ── Content grid ── */
+  .content-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+
+  /* ── Cards ── */
+  .card {
+    background: white; border: 1px solid #E5E5EA; border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 20px 22px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #F2F2F7;
+  }
+  .card-title { font-size: 15px; font-weight: 600; color: #1D1D1F; }
+  .card-action { font-size: 13px; color: #00C27C; font-weight: 500; cursor: pointer; }
+  .card-action:hover { color: #00a066; }
+
+  /* ── Activity list ── */
+  .activity-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid #F2F2F7;
+    transition: background 0.1s; cursor: pointer;
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item:hover { background: #FAFAFA; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: white; flex-shrink: 0;
+  }
+  .activity-info { flex: 1; min-width: 0; }
+  .activity-name { font-size: 14px; font-weight: 500; color: #1D1D1F; }
+  .activity-msg { font-size: 13px; color: #6E6E73; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .activity-time { font-size: 12px; color: #AEAEB2; flex-shrink: 0; }
+  .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #00C27C; flex-shrink: 0; }
+
+  /* ── Agenda ── */
+  .agenda-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid #F2F2F7;
+    transition: background 0.1s; cursor: pointer;
+  }
+  .agenda-item:last-child { border-bottom: none; }
+  .agenda-item:hover { background: #FAFAFA; }
+  .agenda-time-col { text-align: right; flex-shrink: 0; width: 48px; }
+  .agenda-time { font-size: 13px; font-weight: 600; color: #1D1D1F; }
+  .agenda-duration { font-size: 11px; color: #AEAEB2; margin-top: 1px; }
+  .agenda-bar { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+  .agenda-info { flex: 1; }
+  .agenda-name { font-size: 14px; font-weight: 500; color: #1D1D1F; }
+  .agenda-type { font-size: 12px; color: #6E6E73; margin-top: 1px; }
+  .agenda-badge {
+    font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 6px;
+  }
+  .badge-green { background: #E8FAF2; color: #00A057; }
+  .badge-blue { background: #EAF0FF; color: #3B7AF5; }
+  .badge-orange { background: #FFF3E5; color: #C07000; }
+
+  /* ── Quick stats bottom ── */
+  .quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+  .quick-stat {
+    background: white; border: 1px solid #E5E5EA; border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .quick-stat-label { font-size: 12px; color: #6E6E73; font-weight: 500; }
+  .quick-stat-value { font-size: 22px; font-weight: 700; color: #1D1D1F; margin-top: 4px; letter-spacing: -0.5px; }
+  .quick-stat-change { font-size: 11px; margin-top: 3px; color: #00C27C; }
+
+  /* ── Tag de "MOCKUP" ── */
+  .mockup-tag {
+    position: fixed; bottom: 20px; right: 20px;
+    background: #1D1D1F; color: white;
+    font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    padding: 6px 12px; border-radius: 20px; opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <!-- Logo -->
+  <div class="sidebar-logo-wrap">
+    <div class="sidebar-logo">F</div>
+    <div>
+      <div class="sidebar-logo-text">Frame.</div>
+      <div class="sidebar-logo-sub">System</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <!-- Painel (ativo) -->
+    <div class="nav-item active">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Painel
+    </div>
+    <!-- Conversas -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Conversas
+    </div>
+    <!-- Agenda -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Agenda
+    </div>
+    <!-- Clientes -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Clientes
+    </div>
+    <!-- Planos -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Planos
+    </div>
+    <!-- Automações -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Automações
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- Assistente IA — ícone sparkles -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+      Assistente
+    </div>
+    <!-- Disponibilidade -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Disponibilidade
+    </div>
+    <!-- Equipe — ícone diferente: pessoa com badge -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+      Equipe
+    </div>
+    <!-- Integrações -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="12" x2="5" y2="16"/><line x1="12" y1="12" x2="19" y2="16"/></svg>
+      Integrações
+    </div>
+    <!-- Configurações -->
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Configurações
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- Admin -->
+    <div class="nav-item admin">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Admin
+    </div>
+  </nav>
+
+  <!-- Avatar rodapé -->
+  <div class="sidebar-bottom">
+    <div class="nav-divider" style="margin-bottom:8px;"></div>
+    <div class="sidebar-avatar-row">
+      <div class="sidebar-avatar">HA</div>
+      <span class="sidebar-avatar-name">Heloisa Alves</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Bom dia, Heloisa 👋</h1>
+      <p>Sábado, 7 de junho de 2026</p>
+    </div>
+    <div class="header-right">
+      <div class="header-btn notif-dot" title="Notificações">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="header-btn" title="Configurações">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Clientes ativos
+      </div>
+      <div class="metric-value">24</div>
+      <div class="metric-sub green">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+        +2 esta semana
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Consultas hoje
+      </div>
+      <div class="metric-value">3</div>
+      <div class="metric-sub gray">Próxima às 14h00</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Mensagens
+      </div>
+      <div class="metric-value">12</div>
+      <div class="metric-sub orange">5 não lidas</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Follow-ups
+      </div>
+      <div class="metric-value">8</div>
+      <div class="metric-sub gray">Pendentes hoje</div>
+    </div>
+  </div>
+
+  <!-- Content grid -->
+  <div class="content-grid">
+
+    <!-- Atividade recente -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Atividade recente</span>
+        <span class="card-action">Ver tudo</span>
+      </div>
+      <div class="activity-item">
+        <div class="avatar" style="background:#5856D6">MS</div>
+        <div class="activity-info">
+          <div class="activity-name">Maria Silva</div>
+          <div class="activity-msg">Oi, posso trocar o horário de amanhã?</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="unread-dot"></div>
+          <div class="activity-time">agora</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="avatar" style="background:#FF9500">JC</div>
+        <div class="activity-info">
+          <div class="activity-name">João Costa</div>
+          <div class="activity-msg">Obrigado pela dieta! Já comecei 💪</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="unread-dot"></div>
+          <div class="activity-time">12 min</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="avatar" style="background:#FF2D55">AM</div>
+        <div class="activity-info">
+          <div class="activity-name">Ana Mendes</div>
+          <div class="activity-msg">Assistente: Olá Ana! Sua consulta está confirmada para...</div>
+        </div>
+        <div class="activity-time">1h</div>
+      </div>
+      <div class="activity-item">
+        <div class="avatar" style="background:#34C759">LR</div>
+        <div class="activity-info">
+          <div class="activity-name">Luana Ramos</div>
+          <div class="activity-msg">Tudo bem! Vou estar lá na hora certa</div>
+        </div>
+        <div class="activity-time">3h</div>
+      </div>
+      <div class="activity-item">
+        <div class="avatar" style="background:#007AFF">PF</div>
+        <div class="activity-info">
+          <div class="activity-name">Pedro Faria</div>
+          <div class="activity-msg">Posso fazer o pagamento pelo pix?</div>
+        </div>
+        <div class="activity-time">ontem</div>
+      </div>
+    </div>
+
+    <!-- Coluna direita -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Agenda de hoje -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Agenda de hoje</span>
+          <span class="card-action">Abrir agenda</span>
+        </div>
+        <div class="agenda-item">
+          <div class="agenda-time-col">
+            <div class="agenda-time">09h00</div>
+            <div class="agenda-duration">50 min</div>
+          </div>
+          <div class="agenda-bar" style="background:#5856D6"></div>
+          <div class="agenda-info">
+            <div class="agenda-name">Maria Silva</div>
+            <div class="agenda-type">Consulta de retorno</div>
+          </div>
+          <div class="agenda-badge badge-green">Confirmada</div>
+        </div>
+        <div class="agenda-item">
+          <div class="agenda-time-col">
+            <div class="agenda-time">14h00</div>
+            <div class="agenda-duration">50 min</div>
+          </div>
+          <div class="agenda-bar" style="background:#FF9500"></div>
+          <div class="agenda-info">
+            <div class="agenda-name">João Costa</div>
+            <div class="agenda-type">Primeira consulta</div>
+          </div>
+          <div class="agenda-badge badge-blue">Agendada</div>
+        </div>
+        <div class="agenda-item">
+          <div class="agenda-time-col">
+            <div class="agenda-time">16h30</div>
+            <div class="agenda-duration">50 min</div>
+          </div>
+          <div class="agenda-bar" style="background:#FF2D55"></div>
+          <div class="agenda-info">
+            <div class="agenda-name">Ana Mendes</div>
+            <div class="agenda-type">Acompanhamento</div>
+          </div>
+          <div class="agenda-badge badge-orange">Pendente</div>
+        </div>
+      </div>
+
+      <!-- Assistente IA status -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Assistente IA</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#34C759;font-weight:500;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#34C759;display:inline-block;"></span>
+            Ativo
+          </span>
+        </div>
+        <div style="padding:16px 22px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#6E6E73;">Mensagens hoje</span>
+            <span style="font-size:14px;font-weight:600;color:#1D1D1F;">47</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#6E6E73;">Resolvidas pela IA</span>
+            <span style="font-size:14px;font-weight:600;color:#00C27C;">38 (81%)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#6E6E73;">Modo férias</span>
+            <span style="font-size:13px;color:#AEAEB2;">Desativado</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="mockup-tag">Mockup — Frame System</div>
+
+</body>
+</html>

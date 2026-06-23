@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frame System - Lovable Clean Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-base:#0B0C0E;
+      --bg-elevated:#141618;
+      --bg-surface:#1E2124;
+      --bg-surface-2:#25282C;
+      --line-1:rgba(255,255,255,.08);
+      --line-2:rgba(255,255,255,.12);
+      --brand:#00C27C;
+      --brand-bright:#00E892;
+      --brand-ring:rgba(0,194,124,.18);
+      --text-1:#F4F5F0;
+      --text-2:#A1A6AE;
+      --text-3:#6B7280;
+      --text-4:#4A5159;
+      --danger:#FF5C5C;
+      --warning:#FFB454;
+      --info:#6AA9FF;
+      --shadow-elevated:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 28px -18px rgba(0,0,0,.72);
+      --shadow-glow:0 0 0 1px var(--brand-ring), 0 8px 28px -10px rgba(0,194,124,.16);
+      --gradient-brand:linear-gradient(135deg, #00C27C 0%, #00E892 100%);
+      --radius-lg:18px;
+      --radius-md:14px;
+      --radius-sm:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,sans-serif;
+      background:var(--bg-base);
+      color:var(--text-1);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      font-feature-settings:"cv02","cv03","cv04","cv11";
+    }
+    ::selection{background:rgba(0,194,124,.22);color:var(--text-1)}
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:999px;border:2px solid var(--bg-base)}
+    .app{
+      display:grid;
+      grid-template-columns:84px 1fr;
+      min-height:100vh;
+    }
+    .sidebar{
+      background:#0E0F11;
+      border-right:1px solid var(--line-1);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:16px 0 14px;
+      gap:12px;
+    }
+    .brand{
+      width:42px;height:42px;border-radius:14px;
+      background:var(--bg-elevated);
+      border:1px solid var(--line-1);
+      box-shadow:var(--shadow-elevated);
+      display:grid;place-items:center;
+      overflow:hidden;
+    }
+    .brand img{width:28px;height:28px;object-fit:contain}
+    .nav{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      justify-content:center;
+    }
+    .nav .item{
+      width:42px;height:42px;border-radius:14px;
+      display:grid;place-items:center;
+      color:#8D949D;
+      border:1px solid transparent;
+      background:transparent;
+    }
+    .nav .item.active{
+      color:#F4F5F0;
+      background:rgba(0,194,124,.12);
+      border-color:rgba(0,194,124,.14);
+      box-shadow:var(--shadow-glow);
+    }
+    .nav svg,.top-actions svg,.btn svg,.chip svg,.mini svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .main{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(0,194,124,.06), transparent 26%),
+        radial-gradient(circle at 90% 10%, rgba(0,232,146,.04), transparent 28%),
+        var(--bg-base);
+    }
+    .topbar{
+      height:56px;
+      min-height:56px;
+      padding:0 22px;
+      display:flex;
+      align-items:center;
+      gap:14px;
+      border-bottom:1px solid var(--line-1);
+      background:rgba(11,12,14,.76);
+      backdrop-filter:blur(16px);
+    }
+    .crumb{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+      white-space:nowrap;
+    }
+    .crumb .badge{
+      height:26px;
+      padding:0 10px;
+      border-radius:999px;
+      border:1px solid rgba(0,194,124,.14);
+      background:rgba(0,194,124,.08);
+      color:#DFFFEF;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      display:inline-flex;
+      align-items:center;
+    }
+    .crumb .title{
+      font-size:14px;
+      font-weight:600;
+      color:#D7DCE1;
+    }
+    .spacer{flex:1}
+    .search{
+      width:min(420px,100%);
+      height:40px;
+      border-radius:14px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.03);
+      padding:0 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:var(--text-3);
+      font-size:13px;
+    }
+    .top-actions{display:flex;align-items:center;gap:10px}
+    .btn{
+      height:40px;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.03);
+      color:var(--text-1);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font:inherit;
+      font-size:13px;
+      font-weight:700;
+    }
+    .btn.primary{
+      border-color:transparent;
+      color:#07100A;
+      background:var(--gradient-brand);
+      box-shadow:0 10px 24px rgba(0,194,124,.18);
+    }
+    .content{
+      padding:20px 22px 24px;
+      display:grid;
+      gap:18px;
+    }
+    .pagehead{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .pagehead h1{
+      margin:0;
+      font-size:22px;
+      line-height:1.1;
+      letter-spacing:-.04em;
+      font-weight:700;
+    }
+    .pagehead p{
+      margin:7px 0 0;
+      max-width:620px;
+      color:var(--text-2);
+      font-size:13px;
+      line-height:1.55;
+    }
+    .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+    .chip{
+      height:32px;
+      padding:0 12px;
+      border-radius:999px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.03);
+      color:#D9DEE3;
+      font-size:12px;
+      font-weight:600;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .chip.active{
+      background:rgba(0,194,124,.10);
+      color:#ECFEE4;
+      border-color:rgba(0,194,124,.16);
+    }
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+    }
+    .stat{
+      border-radius:var(--radius-lg);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+      border:1px solid var(--line-1);
+      box-shadow:var(--shadow-elevated);
+      padding:16px;
+      min-height:108px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+    .stat .label{font-size:12px;color:var(--text-2);font-weight:600}
+    .stat .value{font-size:30px;font-weight:800;letter-spacing:-.05em;margin-top:6px}
+    .stat .sub{font-size:12px;color:var(--text-3)}
+    .grid{
+      display:grid;
+      grid-template-columns:1.7fr 1fr;
+      gap:18px;
+      align-items:start;
+    }
+    .card{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--line-1);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      box-shadow:var(--shadow-elevated);
+      overflow:hidden;
+      min-width:0;
+    }
+    .card-head{
+      padding:16px 18px 14px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      border-bottom:1px solid var(--line-1);
+      background:rgba(255,255,255,.01);
+    }
+    .card-head h2{
+      margin:0;
+      font-size:15px;
+      line-height:1.2;
+      letter-spacing:-.03em;
+    }
+    .card-head p{
+      margin:5px 0 0;
+      font-size:12px;
+      color:var(--text-3);
+      line-height:1.5;
+      max-width:520px;
+    }
+    .card-body{padding:18px}
+    .calendar{
+      display:grid;
+      grid-template-columns:repeat(7,minmax(0,1fr));
+      gap:10px;
+    }
+    .day{
+      min-height:184px;
+      border-radius:16px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.02);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .day .dayname{
+      font-size:11px;
+      color:var(--text-3);
+      text-transform:uppercase;
+      letter-spacing:.16em;
+    }
+    .day .date{
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:-.04em;
+      margin-top:-1px;
+    }
+    .slot{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:9px 10px;
+      border-radius:12px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.03);
+      color:#D8DEE4;
+      font-size:12px;
+      line-height:1.4;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--brand);
+      box-shadow:0 0 0 4px rgba(0,194,124,.12);
+      flex:0 0 auto;
+    }
+    .slot.blocked .dot{background:var(--danger);box-shadow:0 0 0 4px rgba(255,92,92,.12)}
+    .slot.online .dot{background:var(--info);box-shadow:0 0 0 4px rgba(106,169,255,.12)}
+    .slot span{display:block}
+    .slot strong{font-weight:700;color:var(--text-1)}
+    .side{
+      display:grid;
+      gap:18px;
+    }
+    .availability-list{
+      display:grid;
+      gap:12px;
+    }
+    .availability-row{
+      padding:14px;
+      border-radius:16px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.02);
+      display:grid;
+      gap:10px;
+    }
+    .availability-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .availability-top strong{
+      font-size:13px;
+      font-weight:700;
+    }
+    .availability-top span{
+      color:var(--text-3);
+      font-size:12px;
+    }
+    .bar{
+      height:9px;
+      border-radius:999px;
+      background:#111826;
+      border:1px solid rgba(255,255,255,.05);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      border-radius:inherit;
+      background:var(--gradient-brand);
+    }
+    .tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .tag{
+      padding:7px 9px;
+      border-radius:999px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.03);
+      color:#D8DEE4;
+      font-size:11px;
+      font-weight:600;
+    }
+    .tag.active{
+      border-color:rgba(0,194,124,.16);
+      background:rgba(0,194,124,.10);
+      color:#ECFEE4;
+    }
+    .matrix{
+      display:grid;
+      gap:10px;
+    }
+    .matrix-row{
+      display:grid;
+      grid-template-columns:96px 1fr 120px;
+      gap:10px;
+      align-items:center;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.02);
+    }
+    .matrix-row .dow{
+      font-size:13px;
+      font-weight:700;
+      letter-spacing:-.02em;
+    }
+    .matrix-row .time{
+      text-align:right;
+      color:var(--text-3);
+      font-size:12px;
+      font-weight:600;
+    }
+    .info{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:14px 16px;
+      border-radius:16px;
+      border:1px solid rgba(0,194,124,.14);
+      background:rgba(0,194,124,.07);
+      color:#E8FEF0;
+      font-size:12px;
+      line-height:1.55;
+    }
+    .info .mini{
+      width:22px;height:22px;
+      border-radius:50%;
+      background:var(--gradient-brand);
+      display:grid;
+      place-items:center;
+      flex:0 0 auto;
+      color:#07100A;
+      font-weight:800;
+      font-size:13px;
+    }
+    .footer-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+    }
+    .list{
+      display:grid;
+      gap:10px;
+    }
+    .list-row{
+      padding:14px;
+      border-radius:16px;
+      border:1px solid var(--line-1);
+      background:rgba(255,255,255,.02);
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .avatar{
+      width:38px;height:38px;border-radius:50%;
+      background:linear-gradient(135deg, rgba(0,194,124,.22), rgba(255,255,255,.02));
+      border:1px solid rgba(0,194,124,.14);
+      flex:0 0 auto;
+    }
+    .list-row .name{font-size:13px;font-weight:700}
+    .list-row .meta{font-size:12px;color:var(--text-3);margin-top:4px}
+    .list-row .right{margin-left:auto;text-align:right}
+    .list-row .right strong{display:block;font-size:12px}
+    .list-row .right span{display:block;font-size:11px;color:var(--text-3);margin-top:3px}
+    .note{
+      font-size:12px;
+      line-height:1.55;
+      color:var(--text-2);
+    }
+    @media (max-width: 1280px){
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .grid,.footer-grid{grid-template-columns:1fr}
+      .calendar{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .matrix-row{grid-template-columns:1fr}
+      .matrix-row .time{text-align:left}
+    }
+    @media (max-width: 860px){
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .topbar{height:auto;min-height:unset;padding:14px 16px;flex-wrap:wrap}
+      .search{width:100%;order:4}
+      .content{padding:16px}
+      .pagehead{flex-direction:column;align-items:flex-start}
+      .chips{justify-content:flex-start}
+      .stats{grid-template-columns:1fr}
+      .footer-grid{grid-template-columns:1fr}
+      .calendar{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><img src="file:///C:/Users/Heloisa/Documents/HELOISA/Group%201.png" alt="Frame System"></div>
+      <div class="nav">
+        <div class="item active"><svg viewBox="0 0 24 24"><path d="M4 11h16"/><path d="M4 7h16"/><path d="M4 15h10"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M7 10h10"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-4 3 3 5-7"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M12 4v16"/><circle cx="12" cy="12" r="3"/></svg></div>
+      </div>
+      <div class="nav" style="justify-content:flex-end">
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M7 4h10v16H7z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg></div>
+        <div class="item"><svg viewBox="0 0 24 24"><path d="M5 20l14-16"/><path d="M9 4h10v10"/></svg></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">
+          <span class="badge">Frame System</span>
+          <span class="title">Agenda e disponibilidade</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Buscar paciente, lead ou local</div>
+        <div class="top-actions">
+          <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Bloquear</button>
+          <button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Salvar agenda</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="pagehead">
+          <div>
+            <h1>Rotina clara para a nutricionista decidir onde atende e a IA seguir a regra certa.</h1>
+            <p>Layout limpo, sem elementos desnecessarios. A disponibilidade combina data, horario e local para evitar marcacoes em endereco errado.</p>
+          </div>
+          <div class="chips">
+            <div class="chip active"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Inter</div>
+            <div class="chip">Clean minimal</div>
+            <div class="chip">Dark premium</div>
+            <div class="chip">Local por dia</div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="label">Leads respondidos hoje</div><div class="value">42</div><div class="sub">Tempo medio: 18s</div></div>
+          <div class="stat"><div class="label">Consultas agendadas</div><div class="value">14</div><div class="sub">+3 vs ontem</div></div>
+          <div class="stat"><div class="label">Locais ativos</div><div class="value">3</div><div class="sub">Agenda por endereco</div></div>
+          <div class="stat"><div class="label">Leads em risco</div><div class="value" style="color:var(--brand-bright)">2</div><div class="sub">Sem resposta ha 30 min</div></div>
+        </div>
+
+        <div class="grid">
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h2>Agenda da semana</h2>
+                <p>Blocos simples e legiveis. Nada de painel pesado. A semana mostra compromisso, horario e o local da consulta.</p>
+              </div>
+              <div class="chips" style="justify-content:flex-start">
+                <div class="chip active">Hoje</div>
+                <div class="chip">Semana</div>
+                <div class="chip">Mes</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="calendar">
+                <div class="day"><div class="dayname">Segunda</div><div class="date">17</div><div class="slot"><span class="dot"></span><span><strong>09:00</strong> Paula<br><span style="color:var(--text-3)">Clinica Centro</span></span></div><div class="slot online"><span class="dot"></span><span><strong>14:00</strong> Lucas<br><span style="color:var(--text-3)">Online</span></span></div></div>
+                <div class="day"><div class="dayname">Terca</div><div class="date">18</div><div class="slot"><span class="dot"></span><span><strong>08:30</strong> Reuniao interna<br><span style="color:var(--text-3)">Sem atendimento</span></span></div><div class="slot"><span class="dot"></span><span><strong>11:00</strong> Mariana<br><span style="color:var(--text-3)">Consultorio B</span></span></div></div>
+                <div class="day"><div class="dayname">Quarta</div><div class="date">19</div><div class="slot"><span class="dot"></span><span><strong>10:00</strong> Pedro<br><span style="color:var(--text-3)">Consultorio B</span></span></div><div class="slot"><span class="dot"></span><span><strong>15:30</strong> Ana<br><span style="color:var(--text-3)">Consultorio B</span></span></div></div>
+                <div class="day"><div class="dayname">Quinta</div><div class="date">20</div><div class="slot online"><span class="dot"></span><span><strong>09:30</strong> Gabriela<br><span style="color:var(--text-3)">Online</span></span></div><div class="slot online"><span class="dot"></span><span><strong>16:00</strong> Igor<br><span style="color:var(--text-3)">Online</span></span></div></div>
+                <div class="day"><div class="dayname">Sexta</div><div class="date">21</div><div class="slot blocked"><span class="dot"></span><span><strong>08:00</strong> Bloqueio<br><span style="color:var(--text-3)">Local indisponivel</span></span></div><div class="slot"><span class="dot"></span><span><strong>13:00</strong> Camila<br><span style="color:var(--text-3)">Clinica Centro</span></span></div></div>
+                <div class="day"><div class="dayname">Sabado</div><div class="date">22</div><div class="slot"><span class="dot"></span><span><strong>09:00</strong> Sofia<br><span style="color:var(--text-3)">Clinica Centro</span></span></div><div class="slot"><span class="dot"></span><span><strong>11:30</strong> Henrique<br><span style="color:var(--text-3)">Clinica Centro</span></span></div></div>
+                <div class="day"><div class="dayname">Domingo</div><div class="date">23</div><div class="slot blocked"><span class="dot"></span><span><strong>Fechado</strong><br><span style="color:var(--text-3)">IA responde leads</span></span></div><div class="slot"><span class="dot"></span><span><strong>Sem agenda</strong><br><span style="color:var(--text-3)">Nenhum local</span></span></div></div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="side">
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Disponibilidade por local</h2>
+                  <p>A nutri informa em qual local atende naquele dia. A IA usa essa regra para nao oferecer endereco errado.</p>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="availability-list">
+                  <div class="availability-row">
+                    <div class="availability-top"><strong>Segunda-feira</strong><span>Clinica Centro</span></div>
+                    <div class="bar"><div style="width:76%"></div></div>
+                    <div class="tags"><span class="tag active">Clinica Centro</span><span class="tag">08:00-12:00</span><span class="tag">14:00-18:00</span></div>
+                  </div>
+                  <div class="availability-row">
+                    <div class="availability-top"><strong>Terca-feira</strong><span>Online + Consultorio B</span></div>
+                    <div class="bar"><div style="width:60%"></div></div>
+                    <div class="tags"><span class="tag">Online</span><span class="tag active">Consultorio B</span><span class="tag">09:00-12:00</span></div>
+                  </div>
+                  <div class="availability-row">
+                    <div class="availability-top"><strong>Quarta-feira</strong><span>Consultorio B</span></div>
+                    <div class="bar"><div style="width:86%"></div></div>
+                    <div class="tags"><span class="tag active">Consultorio B</span><span class="tag">10:00-16:30</span></div>
+                  </div>
+                  <div class="availability-row">
+                    <div class="availability-top"><strong>Quinta-feira</strong><span>Online</span></div>
+                    <div class="bar"><div style="width:54%"></div></div>
+                    <div class="tags"><span class="tag active">Online</span><span class="tag">Tarde livre</span></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Regra aplicada pela IA</h2>
+                  <p>Se o dia estiver marcado como online, a IA nao oferece local fisico. Se estiver bloqueado, nao agenda.</p>
+                </div>
+              </div>
+              <div class="card-body" style="display:grid;gap:12px">
+                <div class="matrix">
+                  <div class="matrix-row">
+                    <div class="dow">Segunda</div>
+                    <div class="tags"><span class="tag active">Clinica Centro</span><span class="tag">Atendimento presencial</span></div>
+                    <div class="time">Livre 08:00-18:00</div>
+                  </div>
+                  <div class="matrix-row">
+                    <div class="dow">Terca</div>
+                    <div class="tags"><span class="tag">Online</span><span class="tag active">Consultorio B</span></div>
+                    <div class="time">Livre 09:00-12:00</div>
+                  </div>
+                  <div class="matrix-row">
+                    <div class="dow">Quinta</div>
+                    <div class="tags"><span class="tag active">Online</span><span class="tag">Sem local fisico</span></div>
+                    <div class="time">Bloqueio parcial</div>
+                  </div>
+                </div>
+                <div class="info">
+                  <div class="mini">i</div>
+                  <div>A IA so sugere horarios que batem com o local liberado para aquele dia. Se a nutri trocar o endereco, a agenda responde junto.</div>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="footer-grid">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Leads aguardando resposta</h2>
+                <p>Fila discreta, sem cara de CRM pesado. So o que a nutr precisa resolver agora.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="list">
+                <div class="list-row">
+                  <div class="avatar"></div>
+                  <div>
+                    <div class="name">Larissa Mendes</div>
+                    <div class="meta">Quer emagrecimento · respondeu ha 17 min</div>
+                  </div>
+                  <div class="right"><strong>Pronto para agendar</strong><span>Clinica Centro</span></div>
+                </div>
+                <div class="list-row">
+                  <div class="avatar"></div>
+                  <div>
+                    <div class="name">Bruno Alves</div>
+                    <div class="meta">Busca plano alimentar · sem resposta ha 24 min</div>
+                  </div>
+                  <div class="right"><strong style="color:var(--brand-bright)">IA em atendimento</strong><span>Local correto aplicado</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Regras simples de agenda</h2>
+                <p>O sistema fica previsivel para a nutricionista e para a IA.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tags" style="margin-bottom:12px">
+                <span class="tag active">Usar local do dia</span>
+                <span class="tag active">Respeitar bloqueio</span>
+                <span class="tag">Oferecer online</span>
+              </div>
+              <div class="note">
+                A disponibilidade funciona por dia + horario + local. Isso evita marcar consulta no consultorio errado e mantém a rotina da nutricionista limpa e confiavel.
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
