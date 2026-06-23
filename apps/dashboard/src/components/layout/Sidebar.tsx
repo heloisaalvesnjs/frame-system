@@ -83,11 +83,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Brand */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-2.5">
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-[#0A0D14]"
-              style={{ background: 'var(--gradient-lime)' }}
-            >
-              FS
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden"
+              style={{ background: '#013F32' }}>
+              <img src="/logo.svg" alt="Frame System" className="h-6 w-6 object-contain" />
             </div>
             <div className="min-w-0 flex-1">
               <div

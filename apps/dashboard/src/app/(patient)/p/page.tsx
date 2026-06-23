@@ -47,8 +47,8 @@ function PatientEntry() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-ui-bg">
       <div className="mb-10 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-500/30">
-          <span className="text-white text-2xl font-bold">F</span>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ background: '#013F32' }}>
+          <img src="/logo.svg" alt="Frame System" className="w-10 h-10 object-contain" />
         </div>
         <p className="text-white/40 text-sm">Seu portal de acompanhamento</p>
       </div>

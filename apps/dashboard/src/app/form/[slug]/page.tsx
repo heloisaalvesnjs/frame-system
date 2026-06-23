@@ -446,7 +446,7 @@ export default function FormPage() {
         <div className="max-w-2xl mx-auto px-5 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[14px]"
-              style={{ background: '#E7FE25', color: '#013F32' }}>F</div>
+              style={{ background: '#013F32' }}><img src="/logo.svg" alt="Frame System" className="w-5 h-5 object-contain" /></div>
             <span className="text-white font-semibold text-[14px]">Frame System</span>
           </div>
           <div className="text-[12px]" style={{ color: '#a7f3d0' }}>

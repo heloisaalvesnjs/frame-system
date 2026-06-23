@@ -50,8 +50,8 @@ export default function PatientRegisterPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-500 mb-4 shadow-lg shadow-brand-500/30">
-            <span className="text-white text-xl font-bold">F</span>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 overflow-hidden" style={{ background: '#013F32' }}>
+            <img src="/logo.svg" alt="Frame System" className="w-9 h-9 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">Frame</h1>
           <p className="text-white/30 mt-1 text-sm">Criar conta de paciente</p>

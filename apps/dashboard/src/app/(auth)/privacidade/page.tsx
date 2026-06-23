@@ -13,8 +13,8 @@ export default function PrivacidadePage() {
             ← Voltar
           </Link>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center">
-              <span className="text-white text-lg font-bold">F</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#013F32' }}>
+              <img src="/logo.svg" alt="Frame System" className="w-7 h-7 object-contain" />
             </div>
             <span className="text-white font-semibold text-lg">Frame System</span>
           </div>

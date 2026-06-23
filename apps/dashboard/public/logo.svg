@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Wave 1 (top) -->
+  <path d="M15 28 C28 14, 48 14, 58 24 C68 34, 82 36, 88 26 C88 26, 92 38, 80 44 C68 50, 50 46, 38 36 C26 26, 10 32, 8 42 C8 42, 2 30, 15 28Z" fill="url(#g)"/>
+  <!-- Wave 2 (middle) -->
+  <path d="M8 48 C20 34, 42 36, 54 46 C66 56, 80 56, 88 46 C88 46, 94 58, 82 64 C70 70, 52 66, 40 56 C28 46, 12 50, 8 60 C8 60, 2 50, 8 48Z" fill="url(#g)"/>
+  <!-- Wave 3 (bottom) -->
+  <path d="M10 68 C22 54, 44 56, 56 66 C68 76, 82 74, 90 64 C90 64, 96 76, 84 82 C72 88, 54 84, 42 74 C30 64, 14 70, 10 80 C10 80, 4 72, 10 68Z" fill="url(#g)"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E7FE25"/>
+      <stop offset="100%" stop-color="#00c27c"/>
+    </linearGradient>
+  </defs>
+</svg>

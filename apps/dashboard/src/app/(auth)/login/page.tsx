@@ -80,11 +80,8 @@ function BrandPanel() {
       {/* Logo */}
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-16">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-[15px]"
-            style={{ background: 'var(--brand)' }}
-          >
-            F
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#013F32' }}>
+            <img src="/logo.svg" alt="Frame System" className="w-7 h-7 object-contain" />
           </div>
           <span className="text-white font-semibold text-[16px] tracking-tight">Frame System</span>
         </div>
@@ -214,11 +211,8 @@ export default function LoginPage() {
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-10">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-[13px]"
-              style={{ background: 'var(--brand)' }}
-            >
-              F
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#013F32' }}>
+              <img src="/logo.svg" alt="Frame System" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-semibold" style={{ color: 'var(--t1)' }}>Frame System</span>
           </div>
