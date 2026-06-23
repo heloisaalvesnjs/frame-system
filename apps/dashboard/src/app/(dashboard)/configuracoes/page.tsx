@@ -413,16 +413,29 @@ function EquipeSection() {
         <Card>
           <SectionTitle title="Convites pendentes" />
           <div className="space-y-2">
-            {pending.map((m: any) => (
-              <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-lg" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
-                <Mail className="size-4" style={{ color: 'var(--t3)' }} />
-                <div className="flex-1">
-                  <div className="text-[13px]" style={{ color: 'var(--t1)' }}>{m.email}</div>
-                  <div className="text-[11.5px]" style={{ color: 'var(--t3)' }}>Convidado como {roleLabel[m.role] ?? m.role}</div>
+            {pending.map((m: any) => {
+              const link = m.invite_link || `${window.location.origin}/convite/${m.id}`
+              return (
+                <div key={m.id} className="p-3 rounded-lg space-y-2" style={{ background: 'var(--raised)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-3">
+                    <Mail className="size-4 flex-shrink-0" style={{ color: 'var(--t3)' }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{m.email}</div>
+                      <div className="text-[11.5px]" style={{ color: 'var(--t3)' }}>Convidado como {roleLabel[m.role] ?? m.role} · Aguardando aceite</div>
+                    </div>
+                    <Btn size="sm" variant="ghost" onClick={() => remove.mutate(m.id)}><Trash2 className="size-3" /></Btn>
+                  </div>
+                  <div className="flex items-center gap-2 pl-7">
+                    <div className="flex-1 truncate text-[11.5px] px-2.5 py-1.5 rounded-lg font-mono" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--t3)' }}>
+                      {link}
+                    </div>
+                    <Btn size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado!') }}>
+                      <Copy className="size-3" /> Copiar
+                    </Btn>
+                  </div>
                 </div>
-                <Btn size="sm" variant="ghost" onClick={() => remove.mutate(m.id)}><Trash2 className="size-3" /></Btn>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Card>
       )}
