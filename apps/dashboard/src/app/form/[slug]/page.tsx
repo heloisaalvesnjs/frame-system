@@ -430,7 +430,6 @@ export default function FormPage() {
           </p>
           <p className="text-[13px]" style={{ color: '#6ee7b7' }}>
             Recebemos suas informações e em breve a equipe Frame System vai configurar tudo para você.
-            Entraremos em contato pelo WhatsApp <strong style={{ color: '#E7FE25' }}>{data.whatsapp || 'informado'}</strong>.
           </p>
           <div className="mt-8 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
             <p className="text-[11px]" style={{ color: '#6ee7b7' }}>framesystem.com.br</p>
