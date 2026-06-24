@@ -120,4 +120,49 @@ export async function availabilityRoutes(app: FastifyInstance) {
     )
     return reply.send({ ok: true })
   })
+
+  // ── Local por data específica ─────────────────────────────────────────────
+
+  // GET /api/availability/date-locations
+  app.get('/date-locations', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const rows = await query<any>(
+      `SELECT d.id, d.date, d.location_id, l.name AS location_name, l.modality, l.color
+       FROM date_location_overrides d
+       LEFT JOIN locations l ON l.id = d.location_id
+       WHERE d.nutritionist_id = $1 AND d.date >= CURRENT_DATE
+       ORDER BY d.date`,
+      [id]
+    )
+    return reply.send({ overrides: rows })
+  })
+
+  // POST /api/availability/date-locations
+  app.post('/date-locations', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const body = z.object({
+      date:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      location_id: z.string().uuid().nullable(),
+    }).parse(request.body)
+
+    const [row] = await query<any>(
+      `INSERT INTO date_location_overrides (nutritionist_id, date, location_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (nutritionist_id, date) DO UPDATE SET location_id = $3
+       RETURNING id, date, location_id`,
+      [id, body.date, body.location_id]
+    )
+    return reply.send({ override: row })
+  })
+
+  // DELETE /api/availability/date-locations/:date
+  app.delete('/date-locations/:date', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const { date } = request.params as any
+    await query(
+      `DELETE FROM date_location_overrides WHERE nutritionist_id = $1 AND date = $2`,
+      [id, date]
+    )
+    return reply.send({ ok: true })
+  })
 }

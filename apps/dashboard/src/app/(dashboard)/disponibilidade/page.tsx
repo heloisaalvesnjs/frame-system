@@ -238,9 +238,10 @@ function DayRow({
 }
 
 // ─── Month Calendar ────────────────────────────────────
-function MonthCalendar({ year, month, blockedSet, onDayClick, onPrev, onNext }:{
+function MonthCalendar({ year, month, blockedSet, overridesMap, onDayClick, onPrev, onNext }:{
   year: number; month: number
   blockedSet: Set<string>
+  overridesMap: Map<string, string>   // date → location name
   onDayClick: (d: number) => void
   onPrev: () => void; onNext: () => void
 }) {
@@ -271,6 +272,7 @@ function MonthCalendar({ year, month, blockedSet, onDayClick, onPrev, onNext }:{
           if (!day) return <div key={i} />
           const dateStr    = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const isBlocked  = blockedSet.has(dateStr)
+          const hasLocOverride = overridesMap.has(dateStr)
           const isToday    = dateStr === todayStr
           const isPast     = dateStr < todayStr
           return (
@@ -279,22 +281,25 @@ function MonthCalendar({ year, month, blockedSet, onDayClick, onPrev, onNext }:{
                 'relative aspect-square rounded-lg text-[12.5px] font-medium transition-all border',
                 isPast && 'opacity-30 cursor-not-allowed',
                 isBlocked  && 'line-through',
-                !isPast && !isBlocked && !isToday && 'hover:border-[var(--line-3)] hover:bg-[var(--bg-surface)]',
+                !isPast && !isBlocked && !hasLocOverride && !isToday && 'hover:border-[var(--line-3)] hover:bg-[var(--bg-surface)]',
               )}
               style={
-                isBlocked ? { background: 'color-mix(in oklab, var(--danger) 12%, transparent)', color: 'var(--danger)', borderColor: 'color-mix(in oklab, var(--danger) 25%, transparent)' }
+                isBlocked     ? { background: 'color-mix(in oklab, var(--danger) 12%, transparent)', color: 'var(--danger)', borderColor: 'color-mix(in oklab, var(--danger) 25%, transparent)' }
+                : hasLocOverride ? { background: 'color-mix(in oklab, var(--brand) 10%, transparent)', color: 'var(--brand)', borderColor: 'var(--brand-ring)', fontWeight: 600 }
                 : isToday  ? { background: 'var(--brand-soft)', color: 'var(--brand)', borderColor: 'var(--brand-ring)', fontWeight: 600 }
                 : { background: 'var(--bg-elevated)', borderColor: 'var(--line-1)', color: 'var(--text-1)' }
               }>
               {day}
-              {isBlocked && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--danger)]" />}
+              {isBlocked     && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--danger)]" />}
+              {hasLocOverride && !isBlocked && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--brand)]" />}
             </button>
           )
         })}
       </div>
-      <div className="mt-4 flex items-center gap-4 text-[11px] text-3">
+      <div className="mt-4 flex items-center gap-4 text-[11px] text-3 flex-wrap">
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-soft)] border border-[var(--brand-ring)]" /> Hoje</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--danger) 12%, transparent)' }} /> Bloqueado</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--brand) 10%, transparent)', border: '1px solid var(--brand-ring)' }} /> Local definido</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--bg-elevated)] border border-[var(--line-2)]" /> Disponível</span>
       </div>
     </div>
@@ -433,10 +438,115 @@ function LocationCard({ loc, onSave, onDelete }: {
   )
 }
 
+interface DateOverride {
+  id: string; date: string; location_id: string | null
+  location_name?: string; modality?: string; color?: string
+}
+
 interface SchedulingRules {
   buffer_between_minutes:  number
   min_advance_hours:        number
   max_appointments_per_day: number
+}
+
+// ─── Modal de configuração de data ────────────────────────
+function DayConfigModal({
+  dateStr, isBlocked, override, locations, reason, setReason,
+  onBlock, onUnblock, onSetLocation, onRemoveLocation, onClose,
+}: {
+  dateStr: string; isBlocked: boolean; override: DateOverride | null
+  locations: Location[]; reason: string; setReason: (v: string) => void
+  onBlock: () => void; onUnblock: () => void
+  onSetLocation: (locId: string | null) => void
+  onRemoveLocation: () => void; onClose: () => void
+}) {
+  const [mode, setMode] = useState<'block' | 'location'>(isBlocked ? 'block' : override ? 'location' : 'block')
+  const [locId, setLocId] = useState<string>(override?.location_id ?? '')
+
+  const d = new Date(dateStr + 'T12:00:00')
+  const label = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-5 shadow-xl" style={{ background: 'var(--bg-base)', border: '1px solid var(--line-1)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[14px] font-semibold text-1 capitalize">{label}</div>
+            <div className="text-[11.5px] text-3 mt-0.5">O que deseja configurar para este dia?</div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-md grid place-items-center text-3 hover:text-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          {(['block', 'location'] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)}
+              className="flex-1 py-2 rounded-xl text-[12.5px] font-semibold transition-colors"
+              style={mode === m
+                ? { background: 'var(--brand-soft)', color: 'var(--brand)', border: '1px solid var(--brand-ring)' }
+                : { background: 'var(--bg-elevated)', color: 'var(--text-3)', border: '1px solid var(--line-1)' }}>
+              {m === 'block' ? '🚫 Bloquear' : '📍 Local'}
+            </button>
+          ))}
+        </div>
+
+        {mode === 'block' && (
+          <div className="space-y-3">
+            {isBlocked ? (
+              <>
+                <p className="text-[13px] text-2">Este dia está bloqueado.</p>
+                <div className="flex gap-2">
+                  <Btn variant="ghost" size="sm" onClick={onClose} className="flex-1">Cancelar</Btn>
+                  <Btn variant="danger" size="sm" onClick={onUnblock} className="flex-1">Desbloquear</Btn>
+                </div>
+              </>
+            ) : (
+              <>
+                <input type="text" value={reason} onChange={e => setReason(e.target.value)}
+                  placeholder="Motivo (opcional): folga, feriado…"
+                  className="w-full rounded-lg px-3 py-2 text-[13px] text-1 outline-none"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }} />
+                <div className="flex gap-2">
+                  <Btn variant="ghost" size="sm" onClick={onClose} className="flex-1">Cancelar</Btn>
+                  <Btn variant="primary" size="sm" onClick={onBlock} className="flex-1">Bloquear dia</Btn>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {mode === 'location' && (
+          <div className="space-y-3">
+            <p className="text-[12px] text-3">Define o local de atendimento para esta data específica, substituindo o padrão da semana.</p>
+            <select value={locId} onChange={e => setLocId(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl text-[13px] text-1 outline-none"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}>
+              <option value="">— Usar padrão da semana —</option>
+              {locations.map(l => (
+                <option key={l.id} value={l.id}>
+                  {l.modality === 'online' ? '🌐' : '📍'} {l.name}{l.city ? ` · ${l.city}` : ''}
+                </option>
+              ))}
+            </select>
+            {override && (
+              <p className="text-[11.5px] text-3">Atual: <strong className="text-1">{override.location_name || '—'}</strong></p>
+            )}
+            <div className="flex gap-2">
+              <Btn variant="ghost" size="sm" onClick={onClose} className="flex-1">Cancelar</Btn>
+              {override && !locId && (
+                <Btn variant="ghost" size="sm" onClick={onRemoveLocation} className="flex-1">Remover</Btn>
+              )}
+              <Btn variant="primary" size="sm" onClick={() => onSetLocation(locId || null)} className="flex-1" disabled={!locId && !override}>
+                Confirmar
+              </Btn>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Main Page ────────────────────────────────────────────
@@ -445,8 +555,8 @@ export default function DisponibilidadePage() {
   const today = new Date()
   const [year,  setYear]  = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
-  const [selected, setSelected] = useState<string | null>(null)
-  const [reason, setReason]     = useState('')
+  const [modalDate, setModalDate] = useState<string | null>(null)
+  const [reason, setReason]       = useState('')
   const [days, setDays] = useState<DayConfig[]>(DEFAULT_DAYS)
   const [dirty, setDirty] = useState(false)
   const [newLocItems, setNewLocItems] = useState<{ id: string }[]>([])
@@ -517,12 +627,30 @@ export default function DisponibilidadePage() {
 
   const addBlockMut = useMutation({
     mutationFn: (body: { blocked_date: string; reason?: string }) => api.post('/api/availability/blocked', body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['blocked-dates'] }); setReason(''); toast.success('Data bloqueada') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['blocked-dates'] }); setReason(''); setModalDate(null); toast.success('Data bloqueada') },
     onError: () => toast.error('Erro ao bloquear'),
   })
   const delBlockMut = useMutation({
     mutationFn: (date: string) => api.delete(`/api/availability/blocked/${date}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['blocked-dates'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['blocked-dates'] }); setModalDate(null) },
+  })
+
+  // date-location overrides
+  const { data: overridesData } = useQuery({
+    queryKey: ['date-locations'],
+    queryFn: () => api.get('/api/availability/date-locations').then(r => r.data.overrides as DateOverride[]),
+  })
+  const overrides = overridesData ?? []
+  const overridesMap = new Map(overrides.map(o => [o.date.slice(0, 10), o.location_name ?? '']))
+
+  const setLocOverrideMut = useMutation({
+    mutationFn: (body: { date: string; location_id: string | null }) => api.post('/api/availability/date-locations', body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['date-locations'] }); setModalDate(null); toast.success('Local definido!') },
+    onError: () => toast.error('Erro ao definir local'),
+  })
+  const delLocOverrideMut = useMutation({
+    mutationFn: (date: string) => api.delete(`/api/availability/date-locations/${date}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['date-locations'] }); setModalDate(null) },
   })
 
   function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1) }
@@ -530,8 +658,7 @@ export default function DisponibilidadePage() {
 
   function handleDayClick(day: number) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    if (blockedSet.has(dateStr)) { delBlockMut.mutate(dateStr); if (selected === dateStr) setSelected(null) }
-    else setSelected(dateStr)
+    setModalDate(dateStr)
   }
 
   // locations
@@ -587,10 +714,10 @@ export default function DisponibilidadePage() {
             } catch { toast.error('Erro ao conectar Google Calendar') }
           }}>Sincronizar Google</Btn>
           <Btn variant="primary" size="sm"
-            onClick={() => setSelected(
+            onClick={() => setModalDate(
               `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
             )}>
-            <Plus className="w-3.5 h-3.5" /> Bloquear data
+            <Plus className="w-3.5 h-3.5" /> Configurar data
           </Btn>
         </div>
       </div>
@@ -598,60 +725,79 @@ export default function DisponibilidadePage() {
       {/* Calendário de bloqueios + Próximos bloqueios */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
-          <SectionTitle title="Calendário de bloqueios" hint="Clique em um dia para bloquear/desbloquear" />
+          <SectionTitle title="Calendário" hint="Clique em um dia para bloquear ou definir local" />
           <MonthCalendar
-            year={year} month={month} blockedSet={blockedSet}
+            year={year} month={month} blockedSet={blockedSet} overridesMap={overridesMap}
             onDayClick={handleDayClick} onPrev={prevMonth} onNext={nextMonth}
           />
-          {selected && (
-            <div className="mt-4 pt-4 space-y-2" style={{ borderTop: '1px solid var(--line-1)' }}>
-              <p className="text-[13px] font-medium text-1">
-                Bloquear {new Date(selected + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}?
-              </p>
-              <input type="text" value={reason} onChange={e => setReason(e.target.value)}
-                placeholder="Motivo (opcional): folga, feriado, viagem..."
-                className="w-full rounded-lg px-3 py-2 text-[13px] text-1 outline-none"
-                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }} />
-              <div className="flex gap-2">
-                <Btn variant="secondary" size="sm" onClick={() => setSelected(null)}>Cancelar</Btn>
-                <Btn variant="primary" size="sm"
-                  onClick={() => { addBlockMut.mutate({ blocked_date: selected, reason: reason.trim() || undefined }); setSelected(null) }}>
-                  Confirmar bloqueio
-                </Btn>
-              </div>
-            </div>
+          {/* Modal de configuração de data */}
+          {modalDate && (
+            <DayConfigModal
+              dateStr={modalDate}
+              isBlocked={blockedSet.has(modalDate)}
+              override={overrides.find(o => o.date.slice(0,10) === modalDate) ?? null}
+              locations={locations}
+              reason={reason} setReason={setReason}
+              onBlock={() => addBlockMut.mutate({ blocked_date: modalDate, reason: reason.trim() || undefined })}
+              onUnblock={() => delBlockMut.mutate(modalDate)}
+              onSetLocation={(locId) => setLocOverrideMut.mutate({ date: modalDate, location_id: locId })}
+              onRemoveLocation={() => delLocOverrideMut.mutate(modalDate)}
+              onClose={() => { setModalDate(null); setReason('') }}
+            />
           )}
         </Card>
 
         <Card>
-          <SectionTitle title="Próximos bloqueios" hint="30 dias" />
-          {upcomingBlocked.length === 0 ? (
-            <p className="text-[12px] text-3 py-4">Nenhum bloqueio nos próximos 30 dias.</p>
-          ) : (
-            <div className="space-y-2">
-              {upcomingBlocked.map(b => {
-                const d = new Date(b.blocked_date + 'T12:00:00')
-                const [mon, num] = [d.toLocaleDateString('pt-BR', { month: 'short' }), d.getDate()]
-                return (
-                  <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--line-1)]">
-                    <div className="text-center w-12 shrink-0">
-                      <div className="text-[10.5px] text-3 uppercase font-semibold tracking-wider">{mon}</div>
-                      <div className="text-[15px] font-bold text-1 tabular-nums leading-none">{num}</div>
-                    </div>
-                    <div className="w-px h-8 bg-[var(--line-1)]" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12.5px] font-medium text-1 truncate">{b.reason || 'Bloqueado'}</div>
-                      <div className="text-[11px] text-3">Dia todo</div>
-                    </div>
-                    <button onClick={() => delBlockMut.mutate(b.blocked_date.slice(0, 10))}
-                      className="w-7 h-7 grid place-items-center rounded-md text-3 hover:bg-[var(--bg-surface)] hover:text-1">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+          <SectionTitle title="Configurações por data" hint="Próximos 30 dias" />
+          <div className="space-y-2">
+            {upcomingBlocked.length === 0 && overrides.length === 0 && (
+              <p className="text-[12px] text-3 py-4">Nenhuma configuração nos próximos 30 dias.</p>
+            )}
+            {upcomingBlocked.map(b => {
+              const d = new Date(b.blocked_date + 'T12:00:00')
+              const [mon, num] = [d.toLocaleDateString('pt-BR', { month: 'short' }), d.getDate()]
+              return (
+                <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--line-1)]">
+                  <div className="text-center w-10 shrink-0">
+                    <div className="text-[10px] text-3 uppercase font-semibold tracking-wider">{mon}</div>
+                    <div className="text-[14px] font-bold text-1 tabular-nums leading-none">{num}</div>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                  <div className="w-px h-7 bg-[var(--line-1)]" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-medium truncate" style={{ color: 'var(--danger)' }}>🚫 {b.reason || 'Bloqueado'}</div>
+                    <div className="text-[11px] text-3">Dia todo</div>
+                  </div>
+                  <button onClick={() => delBlockMut.mutate(b.blocked_date.slice(0, 10))}
+                    className="w-7 h-7 grid place-items-center rounded-md text-3 hover:bg-[var(--bg-surface)] hover:text-1">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )
+            })}
+            {overrides.slice(0, 6).map(o => {
+              const d = new Date(o.date + 'T12:00:00')
+              const [mon, num] = [d.toLocaleDateString('pt-BR', { month: 'short' }), d.getDate()]
+              return (
+                <div key={o.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--line-1)]">
+                  <div className="text-center w-10 shrink-0">
+                    <div className="text-[10px] text-3 uppercase font-semibold tracking-wider">{mon}</div>
+                    <div className="text-[14px] font-bold text-1 tabular-nums leading-none">{num}</div>
+                  </div>
+                  <div className="w-px h-7 bg-[var(--line-1)]" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-medium text-1 truncate">
+                      {o.modality === 'online' ? '🌐' : '📍'} {o.location_name || 'Local definido'}
+                    </div>
+                    <div className="text-[11px] text-3">Local específico</div>
+                  </div>
+                  <button onClick={() => delLocOverrideMut.mutate(o.date.slice(0, 10))}
+                    className="w-7 h-7 grid place-items-center rounded-md text-3 hover:bg-[var(--bg-surface)] hover:text-1">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         </Card>
       </div>
 

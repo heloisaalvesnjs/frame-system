@@ -571,6 +571,16 @@ CREATE INDEX IF NOT EXISTS idx_clients_stage ON clients(nutritionist_id, stage);
 ALTER TABLE availability ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
 -- --------------------------------
+-- Local de atendimento por data específica (sobrepõe o padrão semanal)
+CREATE TABLE IF NOT EXISTS date_location_overrides (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  date            DATE NOT NULL,
+  location_id     UUID REFERENCES locations(id) ON DELETE SET NULL,
+  UNIQUE(nutritionist_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_date_loc_overrides ON date_location_overrides(nutritionist_id, date);
+
 -- Reset de senha para membros de equipe
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_token TEXT;
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;
