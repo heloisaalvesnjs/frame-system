@@ -73,8 +73,8 @@ export async function assistantRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
     const ns = (f?: z.ZodTypeAny) => z.string().nullish().transform(v => v ?? undefined).pipe(f ?? z.string().optional())
     const schema = z.object({
-      name: z.string().min(1),
-      tone: z.enum(['acolhedor', 'formal', 'descontraido']).default('acolhedor'),
+      name: z.string().min(1).optional(),
+      tone: z.enum(['acolhedor', 'formal', 'descontraido']).optional(),
       greeting_message: z.string().nullish().transform(v => v ?? undefined),
       consultation_price: z.string().nullish().transform(v => v ?? undefined),
       consultation_modalities: z.string().nullish().transform(v => v ?? undefined),
@@ -136,7 +136,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     if (existing) {
       ;[assistant] = await query(
         `UPDATE assistants SET
-           name = $2, tone = $3, greeting_message = $4,
+           name = COALESCE($2, name), tone = COALESCE($3, tone), greeting_message = $4,
            consultation_price = $5, consultation_modalities = $6, specialties = $7,
            vacation_mode = COALESCE($8, vacation_mode), vacation_message = $9,
            followup_enabled = COALESCE($10, followup_enabled),
@@ -217,7 +217,7 @@ export async function assistantRoutes(app: FastifyInstance) {
                    vacation_mode, vacation_message,
                    followup_enabled, followup_delay_hours, service_plans, nutri_display_name,
                    emoji_level, func_prospeccao, func_triagem, func_agendamento`,
-        [id, body.name, body.tone, body.greeting_message,
+        [id, body.name ?? 'Assistente', body.tone ?? 'acolhedor', body.greeting_message,
          body.consultation_price, body.consultation_modalities, body.specialties,
          body.vacation_mode ?? false, body.vacation_message,
          body.followup_enabled ?? true, body.followup_delay_hours ?? 4,
