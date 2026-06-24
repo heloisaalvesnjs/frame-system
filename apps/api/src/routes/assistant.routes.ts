@@ -467,20 +467,16 @@ export async function assistantRoutes(app: FastifyInstance) {
     const isPdf   = data.mimetype === 'application/pdf'
     if (!isImage && !isPdf) return reply.code(400).send({ error: 'Apenas imagens (JPG, PNG) ou PDF são aceitos' })
 
-    const ext       = isPdf ? 'pdf' : (data.mimetype.includes('png') ? 'png' : 'jpg')
-    const uploadDir = path.join(process.cwd(), 'uploads', 'plans', id)
-    mkdirSync(uploadDir, { recursive: true })
-
-    // Remove arquivo anterior desta variante
-    const current = (assistant.plans_media ?? {})[variant]
-    if (current?.path) { try { unlinkSync(current.path) } catch {} }
-
+    const ext      = isPdf ? 'pdf' : (data.mimetype.includes('png') ? 'png' : 'jpg')
     const filename = `${variant}_media.${ext}`
-    const filePath = path.join(uploadDir, filename)
-    writeFileSync(filePath, await data.toBuffer())
+    const buffer   = await data.toBuffer()
+    const base64   = buffer.toString('base64')
+    const mimeType = isPdf ? 'application/pdf' : (data.mimetype.includes('png') ? 'image/png' : 'image/jpeg')
+    const dataUrl  = `data:${mimeType};base64,${base64}`
 
     const mediaType = isPdf ? 'pdf' : 'image'
-    const entry = { path: filePath, type: mediaType, enabled: true, name: data.filename || filename }
+    // Salva base64 no banco — persiste entre deploys, sem depender de disco
+    const entry = { base64: dataUrl, type: mediaType, enabled: true, name: data.filename || filename }
     const updated = { ...(assistant.plans_media ?? {}), [variant]: entry }
 
     await query(
@@ -488,8 +484,7 @@ export async function assistantRoutes(app: FastifyInstance) {
       [id, JSON.stringify(updated)]
     )
 
-    const publicUrl = `${process.env.API_PUBLIC_URL || ''}/uploads/plans/${id}/${filename}`
-    return reply.send({ ok: true, url: publicUrl, type: mediaType, name: data.filename, variant })
+    return reply.send({ ok: true, type: mediaType, name: data.filename, variant })
   })
 
   /** DELETE /api/assistants/plans-media?variant=... */

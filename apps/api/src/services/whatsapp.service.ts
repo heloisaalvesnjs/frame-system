@@ -166,9 +166,14 @@ export async function sendMediaMessage(
   instanceName: string
 ): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
+  // Evolution API aceita tanto URL pública quanto data URL (base64)
+  const isBase64 = mediaUrl.startsWith('data:')
+  const mimetype = isBase64
+    ? mediaUrl.split(';')[0].replace('data:', '')
+    : (mediaType === 'pdf' ? 'application/pdf' : 'image/jpeg')
   const body = mediaType === 'pdf'
-    ? { number, mediatype: 'document', mimetype: 'application/pdf', media: mediaUrl, fileName: fileName || 'planos.pdf' }
-    : { number, mediatype: 'image',    mimetype: 'image/jpeg',      media: mediaUrl }
+    ? { number, mediatype: 'document', mimetype, media: mediaUrl, fileName: fileName || 'planos.pdf' }
+    : { number, mediatype: 'image',    mimetype, media: mediaUrl }
 
   const res = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
     method: 'POST',

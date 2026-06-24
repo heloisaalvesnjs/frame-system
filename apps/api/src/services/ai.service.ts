@@ -272,11 +272,13 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     console.error('[AI] Erro ao buscar dados do paciente:', err)
   }
 
-  // 6. Resolve mídia dos planos (JSONB) — precisa estar em processMessage para o retorno
-  const plansMediaCfg = assistant.plans_media ?? {}
-  const mediaGeral      = plansMediaCfg.geral?.enabled      && plansMediaCfg.geral?.path      ? plansMediaCfg.geral      : null
-  const mediaOnline     = plansMediaCfg.online?.enabled     && plansMediaCfg.online?.path     ? plansMediaCfg.online     : null
-  const mediaPresencial = plansMediaCfg.presencial?.enabled && plansMediaCfg.presencial?.path ? plansMediaCfg.presencial : null
+  // 6. Resolve mídia dos planos (JSONB) — suporta base64 (novo) e path (legado)
+  const plansMediaCfg   = assistant.plans_media ?? {}
+  const hasBase64 = (m: any) => m?.enabled && m?.base64
+  const hasPath   = (m: any) => m?.enabled && m?.path
+  const mediaGeral      = (hasBase64(plansMediaCfg.geral)      || hasPath(plansMediaCfg.geral))      ? plansMediaCfg.geral      : null
+  const mediaOnline     = (hasBase64(plansMediaCfg.online)     || hasPath(plansMediaCfg.online))     ? plansMediaCfg.online     : null
+  const mediaPresencial = (hasBase64(plansMediaCfg.presencial) || hasPath(plansMediaCfg.presencial)) ? plansMediaCfg.presencial : null
   const mediaLegacy     = assistant.plans_media_enabled && assistant.plans_media_path ? {
     path: assistant.plans_media_path, type: assistant.plans_media_type || 'image',
     name: assistant.plans_media_original_name || 'planos'
@@ -397,7 +399,13 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
         : isOnlineCtx && mediaOnline ? mediaOnline
         : mediaGeral ?? mediaPresencial ?? mediaOnline ?? mediaLegacy
 
-      if (chosen?.path) {
+      if (chosen?.base64) {
+        // Novo: base64 salvo no banco — sem depender de arquivo em disco
+        planMediaUrl  = chosen.base64
+        planMediaType = (chosen.type as 'image' | 'pdf') || 'image'
+        planMediaName = chosen.name || 'planos.pdf'
+      } else if (chosen?.path) {
+        // Legado: arquivo em disco (fallback)
         const apiBase = process.env.API_PUBLIC_URL || ''
         const parts   = chosen.path.replace(/\\/g, '/').split('uploads/')
         planMediaUrl  = parts.length > 1 ? `${apiBase}/uploads/${parts[1]}` : undefined
