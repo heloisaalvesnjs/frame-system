@@ -153,7 +153,17 @@ function GoogleCalendarCard() {
             } catch (e: any) { toast.error(e?.response?.data?.error ?? 'Erro ao sincronizar') }
           }} className="text-[10px] text-[var(--brand)] hover:opacity-80 flex items-center gap-1">
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-            Sincronizar
+            Enviar ao Google
+          </button>
+          <button onClick={async () => {
+            try {
+              const { data } = await api.post('/api/google-calendar/import')
+              if (data.total === 0) toast.success('Nenhum evento novo encontrado no Google Agenda.')
+              else toast.success(`${data.imported} importado(s), ${data.skipped} já existiam.`)
+            } catch (e: any) { toast.error(e?.response?.data?.error ?? 'Erro ao importar') }
+          }} className="text-[10px] text-[var(--brand)] hover:opacity-80 flex items-center gap-1">
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Importar do Google
           </button>
           <button onClick={() => disconnect.mutate()} className="text-[10px] text-t3 hover:text-[var(--danger)] flex items-center gap-1"><Unlink className="w-3 h-3" /> Desconectar</button>
         </div>
