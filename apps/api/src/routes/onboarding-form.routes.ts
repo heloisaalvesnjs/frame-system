@@ -18,11 +18,8 @@ export async function onboardingFormRoutes(app: FastifyInstance) {
     return reply.code(201).send({ ok: true, id: row.id })
   })
 
-  // GET /api/onboarding-form — lista todos (apenas master)
+  // GET /api/onboarding-form — lista todos (qualquer usuário autenticado)
   app.get('/', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user.is_master) return reply.code(403).send({ error: 'Acesso restrito' })
-
     const rows = await query<any>(
       `SELECT id, slug, data, submitted_at, processed
        FROM onboarding_forms
@@ -34,8 +31,6 @@ export async function onboardingFormRoutes(app: FastifyInstance) {
 
   // PATCH /api/onboarding-form/:id/processed — marca como processado
   app.patch('/:id/processed', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user.is_master) return reply.code(403).send({ error: 'Acesso restrito' })
 
     const { id } = request.params as { id: string }
     await query(
