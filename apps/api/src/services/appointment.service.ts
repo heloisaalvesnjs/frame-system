@@ -76,6 +76,18 @@ export async function getAvailableSlots(nutritionist_id: string, date: string): 
 
   if (!availability.length) return []
 
+  // Verifica se há local configurado para este dia (semana ou data específica)
+  // Se nenhum dos dois tiver local, o dia não está disponível para agendamento
+  const weekDayHasLocation = availability.some((a: any) => !!a.location_id)
+  if (!weekDayHasLocation) {
+    const dateOverride = await query<any>(
+      `SELECT location_id FROM date_location_overrides
+       WHERE nutritionist_id = $1 AND date = $2 AND location_id IS NOT NULL`,
+      [nutritionist_id, date]
+    ).catch(() => [] as any[])
+    if (!dateOverride.length) return []
+  }
+
   // Busca agendamentos já existentes na data
   const existingAppointments = await query<any>(
     `SELECT scheduled_at FROM appointments
