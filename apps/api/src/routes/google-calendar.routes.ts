@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
-import { getAuthUrl, handleOAuthCallback } from '../services/google-calendar.service'
+import { getAuthUrl, handleOAuthCallback, createCalendarEvent } from '../services/google-calendar.service'
 
 export async function googleCalendarRoutes(app: FastifyInstance) {
   const auth = { onRequest: [(app as any).authenticate] }
@@ -45,5 +45,38 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
     await query('DELETE FROM google_calendar_connections WHERE nutritionist_id = $1', [id])
     return reply.send({ ok: true })
+  })
+
+  // POST /api/google-calendar/sync — envia todos os agendamentos futuros para o Google Calendar
+  app.post('/sync', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const appointments = await query<any>(
+      `SELECT a.id, a.scheduled_at, a.duration, a.modality,
+              c.name AS client_name, c.phone AS client_phone
+       FROM appointments a
+       LEFT JOIN clients c ON c.id = a.client_id
+       WHERE a.nutritionist_id = $1
+         AND a.scheduled_at >= NOW()
+         AND a.status NOT IN ('cancelled')
+       ORDER BY a.scheduled_at`,
+      [id]
+    )
+
+    let synced = 0
+    for (const appt of appointments) {
+      try {
+        await createCalendarEvent(id, {
+          client_name:  appt.client_name || 'Paciente',
+          client_phone: appt.client_phone || '',
+          scheduled_at: appt.scheduled_at,
+          duration:     appt.duration ?? 50,
+          modality:     appt.modality ?? 'online',
+        })
+        synced++
+      } catch {}
+    }
+
+    return reply.send({ ok: true, synced, total: appointments.length })
   })
 }

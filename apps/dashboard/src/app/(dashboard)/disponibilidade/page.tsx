@@ -733,9 +733,16 @@ export default function DisponibilidadePage() {
         <div className="flex items-center gap-2">
           <Btn variant="secondary" size="sm" onClick={async () => {
             try {
-              const { data } = await api.get('/api/google-calendar/auth-url')
-              if (data.url) window.location.href = data.url
-            } catch { toast.error('Erro ao conectar Google Calendar') }
+              // Tenta sincronizar agendamentos existentes primeiro
+              const sync = await api.post('/api/google-calendar/sync').catch(() => null)
+              if (sync && sync.data?.synced > 0) {
+                toast.success(`${sync.data.synced} consulta(s) enviada(s) para o Google Calendar`)
+              } else {
+                // Se não está conectado ainda, redireciona para OAuth
+                const { data } = await api.get('/api/google-calendar/auth-url')
+                if (data.url) window.location.href = data.url
+              }
+            } catch { toast.error('Erro ao sincronizar Google Calendar') }
           }}>Sincronizar Google</Btn>
           {selectedDates.size > 0 && (
             <Btn variant="ghost" size="sm" onClick={clearSelection}>Limpar seleção</Btn>
