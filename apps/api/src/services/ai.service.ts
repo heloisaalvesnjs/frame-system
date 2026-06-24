@@ -241,16 +241,35 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     []
   )
 
-  // 5d. Busca memória estruturada deste paciente (C.11)
+  // 5d. Busca memória + histórico do cliente (C.11 + contexto de retorno)
   let clientMemory: any = null
+  let clientContext: { isReturning: boolean; appointmentCount: number; name: string | null; goal: string | null; lastVisit: string | null } = {
+    isReturning: false, appointmentCount: 0, name: null, goal: null, lastVisit: null
+  }
   try {
     const clientRow = await queryOne<any>(
-      `SELECT ai_memory FROM clients WHERE nutritionist_id = $1 AND phone = $2`,
+      `SELECT c.ai_memory, c.name, c.goal,
+              COUNT(a.id) AS appointment_count,
+              MAX(a.scheduled_at) AS last_visit
+       FROM clients c
+       LEFT JOIN appointments a ON a.client_id = c.id AND a.status != 'cancelled'
+       WHERE c.nutritionist_id = $1 AND c.phone = $2
+       GROUP BY c.id`,
       [nutritionist_id, client_phone]
     )
-    clientMemory = clientRow?.ai_memory ?? null
+    if (clientRow) {
+      clientMemory = clientRow.ai_memory ?? null
+      const apptCount = parseInt(clientRow.appointment_count ?? '0', 10)
+      clientContext = {
+        isReturning:      apptCount > 0,
+        appointmentCount: apptCount,
+        name:             clientRow.name ?? null,
+        goal:             clientRow.goal ?? null,
+        lastVisit:        clientRow.last_visit ?? null,
+      }
+    }
   } catch (err) {
-    console.error('[AI] Erro ao buscar memória do paciente:', err)
+    console.error('[AI] Erro ao buscar dados do paciente:', err)
   }
 
   // 6. Resolve mídia dos planos (JSONB) — precisa estar em processMessage para o retorno
@@ -276,6 +295,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
     services,
     hasAnyMedia,
     clientMemory,
+    clientContext,
   })
 
   // 7. Chama a IA
@@ -403,7 +423,7 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
 }
 
 // ── Monta o system prompt da assistente ───────────────────
-function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia, clientMemory }: any): string {
+function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhone, contextData, isFirstMessage, trainingNotes, services, hasAnyMedia, clientMemory, clientContext }: any): string {
   const aiName    = assistant.name
   const nutriName = assistant.nutri_display_name?.trim() || nutritionist.name
   const tone      = assistant.tone || 'acolhedor'
@@ -489,11 +509,28 @@ function buildSystemPrompt({ assistant, nutritionist, availableSlots, clientPhon
     ? `PRIMEIRA MENSAGEM: apresente-se brevemente como ${aiName} da equipe de ${nutriName} e pergunte o objetivo da pessoa em 1 frase simples.`
     : ''
 
-  // Contexto do cliente
-  const clientCtx = [
-    contextData.client_name ? `Nome: ${contextData.client_name}` : '',
-    contextData.goal        ? `Objetivo mencionado: ${contextData.goal}` : '',
-  ].filter(Boolean).join(' | ')
+  // Contexto do cliente (nome, objetivo, histórico)
+  const isReturning      = clientContext?.isReturning ?? false
+  const appointmentCount = clientContext?.appointmentCount ?? 0
+  const clientName       = clientContext?.name || contextData.client_name || null
+  const clientGoal       = clientContext?.goal || contextData.goal || null
+
+  const clientCtxParts = [
+    clientName ? `Nome: ${clientName}` : '',
+    clientGoal ? `Objetivo: ${clientGoal}` : '',
+    isReturning ? `Já realizou ${appointmentCount} consulta(s) com ${nutriName}` : '',
+  ].filter(Boolean)
+  const clientCtx = clientCtxParts.join(' | ')
+
+  // Instrução especial para clientes retornantes
+  const returningClientSection = isReturning
+    ? `\n⚠️ ATENÇÃO — PACIENTE JÁ ATENDIDO:
+Esta pessoa já realizou ${appointmentCount} consulta(s) com ${nutriName}. Ela NÃO é um lead novo.
+- NÃO faça triagem, NÃO apresente planos, NÃO mostre preços.
+- Trate como paciente do consultório: cumprimente de forma familiar (use o nome se souber), pergunte em 1 frase se quer remarcar ou tem alguma dúvida.
+- Se quiser agendar: vá direto para o agendamento (pergunta de turno → horário → confirma).
+- Se for outra dúvida: responda com naturalidade ou diga que vai verificar com ${nutriName}.\n`
+    : ''
 
   // Memória estruturada do paciente (C.11)
   const memRestricoes: string[] = Array.isArray(clientMemory?.restricoes) ? clientMemory.restricoes.filter(Boolean) : []
@@ -595,7 +632,8 @@ OBJEÇÕES (responda de forma natural, sem script óbvio):
 - Pergunta técnica de nutrição: "Isso é uma ótima pergunta pra levar direto pro ${nutriName} na consulta — ele vai conseguir te responder com muito mais precisão do que eu."
 - Condição de saúde sensível (diabetes, transtorno alimentar, etc): Acolha com cuidado. "Que bom que você está buscando apoio nisso. O ${nutriName} tem experiência com esse perfil — uma consulta já clareia muito o caminho."
 ${customObjectionsSection}${conversationExamplesSection}${clinicalRulesSection}${clientMemorySection}
-NUNCA: inventar horários | confirmar consulta sem data e hora reais | pedir telefone | dar conselho alimentar | prometer resultado | repetir saudação.${clientCtx ? `\n\nCONTEXTO DO CLIENTE: ${clientCtx}` : ''}
+NUNCA: inventar horários | confirmar consulta sem data e hora reais | pedir telefone | dar conselho alimentar | prometer resultado | repetir saudação.${returningClientSection}${clientCtx ? `\n\nCONTEXTO DO CLIENTE: ${clientCtx}` : ''}
+LEITURA DE INTENÇÃO: Se a primeira mensagem deixar claro que a pessoa quer agendar (ex: "quero marcar uma consulta", "vim pelo instagram marcar", "quero retornar"), vá direto ao agendamento — sem triagem, sem apresentar planos.
 `
 }
 
