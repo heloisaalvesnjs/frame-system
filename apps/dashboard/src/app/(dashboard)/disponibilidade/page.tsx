@@ -733,16 +733,25 @@ export default function DisponibilidadePage() {
         <div className="flex items-center gap-2">
           <Btn variant="secondary" size="sm" onClick={async () => {
             try {
-              // Tenta sincronizar agendamentos existentes primeiro
-              const sync = await api.post('/api/google-calendar/sync').catch(() => null)
-              if (sync && sync.data?.synced > 0) {
-                toast.success(`${sync.data.synced} consulta(s) enviada(s) para o Google Calendar`)
-              } else {
-                // Se não está conectado ainda, redireciona para OAuth
+              // Verifica se já está conectado
+              const { data: status } = await api.get('/api/google-calendar/status')
+              if (!status.connected) {
                 const { data } = await api.get('/api/google-calendar/auth-url')
                 if (data.url) window.location.href = data.url
+                return
               }
-            } catch { toast.error('Erro ao sincronizar Google Calendar') }
+              // Já conectado — sincroniza agendamentos
+              const { data: sync } = await api.post('/api/google-calendar/sync')
+              if (sync.total === 0) {
+                toast.success('Nenhum agendamento futuro para sincronizar.')
+              } else if (sync.synced === 0) {
+                toast.error(`Falha ao sincronizar (${sync.total} consulta(s) encontrada(s)). Verifique a conexão.`)
+              } else {
+                toast.success(`${sync.synced} de ${sync.total} consulta(s) enviada(s) ao Google Calendar!`)
+              }
+            } catch (e: any) {
+              toast.error(e?.response?.data?.error ?? 'Erro ao sincronizar Google Calendar')
+            }
           }}>Sincronizar Google</Btn>
           {selectedDates.size > 0 && (
             <Btn variant="ghost" size="sm" onClick={clearSelection}>Limpar seleção</Btn>
