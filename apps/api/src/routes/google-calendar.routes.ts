@@ -63,11 +63,12 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
 
     const calendar = google.calendar({ version: 'v3', auth: client })
     const now = new Date()
-    const future = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000) // 90 dias
+    const past30  = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)  // 30 dias atrás
+    const future  = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)  // 90 dias à frente
 
     const res = await calendar.events.list({
       calendarId: conn.calendar_id || 'primary',
-      timeMin: now.toISOString(),
+      timeMin: past30.toISOString(),
       timeMax: future.toISOString(),
       singleEvents: true,
       orderBy: 'startTime',
