@@ -64,6 +64,7 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
     )
 
     let synced = 0
+    let lastError = ''
     for (const appt of appointments) {
       try {
         await createCalendarEvent(id, {
@@ -74,9 +75,12 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
           modality:     appt.modality ?? 'online',
         })
         synced++
-      } catch {}
+      } catch (err: any) {
+        lastError = err?.message || String(err)
+        app.log.error({ err }, '[GCal sync] Falha ao enviar evento')
+      }
     }
 
-    return reply.send({ ok: true, synced, total: appointments.length })
+    return reply.send({ ok: true, synced, total: appointments.length, lastError: lastError || undefined })
   })
 }

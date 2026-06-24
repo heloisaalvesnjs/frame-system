@@ -142,10 +142,24 @@ function GoogleCalendarCard() {
         <p className="text-[11px] font-semibold text-t1">Google Agenda</p>
         <div className={cn('ml-auto w-2 h-2 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-t3')} />
       </div>
-      {isConnected
-        ? <button onClick={() => disconnect.mutate()} className="text-[10px] text-t3 hover:text-[var(--danger)] flex items-center gap-1"><Unlink className="w-3 h-3" /> Desconectar</button>
-        : <a href={authUrlData?.url || '#'} className="text-[10px] text-[var(--brand)] hover:opacity-80 flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Conectar</a>
-      }
+      {isConnected ? (
+        <div className="flex items-center gap-3">
+          <button onClick={async () => {
+            try {
+              const { data } = await api.post('/api/google-calendar/sync')
+              if (data.total === 0) toast.success('Nenhuma consulta futura para sincronizar.')
+              else if (data.synced === 0) toast.error(`Erro ao sincronizar. ${data.lastError || ''}`)
+              else toast.success(`${data.synced}/${data.total} consulta(s) enviada(s) ao Google Agenda!`)
+            } catch (e: any) { toast.error(e?.response?.data?.error ?? 'Erro ao sincronizar') }
+          }} className="text-[10px] text-[var(--brand)] hover:opacity-80 flex items-center gap-1">
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Sincronizar
+          </button>
+          <button onClick={() => disconnect.mutate()} className="text-[10px] text-t3 hover:text-[var(--danger)] flex items-center gap-1"><Unlink className="w-3 h-3" /> Desconectar</button>
+        </div>
+      ) : (
+        <a href={authUrlData?.url || '#'} className="text-[10px] text-[var(--brand)] hover:opacity-80 flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Conectar</a>
+      )}
     </div>
   )
 }

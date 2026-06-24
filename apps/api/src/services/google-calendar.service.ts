@@ -118,8 +118,10 @@ export async function createCalendarEvent(nutritionistId: string, appointment: {
     })
 
     console.log(`[GCal] Evento criado para ${appointment.client_name} em ${start.toISOString()}`)
-  } catch (err) {
-    // Falha no Google Calendar não deve bloquear o agendamento principal
-    console.error('[GCal] Erro ao criar evento:', err)
+  } catch (err: any) {
+    // Relança o erro para o chamador decidir como tratar
+    const msg = err?.response?.data?.error?.message || err?.message || String(err)
+    console.error('[GCal] Erro ao criar evento:', msg)
+    throw new Error(`Google Calendar: ${msg}`)
   }
 }
