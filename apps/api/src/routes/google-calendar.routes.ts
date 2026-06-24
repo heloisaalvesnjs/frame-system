@@ -99,34 +99,40 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
       const title = event.summary || ''
       const clientName = title.replace(/consulta\s*[-–—]?\s*/i, '').trim() || 'Paciente (Google Agenda)'
 
-      // Busca ou cria o cliente
-      let client_id: string | null = null
-      const existingClient = await queryOne<any>(
-        `SELECT id FROM clients WHERE nutritionist_id = $1 AND name ILIKE $2`,
-        [id, `%${clientName}%`]
-      )
-      if (existingClient) {
-        client_id = existingClient.id
-      } else {
-        const [newClient] = await query<any>(
-          `INSERT INTO clients (nutritionist_id, name, phone) VALUES ($1, $2, 'google-import') RETURNING id`,
-          [id, clientName]
+      try {
+        // Busca ou cria o cliente (phone único por nome para evitar conflito de UNIQUE)
+        let client_id: string | null = null
+        const existingClient = await queryOne<any>(
+          `SELECT id FROM clients WHERE nutritionist_id = $1 AND name ILIKE $2`,
+          [id, `%${clientName}%`]
         )
-        client_id = newClient.id
+        if (existingClient) {
+          client_id = existingClient.id
+        } else {
+          const fakePhone = `gcal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+          const [newClient] = await query<any>(
+            `INSERT INTO clients (nutritionist_id, name, phone) VALUES ($1, $2, $3) RETURNING id`,
+            [id, clientName, fakePhone]
+          )
+          client_id = newClient.id
+        }
+
+        const durationMs = event.end?.dateTime
+          ? new Date(event.end.dateTime).getTime() - scheduledAt.getTime()
+          : 50 * 60 * 1000
+        const duration = Math.round(durationMs / 60000)
+
+        await query(
+          `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, notes, created_by)
+           VALUES ($1, $2, $3, $4, 'presencial', 'scheduled', $5, 'nutritionist')`,
+          [id, client_id, scheduledAt.toISOString(), duration,
+           `Importado do Google Agenda: ${event.summary}`]
+        )
+        imported++
+      } catch (err) {
+        app.log.warn({ err, event: event.summary }, '[GCal import] Falha ao importar evento')
+        skipped++
       }
-
-      const durationMs = event.end?.dateTime
-        ? new Date(event.end.dateTime).getTime() - scheduledAt.getTime()
-        : 50 * 60 * 1000
-      const duration = Math.round(durationMs / 60000)
-
-      await query(
-        `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, notes, created_by)
-         VALUES ($1, $2, $3, $4, 'presencial', 'scheduled', $5, 'nutritionist')`,
-        [id, client_id, scheduledAt.toISOString(), duration,
-         `Importado do Google Agenda: ${event.summary}`]
-      )
-      imported++
     }
 
     return reply.send({ ok: true, imported, skipped, total: events.length })
