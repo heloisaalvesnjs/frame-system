@@ -737,6 +737,7 @@ export default function AgendaPage() {
         <Btn variant="outline" size="sm" onClick={nextWeek}><ChevronRight className="h-3.5 w-3.5" /></Btn>
         <span className="text-[13px] text-3 ml-1">{weekRangeLabel}</span>
         <div className="ml-auto flex items-center gap-2">
+          <GoogleCalendarCard />
           <Btn variant="secondary" size="sm" onClick={() => setBlockDate(new Date())}><Ban className="h-3.5 w-3.5" />Bloquear</Btn>
           <Btn variant="primary" size="sm" onClick={() => setNewApptDate(setHours(startOfWeek(weekStart, { weekStartsOn: 1 }), 9))}>
             <Plus className="h-3.5 w-3.5" />Nova consulta
