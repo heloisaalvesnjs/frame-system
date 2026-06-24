@@ -113,9 +113,13 @@ function PersonaSection({ assistant, onSave }: { assistant: any; onSave: () => v
   }
 
   async function onSubmit(data: PersonaForm) {
-    await api.post('/api/assistants', { ...data, tone: selectedTones[0]?.toLowerCase() || data.tone })
-    toast.success('Personalidade salva!')
-    onSave()
+    try {
+      await api.post('/api/assistants', { ...data, tone: selectedTones.join(', ') || data.tone })
+      toast.success('Personalidade salva!')
+      onSave()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Erro ao salvar. Tente novamente.')
+    }
   }
 
   return (

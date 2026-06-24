@@ -74,7 +74,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     const ns = (f?: z.ZodTypeAny) => z.string().nullish().transform(v => v ?? undefined).pipe(f ?? z.string().optional())
     const schema = z.object({
       name: z.string().min(1).optional(),
-      tone: z.enum(['acolhedor', 'formal', 'descontraido']).optional(),
+      tone: z.string().optional(),
       greeting_message: z.string().nullish().transform(v => v ?? undefined),
       consultation_price: z.string().nullish().transform(v => v ?? undefined),
       consultation_modalities: z.string().nullish().transform(v => v ?? undefined),
