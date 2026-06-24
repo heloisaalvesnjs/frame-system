@@ -347,8 +347,10 @@ export async function processMessage(input: ProcessMessageInput): Promise<Proces
   const responseTextLower = responseText.toLowerCase()
   const isEtapa3 = ETAPA3_MARKERS.some(m => responseTextLower.includes(m))
 
-  // Evita reenvio: verifica se planos já foram apresentados no histórico
-  const alreadyPresentedPlans = historyForAI.some((m: any) =>
+  // Evita reenvio: verifica se a MÍDIA de planos já foi enviada nesta conversa
+  // (usa apenas as últimas 4 mensagens para não bloquear conversas longas)
+  const recentHistory = historyForAI.slice(-4)
+  const alreadyPresentedPlans = recentHistory.some((m: any) =>
     m.role === 'assistant' && ETAPA3_MARKERS.some(marker => m.content.toLowerCase().includes(marker))
   )
 
