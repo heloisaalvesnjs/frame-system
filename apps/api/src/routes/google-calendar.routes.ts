@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify'
+import { google } from 'googleapis'
 import { query, queryOne } from '../db'
 import { getAuthUrl, handleOAuthCallback, createCalendarEvent } from '../services/google-calendar.service'
 
@@ -54,7 +55,6 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
     const conn = await queryOne<any>('SELECT * FROM google_calendar_connections WHERE nutritionist_id = $1', [id])
     if (!conn) return reply.code(400).send({ error: 'Google Calendar não conectado' })
 
-    const { google } = await import('googleapis')
     const client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
