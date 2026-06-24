@@ -571,6 +571,10 @@ CREATE INDEX IF NOT EXISTS idx_clients_stage ON clients(nutritionist_id, stage);
 ALTER TABLE availability ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
 -- --------------------------------
+-- Reset de senha para membros de equipe
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_token TEXT;
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;
+
 -- Regras de agendamento (por nutricionista)
 -- --------------------------------
 -- Formulários de onboarding

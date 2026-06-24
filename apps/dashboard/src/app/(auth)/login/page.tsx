@@ -324,7 +324,13 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label className="field-label">Senha</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="field-label" style={{ marginBottom: 0 }}>Senha</label>
+                  <Link href="/esqueci-senha-equipe" className="text-[12px] font-medium transition-colors hover:opacity-70"
+                    style={{ color: 'var(--brand)' }}>
+                    Esqueceu?
+                  </Link>
+                </div>
                 <PasswordInput value={teamPass} onChange={setTeamPass} />
               </div>
               {teamError && (

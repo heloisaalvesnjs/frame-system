@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { query, queryOne } from '../db'
 
 export async function teamRoutes(app: FastifyInstance) {
@@ -150,6 +151,66 @@ export async function teamRoutes(app: FastifyInstance) {
       role:  member.role,
       nutritionist_name: member.nutritionist_name,
     })
+  })
+
+  // POST /api/team/forgot-password — gera token de reset (público)
+  app.post('/forgot-password', async (request, reply) => {
+    const { email } = z.object({ email: z.string().email() }).parse(request.body)
+
+    const member = await queryOne<any>(
+      `SELECT id FROM team_members WHERE email = $1 AND status = 'active'`,
+      [email]
+    )
+
+    // Sempre retorna 200 para não revelar se o e-mail existe
+    if (!member) return reply.send({ ok: true })
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hora
+
+    await query(
+      `UPDATE team_members SET reset_token = $1, reset_expires = $2 WHERE id = $3`,
+      [token, expires, member.id]
+    )
+
+    const baseUrl = process.env.APP_BASE_URL || process.env.DASHBOARD_URL || 'https://app.framesystem.com.br'
+    const resetUrl = `${baseUrl}/redefinir-senha-equipe?token=${token}`
+
+    // Tenta enviar email se Resend estiver configurado
+    try {
+      const { Resend } = await import('resend')
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      await resend.emails.send({
+        from: 'Frame System <noreply@framesystem.com.br>',
+        to: email,
+        subject: 'Redefinir senha — Frame System',
+        html: `<p>Clique no link abaixo para redefinir sua senha (válido por 1 hora):</p>
+               <p><a href="${resetUrl}">${resetUrl}</a></p>`,
+      })
+    } catch (_) {}
+
+    return reply.send({ ok: true })
+  })
+
+  // POST /api/team/reset-password — redefine senha com token (público)
+  app.post('/reset-password', async (request, reply) => {
+    const body = z.object({
+      token:    z.string().min(1),
+      password: z.string().min(6),
+    }).parse(request.body)
+
+    const member = await queryOne<any>(
+      `SELECT id FROM team_members WHERE reset_token = $1 AND reset_expires > NOW()`,
+      [body.token]
+    )
+    if (!member) return reply.code(400).send({ error: 'Link inválido ou expirado.' })
+
+    const hash = await bcrypt.hash(body.password, 10)
+    await query(
+      `UPDATE team_members SET password_hash = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2`,
+      [hash, member.id]
+    )
+    return reply.send({ ok: true })
   })
 
   // POST /api/team/login — login de colaborador (e-mail + senha)
