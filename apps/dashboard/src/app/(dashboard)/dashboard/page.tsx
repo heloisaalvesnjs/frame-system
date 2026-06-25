@@ -183,7 +183,8 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-1">
               {todayAppts.slice(0, 6).map((appt, i) => {
-                const t = format(new Date(appt.starts_at), 'HH:mm')
+                const d = appt.starts_at ? new Date(appt.starts_at) : null
+                const t = d && !isNaN(d.getTime()) ? format(d, 'HH:mm') : '--:--'
                 return (
                   <div
                     key={appt.id}
