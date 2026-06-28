@@ -126,6 +126,8 @@ export async function assistantRoutes(app: FastifyInstance) {
       })).nullish().transform(v => v ?? undefined),
       // Regras clínicas / limites (B.9)
       clinical_rules: z.array(z.string()).nullish().transform(v => v ?? undefined),
+      // Toggle de IA (pode vir via POST além do PATCH /toggle-ai)
+      ai_paused: z.boolean().nullish().transform(v => v ?? undefined),
     }).passthrough()
 
     const body = schema.parse(request.body)
@@ -197,6 +199,8 @@ export async function assistantRoutes(app: FastifyInstance) {
         if (body.custom_objections !== undefined)          { autoUpdates.push(`custom_objections = $${p++}`);          autoParams.push(JSON.stringify(body.custom_objections)) }
         if (body.conversation_examples !== undefined)      { autoUpdates.push(`conversation_examples = $${p++}`);      autoParams.push(JSON.stringify(body.conversation_examples)) }
         if (body.clinical_rules !== undefined)             { autoUpdates.push(`clinical_rules = $${p++}`);             autoParams.push(JSON.stringify(body.clinical_rules)) }
+        // ai_paused pode vir do corpo do POST (além do PATCH /toggle-ai dedicado)
+        if (body.ai_paused !== undefined)                  { autoUpdates.push(`ai_paused = $${p++}`);                  autoParams.push(body.ai_paused) }
         if (autoUpdates.length > 0) {
           await query(`UPDATE assistants SET ${autoUpdates.join(', ')} WHERE nutritionist_id = $1`, autoParams)
         }

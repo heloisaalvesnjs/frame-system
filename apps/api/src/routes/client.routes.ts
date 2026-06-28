@@ -407,7 +407,80 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       [client.phone, nutritionistId]
     )
 
-    return reply.send({ client, appointments, conversations })
+    // Próxima consulta futura (não cancelada)
+    const next_appointment = await queryOne<any>(
+      `SELECT id, scheduled_at, duration, modality, status, notes
+       FROM appointments
+       WHERE client_id = $1 AND status != 'cancelled' AND scheduled_at > NOW()
+       ORDER BY scheduled_at ASC
+       LIMIT 1`,
+      [clientId]
+    )
+
+    // Plano alimentar ativo
+    const meal_plan = await queryOne<any>(
+      `SELECT id, title, meals, notes, is_active, created_at, updated_at
+       FROM meal_plans
+       WHERE client_id = $1 AND nutritionist_id = $2 AND is_active = true
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [clientId, nutritionistId]
+    )
+
+    return reply.send({ client, appointments, conversations, next_appointment: next_appointment ?? null, meal_plan: meal_plan ?? null })
+  })
+
+  // GET /api/clients/:clientId/appointments — agendamentos do cliente ordenados por data
+  app.get('/:clientId/appointments', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    const appointments = await query<any>(
+      `SELECT a.id, a.scheduled_at, a.duration, a.modality, a.status, a.notes,
+              a.created_by, a.created_at,
+              l.name AS location_name, l.address AS location_address
+       FROM appointments a
+       LEFT JOIN locations l ON l.id = a.location_id
+       WHERE a.client_id = $1
+       ORDER BY a.scheduled_at DESC`,
+      [clientId]
+    )
+
+    const next_appointment = appointments.find((a: any) =>
+      a.status !== 'cancelled' && new Date(a.scheduled_at) > new Date()
+    ) ?? null
+
+    return reply.send({ appointments, next_appointment })
+  })
+
+  // GET /api/clients/:clientId/meal-plan — plano alimentar ativo do cliente
+  app.get('/:clientId/meal-plan', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    const meal_plan = await queryOne<any>(
+      `SELECT id, title, meals, notes, is_active, created_at, updated_at
+       FROM meal_plans
+       WHERE client_id = $1 AND nutritionist_id = $2 AND is_active = true
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [clientId, nutritionistId]
+    )
+
+    if (!meal_plan) return reply.send({ meal_plan: null })
+    return reply.send({ meal_plan })
   })
 
   // GET /api/clients/:clientId/tracking — dados de tracking do paciente (para a nutri)
