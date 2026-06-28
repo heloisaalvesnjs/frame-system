@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Filter, Loader2, MoreHorizontal, Plus, Search, Star, Upload, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { Avatar, Badge, Btn } from '@/components/ui/finance-primitives'
@@ -104,6 +105,7 @@ function dateLabel(d?: string | null) {
 
 export default function ClientesPage() {
   const qc = useQueryClient()
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
@@ -242,6 +244,7 @@ export default function ClientesPage() {
                 gridTemplateColumns: '24px minmax(0,2fr) 110px 140px minmax(0,1.3fr) 110px 40px',
                 borderBottom: i < clients.length - 1 ? '1px solid var(--line-1)' : 'none',
               }}
+              onClick={() => router.push(`/clientes/${c.id}`)}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, white 2.5%, transparent)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
             >
@@ -257,7 +260,10 @@ export default function ClientesPage() {
               <div className="text-2">{c.goal || '—'}</div>
               <div className="font-mono text-[12px] tabular-nums text-2">{dateLabel(c.last_contact ?? c.created_at)}</div>
               <div className="text-right font-medium tabular-nums text-1">{c.appointment_count ?? 0}</div>
-              <button className="grid h-7 w-7 place-items-center rounded-md text-3 opacity-0 transition group-hover:opacity-100 hover:bg-white/[0.06] hover:text-1">
+              <button
+                className="grid h-7 w-7 place-items-center rounded-md text-3 opacity-0 transition group-hover:opacity-100 hover:bg-white/[0.06] hover:text-1"
+                onClick={e => e.stopPropagation()}
+              >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
             </div>
