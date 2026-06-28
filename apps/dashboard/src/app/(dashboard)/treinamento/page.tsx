@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -565,6 +565,15 @@ export default function TreinamentoPage() {
 
   function invalidate() { qc.invalidateQueries({ queryKey: ['assistant'] }) }
 
+  const togglePauseMut = useMutation({
+    mutationFn: () => api.post('/api/assistants', { ai_paused: !aiPaused }),
+    onSuccess: () => {
+      toast.success(aiPaused ? 'Assistente ativada!' : 'Assistente pausada')
+      invalidate()
+    },
+    onError: () => toast.error('Erro ao alterar status'),
+  })
+
   return (
     <div className="mx-auto max-w-[1240px] px-8 py-8 space-y-8">
       {/* Sub-header with subtitle + actions */}
@@ -646,8 +655,18 @@ export default function TreinamentoPage() {
               <Card>
                 <SectionTitle title="Status & versão" hint="Visão rápida da configuração atual" />
                 <div className="divide-y divide-[var(--line-1)]">
-                  <Row title="Status" desc="A assistente está respondendo automaticamente"
-                    control={<Badge variant={aiPaused ? 'danger' : 'success'}>{aiPaused ? 'Pausada' : 'Ativa'}</Badge>} />
+                  <Row title="Status" desc={aiPaused ? 'Assistente pausada — não responde no WhatsApp' : 'Respondendo automaticamente no WhatsApp'}
+                    control={
+                      <div className="flex items-center gap-3">
+                        <Badge variant={aiPaused ? 'danger' : 'success'}>{aiPaused ? 'Pausada' : 'Ativa'}</Badge>
+                        <Btn variant={aiPaused ? 'primary' : 'outline'} size="sm"
+                          onClick={() => togglePauseMut.mutate()}
+                          disabled={togglePauseMut.isPending}>
+                          {togglePauseMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          {aiPaused ? 'Ativar' : 'Pausar'}
+                        </Btn>
+                      </div>
+                    } />
                   <Row title="Versão publicada" desc="Baseada nas suas configurações salvas"
                     control={<span className="text-[12.5px] font-mono text-2">v3.2</span>} />
                   <Row title="Modelo" desc="Frame AI · especializado em saúde"
