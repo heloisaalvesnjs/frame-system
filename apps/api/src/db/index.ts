@@ -14,6 +14,8 @@ export const db = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
   ssl: needsSSL ? { rejectUnauthorized: false } : undefined,
+  // Força IPv4 para evitar ENETUNREACH em redes que não suportam IPv6
+  ...(process.env.DATABASE_URL?.includes('supabase') ? {} : { family: 4 }),
 })
 
 db.on('error', (err) => {
