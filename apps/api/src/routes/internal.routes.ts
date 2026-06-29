@@ -214,4 +214,643 @@ export async function internalRoutes(app: FastifyInstance) {
     runWeeklyReport().catch(console.error) // fire-and-forget
     return reply.send({ ok: true, message: 'Relatório semanal iniciado em background' })
   })
+
+  // ══════════════════════════════════════════════════════════════════
+  // Endpoints internos para o n8n — prefixo /n8n/*
+  // Autenticados via x-internal-key (mesmo auth acima).
+  // O n8n é o único consumidor. Nunca expor publicamente.
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── GET /api/internal/n8n/context ────────────────────────────────
+  // Retorna o contexto completo que o n8n precisa para processar uma
+  // mensagem: nutritionist, assistant, services, locations, client e
+  // histórico recente da conversa.
+  app.get('/n8n/context', auth, async (request, reply) => {
+    const { nutritionist_id, client_phone } = request.query as Record<string, string>
+
+    if (!nutritionist_id || !client_phone) {
+      return reply.code(400).send({ error: 'nutritionist_id e client_phone são obrigatórios' })
+    }
+
+    try {
+      // 1. Nutritionist + instância WhatsApp
+      const nutritionist = await queryOne<any>(
+        `SELECT n.id, n.name, n.phone, w.instance_name
+         FROM nutritionists n
+         LEFT JOIN whatsapp_connections w ON w.nutritionist_id = n.id
+         WHERE n.id = $1`,
+        [nutritionist_id]
+      )
+      if (!nutritionist) return reply.code(404).send({ error: 'Nutricionista não encontrada' })
+
+      // 2. Assistente IA ativo
+      const assistant = await queryOne<any>(
+        `SELECT id, name, tone, greeting_message, farewell_message, pdf_content,
+                frases_preferidas, frases_proibidas, custom_objections,
+                conversation_examples, clinical_rules
+         FROM assistants
+         WHERE nutritionist_id = $1 AND is_active = true`,
+        [nutritionist_id]
+      )
+
+      // 3. Serviços ativos
+      const services = await query<any>(
+        `SELECT id, name, price, modality, description
+         FROM services
+         WHERE nutritionist_id = $1 AND is_active = true
+         ORDER BY sort_order, created_at`,
+        [nutritionist_id]
+      )
+
+      // 4. Locais de atendimento ativos
+      const locations = await query<any>(
+        `SELECT id, name, city, address, modality
+         FROM locations
+         WHERE nutritionist_id = $1 AND is_active = true
+         ORDER BY sort_order`,
+        [nutritionist_id]
+      )
+
+      // 5. Busca ou cria cliente pelo telefone
+      let client = await queryOne<any>(
+        `SELECT id, name, phone, goal, stage, created_at
+         FROM clients
+         WHERE nutritionist_id = $1 AND phone = $2`,
+        [nutritionist_id, client_phone]
+      )
+      if (!client) {
+        const rows = await query<any>(
+          `INSERT INTO clients (nutritionist_id, phone, stage)
+           VALUES ($1, $2, 'novo_contato')
+           RETURNING id, name, phone, goal, stage, created_at`,
+          [nutritionist_id, client_phone]
+        )
+        client = rows[0]
+      }
+
+      // 6. Busca ou cria conversa ativa
+      let conversation = await queryOne<any>(
+        `SELECT c.id, c.status, c.mode,
+                (SELECT COUNT(*)::int FROM messages m WHERE m.conversation_id = c.id) AS message_count
+         FROM conversations c
+         WHERE c.nutritionist_id = $1 AND c.client_phone = $2 AND c.status = 'active'
+         ORDER BY c.created_at DESC LIMIT 1`,
+        [nutritionist_id, client_phone]
+      )
+      if (!conversation) {
+        const rows = await query<any>(
+          `INSERT INTO conversations (nutritionist_id, client_phone, client_id, status, last_message_at)
+           VALUES ($1, $2, $3, 'active', NOW())
+           RETURNING id, status, mode`,
+          [nutritionist_id, client_phone, client.id]
+        )
+        conversation = { ...rows[0], message_count: 0 }
+      }
+
+      // 7. Últimas 10 mensagens (retorna em ordem cronológica ascendente)
+      const rawMessages = await query<any>(
+        `SELECT role, content AS text, sent_at AS created_at
+         FROM messages
+         WHERE conversation_id = $1
+         ORDER BY sent_at DESC LIMIT 10`,
+        [conversation.id]
+      )
+      const recentMessages = rawMessages.reverse().map((m: any) => ({
+        sender: m.role === 'user' ? 'client' : 'assistant',
+        text: m.text,
+        created_at: m.created_at,
+      }))
+
+      // 8. Determina is_returning (tem agendamento anterior)
+      const apptCountRow = await queryOne<any>(
+        `SELECT COUNT(*)::int AS count FROM appointments
+         WHERE client_id = $1 AND status != 'cancelled'`,
+        [client.id]
+      )
+      const isReturning = (apptCountRow?.count ?? 0) > 0
+
+      return reply.send({
+        nutritionist: {
+          id: nutritionist.id,
+          name: nutritionist.name,
+          phone: nutritionist.phone,
+        },
+        whatsapp: {
+          instance_name: nutritionist.instance_name,
+          evolution_api_url: process.env.EVOLUTION_API_URL || '',
+          evolution_api_key: process.env.EVOLUTION_API_KEY || '',
+        },
+        assistant: assistant ? {
+          id: assistant.id,
+          name: assistant.name,
+          tone: assistant.tone,
+          greeting_message: assistant.greeting_message,
+          farewell_message: assistant.farewell_message,
+          pdf_content: assistant.pdf_content,
+          frases_preferidas: assistant.frases_preferidas ?? [],
+          frases_proibidas: assistant.frases_proibidas ?? [],
+          custom_objections: assistant.custom_objections ?? [],
+          conversation_examples: assistant.conversation_examples ?? [],
+          clinical_rules: assistant.clinical_rules ?? [],
+        } : null,
+        services,
+        locations,
+        client: {
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          goal: client.goal,
+          stage: client.stage || 'novo_contato',
+          is_returning: isReturning,
+        },
+        conversation: {
+          id: conversation.id,
+          status: conversation.status,
+          mode: conversation.mode,
+          message_count: conversation.message_count,
+        },
+        recent_messages: recentMessages,
+      })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/context] Erro ao buscar contexto')
+      return reply.code(500).send({ error: 'Erro interno ao buscar contexto' })
+    }
+  })
+
+  // ── GET /api/internal/n8n/available-slots ─────────────────────────
+  // Retorna horários disponíveis para uma data específica.
+  // Para presencial exige city e verifica date_location_overrides.
+  // Para online apenas verifica a disponibilidade semanal configurada.
+  app.get('/n8n/available-slots', auth, async (request, reply) => {
+    const { nutritionist_id, date, modality, city } = request.query as Record<string, string>
+
+    if (!nutritionist_id || !date || !modality) {
+      return reply.code(400).send({ error: 'nutritionist_id, date e modality são obrigatórios' })
+    }
+    if (modality === 'presencial' && !city) {
+      return reply.code(400).send({ error: 'city é obrigatório para modalidade presencial' })
+    }
+
+    try {
+      // Calcula dia da semana (evita bug de UTC: parse direto dos componentes)
+      const [yearN, monthN, dayN] = date.split('-').map(Number)
+      const targetDate = new Date(yearN, monthN - 1, dayN)
+      const dayOfWeek = targetDate.getDay()
+
+      // Verifica data bloqueada manualmente
+      const blocked = await queryOne<any>(
+        `SELECT id FROM blocked_dates WHERE nutritionist_id = $1 AND blocked_date = $2`,
+        [nutritionist_id, date]
+      )
+      if (blocked) {
+        return reply.send({ available: false, reason: 'Data bloqueada pelo nutricionista' })
+      }
+
+      // Busca disponibilidade semanal para esse dia + regras do nutricionista
+      const avail = await queryOne<any>(
+        `SELECT av.start_time, av.end_time, av.slot_duration, av.break_start, av.break_end,
+                n.min_advance_hours, n.max_appointments_per_day
+         FROM availability av
+         JOIN nutritionists n ON n.id = av.nutritionist_id
+         WHERE av.nutritionist_id = $1 AND av.day_of_week = $2 AND av.is_active = true`,
+        [nutritionist_id, dayOfWeek]
+      )
+      if (!avail) {
+        return reply.send({ available: false, reason: 'Sem disponibilidade configurada para este dia da semana' })
+      }
+
+      // Para presencial: verifica date_location_overrides com a cidade solicitada
+      let locationData: { id: string; name: string; address: string | null } | null = null
+      if (modality === 'presencial') {
+        const override = await queryOne<any>(
+          `SELECT dlo.location_id, l.name, l.address, l.city
+           FROM date_location_overrides dlo
+           JOIN locations l ON l.id = dlo.location_id
+           WHERE dlo.nutritionist_id = $1 AND dlo.date = $2
+             AND l.city ILIKE $3`,
+          [nutritionist_id, date, `%${city}%`]
+        )
+        if (!override) {
+          return reply.send({
+            available: false,
+            reason: `Sem atendimento presencial em ${city} nessa data`,
+          })
+        }
+        locationData = { id: override.location_id, name: override.name, address: override.address }
+      }
+
+      // Busca agendamentos existentes para a data
+      const existingAppts = await query<any>(
+        `SELECT scheduled_at FROM appointments
+         WHERE nutritionist_id = $1
+           AND DATE(scheduled_at AT TIME ZONE 'America/Sao_Paulo') = $2
+           AND status IN ('scheduled', 'confirmed')`,
+        [nutritionist_id, date]
+      )
+
+      // Verifica max_appointments_per_day
+      const maxPerDay: number = avail.max_appointments_per_day ?? 8
+      if (existingAppts.length >= maxPerDay) {
+        return reply.send({ available: false, reason: 'Limite de agendamentos do dia atingido' })
+      }
+
+      // Horários ocupados em BRT (HH:MM)
+      const bookedTimes = new Set<string>(
+        existingAppts.map((a: any) => {
+          const d = new Date(a.scheduled_at)
+          const bStr = d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+          return new Date(bStr).toTimeString().slice(0, 5)
+        })
+      )
+
+      // Bloqueios de calendário (calendar_blocks)
+      const calBlocks = await query<any>(
+        `SELECT starts_at, ends_at FROM calendar_blocks
+         WHERE nutritionist_id = $1
+           AND starts_at < ($2::date + INTERVAL '1 day')::timestamptz
+           AND ends_at > $2::date::timestamptz`,
+        [nutritionist_id, date]
+      ).catch(() => [] as any[])
+
+      // Agora em BRT para aplicar min_advance_hours
+      const nowBrt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+      const minAdvanceHours: number = avail.min_advance_hours ?? 3
+      const minSlotDatetime = new Date(nowBrt.getTime() + minAdvanceHours * 60 * 60 * 1000)
+
+      // Gera slots
+      const slotDur: number = avail.slot_duration || 60
+      const [startH, startM] = avail.start_time.slice(0, 5).split(':').map(Number)
+      const [endH, endM]   = avail.end_time.slice(0, 5).split(':').map(Number)
+
+      const breakStart = avail.break_start
+        ? (() => { const [bH, bM] = avail.break_start.slice(0, 5).split(':').map(Number); return bH * 60 + bM })()
+        : null
+      const breakEnd = avail.break_end
+        ? (() => { const [bH, bM] = avail.break_end.slice(0, 5).split(':').map(Number); return bH * 60 + bM })()
+        : null
+
+      const slots: string[] = []
+      let currentMin = startH * 60 + startM
+      const endMin = endH * 60 + endM
+
+      while (currentMin + slotDur <= endMin) {
+        // Pula slots dentro da pausa
+        if (breakStart !== null && breakEnd !== null) {
+          if (currentMin >= breakStart && currentMin < breakEnd) {
+            currentMin += slotDur
+            continue
+          }
+          if (currentMin < breakStart && currentMin + slotDur > breakStart) {
+            currentMin = breakEnd
+            continue
+          }
+        }
+
+        const h = Math.floor(currentMin / 60).toString().padStart(2, '0')
+        const m = (currentMin % 60).toString().padStart(2, '0')
+        const timeStr = `${h}:${m}`
+
+        // Slot como Date local (BRT via construção com componentes)
+        const slotDatetime = new Date(yearN, monthN - 1, dayN, Number(h), Number(m))
+
+        // Aplica min_advance_hours
+        if (slotDatetime <= minSlotDatetime) {
+          currentMin += slotDur
+          continue
+        }
+
+        // Verifica ocupação
+        if (bookedTimes.has(timeStr)) {
+          currentMin += slotDur
+          continue
+        }
+
+        // Verifica calendar_blocks
+        const slotEnd = new Date(slotDatetime.getTime() + slotDur * 60 * 1000)
+        const blockedByCalendar = calBlocks.some((b: any) => {
+          const bStart = new Date(b.starts_at)
+          const bEnd = new Date(b.ends_at)
+          return slotDatetime < bEnd && slotEnd > bStart
+        })
+        if (blockedByCalendar) {
+          currentMin += slotDur
+          continue
+        }
+
+        slots.push(timeStr)
+        currentMin += slotDur
+      }
+
+      return reply.send({
+        available: true,
+        date,
+        modality,
+        city: city || null,
+        location: locationData,
+        slots,
+        slot_duration_minutes: slotDur,
+      })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/available-slots] Erro ao buscar slots')
+      return reply.code(500).send({ error: 'Erro interno ao buscar slots disponíveis' })
+    }
+  })
+
+  // ── POST /api/internal/n8n/appointments ───────────────────────────
+  // Cria um agendamento. Retornar appointment_id é OBRIGATÓRIO — a IA
+  // nunca pode confirmar ao paciente sem ele.
+  app.post('/n8n/appointments', auth, async (request, reply) => {
+    const schema = z.object({
+      nutritionist_id: z.string().uuid(),
+      client_phone:    z.string().min(8),
+      client_name:     z.string().optional(),
+      scheduled_at:    z.string().min(1),
+      modality:        z.enum(['presencial', 'online']),
+      city:            z.string().optional(),
+      notes:           z.string().optional(),
+      service_id:      z.string().uuid().optional(),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Dados inválidos', details: (err as Error).message })
+    }
+
+    const { nutritionist_id, client_phone, client_name, scheduled_at, modality, city, notes } = body
+
+    try {
+      // 1. Busca ou cria cliente
+      let client = await queryOne<any>(
+        `SELECT id, name FROM clients WHERE nutritionist_id = $1 AND phone = $2`,
+        [nutritionist_id, client_phone]
+      )
+      if (!client) {
+        const rows = await query<any>(
+          `INSERT INTO clients (nutritionist_id, phone, name, stage)
+           VALUES ($1, $2, $3, 'novo_contato')
+           RETURNING id, name`,
+          [nutritionist_id, client_phone, client_name || 'Cliente']
+        )
+        client = rows[0]
+      } else if (client_name && client.name !== client_name) {
+        await query(`UPDATE clients SET name = $1 WHERE id = $2`, [client_name, client.id])
+        client.name = client_name
+      }
+
+      // 2. Verifica conflito de slot (mesmo horário + mesmo nutricionista)
+      const scheduledDatetime = new Date(scheduled_at)
+      const conflict = await queryOne<any>(
+        `SELECT id FROM appointments
+         WHERE nutritionist_id = $1
+           AND scheduled_at = $2
+           AND status IN ('scheduled', 'confirmed')`,
+        [nutritionist_id, scheduledDatetime.toISOString()]
+      )
+      if (conflict) {
+        return reply.code(409).send({ error: 'Horário não disponível', code: 'SLOT_TAKEN' })
+      }
+
+      // 3. Resolve location_id
+      const dateStr = scheduledDatetime.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      let location_id: string | null = null
+      let locationData: { id: string; name: string; address: string | null } | null = null
+
+      if (modality === 'presencial' && city) {
+        // Tenta date_location_overrides primeiro (atualizado na agenda do nutri)
+        const override = await queryOne<any>(
+          `SELECT dlo.location_id, l.name, l.address
+           FROM date_location_overrides dlo
+           JOIN locations l ON l.id = dlo.location_id
+           WHERE dlo.nutritionist_id = $1 AND dlo.date = $2
+             AND l.city ILIKE $3`,
+          [nutritionist_id, dateStr, `%${city}%`]
+        )
+        if (override) {
+          location_id = override.location_id
+          locationData = { id: override.location_id, name: override.name, address: override.address }
+        } else {
+          // Fallback: qualquer local ativo nessa cidade
+          const loc = await queryOne<any>(
+            `SELECT id, name, address FROM locations
+             WHERE nutritionist_id = $1 AND city ILIKE $2 AND is_active = true
+             ORDER BY sort_order LIMIT 1`,
+            [nutritionist_id, `%${city}%`]
+          )
+          if (loc) {
+            location_id = loc.id
+            locationData = { id: loc.id, name: loc.name, address: loc.address }
+          }
+        }
+      } else if (modality === 'online') {
+        const loc = await queryOne<any>(
+          `SELECT id, name, address FROM locations
+           WHERE nutritionist_id = $1 AND modality IN ('online', 'ambos') AND is_active = true
+           ORDER BY sort_order LIMIT 1`,
+          [nutritionist_id]
+        )
+        if (loc) {
+          location_id = loc.id
+          locationData = { id: loc.id, name: loc.name, address: loc.address }
+        }
+      }
+
+      // 4. Busca slot_duration da disponibilidade do dia
+      const [yr, mo, dy] = dateStr.split('-').map(Number)
+      const dayOfWeek = new Date(yr, mo - 1, dy).getDay()
+      const availData = await queryOne<any>(
+        `SELECT slot_duration FROM availability
+         WHERE nutritionist_id = $1 AND day_of_week = $2 AND is_active = true`,
+        [nutritionist_id, dayOfWeek]
+      )
+      const duration: number = availData?.slot_duration ?? 50
+
+      // 5. Cria o agendamento
+      const apptRows = await query<any>(
+        `INSERT INTO appointments
+           (nutritionist_id, client_id, client_phone, scheduled_at, modality, city,
+            location_id, notes, created_by, status, duration)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'assistant', 'scheduled', $9)
+         RETURNING id, scheduled_at`,
+        [
+          nutritionist_id, client.id, client_phone,
+          scheduledDatetime.toISOString(),
+          modality, city || null,
+          location_id, notes || null,
+          duration,
+        ]
+      )
+      const appt = apptRows[0]
+
+      // 6. Avança o funil do cliente
+      await query(
+        `UPDATE clients SET stage = 'consulta_marcada', stage_updated_at = NOW() WHERE id = $1`,
+        [client.id]
+      )
+
+      return reply.send({
+        ok: true,
+        appointment_id: appt.id,
+        scheduled_at: appt.scheduled_at,
+        location: locationData,
+      })
+    } catch (err) {
+      app.log.error({ err, body }, '[n8n/appointments] Erro ao criar agendamento')
+      return reply.code(500).send({ error: 'Erro interno ao criar agendamento' })
+    }
+  })
+
+  // ── POST /api/internal/n8n/messages ───────────────────────────────
+  // Persiste uma mensagem na conversa (usada pelo n8n para salvar
+  // as respostas da IA e mensagens do cliente).
+  app.post('/n8n/messages', auth, async (request, reply) => {
+    const schema = z.object({
+      nutritionist_id: z.string().uuid(),
+      client_phone:    z.string().min(8),
+      text:            z.string().min(1),
+      sender:          z.enum(['assistant', 'user']),
+      metadata:        z.record(z.unknown()).optional(),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Dados inválidos', details: (err as Error).message })
+    }
+
+    const { nutritionist_id, client_phone, text, sender } = body
+    const role = sender === 'assistant' ? 'assistant' : 'user'
+
+    try {
+      // Busca conversa ativa
+      let conversation = await queryOne<any>(
+        `SELECT id FROM conversations
+         WHERE nutritionist_id = $1 AND client_phone = $2 AND status = 'active'
+         ORDER BY created_at DESC LIMIT 1`,
+        [nutritionist_id, client_phone]
+      )
+
+      if (!conversation) {
+        // Cria conversa caso ainda não exista
+        const client = await queryOne<any>(
+          `SELECT id FROM clients WHERE nutritionist_id = $1 AND phone = $2`,
+          [nutritionist_id, client_phone]
+        )
+        const rows = await query<any>(
+          `INSERT INTO conversations (nutritionist_id, client_phone, client_id, status, last_message_at)
+           VALUES ($1, $2, $3, 'active', NOW())
+           RETURNING id`,
+          [nutritionist_id, client_phone, client?.id ?? null]
+        )
+        conversation = rows[0]
+      }
+
+      const msgRows = await query<any>(
+        `INSERT INTO messages (conversation_id, role, content)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [conversation.id, role, text]
+      )
+
+      await query(
+        `UPDATE conversations SET last_message_at = NOW() WHERE id = $1`,
+        [conversation.id]
+      )
+
+      return reply.send({ ok: true, message_id: msgRows[0].id })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/messages] Erro ao salvar mensagem')
+      return reply.code(500).send({ error: 'Erro interno ao salvar mensagem' })
+    }
+  })
+
+  // ── PATCH /api/internal/n8n/clients/:phone/stage ──────────────────
+  // Atualiza o estágio do funil de um cliente pelo telefone.
+  // Mais fácil para o n8n usar do que pelo client_id.
+  app.patch('/n8n/clients/:phone/stage', auth, async (request, reply) => {
+    const { phone } = request.params as { phone: string }
+    const { nutritionist_id } = request.query as Record<string, string>
+
+    const schema = z.object({
+      stage: z.enum([
+        'novo_contato', 'em_atendimento', 'qualificado',
+        'avaliando', 'agendamento_pendente', 'consulta_marcada', 'perdido',
+      ]),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Stage inválido', details: (err as Error).message })
+    }
+
+    if (!nutritionist_id) {
+      return reply.code(400).send({ error: 'nutritionist_id é obrigatório (query param)' })
+    }
+
+    try {
+      const updated = await queryOne<any>(
+        `UPDATE clients SET stage = $1, stage_updated_at = NOW()
+         WHERE nutritionist_id = $2 AND phone = $3
+         RETURNING id, stage`,
+        [body.stage, nutritionist_id, phone]
+      )
+      if (!updated) {
+        return reply.code(404).send({ error: 'Cliente não encontrado' })
+      }
+      return reply.send({ ok: true, stage: updated.stage })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/clients/stage] Erro ao atualizar stage')
+      return reply.code(500).send({ error: 'Erro interno ao atualizar stage' })
+    }
+  })
+
+  // ── POST /api/internal/n8n/automation-logs ────────────────────────
+  // Registra execuções do n8n para auditoria e debugging.
+  app.post('/n8n/automation-logs', auth, async (request, reply) => {
+    const schema = z.object({
+      nutritionist_id: z.string().uuid().optional(),
+      client_phone:    z.string().optional(),
+      event_type:      z.string().min(1),
+      agent_used:      z.string().optional(),
+      input_summary:   z.string().optional(),
+      output_summary:  z.string().optional(),
+      success:         z.boolean().default(true),
+      error:           z.string().nullable().optional(),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Dados inválidos', details: (err as Error).message })
+    }
+
+    try {
+      const rows = await query<any>(
+        `INSERT INTO automation_logs
+           (nutritionist_id, client_phone, event_type, agent_used,
+            input_summary, output_summary, success, error)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          body.nutritionist_id ?? null,
+          body.client_phone ?? null,
+          body.event_type,
+          body.agent_used ?? null,
+          body.input_summary ?? null,
+          body.output_summary ?? null,
+          body.success ?? true,
+          body.error ?? null,
+        ]
+      )
+      return reply.send({ ok: true, log_id: rows[0].id })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/automation-logs] Erro ao registrar log')
+      return reply.code(500).send({ error: 'Erro interno ao registrar log de automação' })
+    }
+  })
 }

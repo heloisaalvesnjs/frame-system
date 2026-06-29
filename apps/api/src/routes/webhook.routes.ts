@@ -267,6 +267,40 @@ export async function webhookRoutes(app: FastifyInstance) {
       // Processa em background (fire-and-forget)
       ;(async () => {
         try {
+          // ── Encaminha para n8n se N8N_WEBHOOK_URL configurado ─────────
+          // O n8n processa a mensagem e chama de volta via /api/internal/n8n/*
+          // para salvar respostas e enviar WhatsApp.
+          // Se o n8n estiver indisponível (timeout 5s), cai no processMessage inline.
+          const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
+          if (n8nWebhookUrl) {
+            let forwardedToN8n = false
+            try {
+              await fetch(n8nWebhookUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Frame-Event': 'message.received',
+                },
+                body: JSON.stringify({
+                  event: 'whatsapp.message.received',
+                  nutritionist_id,
+                  client_phone: phone,
+                  message_text: messageText,
+                  instance_name: activeInstance,
+                  internal_api_url: process.env.INTERNAL_API_URL || 'http://localhost:3001',
+                  internal_api_key: process.env.INTERNAL_API_KEY,
+                }),
+                signal: AbortSignal.timeout(5000),
+              })
+              forwardedToN8n = true
+            } catch {
+              app.log.warn('[webhook] N8N_WEBHOOK_URL configurado mas inacessível — processando inline')
+            }
+            // Se n8n recebeu com sucesso: ele assume o controle, não processa aqui
+            if (forwardedToN8n) return
+          }
+          // ─────────────────────────────────────────────────────────────
+
           const response = await processMessage({
             nutritionist_id,
             client_phone: phone,

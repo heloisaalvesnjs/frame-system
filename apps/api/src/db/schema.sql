@@ -599,3 +599,18 @@ CREATE TABLE IF NOT EXISTS onboarding_forms (
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS buffer_between_minutes  INT DEFAULT 10;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS min_advance_hours        INT DEFAULT 3;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS max_appointments_per_day INT DEFAULT 8;
+
+-- ── Logs de execução de automações n8n ──────────────────────────────
+CREATE TABLE IF NOT EXISTS automation_logs (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nutritionist_id UUID REFERENCES nutritionists(id),
+  client_phone    TEXT,
+  event_type      TEXT NOT NULL,
+  agent_used      TEXT,
+  input_summary   TEXT,
+  output_summary  TEXT,
+  success         BOOLEAN DEFAULT true,
+  error           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_automation_logs_nutri ON automation_logs(nutritionist_id, created_at DESC);
