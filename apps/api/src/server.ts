@@ -106,7 +106,14 @@ app.register(followupSequencesRoutes,    { prefix: '/api/followup-sequences' })
 app.register(onboardingFormRoutes,       { prefix: '/api/onboarding-form' })
 
 // ── Health check ───────────────────────────────────────────
-app.get('/health', async () => ({ status: 'ok', service: 'frame-system-api' }))
+app.get('/health', async (_req, reply) => {
+  try {
+    await db.query('SELECT 1')
+    return reply.send({ status: 'ok', service: 'frame-system-api', db: 'connected' })
+  } catch (err: any) {
+    return reply.code(503).send({ status: 'degraded', service: 'frame-system-api', db: 'error', detail: err?.message })
+  }
+})
 
 // ── Start ──────────────────────────────────────────────────
 const start = async () => {
