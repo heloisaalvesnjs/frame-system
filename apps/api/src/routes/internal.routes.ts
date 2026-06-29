@@ -556,6 +556,220 @@ export async function internalRoutes(app: FastifyInstance) {
     }
   })
 
+  // ── GET /api/internal/n8n/available-dates ────────────────────────────
+  // Retorna datas disponíveis para agendamento nos próximos dias.
+  // Usado pelo n8n para oferecer datas ao paciente após ele informar a cidade
+  // (presencial) ou depois de confirmar interesse (online).
+  // Query params:
+  //   nutritionist_id — obrigatório
+  //   modality        — 'presencial' | 'online' (obrigatório)
+  //   city            — nome da cidade (obrigatório se modality=presencial)
+  app.get('/n8n/available-dates', auth, async (request, reply) => {
+    const { nutritionist_id, modality, city } = request.query as Record<string, string>
+
+    if (!nutritionist_id || !modality) {
+      return reply.code(400).send({ error: 'nutritionist_id e modality são obrigatórios' })
+    }
+    if (!['presencial', 'online'].includes(modality)) {
+      return reply.code(400).send({ error: 'modality deve ser "presencial" ou "online"' })
+    }
+    if (modality === 'presencial' && !city) {
+      return reply.code(400).send({ error: 'city é obrigatório para modality=presencial' })
+    }
+
+    // Arrays estáticos em português — sem biblioteca de datas externa
+    const PT_DAYS_LONG  = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+    const PT_DAYS_LABEL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+    const PT_MONTHS     = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+    /** Formata Date em "YYYY-MM-DD" usando componentes locais (sem UTC shift). */
+    function toDateStr(d: Date): string {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+
+    /** Constrói Date local a partir de "YYYY-MM-DD" sem risco de UTC shift. */
+    function parseDateLocal(s: string): Date {
+      const [y, m, d] = s.split('-').map(Number)
+      return new Date(y, m - 1, d)
+    }
+
+    /** Monta label legível: "Quarta, 02 de julho". */
+    function buildLabel(d: Date): string {
+      return `${PT_DAYS_LABEL[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')} de ${PT_MONTHS[d.getMonth()]}`
+    }
+
+    try {
+      // Busca max_appointments_per_day do nutricionista
+      const nutri = await queryOne<any>(
+        `SELECT max_appointments_per_day FROM nutritionists WHERE id = $1`,
+        [nutritionist_id]
+      )
+      if (!nutri) {
+        return reply.code(404).send({ error: 'Nutricionista não encontrada' })
+      }
+      const maxPerDay: number = nutri.max_appointments_per_day ?? 8
+
+      // ── Presencial ───────────────────────────────────────────────────
+      if (modality === 'presencial') {
+        // Query otimizada: traz todos os dados necessários em uma única round-trip.
+        // Subqueries verificam: (1) availability ativa para o dia da semana,
+        // (2) se a data está bloqueada, (3) quantidade de agendamentos confirmados no dia.
+        const rows = await query<any>(
+          `SELECT
+             dlo.date::text                      AS date,
+             l.name                              AS location_name,
+             l.address                           AS location_address,
+             EXTRACT(DOW FROM dlo.date)::int     AS dow,
+             (
+               SELECT COUNT(*)::int
+               FROM appointments a
+               WHERE a.nutritionist_id = $1
+                 AND DATE(a.scheduled_at AT TIME ZONE 'America/Sao_Paulo') = dlo.date
+                 AND a.status IN ('scheduled', 'confirmed')
+             )                                   AS appt_count,
+             EXISTS (
+               SELECT 1 FROM availability av
+               WHERE av.nutritionist_id = $1
+                 AND av.day_of_week = EXTRACT(DOW FROM dlo.date)::int
+                 AND av.is_active = true
+             )                                   AS has_availability,
+             EXISTS (
+               SELECT 1 FROM blocked_dates bd
+               WHERE bd.nutritionist_id = $1
+                 AND bd.blocked_date = dlo.date
+             )                                   AS is_blocked
+           FROM date_location_overrides dlo
+           JOIN locations l ON l.id = dlo.location_id
+           WHERE dlo.nutritionist_id = $1
+             AND dlo.date >= CURRENT_DATE
+             AND dlo.date <= CURRENT_DATE + INTERVAL '60 days'
+             AND l.city ILIKE $2
+           ORDER BY dlo.date ASC`,
+          [nutritionist_id, `%${city}%`]
+        )
+
+        const dates = rows
+          .filter((r: any) => r.has_availability && !r.is_blocked && r.appt_count < maxPerDay)
+          .map((r: any) => {
+            const d = parseDateLocal(r.date as string)
+            return {
+              date:        r.date as string,
+              label:       buildLabel(d),
+              day_of_week: PT_DAYS_LONG[r.dow as number],
+              location: {
+                name:    r.location_name    as string,
+                address: (r.location_address as string | null) ?? null,
+              },
+            }
+          })
+
+        if (!dates.length) {
+          return reply.send({
+            available: false,
+            reason: `Não há datas disponíveis para ${city} nos próximos 60 dias.`,
+          })
+        }
+
+        return reply.send({ modality, city, dates })
+      }
+
+      // ── Online ───────────────────────────────────────────────────────
+      // 1. Busca os dias da semana com availability ativa
+      const availRows = await query<any>(
+        `SELECT day_of_week FROM availability
+         WHERE nutritionist_id = $1 AND is_active = true
+         ORDER BY day_of_week`,
+        [nutritionist_id]
+      )
+      if (!availRows.length) {
+        return reply.send({
+          available: false,
+          reason: 'Sem disponibilidade configurada para atendimento online.',
+        })
+      }
+      const activeDays = new Set<number>(availRows.map((r: any) => r.day_of_week as number))
+
+      // 2. Gera candidatos: próximas 30 datas (a partir de amanhã) nos dias ativos.
+      //    Limite de 180 dias percorridos para não entrar em loop em agendas esparsas.
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      tomorrow.setHours(0, 0, 0, 0)
+
+      const candidateDateStrs: string[] = []
+      const cursor = new Date(tomorrow)
+      const LIMIT_MS = 180 * 86_400_000
+
+      while (candidateDateStrs.length < 30 && cursor.getTime() - tomorrow.getTime() < LIMIT_MS) {
+        if (activeDays.has(cursor.getDay())) {
+          candidateDateStrs.push(toDateStr(cursor))
+        }
+        cursor.setDate(cursor.getDate() + 1)
+      }
+
+      if (!candidateDateStrs.length) {
+        return reply.send({
+          available: false,
+          reason: 'Sem disponibilidade configurada para atendimento online.',
+        })
+      }
+
+      // 3. Batch: busca datas bloqueadas no intervalo (uma única query)
+      const rangeStart = candidateDateStrs[0]
+      const rangeEnd   = candidateDateStrs[candidateDateStrs.length - 1]
+
+      const blockedRows = await query<any>(
+        `SELECT blocked_date::text AS blocked_date
+         FROM blocked_dates
+         WHERE nutritionist_id = $1
+           AND blocked_date BETWEEN $2 AND $3`,
+        [nutritionist_id, rangeStart, rangeEnd]
+      )
+      const blockedSet = new Set<string>(blockedRows.map((r: any) => r.blocked_date as string))
+
+      // 4. Batch: contagem de agendamentos por data no intervalo (uma única query)
+      const apptCountRows = await query<any>(
+        `SELECT
+           DATE(scheduled_at AT TIME ZONE 'America/Sao_Paulo')::text AS date,
+           COUNT(*)::int AS count
+         FROM appointments
+         WHERE nutritionist_id = $1
+           AND DATE(scheduled_at AT TIME ZONE 'America/Sao_Paulo') BETWEEN $2 AND $3
+           AND status IN ('scheduled', 'confirmed')
+         GROUP BY 1`,
+        [nutritionist_id, rangeStart, rangeEnd]
+      )
+      const apptCountMap = new Map<string, number>(
+        apptCountRows.map((r: any) => [r.date as string, r.count as number])
+      )
+
+      // 5. Filtra e monta resposta.
+      //    min_advance_hours não se aplica aqui: candidatos começam sempre de amanhã.
+      const dates = candidateDateStrs
+        .filter(ds => !blockedSet.has(ds) && (apptCountMap.get(ds) ?? 0) < maxPerDay)
+        .map(ds => {
+          const d = parseDateLocal(ds)
+          return {
+            date:        ds,
+            label:       buildLabel(d),
+            day_of_week: PT_DAYS_LONG[d.getDay()],
+          }
+        })
+
+      if (!dates.length) {
+        return reply.send({
+          available: false,
+          reason: 'Não há datas disponíveis para atendimento online nos próximos dias.',
+        })
+      }
+
+      return reply.send({ modality, dates })
+
+    } catch (err) {
+      app.log.error({ err }, '[n8n/available-dates] Erro ao buscar datas disponíveis')
+      return reply.code(500).send({ error: 'Erro interno ao buscar datas disponíveis' })
+    }
+  })
+
   // ── POST /api/internal/n8n/appointments ───────────────────────────
   // Cria um agendamento. Retornar appointment_id é OBRIGATÓRIO — a IA
   // nunca pode confirmar ao paciente sem ele.
