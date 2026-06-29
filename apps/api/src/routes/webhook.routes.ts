@@ -287,8 +287,12 @@ export async function webhookRoutes(app: FastifyInstance) {
                   client_phone: phone,
                   message_text: messageText,
                   instance_name: activeInstance,
-                  internal_api_url: process.env.API_PUBLIC_URL || process.env.INTERNAL_API_URL || 'http://localhost:3001',
+                  internal_api_url: process.env.API_PUBLIC_URL || 'https://api.framesystem.com.br',
                   internal_api_key: process.env.INTERNAL_API_KEY,
+                  evolution_api_url: process.env.EVOLUTION_API_URL,
+                  evolution_api_key: process.env.EVOLUTION_API_KEY,
+                  n8n_base_url: process.env.N8N_WEBHOOK_URL?.split('/webhook')[0] || '',
+                  claude_api_key: process.env.ANTHROPIC_API_KEY,
                 }),
                 signal: AbortSignal.timeout(5000),
               })
