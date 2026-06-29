@@ -96,7 +96,7 @@ type PersonaForm = z.infer<typeof personaSchema>
 
 function PersonaSection({ assistant, onSave }: { assistant: any; onSave: () => void }) {
   const [selectedTones, setSelectedTones] = useState<string[]>(['Acolhedora', 'Profissional'])
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<PersonaForm>({
+  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<PersonaForm>({
     resolver: zodResolver(personaSchema),
     defaultValues: { tone: 'acolhedor' },
   })
@@ -126,8 +126,13 @@ function PersonaSection({ assistant, onSave }: { assistant: any; onSave: () => v
     <Card>
       <SectionTitle title="Personalidade & tom" hint="Como a assistente se apresenta e fala" />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <Field label="Nome da assistente">
+        <Field label="Nome da assistente *">
           <Input {...register('name')} placeholder="Alice, Sofia, Lara..." />
+          {errors.name && (
+            <p className="text-[11.5px] mt-1" style={{ color: 'var(--danger)' }}>
+              Nome obrigatório — preencha antes de salvar
+            </p>
+          )}
         </Field>
         <Field label="Tom de voz" hint="Escolha até 3">
           <div className="flex flex-wrap gap-1.5">
