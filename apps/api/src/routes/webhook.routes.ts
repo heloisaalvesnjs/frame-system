@@ -287,7 +287,7 @@ export async function webhookRoutes(app: FastifyInstance) {
                   client_phone: phone,
                   message_text: messageText,
                   instance_name: activeInstance,
-                  internal_api_url: process.env.INTERNAL_API_URL || 'http://localhost:3001',
+                  internal_api_url: process.env.API_PUBLIC_URL || process.env.INTERNAL_API_URL || 'http://localhost:3001',
                   internal_api_key: process.env.INTERNAL_API_KEY,
                 }),
                 signal: AbortSignal.timeout(5000),
