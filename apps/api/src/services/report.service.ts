@@ -8,7 +8,7 @@ export async function runWeeklyReport(): Promise<void> {
 
   // Busca nutricionistas ativas com WhatsApp conectado e telefone cadastrado
   const nutritionists = await query<any>(`
-    SELECT n.id, n.name, n.phone, w.instance_name
+    SELECT n.id, n.name, n.phone, w.instance_token
     FROM nutritionists n
     JOIN whatsapp_connections w
       ON w.nutritionist_id = n.id AND w.status = 'connected'
@@ -54,7 +54,7 @@ export async function runWeeklyReport(): Promise<void> {
         `🔥 Conversas ativas agora: *${m.active_conversations}*\n\n` +
         `Acesse o dashboard para ver todos os detalhes e o CRM de leads 👉`
 
-      await sendMessage(nutri.phone, msg, nutri.instance_name)
+      await sendMessage(nutri.phone, msg, nutri.instance_token)
       console.log(`[report] ✓ Relatório enviado para ${nutri.name}`)
     } catch (err) {
       console.error(`[report] ✗ Erro ao enviar para ${nutri.name}:`, err)

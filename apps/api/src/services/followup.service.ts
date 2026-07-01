@@ -45,7 +45,7 @@ export async function runFollowupSequences(): Promise<void> {
         c.last_message_at,
         lm.sent_at        AS last_client_msg_at,
         cl.name           AS client_name,
-        w.instance_name,
+        w.instance_token,
         ass.vacation_mode,
         ass.followup_enabled
       FROM conversations c
@@ -96,7 +96,7 @@ export async function runFollowupSequences(): Promise<void> {
         }
       } else {
         // Fallback: envia direto
-        await sendMessage(lead.client_phone, message, lead.instance_name)
+        await sendMessage(lead.client_phone, message, lead.instance_token)
         await query(
           'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
           [lead.conversation_id, 'assistant', message]
@@ -136,7 +136,7 @@ export async function runAppointmentReminders(): Promise<void> {
       l.address,
       l.city,
       l.confirmation_message,
-      w.instance_name
+      w.instance_token
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN nutritionists n       ON n.id = a.nutritionist_id AND n.is_active = true
@@ -179,9 +179,8 @@ export async function runAppointmentReminders(): Promise<void> {
           nutritionist_id:  appt.nutritionist_id,
           client_phone:     appt.client_phone,
           appointment_id:   appt.id,
-          instance_name:    appt.instance_name,
-          evolution_api_url: process.env.EVOLUTION_API_URL ?? null,
-          evolution_api_key: process.env.EVOLUTION_API_KEY ?? null,
+          instance_token:   appt.instance_token,
+          uazapi_base_url:  process.env.UAZAPI_BASE_URL ?? null,
           client_name:      appt.client_name,
           scheduled_at:     appt.scheduled_at,
           scheduled_date_br: dateStr,
@@ -193,7 +192,7 @@ export async function runAppointmentReminders(): Promise<void> {
           message,
         })
       } else {
-        await sendMessage(appt.client_phone, message, appt.instance_name)
+        await sendMessage(appt.client_phone, message, appt.instance_token)
       }
 
       await query('UPDATE appointments SET reminder_sent = true WHERE id = $1', [appt.id])
@@ -216,7 +215,7 @@ export async function runPosConsulta(): Promise<void> {
       a.nutritionist_id,
       COALESCE(a.client_phone, c.phone) AS client_phone,
       c.name AS client_name,
-      w.instance_name,
+      w.instance_token,
       ass.pos_consulta_message
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
@@ -248,7 +247,7 @@ export async function runPosConsulta(): Promise<void> {
         )
         await fireWebhookEvent('pos_consulta_due', payload)
       } else {
-        await sendMessage(appt.client_phone, message, appt.instance_name)
+        await sendMessage(appt.client_phone, message, appt.instance_token)
       }
 
       await query('UPDATE appointments SET pos_consulta_sent = true WHERE id = $1', [appt.id])
@@ -276,7 +275,7 @@ export async function runRetorno(): Promise<void> {
       COALESCE(a.client_phone, c.phone) AS client_phone,
       c.name              AS client_name,
       a.scheduled_at,
-      w.instance_name,
+      w.instance_token,
       ass.retorno_message,
       ass.retorno_days
     FROM appointments a
@@ -323,7 +322,7 @@ export async function runRetorno(): Promise<void> {
         )
         await fireWebhookEvent('retorno_due', payload)
       } else {
-        await sendMessage(appt.client_phone, message, appt.instance_name)
+        await sendMessage(appt.client_phone, message, appt.instance_token)
       }
 
       await query(

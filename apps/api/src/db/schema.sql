@@ -600,6 +600,14 @@ ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS buffer_between_minutes  INT D
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS min_advance_hours        INT DEFAULT 3;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS max_appointments_per_day INT DEFAULT 8;
 
+-- ── Migração Evolution API → uazapi (2026-07-01) ────────────────────────────
+-- instance_token: token de autenticação por instância (header `token` na uazapi)
+-- instance_id:    ID único da instância retornado na criação; identifica a instância
+--                 nos webhooks recebidos (campo `instance` do payload uazapi)
+ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS instance_token TEXT;
+ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS instance_id    TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wc_instance_id ON whatsapp_connections(instance_id) WHERE instance_id IS NOT NULL;
+
 -- ── Logs de execução de automações n8n ──────────────────────────────
 CREATE TABLE IF NOT EXISTS automation_logs (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

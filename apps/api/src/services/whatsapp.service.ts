@@ -1,18 +1,26 @@
-// Evolution API — Serviço WhatsApp
+// uazapi — Serviço WhatsApp
+//
+// Autenticação: cada instância tem um token próprio (header `token`).
+// Criação de instância: usa admintoken global (UAZAPI_ADMIN_TOKEN).
+// Diferença chave vs Evolution API: não há instanceName na URL —
+// o token no header já identifica qual instância está sendo operada.
 
 import { queryOne } from '../db'
 
-const EVOLUTION_API_URL = (process.env.EVOLUTION_API_URL || 'http://localhost:8080').replace(/\/$/, '')
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || ''
-
-const evoHeaders = {
-  'Content-Type': 'application/json',
-  'apikey': EVOLUTION_API_KEY
-}
+const UAZAPI_BASE_URL  = (process.env.UAZAPI_BASE_URL  || '').replace(/\/$/, '')
+const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN || ''
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-/** Remove caracteres fora do alfabeto latino/portugues (evita glitches de encoding da IA) */
+/** Headers para chamadas autenticadas por instância */
+function instanceHeaders(instanceToken: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'token': instanceToken,
+  }
+}
+
+/** Remove caracteres fora do alfabeto latino/português (evita glitches de encoding da IA) */
 export function sanitizeText(text: string): string {
   return text
     .replace(/[⺀-￿]/g, '')  // CJK e blocos asiáticos
@@ -48,86 +56,79 @@ function splitIntoChunks(text: string): string[] {
   return chunks.filter(c => c.length > 0)
 }
 
-/** Busca o instance_name ativo de um nutricionista */
-async function getInstanceForNutri(nutritionist_id: string): Promise<string | null> {
-  const conn = await queryOne<any>(
-    `SELECT instance_name FROM whatsapp_connections
-     WHERE nutritionist_id = $1 AND status = 'connected'
+/** Busca o instance_token ativo de um nutricionista */
+async function getInstanceTokenForNutri(nutritionist_id: string): Promise<string | null> {
+  const conn = await queryOne<{ instance_token: string }>(
+    `SELECT instance_token FROM whatsapp_connections
+     WHERE nutritionist_id = $1 AND status = 'connected' AND instance_token IS NOT NULL
      LIMIT 1`,
     [nutritionist_id]
   )
-  return conn?.instance_name ?? null
+  return conn?.instance_token ?? null
 }
 
 // ── Envio ─────────────────────────────────────────────────────────────────────
 
-/** Envia mensagem de texto via Evolution API */
-export async function sendMessage(phone: string, text: string, instanceName: string): Promise<void> {
+/**
+ * Envia mensagem de texto via uazapi.
+ * instanceToken: token de autenticação da instância (não é o admintoken).
+ * readchat/readmessages: marca a conversa como lida ao enviar (equivalente ao markAsRead da Evolution).
+ */
+export async function sendMessage(phone: string, text: string, instanceToken: string): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-  const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+  const res = await fetch(`${UAZAPI_BASE_URL}/send/text`, {
     method: 'POST',
-    headers: evoHeaders,
-    body: JSON.stringify({ number, text })
+    headers: instanceHeaders(instanceToken),
+    body: JSON.stringify({ number, text, readchat: true, readmessages: true }),
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`[Evolution] Erro ao enviar: ${body}`)
+    throw new Error(`[uazapi] Erro ao enviar: ${body}`)
   }
 }
 
-/** Envia mensagem buscando automaticamente a instância do nutricionista */
+/** Envia mensagem buscando automaticamente o instance_token do nutricionista no banco */
 export async function sendMessageForNutri(
   nutritionist_id: string,
   phone: string,
   text: string
 ): Promise<void> {
-  const instanceName = await getInstanceForNutri(nutritionist_id)
-  if (!instanceName) {
-    console.warn(`[Evolution] Sem instância conectada para nutri ${nutritionist_id}`)
+  const instanceToken = await getInstanceTokenForNutri(nutritionist_id)
+  if (!instanceToken) {
+    console.warn(`[uazapi] Sem instância conectada para nutri ${nutritionist_id}`)
     return
   }
-  await sendMessage(phone, text, instanceName)
-}
-
-/** Marca mensagem como lida (silencioso se falhar) */
-async function markAsRead(phone: string, messageId: string | undefined, instanceName: string): Promise<void> {
-  try {
-    const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-    await fetch(`${EVOLUTION_API_URL}/chat/markMessageAsRead/${instanceName}`, {
-      method: 'POST',
-      headers: evoHeaders,
-      body: JSON.stringify({
-        readMessages: [{ id: messageId ?? '', remoteJid: `${number}@s.whatsapp.net`, fromMe: false }]
-      })
-    })
-  } catch { /* não crítico */ }
+  await sendMessage(phone, text, instanceToken)
 }
 
 /**
  * Envia resposta da IA com comportamento humanizado:
  * – Sanitiza o texto
  * – Divide em blocos de ~2 frases
- * – Simula leitura + digitação antes de cada bloco
+ * – Simula tempo de digitação antes de cada bloco
+ *
+ * Nota: a uazapi marca o chat como lido automaticamente via readchat/readmessages
+ * no sendMessage — não há endpoint separado de "mark as read" como na Evolution API.
+ * O parâmetro _messageId é mantido apenas para compatibilidade de assinatura.
  */
 export async function sendWithHumanDelay(
   phone: string,
   text: string,
-  instanceName: string,
-  messageId?: string
+  instanceToken: string,
+  _messageId?: string
 ): Promise<void> {
   const clean = sanitizeText(text)
   if (!clean) return
 
   const chunks = splitIntoChunks(clean)
 
-  await markAsRead(phone, messageId, instanceName)
   await sleep(800 + Math.random() * 800)
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i]
     const typingMs = Math.min(Math.max(chunk.length * 35, 700), 3500)
     await sleep(typingMs)
-    await sendMessage(phone, chunk, instanceName)
+    await sendMessage(phone, chunk, instanceToken)
     if (i < chunks.length - 1) {
       await sleep(600 + Math.random() * 600)
     }
@@ -141,21 +142,20 @@ export async function sendWithHumanDelay(
 export async function sendConfiguredMessage(
   phone: string,
   text: string,
-  instanceName: string,
-  messageId?: string
+  instanceToken: string,
+  _messageId?: string
 ): Promise<void> {
   const clean = sanitizeText(text)
   if (!clean) return
 
-  await markAsRead(phone, messageId, instanceName)
   await sleep(800 + Math.random() * 800)
   const typingMs = Math.min(Math.max(clean.length * 20, 1000), 4000)
   await sleep(typingMs)
-  await sendMessage(phone, clean, instanceName)
+  await sendMessage(phone, clean, instanceToken)
 }
 
 /**
- * Envia imagem ou PDF via Evolution API.
+ * Envia imagem ou PDF via uazapi.
  * Usado quando o nutri configura mídia dos planos para envio automático.
  */
 export async function sendMediaMessage(
@@ -163,145 +163,177 @@ export async function sendMediaMessage(
   mediaUrl: string,
   mediaType: 'image' | 'pdf',
   fileName: string,
-  instanceName: string
+  instanceToken: string
 ): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
-  // Evolution API aceita tanto URL pública quanto data URL (base64)
-  const isBase64 = mediaUrl.startsWith('data:')
-  const mimetype = isBase64
-    ? mediaUrl.split(';')[0].replace('data:', '')
-    : (mediaType === 'pdf' ? 'application/pdf' : 'image/jpeg')
   const body = mediaType === 'pdf'
-    ? { number, mediatype: 'document', mimetype, media: mediaUrl, fileName: fileName || 'planos.pdf' }
-    : { number, mediatype: 'image',    mimetype, media: mediaUrl }
+    ? { number, type: 'document', file: mediaUrl, docName: fileName || 'planos.pdf' }
+    : { number, type: 'image',    file: mediaUrl }
 
-  const res = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
+  const res = await fetch(`${UAZAPI_BASE_URL}/send/media`, {
     method: 'POST',
-    headers: evoHeaders,
-    body: JSON.stringify(body)
+    headers: instanceHeaders(instanceToken),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`[Evolution] Erro ao enviar mídia: ${err}`)
+    throw new Error(`[uazapi] Erro ao enviar mídia: ${err}`)
   }
 }
 
 // ── Instância ─────────────────────────────────────────────────────────────────
 
 /** Status da conexão de uma instância */
-export async function getInstanceStatus(instanceName: string): Promise<'connected' | 'connecting' | 'disconnected'> {
+export async function getInstanceStatus(instanceToken: string): Promise<'connected' | 'connecting' | 'disconnected'> {
   try {
-    const res = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
-      headers: evoHeaders
+    const res = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
+      headers: instanceHeaders(instanceToken),
     })
     if (!res.ok) return 'disconnected'
-    const data = await res.json() as any
-    const state = data.instance?.state ?? data.state
-    if (state === 'open') return 'connected'
+    const data = await res.json() as { status?: string }
+    const state = data.status ?? ''
+    if (state === 'connected')  return 'connected'
     if (state === 'connecting') return 'connecting'
+    // 'disconnected' | 'hibernated' | qualquer outro estado → desconectado
     return 'disconnected'
   } catch {
     return 'disconnected'
   }
-}
-
-/** QR Code para conectar (retorna base64) */
-export async function getQRCode(instanceName: string): Promise<string> {
-  try {
-    const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-      headers: evoHeaders
-    })
-    if (!res.ok) return ''
-    const data = await res.json() as any
-    return data.base64 || ''
-  } catch {
-    return ''
-  }
-}
-
-/** Pairing code — login pelo número de telefone */
-export async function getPairingCode(phoneNumber: string, instanceName: string): Promise<string> {
-  const phone = phoneNumber.replace(/\D/g, '')
-  const res = await fetch(`${EVOLUTION_API_URL}/instance/pairingCode/${instanceName}`, {
-    method: 'POST',
-    headers: evoHeaders,
-    body: JSON.stringify({ number: phone })
-  })
-  const data = await res.json() as any
-  if (!res.ok) throw new Error(data?.message || JSON.stringify(data))
-  return data.code || ''
 }
 
 /**
- * Cria uma instância na Evolution API e configura o webhook automaticamente.
- * Chamado quando o nutricionista conecta o WhatsApp pela primeira vez.
+ * Inicia ou reinicia a conexão de uma instância — endpoint unificado da uazapi.
+ *
+ * Sem phone → inicia sessão de QR code.
+ * Com phone → gera pairing code (formato internacional, ex: "5511999999999").
+ *
+ * Retorna { qrCode, pairingCode } — apenas um deles será preenchido dependendo do modo.
+ *
+ * ATENÇÃO: o formato exato das respostas da uazapi (nomes dos campos qrcode/paircode)
+ * ainda não foi validado contra um payload real em produção. Recomenda-se capturar
+ * uma chamada real via webhook.cool antes de considerar 100% confiável.
  */
-export async function createInstance(instanceName: string, webhookUrl?: string): Promise<string> {
+export async function connectInstance(
+  instanceToken: string,
+  phone?: string
+): Promise<{ qrCode: string; pairingCode: string }> {
+  const body = phone ? { phone: phone.replace(/\D/g, '') } : {}
+  const res = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
+    method: 'POST',
+    headers: instanceHeaders(instanceToken),
+    body: JSON.stringify(body),
+  })
+
+  const data = res.ok
+    ? (await res.json() as Record<string, unknown>)
+    : {}
+
+  if (phone) {
+    // Pairing code: campo pode ser paircode, code ou pairingCode dependendo da versão da uazapi
+    const pairingCode = ((data.paircode ?? data.code ?? data.pairingCode) ?? '') as string
+    return { qrCode: '', pairingCode }
+  }
+
+  // QR code: pode vir direto no body da resposta
+  const inlineQr = ((data.qrcode ?? data.base64 ?? data.qr) ?? '') as string
+  if (inlineQr) return { qrCode: inlineQr, pairingCode: '' }
+
+  // Fallback: busca via GET /instance/status (uazapi popula qrcode lá após o connect)
   try {
-    const body: any = {
-      instanceName,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-    }
-
-    if (webhookUrl) {
-      body.webhook = {
-        url: webhookUrl,
-        byEvents: false,
-        base64: true,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
-      }
-    }
-
-    const res = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
-      method: 'POST',
-      headers: evoHeaders,
-      body: JSON.stringify(body)
+    const statusRes = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
+      headers: instanceHeaders(instanceToken),
     })
-    if (!res.ok) throw new Error(await res.text())
-    const data = await res.json() as any
-    return data.instance?.instanceName || instanceName
+    if (statusRes.ok) {
+      const statusData = await statusRes.json() as Record<string, unknown>
+      return { qrCode: ((statusData.qrcode ?? statusData.qr) ?? '') as string, pairingCode: '' }
+    }
+  } catch { /* silencioso */ }
+
+  return { qrCode: '', pairingCode: '' }
+}
+
+/**
+ * Cria uma nova instância na uazapi usando o admintoken global.
+ *
+ * Retorna { token, id } da instância criada — AMBOS devem ser persistidos no banco:
+ *   - token → whatsapp_connections.instance_token (usado em todas as chamadas de API)
+ *   - id    → whatsapp_connections.instance_id (usado para rotear webhooks recebidos)
+ *
+ * Retorna null em caso de falha. O token NÃO pode ser recuperado depois sem resetar a instância.
+ */
+export async function createInstance(name: string): Promise<{ token: string; id: string } | null> {
+  try {
+    const res = await fetch(`${UAZAPI_BASE_URL}/instance/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'admintoken': UAZAPI_ADMIN_TOKEN,
+      },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('[uazapi] createInstance error:', err)
+      return null
+    }
+    const data = await res.json() as Record<string, unknown>
+    const token = (data.token ?? '') as string
+    const id    = (data.id    ?? '') as string
+    if (!token) {
+      console.error('[uazapi] createInstance: token ausente na resposta', data)
+      return null
+    }
+    return { token, id }
   } catch (e) {
-    console.error('[Evolution] createInstance error:', e)
-    return ''
+    console.error('[uazapi] createInstance exception:', e)
+    return null
   }
 }
 
-/** Desconecta (logout) uma instância */
-export async function disconnectInstance(instanceName: string): Promise<void> {
+/** Desconecta (logout) uma instância — mantém a instância existindo, exige novo QR para reconectar */
+export async function disconnectInstance(instanceToken: string): Promise<void> {
   try {
-    await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
-      method: 'DELETE',
-      headers: evoHeaders
-    })
-  } catch { /* não crítico */ }
-}
-
-/** Deleta completamente uma instância */
-export async function deleteInstance(instanceName: string): Promise<void> {
-  try {
-    await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
-      method: 'DELETE',
-      headers: evoHeaders
-    })
-  } catch { /* não crítico */ }
-}
-
-/** Configura o webhook de uma instância */
-export async function setInstanceWebhook(instanceName: string, webhookUrl: string): Promise<void> {
-  try {
-    await fetch(`${EVOLUTION_API_URL}/webhook/set/${instanceName}`, {
+    await fetch(`${UAZAPI_BASE_URL}/instance/disconnect`, {
       method: 'POST',
-      headers: evoHeaders,
+      headers: instanceHeaders(instanceToken),
+    })
+  } catch { /* não crítico */ }
+}
+
+/**
+ * Deleta completamente uma instância.
+ * Diferença da Evolution API: sem instanceName na URL — o token no header identifica a instância.
+ */
+export async function deleteInstance(instanceToken: string): Promise<void> {
+  try {
+    await fetch(`${UAZAPI_BASE_URL}/instance`, {
+      method: 'DELETE',
+      headers: instanceHeaders(instanceToken),
+    })
+  } catch { /* não crítico */ }
+}
+
+/**
+ * Configura o webhook de uma instância.
+ * excludeMessages: ['wasSentByApi'] evita loop — a automação não recebe de volta as mensagens que ela mesma enviou.
+ */
+export async function setInstanceWebhook(instanceToken: string, webhookUrl: string): Promise<void> {
+  try {
+    const res = await fetch(`${UAZAPI_BASE_URL}/webhook`, {
+      method: 'POST',
+      headers: instanceHeaders(instanceToken),
       body: JSON.stringify({
         url: webhookUrl,
-        byEvents: false,
-        base64: true,
+        events: ['messages'],
+        excludeMessages: ['wasSentByApi'],
         enabled: true,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
-      })
+      }),
     })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('[uazapi] setInstanceWebhook error:', err)
+    }
   } catch (e) {
-    console.error('[Evolution] setInstanceWebhook error:', e)
+    console.error('[uazapi] setInstanceWebhook exception:', e)
   }
 }

@@ -109,7 +109,7 @@ export async function integrationsRoutes(app: FastifyInstance) {
         message:           'Este é um payload de teste do Frame System',
         plan_media_url:    null,
         plan_message_text: 'Aqui vai a mensagem de apresentação dos seus planos!',
-        instance_name:     'sua-instancia',
+        instance_token:    'exemplo-token-uazapi',
       },
     }
 

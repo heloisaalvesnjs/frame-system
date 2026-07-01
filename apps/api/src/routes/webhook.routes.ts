@@ -14,109 +14,82 @@ setInterval(() => {
 }, 30_000)
 
 /**
- * Extrai os campos relevantes do payload da Evolution API v2.
+ * Extrai os campos relevantes do payload da uazapi (modo simples, evento "messages").
  *
  * Formato esperado:
  * {
- *   event: "messages.upsert",
- *   instance: "instanceName",
+ *   event: "messages",
+ *   instance: "<instance_id>",      ← ID da instância (não o token); usado para rotear multi-tenant
  *   data: {
- *     key: { remoteJid: "5511...@s.whatsapp.net", fromMe: false, id: "BAE..." },
- *     message: { conversation: "texto" },
- *     messageType: "conversation",
- *     ...
+ *     chatid: "5511999999999@s.whatsapp.net",
+ *     isGroup: false,
+ *     fromMe: false,
+ *     messageType: "text",
+ *     text: "texto da mensagem",
+ *     messageid: "...",
+ *     wasSentByApi: false
  *   }
  * }
+ *
+ * ATENÇÃO: este parser foi escrito com base na documentação oficial docs.uazapi.com,
+ * mas ainda não foi validado contra um payload real capturado em produção.
+ * Antes do primeiro deploy em produção com um número real, capture um webhook via
+ * webhook.cool e verifique se os campos (`data.text`, `data.chatid`, `data.messageid`)
+ * correspondem exatamente ao que está sendo esperado aqui. Ajuste se necessário.
  */
-function parseEvolutionPayload(payload: any): {
+function parseUazapiPayload(payload: unknown): {
   isMessage: boolean
-  isConnectionUpdate: boolean
   fromMe: boolean
   phone: string
   messageText: string
   messageId: string
-  instanceName: string
-  connected: boolean
+  instanceId: string
 } {
-  const event = payload?.event ?? ''
-  const instanceName = payload?.instance ?? ''
-  const data = payload?.data ?? {}
+  const p = (payload ?? {}) as Record<string, unknown>
+  const event      = (p.event      ?? '') as string
+  const instanceId = (p.instance   ?? '') as string
+  const data       = (p.data       ?? {}) as Record<string, unknown>
 
-  // ── Mensagem recebida ──────────────────────────────────────
-  const isMessage = event === 'messages.upsert'
+  // uazapi usa event = "messages" para mensagens recebidas
+  const isEventMessage = event === 'messages'
 
-  const remoteJid: string = data?.key?.remoteJid ?? ''
-  const fromMe: boolean = data?.key?.fromMe === true
-  // Ignora grupos (@g.us) — só mensagens diretas (@s.whatsapp.net)
-  const isDirectMessage = remoteJid.endsWith('@s.whatsapp.net')
+  const chatId  = (data.chatid  ?? '') as string
+  const fromMe  = data.fromMe === true
+  const isGroup = data.isGroup === true || chatId.endsWith('@g.us')
 
-  // Normaliza o número: remove @s.whatsapp.net e caracteres não numéricos
-  const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+  // Só processa mensagens diretas (@s.whatsapp.net), não grupos
+  const isDirectMessage = chatId.endsWith('@s.whatsapp.net') && !isGroup
 
-  // Texto pode estar em conversation (mensagem simples) ou extendedTextMessage (com preview/link)
-  const msg = data?.message ?? {}
-  const messageText: string =
-    msg.conversation ||
-    msg.extendedTextMessage?.text ||
-    msg.imageMessage?.caption ||
-    msg.videoMessage?.caption ||
-    ''
+  // Normaliza o número: remove @s.whatsapp.net e caracteres não-numéricos
+  const phone = chatId.replace('@s.whatsapp.net', '').replace(/\D/g, '')
 
-  const messageId: string = data?.key?.id ?? ''
-
-  // ── Atualização de conexão ─────────────────────────────────
-  const isConnectionUpdate = event === 'connection.update'
-  const connectionState = data?.state ?? data?.instance?.state ?? ''
-  const connected = connectionState === 'open'
+  const messageText = (data.text      ?? '') as string
+  const messageId   = (data.messageid ?? '') as string
 
   return {
-    isMessage: isMessage && isDirectMessage,
-    isConnectionUpdate,
+    isMessage: isEventMessage && isDirectMessage,
     fromMe,
     phone,
     messageText,
     messageId,
-    instanceName,
-    connected
+    instanceId,
   }
 }
 
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // Função auxiliar que processa uma mensagem recebida da Evolution API
-  // instanceName opcional: se fornecido na URL tem precedência; senão usa o payload
-  async function handleIncoming(request: any, reply: any, instanceNameFromUrl?: string) {
-    const payload = request.body as any
+  // Handler central: recebe o payload uazapi, roteia pelo instance_id, processa em background
+  async function handleIncoming(request: any, reply: any) {
+    const payload = request.body as unknown
 
-    const parsed = parseEvolutionPayload(payload)
+    const parsed = parseUazapiPayload(payload)
 
-    // Usa o instanceName da URL (mais confiável) ou do payload
-    const instanceName = instanceNameFromUrl || parsed.instanceName
-
-    // ── Atualização de status de conexão ──────────────────────
-    if (parsed.isConnectionUpdate && instanceName) {
-      if (parsed.connected) {
-        await query(
-          `UPDATE whatsapp_connections SET status = 'connected', connected_at = NOW()
-           WHERE instance_name = $1`,
-          [instanceName]
-        )
-      } else {
-        await query(
-          `UPDATE whatsapp_connections SET status = 'disconnected'
-           WHERE instance_name = $1`,
-          [instanceName]
-        )
-      }
-      return reply.send({ ok: true })
-    }
-
-    // ── Filtra eventos que não são mensagens recebidas ─────────
+    // ── Filtra eventos que não são mensagens recebidas do cliente ──────────────
     if (!parsed.isMessage || parsed.fromMe || !parsed.phone || !parsed.messageText) {
       return reply.send({ ok: true })
     }
 
-    const { phone, messageText, messageId } = parsed
+    const { phone, messageText, messageId, instanceId } = parsed
 
     // Deduplicação
     const dedupeKey = messageId || `${phone}:${messageText}:${Date.now()}`
@@ -127,26 +100,26 @@ export async function webhookRoutes(app: FastifyInstance) {
     recentlyProcessed.set(dedupeKey, Date.now())
 
     try {
-      // Multi-tenant: identifica o nutri pela instância Evolution API
-      // Se instanceName fornecido → busca pela instância exata
-      // Fallback: conexão mais recente (compatibilidade)
-      const connection = instanceName
-        ? await queryOne<any>(
-            `SELECT nutritionist_id, instance_name FROM whatsapp_connections WHERE instance_name = $1`,
-            [instanceName]
+      // Multi-tenant: roteia pelo instance_id do payload
+      // (armazenado em whatsapp_connections.instance_id na criação da instância)
+      const connection = instanceId
+        ? await queryOne<{ nutritionist_id: string; instance_token: string }>(
+            `SELECT nutritionist_id, instance_token FROM whatsapp_connections WHERE instance_id = $1`,
+            [instanceId]
           )
-        : await queryOne<any>(
-            `SELECT nutritionist_id, instance_name FROM whatsapp_connections ORDER BY updated_at DESC LIMIT 1`
+        : await queryOne<{ nutritionist_id: string; instance_token: string }>(
+            `SELECT nutritionist_id, instance_token FROM whatsapp_connections
+             WHERE status = 'connected' ORDER BY updated_at DESC LIMIT 1`
           )
 
       if (!connection) {
-        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceName ? ` para instância: ${instanceName}` : ''}`)
+        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceId ? ` para instance_id: ${instanceId}` : ''}`)
         return reply.send({ ok: true })
       }
 
       const { nutritionist_id } = connection
-      // Usa o instance_name do banco como fonte de verdade para envio
-      const activeInstance = connection.instance_name || instanceName
+      // instance_token é o que a uazapi exige no header para enviar mensagens
+      const activeToken = connection.instance_token
 
       // Verifica se a conversa está em modo humano (takeover)
       const conversation = await queryOne<any>(
@@ -162,7 +135,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           await query(`DELETE FROM messages WHERE conversation_id = $1`, [conversation.id])
           await query(`DELETE FROM conversations WHERE id = $1`, [conversation.id])
         }
-        await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.', activeInstance)
+        await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.', activeToken)
         return reply.send({ ok: true })
       }
 
@@ -175,7 +148,7 @@ export async function webhookRoutes(app: FastifyInstance) {
         return reply.send({ ok: true })
       }
 
-      // ── Verifica horário de funcionamento e modo férias ────────
+      // ── Verifica horário de funcionamento e modo férias ──────────────────────
       const assistantConfig = await queryOne<any>(
         `SELECT name, vacation_mode, vacation_message, ai_paused FROM assistants
          WHERE nutritionist_id = $1 AND is_active = true`,
@@ -190,29 +163,25 @@ export async function webhookRoutes(app: FastifyInstance) {
       if (assistantConfig) {
         let blocked = false
         let outOfHoursMsg = ''
-        let silentBlock = false // bloqueia sem enviar nada
+        let silentBlock = false
 
         if (assistantConfig.vacation_mode) {
           blocked = true
           const customMsg = assistantConfig.vacation_message?.trim()
           if (customMsg) {
-            // Tem mensagem configurada → envia uma vez e para
             outOfHoursMsg = customMsg
           } else {
-            // Sem mensagem → bloqueia silenciosamente (não envia nada)
             silentBlock = true
           }
         } else {
           const isOpen = await isWithinWorkingHours(nutritionist_id)
           if (!isOpen) {
             blocked = true
-            outOfHoursMsg =
-              'Olá! No momento estamos fora do horário de atendimento. Retornaremos em breve 😊'
+            outOfHoursMsg = 'Olá! No momento estamos fora do horário de atendimento. Retornaremos em breve 😊'
           }
         }
 
         if (blocked) {
-          // Salva a mensagem do cliente na conversa
           let convId = conversation?.id
           if (!convId) {
             const [newConv] = await query(
@@ -231,12 +200,10 @@ export async function webhookRoutes(app: FastifyInstance) {
           )
 
           // Modo férias sem mensagem = silêncio total
-          if (silentBlock) {
-            return reply.send({ ok: true })
-          }
+          if (silentBlock) return reply.send({ ok: true })
 
           // Fora do horário ou férias com mensagem → envia apenas uma vez
-          const lastAssistantMsg = await queryOne<any>(
+          const lastAssistantMsg = await queryOne<{ content: string }>(
             `SELECT content FROM messages
              WHERE conversation_id = $1 AND role = 'assistant'
              ORDER BY sent_at DESC LIMIT 1`,
@@ -249,7 +216,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           )
 
           if (!alreadyWarned) {
-            await sendMessage(phone, outOfHoursMsg, activeInstance)
+            await sendMessage(phone, outOfHoursMsg, activeToken)
             await query(
               'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
               [convId, 'assistant', outOfHoursMsg]
@@ -259,17 +226,16 @@ export async function webhookRoutes(app: FastifyInstance) {
           return reply.send({ ok: true })
         }
       }
-      // ──────────────────────────────────────────────────────────
 
-      // Retorna 200 IMEDIATAMENTE para a Evolution API não retentar
+      // Retorna 200 IMEDIATAMENTE para a uazapi não retentar
       reply.send({ ok: true })
 
       // Processa em background (fire-and-forget)
       ;(async () => {
         try {
-          // ── Encaminha para n8n se N8N_WEBHOOK_URL configurado ─────────
+          // ── Encaminha para n8n se N8N_WEBHOOK_URL configurado ────────────────
           // O n8n processa a mensagem e chama de volta via /api/internal/n8n/*
-          // para salvar respostas e enviar WhatsApp.
+          // para salvar respostas e enviar WhatsApp via uazapi.
           // Se o n8n estiver indisponível (timeout 5s), cai no processMessage inline.
           const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
           if (n8nWebhookUrl) {
@@ -286,12 +252,14 @@ export async function webhookRoutes(app: FastifyInstance) {
                   nutritionist_id,
                   client_phone: phone,
                   message_text: messageText,
-                  instance_name: activeInstance,
+                  // Credenciais uazapi para o n8n enviar mensagens de resposta
+                  instance_token:  activeToken,
+                  uazapi_base_url: process.env.UAZAPI_BASE_URL || '',
+                  // Frame API interna
                   internal_api_url: process.env.API_PUBLIC_URL || 'https://api.framesystem.com.br',
                   internal_api_key: process.env.INTERNAL_API_KEY,
-                  evolution_api_url: process.env.EVOLUTION_API_URL,
-                  evolution_api_key: process.env.EVOLUTION_API_KEY,
-                  n8n_base_url: process.env.N8N_WEBHOOK_URL?.split('/webhook')[0] || '',
+                  // Outros serviços
+                  n8n_base_url:  process.env.N8N_WEBHOOK_URL?.split('/webhook')[0] || '',
                   claude_api_key: process.env.ANTHROPIC_API_KEY,
                 }),
                 signal: AbortSignal.timeout(5000),
@@ -300,36 +268,34 @@ export async function webhookRoutes(app: FastifyInstance) {
             } catch {
               app.log.warn('[webhook] N8N_WEBHOOK_URL configurado mas inacessível — processando inline')
             }
-            // Se n8n recebeu com sucesso: ele assume o controle, não processa aqui
             if (forwardedToN8n) return
           }
-          // ─────────────────────────────────────────────────────────────
+          // ─────────────────────────────────────────────────────────────────────
 
           const response = await processMessage({
             nutritionist_id,
             client_phone: phone,
             message: messageText,
-            conversation_id: conversation?.id
+            conversation_id: conversation?.id,
           })
 
           if (!response?.text) {
             app.log.error('[webhook] processMessage retornou sem texto — enviando fallback')
-            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeInstance)
+            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeToken)
               .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar fallback de resposta vazia'))
             return
           }
 
-          // Modo copiloto: a resposta da IA fica como rascunho aguardando
-          // aprovação da nutri em /conversas — nada é enviado ao paciente agora.
+          // Modo copiloto: resposta fica como rascunho aguardando aprovação da nutri em /conversas
           if (response.pendingApproval) {
             app.log.info('[webhook] Conversa em modo copiloto — resposta salva como rascunho, aguardando aprovação')
             return
           }
 
           if (response.raw) {
-            await sendConfiguredMessage(phone, response.text, activeInstance, messageId)
+            await sendConfiguredMessage(phone, response.text, activeToken, messageId)
           } else {
-            await sendWithHumanDelay(phone, response.text, activeInstance, messageId)
+            await sendWithHumanDelay(phone, response.text, activeToken, messageId)
           }
 
           // Envia mídia dos planos se configurada e ETAPA 3 detectada
@@ -340,34 +306,34 @@ export async function webhookRoutes(app: FastifyInstance) {
               response.planMediaUrl,
               response.planMediaType,
               response.planMediaName || 'planos.pdf',
-              activeInstance
+              activeToken
             ).catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mídia dos planos (não crítico)'))
 
-            // Envia mensagem de texto APÓS a mídia (configurada pelo nutri)
             if (response.planMessageText) {
               await new Promise(r => setTimeout(r, 2000))
-              await sendMessage(phone, response.planMessageText, activeInstance)
+              await sendMessage(phone, response.planMessageText, activeToken)
                 .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem pós-mídia (não crítico)'))
             }
           } else if (response.planMessageText) {
-            // Sem mídia, mas há mensagem de planos configurada — envia direto
             await new Promise(r => setTimeout(r, 1500))
-            await sendMessage(phone, response.planMessageText, activeInstance)
+            await sendMessage(phone, response.planMessageText, activeToken)
               .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar mensagem de planos (não crítico)'))
           }
 
           // Envia mensagem de confirmação de agendamento (local, preço, instruções)
           if (response.bookingConfirmationMessage) {
             await new Promise(r => setTimeout(r, 2500))
-            await sendMessage(phone, response.bookingConfirmationMessage, activeInstance)
+            await sendMessage(phone, response.bookingConfirmationMessage, activeToken)
               .catch(err => app.log.warn({ err }, '[webhook] Falha ao enviar confirmação de agendamento (não crítico)'))
           }
-        } catch (err: any) {
-          app.log.error({ err, phone, nutritionist_id, messageText: messageText.slice(0, 100) }, '[webhook] Erro ao processar mensagem em background')
-          // Tenta enviar mensagem de fallback para não deixar o cliente sem resposta
+        } catch (err: unknown) {
+          app.log.error(
+            { err, phone, nutritionist_id, messageText: messageText.slice(0, 100) },
+            '[webhook] Erro ao processar mensagem em background'
+          )
           try {
-            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeInstance)
-          } catch {}
+            await sendMessage(phone, 'Oi! Estou com uma instabilidade aqui. Pode repetir sua mensagem? 🙏', activeToken)
+          } catch { /* silencioso */ }
         }
       })()
 
@@ -380,15 +346,14 @@ export async function webhookRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   }
 
-  // Rota genérica — instância identificada pelo campo `instance` do payload
+  // Rota principal — a uazapi envia para esta URL; o roteamento é feito pelo `instance` no payload
   app.post('/whatsapp', async (request, reply) => {
     return handleIncoming(request, reply)
   })
 
-  // Rota por instância (multi-tenant): /webhook/whatsapp/{instance_name}
-  // Cada nutri configura o webhook da Evolution API com o nome da sua instância
-  app.post('/whatsapp/:instanceName', async (request, reply) => {
-    const { instanceName } = request.params as any
-    return handleIncoming(request, reply, instanceName)
+  // Rota com path param mantida para compatibilidade futura, mas o roteamento
+  // real é feito pelo campo `instance` do payload uazapi, não pela URL
+  app.post('/whatsapp/:instanceParam', async (request, reply) => {
+    return handleIncoming(request, reply)
   })
 }

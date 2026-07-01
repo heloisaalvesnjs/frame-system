@@ -28,7 +28,7 @@ export async function internalRoutes(app: FastifyInstance) {
         n.name,
         n.email,
         n.phone,
-        w.instance_name,
+        w.instance_token,
         w.status  AS whatsapp_status,
         w.phone_number AS whatsapp_number
       FROM nutritionists n
@@ -61,7 +61,7 @@ export async function internalRoutes(app: FastifyInstance) {
         c.phone AS client_phone,
         n.name  AS nutritionist_name,
         n.phone AS nutritionist_phone,
-        w.instance_name,
+        w.instance_token,
         w.phone_number AS whatsapp_number
       FROM appointments a
       JOIN clients c        ON c.id = a.client_id
@@ -91,20 +91,37 @@ export async function internalRoutes(app: FastifyInstance) {
   })
 
   // ── POST /api/internal/whatsapp/send ─────────────────────
-  // Envia uma mensagem WhatsApp via Evolution API.
-  // Usado pelo n8n para disparar lembretes e notificações.
-  // Body: { instance_name, phone, text }
+  // Envia uma mensagem WhatsApp via uazapi.
+  // Body: { nutritionist_id, phone, text } — busca o token no banco
+  //    ou: { instance_token, phone, text }  — token direto
   app.post('/whatsapp/send', auth, async (request, reply) => {
     const schema = z.object({
-      instance_name: z.string().min(1),
+      nutritionist_id: z.string().uuid().optional(),
+      instance_token:  z.string().optional(),
       phone: z.string().min(8),
-      text: z.string().min(1),
+      text:  z.string().min(1),
     })
 
     const body = schema.parse(request.body)
 
     try {
-      await sendMessage(body.phone, body.text, body.instance_name)
+      let token = body.instance_token
+
+      if (!token && body.nutritionist_id) {
+        const conn = await queryOne<{ instance_token: string }>(
+          `SELECT instance_token FROM whatsapp_connections
+           WHERE nutritionist_id = $1 AND status = 'connected' AND instance_token IS NOT NULL
+           LIMIT 1`,
+          [body.nutritionist_id]
+        )
+        token = conn?.instance_token
+      }
+
+      if (!token) {
+        return reply.code(400).send({ error: 'instance_token ou nutritionist_id com instância conectada é obrigatório' })
+      }
+
+      await sendMessage(body.phone, body.text, token)
       return reply.send({ ok: true })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao enviar mensagem'
@@ -173,7 +190,7 @@ export async function internalRoutes(app: FastifyInstance) {
         conv.last_message_at,
         cl.name AS client_name,
         n.name  AS nutritionist_name,
-        w.instance_name
+        w.instance_token
       FROM conversations conv
       JOIN nutritionists n ON n.id = conv.nutritionist_id
       LEFT JOIN clients cl ON cl.phone = conv.client_phone AND cl.nutritionist_id = conv.nutritionist_id
@@ -235,7 +252,7 @@ export async function internalRoutes(app: FastifyInstance) {
     try {
       // 1. Nutritionist + instância WhatsApp
       const nutritionist = await queryOne<any>(
-        `SELECT n.id, n.name, n.phone, w.instance_name
+        `SELECT n.id, n.name, n.phone, w.instance_token
          FROM nutritionists n
          LEFT JOIN whatsapp_connections w ON w.nutritionist_id = n.id
          WHERE n.id = $1`,
@@ -336,9 +353,8 @@ export async function internalRoutes(app: FastifyInstance) {
           phone: nutritionist.phone,
         },
         whatsapp: {
-          instance_name: nutritionist.instance_name,
-          evolution_api_url: process.env.EVOLUTION_API_URL || '',
-          evolution_api_key: process.env.EVOLUTION_API_KEY || '',
+          instance_token:  nutritionist.instance_token,
+          uazapi_base_url: process.env.UAZAPI_BASE_URL || '',
         },
         assistant: assistant ? {
           id: assistant.id,

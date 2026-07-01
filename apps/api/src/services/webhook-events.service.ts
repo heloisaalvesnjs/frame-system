@@ -21,10 +21,10 @@ export type WebhookEventType =
 
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
-/** Dados de conexão WhatsApp + Evolution API para um nutricionista. */
+/** Dados de conexão WhatsApp + uazapi para um nutricionista. */
 export async function getConnectionData(nutritionist_id: string, client_phone?: string) {
   const row = await queryOne<any>(
-    `SELECT wc.instance_name,
+    `SELECT wc.instance_token,
             COALESCE(c.name, '') as client_name
      FROM whatsapp_connections wc
      LEFT JOIN clients c ON c.phone = $2 AND c.nutritionist_id = wc.nutritionist_id
@@ -33,10 +33,9 @@ export async function getConnectionData(nutritionist_id: string, client_phone?: 
   ).catch(() => null)
 
   return {
-    instance_name:     row?.instance_name ?? null,
-    client_name:       row?.client_name   ?? null,
-    evolution_api_url: process.env.EVOLUTION_API_URL ?? null,
-    evolution_api_key: process.env.EVOLUTION_API_KEY ?? null,
+    instance_token:  row?.instance_token ?? null,
+    client_name:     row?.client_name    ?? null,
+    uazapi_base_url: process.env.UAZAPI_BASE_URL ?? null,
   }
 }
 
@@ -47,7 +46,7 @@ export async function getConnectionData(nutritionist_id: string, client_phone?: 
  * Fire-and-forget — erros são logados mas não propagados.
  *
  * @param event  Tipo do evento
- * @param data   Payload completo incluindo message, client_phone, instance_name, etc.
+ * @param data   Payload completo incluindo message, client_phone, instance_token, etc.
  */
 export async function fireWebhookEvent(
   event: WebhookEventType,
