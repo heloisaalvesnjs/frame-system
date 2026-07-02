@@ -82,10 +82,14 @@ export async function webhookRoutes(app: FastifyInstance) {
   async function handleIncoming(request: any, reply: any) {
     const payload = request.body as unknown
 
+    // DEBUG temporário — remover após validar o formato real do payload da uazapi
+    app.log.warn({ payload }, '[webhook][DEBUG] payload bruto recebido')
+
     const parsed = parseUazapiPayload(payload)
 
     // ── Filtra eventos que não são mensagens recebidas do cliente ──────────────
     if (!parsed.isMessage || parsed.fromMe || !parsed.phone || !parsed.messageText) {
+      app.log.warn({ parsed }, '[webhook][DEBUG] descartado — não reconhecido como mensagem válida')
       return reply.send({ ok: true })
     }
 
