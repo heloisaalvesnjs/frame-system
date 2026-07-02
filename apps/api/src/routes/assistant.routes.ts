@@ -19,7 +19,7 @@ export async function assistantRoutes(app: FastifyInstance) {
       assistant = await queryOne<any>(
         `SELECT id, name, tone, greeting_message, is_active, created_at,
                 consultation_price, consultation_modalities, specialties,
-                vacation_mode, vacation_message,
+                vacation_mode, vacation_message, ai_24h,
                 followup_enabled, followup_delay_hours,
                 service_plans, nutri_display_name,
                 emoji_level, func_prospeccao, func_triagem, func_agendamento,
@@ -46,7 +46,7 @@ export async function assistantRoutes(app: FastifyInstance) {
       assistant = await queryOne<any>(
         `SELECT id, name, tone, greeting_message, is_active, created_at,
                 consultation_price, consultation_modalities, specialties,
-                vacation_mode, vacation_message,
+                vacation_mode, vacation_message, ai_24h,
                 followup_enabled, followup_delay_hours,
                 service_plans, nutri_display_name,
                 emoji_level, func_prospeccao, func_triagem, func_agendamento,
@@ -128,6 +128,8 @@ export async function assistantRoutes(app: FastifyInstance) {
       clinical_rules: z.array(z.string()).nullish().transform(v => v ?? undefined),
       // Toggle de IA (pode vir via POST além do PATCH /toggle-ai)
       ai_paused: z.boolean().nullish().transform(v => v ?? undefined),
+      // IA atende 24h no WhatsApp, ignorando o horário de Disponibilidade
+      ai_24h: z.boolean().nullish().transform(v => v ?? undefined),
     }).passthrough()
 
     const body = schema.parse(request.body)
@@ -207,6 +209,7 @@ export async function assistantRoutes(app: FastifyInstance) {
         if (body.clinical_rules !== undefined)             { autoUpdates.push(`clinical_rules = $${p++}`);             autoParams.push(JSON.stringify(body.clinical_rules)) }
         // ai_paused pode vir do corpo do POST (além do PATCH /toggle-ai dedicado)
         if (body.ai_paused !== undefined)                  { autoUpdates.push(`ai_paused = $${p++}`);                  autoParams.push(body.ai_paused) }
+        if (body.ai_24h !== undefined)                     { autoUpdates.push(`ai_24h = $${p++}`);                     autoParams.push(body.ai_24h) }
         if (autoUpdates.length > 0) {
           await query(`UPDATE assistants SET ${autoUpdates.join(', ')} WHERE nutritionist_id = $1`, autoParams)
         }

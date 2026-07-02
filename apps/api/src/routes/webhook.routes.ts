@@ -150,7 +150,7 @@ export async function webhookRoutes(app: FastifyInstance) {
 
       // ── Verifica horário de funcionamento e modo férias ──────────────────────
       const assistantConfig = await queryOne<any>(
-        `SELECT name, vacation_mode, vacation_message, ai_paused FROM assistants
+        `SELECT name, vacation_mode, vacation_message, ai_paused, ai_24h FROM assistants
          WHERE nutritionist_id = $1 AND is_active = true`,
         [nutritionist_id]
       )
@@ -173,7 +173,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           } else {
             silentBlock = true
           }
-        } else {
+        } else if (!assistantConfig.ai_24h) {
           const isOpen = await isWithinWorkingHours(nutritionist_id)
           if (!isOpen) {
             blocked = true

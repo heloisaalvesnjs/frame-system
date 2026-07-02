@@ -183,6 +183,10 @@ ALTER TABLE assistants ADD COLUMN IF NOT EXISTS consultation_modalities TEXT DEF
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS specialties TEXT;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_mode BOOLEAN DEFAULT false;
 ALTER TABLE assistants ADD COLUMN IF NOT EXISTS vacation_message TEXT;
+-- Quando true, a IA responde no WhatsApp 24h, ignorando o horário de
+-- funcionamento configurado em Disponibilidade (que continua valendo
+-- só para a agenda de consultas).
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS ai_24h BOOLEAN DEFAULT false;
 
 -- --------------------------------
 -- Epic 3: Agendamento

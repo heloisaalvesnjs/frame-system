@@ -566,6 +566,7 @@ export default function TreinamentoPage() {
   })
 
   const aiPaused = assistant?.ai_paused ?? false
+  const ai24h = assistant?.ai_24h ?? false
   const assistantName = assistant?.name || 'Alice'
 
   function invalidate() { qc.invalidateQueries({ queryKey: ['assistant'] }) }
@@ -577,6 +578,15 @@ export default function TreinamentoPage() {
       invalidate()
     },
     onError: () => toast.error('Erro ao alterar status'),
+  })
+
+  const toggle24hMut = useMutation({
+    mutationFn: () => api.post('/api/assistants', { ai_24h: !ai24h }),
+    onSuccess: () => {
+      toast.success(ai24h ? 'Voltando a respeitar o horário de Disponibilidade' : 'Assistente agora atende 24h no WhatsApp')
+      invalidate()
+    },
+    onError: () => toast.error('Erro ao alterar horário de atendimento'),
   })
 
   return (
@@ -669,6 +679,21 @@ export default function TreinamentoPage() {
                           disabled={togglePauseMut.isPending}>
                           {togglePauseMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                           {aiPaused ? 'Ativar' : 'Pausar'}
+                        </Btn>
+                      </div>
+                    } />
+                  <Row title="Horário de atendimento da IA"
+                    desc={ai24h
+                      ? 'Responde 24h no WhatsApp, mesmo fora do horário configurado em Disponibilidade'
+                      : 'Responde só dentro do horário configurado em Disponibilidade'}
+                    control={
+                      <div className="flex items-center gap-3">
+                        <Badge variant={ai24h ? 'success' : 'default'}>{ai24h ? '24h' : 'Horário comercial'}</Badge>
+                        <Btn variant={ai24h ? 'outline' : 'primary'} size="sm"
+                          onClick={() => toggle24hMut.mutate()}
+                          disabled={toggle24hMut.isPending}>
+                          {toggle24hMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          {ai24h ? 'Voltar ao horário comercial' : 'Atender 24h'}
                         </Btn>
                       </div>
                     } />
