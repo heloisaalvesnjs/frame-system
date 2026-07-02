@@ -16,26 +16,23 @@ setInterval(() => {
 /**
  * Extrai os campos relevantes do payload da uazapi (modo simples, evento "messages").
  *
- * Formato esperado:
+ * Formato REAL confirmado em produção em 2026-07-02 (via captura de payload bruto —
+ * diferente da documentação oficial docs.uazapi.com, que descrevia `event`/`instance`/`data`):
  * {
- *   event: "messages",
- *   instance: "<instance_id>",      ← ID da instância (não o token); usado para rotear multi-tenant
- *   data: {
+ *   EventType: "messages",
+ *   instanceName: "RA5S2j",           ← nome de exibição da instância, NÃO é o instance_id
+ *   token: "3041108b-...",            ← instance_token direto no payload — usado pra rotear
+ *   message: {
  *     chatid: "5511999999999@s.whatsapp.net",
  *     isGroup: false,
  *     fromMe: false,
- *     messageType: "text",
+ *     type: "text",
  *     text: "texto da mensagem",
+ *     content: "texto da mensagem",   ← duplicado de text em mensagens simples
  *     messageid: "...",
  *     wasSentByApi: false
  *   }
  * }
- *
- * ATENÇÃO: este parser foi escrito com base na documentação oficial docs.uazapi.com,
- * mas ainda não foi validado contra um payload real capturado em produção.
- * Antes do primeiro deploy em produção com um número real, capture um webhook via
- * webhook.cool e verifique se os campos (`data.text`, `data.chatid`, `data.messageid`)
- * correspondem exatamente ao que está sendo esperado aqui. Ajuste se necessário.
  */
 function parseUazapiPayload(payload: unknown): {
   isMessage: boolean
@@ -43,19 +40,19 @@ function parseUazapiPayload(payload: unknown): {
   phone: string
   messageText: string
   messageId: string
-  instanceId: string
+  instanceToken: string
 } {
   const p = (payload ?? {}) as Record<string, unknown>
-  const event      = (p.event      ?? '') as string
-  const instanceId = (p.instance   ?? '') as string
-  const data       = (p.data       ?? {}) as Record<string, unknown>
+  const eventType     = (p.EventType ?? p.event ?? '') as string
+  const instanceToken = (p.token     ?? '') as string
+  const message        = (p.message  ?? p.data ?? {}) as Record<string, unknown>
 
-  // uazapi usa event = "messages" para mensagens recebidas
-  const isEventMessage = event === 'messages'
+  // uazapi usa EventType = "messages" para mensagens recebidas
+  const isEventMessage = eventType === 'messages'
 
-  const chatId  = (data.chatid  ?? '') as string
-  const fromMe  = data.fromMe === true
-  const isGroup = data.isGroup === true || chatId.endsWith('@g.us')
+  const chatId  = (message.chatid  ?? '') as string
+  const fromMe  = message.fromMe === true
+  const isGroup = message.isGroup === true || chatId.endsWith('@g.us')
 
   // Só processa mensagens diretas (@s.whatsapp.net), não grupos
   const isDirectMessage = chatId.endsWith('@s.whatsapp.net') && !isGroup
@@ -63,8 +60,8 @@ function parseUazapiPayload(payload: unknown): {
   // Normaliza o número: remove @s.whatsapp.net e caracteres não-numéricos
   const phone = chatId.replace('@s.whatsapp.net', '').replace(/\D/g, '')
 
-  const messageText = (data.text      ?? '') as string
-  const messageId   = (data.messageid ?? '') as string
+  const messageText = ((message.text ?? message.content) ?? '') as string
+  const messageId   = (message.messageid ?? '') as string
 
   return {
     isMessage: isEventMessage && isDirectMessage,
@@ -72,7 +69,7 @@ function parseUazapiPayload(payload: unknown): {
     phone,
     messageText,
     messageId,
-    instanceId,
+    instanceToken,
   }
 }
 
@@ -118,7 +115,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       return reply.send({ ok: true })
     }
 
-    const { phone, messageText, messageId, instanceId } = parsed
+    const { phone, messageText, messageId, instanceToken } = parsed
 
     // Deduplicação
     const dedupeKey = messageId || `${phone}:${messageText}:${Date.now()}`
@@ -129,12 +126,12 @@ export async function webhookRoutes(app: FastifyInstance) {
     recentlyProcessed.set(dedupeKey, Date.now())
 
     try {
-      // Multi-tenant: roteia pelo instance_id do payload
-      // (armazenado em whatsapp_connections.instance_id na criação da instância)
-      const connection = instanceId
+      // Multi-tenant: roteia pelo instance_token do payload (a uazapi manda o token
+      // direto no corpo — não precisa de instance_id nem de lookup por instância)
+      const connection = instanceToken
         ? await queryOne<{ nutritionist_id: string; instance_token: string }>(
-            `SELECT nutritionist_id, instance_token FROM whatsapp_connections WHERE instance_id = $1`,
-            [instanceId]
+            `SELECT nutritionist_id, instance_token FROM whatsapp_connections WHERE instance_token = $1`,
+            [instanceToken]
           )
         : await queryOne<{ nutritionist_id: string; instance_token: string }>(
             `SELECT nutritionist_id, instance_token FROM whatsapp_connections
@@ -142,7 +139,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           )
 
       if (!connection) {
-        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceId ? ` para instance_id: ${instanceId}` : ''}`)
+        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceToken ? ` para instance_token: ${instanceToken}` : ''}`)
         return reply.send({ ok: true })
       }
 
