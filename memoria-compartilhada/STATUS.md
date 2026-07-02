@@ -9,6 +9,271 @@
 
 ## Claude Code
 
+- **2026-07-02 — Bug corrigido: Orquestrador re-enviava a mensagem de escalação
+  ("vou chamar o David") repetidamente na mesma conversa.** Heloísa reportou o
+  sintoma direto (visto nos executions do n8n): cliente já sendo atendido por
+  humano manda outra mensagem continuando a conversa → IA não reconhece o
+  contexto → manda de novo a msg automática de transferência → cliente responde
+  algo genérico ("ok, tá bom") → IA manda a mesma msg de novo. Causa raiz: o
+  sistema já tem a proteção certa para isso — `conversations.status =
+  'human_takeover'`, checado em `webhook.routes.ts` ANTES de encaminhar
+  qualquer mensagem pro n8n (só salva, não processa) — mas o workflow
+  `FRAME - Orquestrador` (`I6DwIWxE6qYNasZj`), ao classificar rota `HUMANO`,
+  nunca marcava a conversa nesse status; só mandava o WhatsApp de escalação e
+  logava. Por isso toda mensagem seguinte do lead ainda batia como `active`,
+  voltava a ser encaminhada e reclassificada do zero.
+  **Fix implementado**: (1) novo endpoint interno
+  `PATCH /api/internal/n8n/conversations/:phone/takeover?nutritionist_id=`
+  (`internal.routes.ts`) que marca a conversa mais recente do telefone como
+  `human_takeover`; (2) novo node `Marcar conversa como humano` no workflow do
+  Orquestrador, conectado a partir de `Preparar mensagem de escalacao`,
+  chamando esse endpoint — editado via MCP e **publicado**
+  (`publish_workflow`, `activeVersionId` confirmado); (3) como não existia
+  nenhum jeito de voltar de `human_takeover` pra automático (só existia
+  `POST /:id/takeover` pra assumir, nunca o inverso), criado
+  `POST /api/conversations/:id/resume` (`conversation.routes.ts`) + botão
+  "Devolver para IA" em `/conversas` (substitui o botão "Assumir" quando
+  `status === 'human_takeover'`). `npx tsc --noEmit` ok em api e dashboard.
+  **Efeito colateral esperado, correto por design**: qualquer classificação
+  que caia no fallback do switch `Rotear para agente` (`fallbackOutput:
+  "extra"`, inclui a instabilidade já documentada de saída vazia `{}` do
+  classificador) agora também vai silenciar a IA pra aquele lead até alguém
+  clicar "Devolver para IA" no dashboard — antes só repetia a msg de
+  escalação sem sinalizar nada pro David. Considerado uma melhoria (David
+  passa a ver o badge "Precisa de você"), mas vale observar se a instabilidade
+  do classificador aumentar a frequência de silenciamentos indevidos.
+  **Sem commit/push ainda** (mudanças de backend/frontend só no working tree
+  local; o workflow n8n já está publicado em produção via MCP, que é
+  independente do deploy do Frame API/dashboard).
+
+- **2026-07-02 — Novo subagente `social-creator` criado**, a pedido da Heloísa: transforma
+  links de conteúdo (posts/reels/artigos de outros criadores) em carrossel pronto (HTML,
+  já na identidade Frame System) ou ideia de reels (conceito + como gravar). Ela mandou
+  12 links de referência de estilo, analisados via browser (Chrome já logado no Instagram
+  — `WebFetch` não renderiza posts do Instagram, precisa de sessão). Achados principais:
+  (1) `marketing/instagram-carousel-01.html` já existia e já é, literalmente, o template
+  de carrossel no estilo "editorial premium" (fundo escuro Carbon, glow verde Frame Green,
+  Bricolage/DM Mono/Lora) que ela apontou como referência (clickmax.io/euhvdesigner/
+  lukauomi) — virou o "Modo A" (padrão) do agente novo, reaproveitando os componentes
+  (`.pill/.card/.chip/.metric/.msg`) em vez de recriar do zero; (2) segunda referência
+  (felipetambara.ia — fundo creme, selo numerado, mascote) virou "Modo B" (didático/
+  listicle), mas **adaptado pra paleta Frame** (não importa cores do original — só a
+  estrutura); (3) referências de reels (victor.peixoto/gabrielmolinari/babruna/
+  felipetambara.ia/clickmax.io) convergem pro mesmo padrão: talking head + legenda fixa
+  no terço inferior + inserção opcional de tela gravada — documentado como spec de reels
+  do agente (concept + shot list, sem produção completa). Agente registrado em
+  `.claude/agents/social-creator.md`, tabela de agentes do `CLAUDE.md` atualizada
+  (11 → 12). Convenção de saída: carrossel novo vira `marketing/instagram-carousel-0N.html`
+  (reaproveitando o `<style>` do 01), reels novo vira entrada em `marketing/reels-ideias.md`
+  (arquivo ainda não existe, agente cria quando a primeira ideia for gerada).
+
+- **2026-07-02 — Análise (via orchestrator) da proposta de reestruturação total do sistema
+  pedida pela Heloísa: dashboard fora, config 100% no prompt do n8n, Google Calendar pra
+  disponibilidade, cobrança PIX com confirmação por emoji do David, Chatwoot pras
+  conversas, migração pra Supabase, front reconstruído no Lovable/Vercel.**
+  Recomendação entregue: **não reestruturar, adicionar** — a maior parte da proposta já é
+  realidade pro David (ele já roda 100% no n8n, dashboard antigo é quase decorativo pra
+  ele). Pontos de risco identificados: Google Calendar como fonte de disponibilidade
+  quebra a Regra Inegociável #1 (IA nunca inventa horário — o node de Calendar entrega
+  free/busy bruto, a IA teria que calcular os slots livres, risco documentado de erro);
+  confirmação de pagamento por reação de emoji é frágil e provavelmente nem chega no
+  webhook (uazapi só processa `EventType === "messages"`, e o código descarta `fromMe`,
+  que é como a própria reação do David chegaria) — melhor resolvida por webhook de
+  gateway de pagamento (ver abaixo); Supabase agora reabre a Regra Inegociável #5 (não
+  migrar antes do 1º cliente pagante — **Pipeline comercial está zerado, MRR R$0**,
+  precisa confirmar com a Heloísa se o David já conta como pagante); existe pelo menos
+  outra conta real (assistente "Michele") ainda no fluxo antigo do dashboard — abandonar
+  o dashboard sem migrar essas contas primeiro quebraria o atendimento delas.
+  Plano de sequenciamento proposto (aditivo, sem tocar no que já funciona): Fase 0
+  (confirmar se David paga, quantas contas dependem do dashboard antigo, escolher
+  gateway) → Fase 1 (lembrete de véspera novo, fluxo de cobrança PIX em workflow
+  separado, sync de saída pro Google Calendar só como "vitrine" pro David, não como
+  fonte) → Fase 2 (Chatwoot, limpeza — não reescrita — do dashboard). Supabase e
+  reescrita do front ficam pra depois, isolados.
+  **Gateway escolhido pela Heloísa: Asaas** (perguntou especificamente sobre ele).
+  Desenho de integração já detalhado: criar cliente (`POST /v3/customers`) → criar
+  cobrança PIX (`POST /v3/payments`, `externalReference` = `appointment_id`, pra
+  reconciliar depois) → IA manda `invoiceUrl` (ou PIX copia-e-cola via
+  `GET /v3/payments/{id}/pixQrCode`) por WhatsApp → webhook do Asaas
+  (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) dispara workflow novo no n8n que confirma o
+  agendamento automaticamente — sem depender do David reagir a nada. Nota de segurança:
+  o valor do sinal (10%) deve ser calculado em node de código determinístico, não pela
+  IA (mesmo princípio da Regra #1, aplicado a dinheiro).
+  **Pendente/bloqueado**: Heloísa está aguardando confirmação do David sobre o gateway
+  (Asaas) antes de seguir com a implementação. Próximo passo, quando ele confirmar: pedir
+  API key do Asaas (ambiente sandbox primeiro) e construir o workflow de cobrança
+  isolado, testável sem mexer no atendimento/agendamento já em produção.
+
+- **2026-07-02 — Texto dos planos presencial/online do David atualizado no workflow n8n
+  `FRAME - Agente Atendimento` (`nrzMUgIFzjQ3Zf8F`), publicado em produção.** A Heloísa
+  descobriu, ao tentar editar em `/servicos` (dashboard antigo, `ai.service.ts`), que o
+  David na verdade roda na arquitetura nova (n8n, persona "Daniela") — mexer no dashboard
+  não tinha efeito nenhum na conversa real dele. O texto certo dos planos (presencial:
+  Mensal/Trimestral/Semestral; online: Trimestral/Semestral/Anual, com narrativa completa
+  em vez dos bullets curtos que estavam antes) foi cravado no `systemMessage` do node
+  "AI Agent Atendimento", com instrução explícita para a IA enviar o bloco EXATAMENTE
+  como escrito (verbatim, sem parafrasear) ao apresentar os planos — a pedido explícito
+  da Heloísa. Documentação espelho em
+  `obsidian/03 - Técnico/n8n/prompts/prompt-atendimento.md` também atualizada.
+  **Nota técnica importante para futuras edições via MCP n8n**: `update_workflow` com
+  operação `setNodeParameter` e `path: "/parameters/options/systemMessage"` **não
+  substitui** o valor existente — cria uma chave aninhada nova
+  (`node.parameters.parameters.options.systemMessage`), deixando o texto novo órfão sem
+  efeito e o node continua rodando o texto antigo. O que funcionou: `updateNodeParameters`
+  com `replace: true` e o objeto `parameters` completo do node (agent/promptType/text/
+  options.systemMessage). **Também**: editar via MCP salva como rascunho — é preciso
+  chamar `publish_workflow` depois pra `activeVersionId` bater com a versão editada e a
+  mudança valer de fato em produção (sem publicar, o node continua servindo a versão
+  antiga mesmo com o rascunho "salvo").
+  **Pendente**: mensagem de pós-compra (David quer mandar algo depois que o cliente
+  fecha/paga) fica pra depois — Heloísa ainda está decidindo o gateway de pagamento, e
+  hoje o follow-up automático está desativado (decisão registrada no onboarding do David,
+  `obsidian/04 - Comercial/David - Setup Frame System.md`, seção 9: "não ativar agora
+  focar no atendimento"). Quando ela decidir o gateway, retomar esse desenho (gatilho +
+  conteúdo da mensagem, ainda não definidos).
+
+- **2026-07-02 (final da sessão anterior) — Rede n8n↔API e memória de conversa nos 3 workflows,
+  confirmado com teste real de agendamento completo.**
+  (1) **Fix de rede**: 502 intermitentes em TODAS as chamadas n8n→API eram causados por
+      hairpin no proxy do EasyPanel (n8n chamando a API pelo domínio público, mesmo host).
+      Adicionado `API_INTERNAL_URL` (`http://nutriapp_api:3001`, hostname interno do Docker,
+      já configurado pela Heloísa no EasyPanel) usado só no payload `internal_api_url`
+      mandado ao n8n (fix em webhook.routes.ts). Resolveu 100% — confirmado: erros
+      passaram de "Service is not reachable" (gateway) pra erros reais da nossa API.
+  (2) **Memória real nos 3 workflows**: Orquestrador, Atendimento e Agendamento agora
+      injetam `recent_messages` (histórico real vindo do banco, via `/api/internal/n8n/context`)
+      direto no prompt de cada IA — antes, cada sub-agente só via a própria memória técnica
+      interna do LangChain (que no caso do Agendamento salvava JSON técnico, não texto
+      natural, então "esquecia" o que já tinha mostrado ao lead). Isso corrige o bug
+      reportado pela Heloísa: IA perguntando "presencial ou online?" de novo depois de já
+      ter respondido, e reenviando a mesma lista de datas em vez de agendar.
+  (3) **Regra nova**: quando só existe 1 data/horário disponível e o lead responde de forma
+      afirmativa genérica ("pode marcar", "sim", etc.), a IA agora entende como escolha
+      automática e avança pro próximo passo, em vez de travar.
+  (4) **Fix do classificador do Orquestrador**: adicionado system message explícito
+      instruindo a IA a classificar direto (chamar a tool) em vez de raciocinar em texto
+      livre — a falta de instrução deixava o modelo ocasionalmente responder `{}` (saída
+      vazia), caindo no fallback "escalar pra humano" por engano.
+  (5) **Bug do ano corrigido**: a IA de Agendamento não sabia o ano atual (a lista de datas
+      mostra só "03 de julho", sem ano) e às vezes montava `data: "2025-07-03"` em vez de
+      2026, fazendo a busca de horários falhar silenciosamente. Prompt agora inclui a data
+      de hoje explicitamente (`$now.format('yyyy-MM-dd')`).
+  **Validado com teste real de 2 mensagens**: "Quando tem vaga para a Serra?" → mostrou 1
+  data de julho → "Pode marcar por favor" → reconheceu a data, buscou horários reais
+  (18 disponíveis) com o ano certo, sem repetir nenhuma pergunta já respondida.
+  Lições técnicas de sintaxe n8n (relevante pra futuras edições de prompt via MCP):
+  quando um `options.systemMessage`/`text` precisa ser uma expressão real (prefixo `=`)
+  em vez de texto estático, (a) chaves duplas literais `{{`/`}}` no meio do texto colidem
+  com o parser de expressões do próprio n8n — construir via `String.fromCharCode(123,123)`
+  em vez de escrever `{{` direto; (b) quebras de linha dentro de uma string JS de aspas
+  simples precisam ser o escape `\n` (2 caracteres), não uma quebra de linha real — ao
+  editar via ferramenta que usa JSON, isso significa usar `\\n` na chamada, não `\n`.
+
+- **Última atividade (anterior)**: 2026-07-01 — Migração Evolution API → uazapi commitada, enviada e vinculada
+  de ponta a ponta:
+  (1) commit `17041db` push para `origin/main`, deploy disparado. EasyPanel já configurado pela
+      Heloísa (env vars uazapi ok, deploy ok).
+  (2) Registro do David vinculado no banco (`instance_token=3041108b-c9a6-42fa-b9cc-6b390fd0e587`,
+      `instance_id=r71f138f3a679b9`) — confirmado contra a API da uazapi (status "connected",
+      profileName "Agendamento David Effgen", owner 5527997197602).
+  (3) Webhook da instância já estava configurado corretamente na uazapi
+      (`url: https://api.framesystem.com.br/webhook/whatsapp`, `events: ["messages"]`) — confirmado
+      via `GET /webhook` na uazapi.
+  (4) **Fix crítico nos workflows n8n**: os 3 workflows ativos (`FRAME - Orquestrador`
+      `I6DwIWxE6qYNasZj`, `FRAME - Agente Atendimento` `nrzMUgIFzjQ3Zf8F`, `FRAME - Agente
+      Agendamento` `4jTfG8Ez6mXsRMNl`) ainda enviavam `instance_name` (campo antigo da Evolution)
+      no body de `POST /api/internal/whatsapp/send`, que não é mais aceito pelo endpoint (só aceita
+      `instance_token` ou `nutritionist_id`) — toda mensagem de resposta da IA estava falhando
+      silenciosamente (400) desde o deploy da migração. Corrigido via MCP n8n em 6 nós: trocado
+      `instance_name` por `nutritionist_id` em `Preparar mensagem de escalacao` (Orquestrador),
+      `Enviar resposta WhatsApp` (Atendimento), e `Enviar WhatsApp datas/slots/confirmacao/texto`
+      (Agendamento, 4 nós). `nutritionist_id` já circulava correto em toda a cadeia desde o webhook
+      original — não precisou tocar em mais nada.
+- **2026-07-02 — WhatsApp do David 100% funcional de ponta a ponta, confirmado com mensagem real.**
+  Sessão de debug ao vivo (ver LOG.md para o passo a passo completo). Achados principais:
+  (1) **Formato real do payload da uazapi é diferente da documentação oficial** — a doc descrevia
+      `{event, instance, data:{...}}`, mas o payload real é `{EventType, instanceName, token,
+      message:{...}}`. O `instance_token` vem *direto* no campo `token` do payload — não existe
+      `instance_id` nesse formato. `parseUazapiPayload` (webhook.routes.ts) e o roteamento
+      multi-tenant foram corrigidos pra usar `instance_token` (commit `edf8b63`). Descoberto
+      adicionando um log de debug temporário (removido depois, ver commits
+      `d5c1429`→`edf8b63`→limpeza), coordenado com outra sessão Claude Code que já tinha
+      identificado o mesmo sintoma e adicionado um log parcial (`70a3fa0`).
+  (2) `whatsapp_connections.status` só se autocorrige (`disconnected`→`connected`) quando
+      `GET /api/whatsapp/status` roda — ou seja, quando alguém abre a página de Integrações
+      logado. Sem isso, `POST /api/internal/whatsapp/send` recusa com 400 mesmo com tudo
+      conectado de verdade na uazapi.
+  (3) `assistants.ai_paused` bloqueia silenciosamente TUDO (nem log gera) — vale checar esse
+      toggle primeiro sempre que a IA "não responder nada".
+  (4) Outra sessão paralela adicionou `assistants.ai_24h` (commit `668d13a`) — desacopla o
+      horário de resposta da IA do horário de `Disponibilidade`/agenda. Preferir esse toggle a
+      mexer em `availability` pra testes futuros de "IA fora do horário".
+  (5) Deploy automático do EasyPanel por push nem sempre pega on-the-fly de forma confiável —
+      em um dos pushes desta sessão o deploy precisou ser disparado manualmente no painel antes
+      do código novo entrar no ar (`/health` respondia 200 mas ainda rodava o binário antigo).
+      Vale sempre confirmar a versão pelo comportamento real, não só pelo `/health`.
+- **2026-07-02 — Fluxo de Agendamento (n8n) corrigido: 3 bugs reais, não relacionados à
+  migração uazapi (pré-existentes desde a construção do workflow).** Descobertos ao testar um
+  agendamento real ("Quando tem vaga para a Serra?"), que travava no node `AI Agent Agendamento`
+  do workflow `FRAME - Agente Agendamento` (`4jTfG8Ez6mXsRMNl`):
+  (1) **Crash de prompt**: o `systemMessage` tinha exemplos de JSON com chaves simples
+      (`{"acao": "fetch_dates", ...}`) — o LangChain usa `{chave}` como sintaxe de variável de
+      template, então tentava resolver o exemplo inteiro como nome de variável e quebrava com
+      `INVALID_PROMPT_INPUT`. Corrigido escapando pra chaves duplas (`{{"acao": ...}}`).
+  (2) **Modo de agente incompatível com saída estruturada**: o node estava com
+      `agent: "conversationalAgent"` (formato ReAct, envelope `{action, action_input}`) mas
+      também tinha `hasOutputParser: true` com schema estruturado direto — os dois formatos
+      conflitam. A doc oficial do node (`get_node_types`) confirma: `options.systemMessage` só é
+      suportado quando `agent: "toolsAgent"` (o valor padrão/recomendado). Corrigido trocando
+      pra `toolsAgent`.
+  (3) **Corpo de requisição corrompido**: os 4 nós `Enviar WhatsApp datas/slots/confirmacao/texto`
+      usavam `specifyBody: "string"` com um `body` contendo `JSON.stringify(...)` — isso faz o
+      n8n mandar o JSON inteiro como se fosse uma *chave* de um objeto vazio
+      (`{"<json completo>": ""}`), corrompendo a chamada pro backend. O node equivalente que
+      funciona no Atendimento usa `specifyBody: "json"` + campo `jsonBody` — alinhado os 4 nós
+      do Agendamento com esse padrão.
+  Confirmado com teste real: IA classificou corretamente (`fetch_dates`/`fetch_slots`/etc.),
+  buscou datas reais de `/api/internal/n8n/available-dates` e montou a mensagem certa.
+  **Nota separada, não corrigida (baixa prioridade)**: em uma execução, a IA classificadora do
+  `AI Agent Orquestrador` retornou saída vazia (`{}`) em vez de rotear — parece instabilidade
+  ocasional do modelo (respondeu em texto livre em vez de chamar a tool de formatação), não um
+  bug de configuração. Escalou pra "chamar o David" em vez de rotear certo. Se acontecer com
+  frequência, investigar `max_tokens` (está em 256, pode estar cortando o raciocínio antes da
+  tool call) ou adicionar `temperature: 0`.
+- **2026-07-02 — Datas de agendamento limitadas a um mês por vez (era um bug de produto, não
+  técnico).** A Heloísa reportou que a IA despejava datas de 3-4 meses de uma vez só (30 datas
+  corridas pra frente) — ruim de ler e nada natural. Solução implementada (não só um filtro raso):
+  - `GET /api/internal/n8n/available-dates` (`internal.routes.ts`) ganhou parâmetro opcional
+    `month` (formato `YYYY-MM`). Sem ele, retorna só o mês atual (nunca datas passadas, mesmo
+    se `month` for o mês corrente). Presencial: janela SQL trocada de "hoje +60 dias" pra
+    "início do mês alvo (ou hoje, o que for maior) até o fim desse mês". Online: mesma lógica,
+    trocando o loop de "30 próximas datas úteis" por "dias ativos dentro do mês alvo".
+  - Workflow `FRAME - Agente Agendamento`: `Output Parser Agendamento` ganhou campo opcional
+    `mes` (YYYY-MM); `AI Agent Agendamento` foi instruído a preencher esse campo quando o lead
+    pedir um mês específico (ex.: "tem em agosto?"); `Buscar datas disponiveis` passa esse valor
+    como query param `month`; `Formatar datas` agora convida o lead a pedir outro mês
+    ("Se quiser ver outro mês, é só me falar! 😊") em vez de despejar tudo.
+  Testado em conversa real de 2 mensagens: 1ª mensagem trouxe só julho (25 datas); 2ª mensagem
+  ("Não tenho nada em julho, tem para agosto?") a IA entendeu o pedido e trouxe exatamente
+  agosto (26 datas) — confirmado via `message/find` na uazapi.
+- **Pendente**:
+  (1) Reverter manualmente o horário de quarta-feira (`day_of_week=3`) em `availability` do
+      David — foi ampliado para `00:00–23:59` durante os testes desta sessão (antes de
+      descobrirmos o `ai_24h`) e o valor original não foi salvo. A Heloísa tem acesso ao
+      dashboard agora — ajustar em `/disponibilidade` para o horário real de atendimento dele.
+  (2) Cosmético, não bloqueia: `whatsapp_connections.phone_number` nunca é preenchido em nenhum
+      fluxo (`/connect` nem `/status`) — afeta só a exibição em Integrações (fallback "Instância
+      conectada"). Corrigir se quiser exibir o número real ali.
+  (3) Cosmético: tela de Integrações ainda tem resíduo visual/conceitual da Evolution API
+      (apontado pela Heloísa) — revisar quando fizer sentido, não é urgente.
+  (4) Investigar a instabilidade ocasional do `AI Agent Orquestrador` descrita acima, se voltar
+      a acontecer.
+
+- **Última atividade (anterior)**: 2026-06-26 — Consolidação do projeto:
+  (1) Vault Obsidian migrado para `obsidian/` dentro deste projeto.
+  (2) 7 novos agentes adicionados a `.claude/agents/`. Total agora: 14 agentes.
+  (3) CLAUDE.md atualizado. Sistema funcional (Fastify + Next.js em produção no Vercel).
+
 - **Ultima atividade**: 2026-06-18 - sistema funcional completo. Backend atualizado:
   regras de agendamento (buffer_between_minutes/min_advance_hours/max_appointments_per_day) em
   nutritionists + PUT /api/nutritionists/scheduling-rules; card Regras em /disponibilidade agora

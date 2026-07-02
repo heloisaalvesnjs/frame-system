@@ -113,7 +113,83 @@ salvou em `assistants`. Foi restaurado nesta sessao (ver LOG.md
 funcional, sempre preservar/portar as chamadas de API existentes** - nunca
 trocar uma pagina com queries/mutations reais por um mockup estatico.
 
+## 2026-07-01 - Migração Evolution API → uazapi
+
+Heloisa decidiu substituir totalmente a Evolution API pela uazapi (bloqueava números reais).
+
+**Convenções novas (substituem todas referências à Evolution):**
+- Provedor WhatsApp: uazapi (docs.uazapi.com)
+- Auth: header `token: <instance_token>` por instância (não é global como era `apikey` na Evolution)
+- Criação de instância: header `admintoken: <UAZAPI_ADMIN_TOKEN>` (env var global)
+- Env vars: `UAZAPI_BASE_URL` (URL do servidor, ex: `https://davidatendimento.uazapi.com`) e
+  `UAZAPI_ADMIN_TOKEN`. `EVOLUTION_API_URL`/`EVOLUTION_API_KEY` foram removidas do código.
+- Schema: `whatsapp_connections` tem `instance_token` (auth) e `instance_id` (roteamento de webhook)
+- Webhook recebido: formato `{event:"messages", instance:"<instance_id>", data:{chatid, text, ...}}`
+  — roteamento multi-tenant agora usa `instance_id` (não mais `instance_name`)
+- `API_URL` e `INTERNAL_API_URL` foram consolidadas para `API_PUBLIC_URL` (única var pra URL pública)
+
+**Pendência de validação:** o parser `parseUazapiPayload` foi escrito com base na documentação
+oficial, mas ainda não foi testado contra um payload real. Antes do primeiro deploy em produção
+com número real, capturar via webhook.cool e validar os campos `data.text`, `data.chatid`,
+`data.messageid`. Ajustar se necessário.
+
+## 2026-07-02 - Novo agente `social-creator` (conteúdo Instagram) + convenção de carrossel
+
+Criado `.claude/agents/social-creator.md` a pedido da Heloísa: recebe links de conteúdo
+(posts/reels/artigos de outros criadores, imagens, vídeos) e gera carrossel pronto
+(HTML) ou ideia de reels (conceito + como gravar) para o Instagram do Frame System.
+
+**Convenção nova**: `marketing/instagram-carousel-01.html` (já existia, criado em sessão
+anterior) é o template canônico de carrossel — sistema de componentes reutilizável
+(`.pill`, `.page`, `.title`, `.subtitle`, `.card`, `.chip`, `.metric`, `.msg`) já na
+paleta Carbon/Frame Green/Bricolage Grotesque/DM Mono/Lora. Novos carrosséis devem
+reaproveitar esse `<style>`, não recriar do zero, salvos como
+`marketing/instagram-carousel-0N.html` (numeração sequencial).
+
+Dois "modos" de carrossel documentados no agente, baseados em referências de estilo que
+a Heloísa aprovou (12 links do Instagram analisados via browser - **`WebFetch` não
+renderiza posts do Instagram sem sessão logada**, foi preciso abrir via Chrome já
+autenticado):
+- **Modo A (padrão) "Editorial Premium"**: fundo escuro + glow verde sutil + tipografia
+  bold + prova por dado/mockup. É o que já está em `instagram-carousel-01.html`.
+- **Modo B "Didático/Tutorial"**: selo numerado + headline + card de prova por slide
+  (útil para listicles tipo "5 sinais de que..."), adaptado pra paleta Frame (a
+  referência original usava creme/laranja - não copiar as cores, só a estrutura).
+
+Reels seguem um padrão à parte (talking head + legenda fixa no terço inferior, às vezes
+com inserção de tela gravada) - o agente entrega só conceito + shot list, sem produção,
+acumulando ideias em `marketing/reels-ideias.md` (arquivo ainda não criado - nasce na
+primeira ideia gerada).
+
+**Regra de direito autoral, inegociável para esse agente**: adaptar apenas
+formato/estrutura das referências, nunca o texto/copy literal do criador original.
+
+## 2026-07-02 - Convenção nova: escalação para humano precisa marcar `human_takeover`
+
+Bug corrigido (detalhes completos em STATUS.md/LOG.md): o workflow n8n `FRAME -
+Orquestrador` mandava a mensagem "vou chamar o David" toda vez que reclassificava
+a conversa como `HUMANO`, porque nunca marcava `conversations.status =
+'human_takeover'` — o campo que `webhook.routes.ts` já usa pra bloquear o
+encaminhamento de mensagens pro n8n. Resultado: escalação repetida a cada
+mensagem nova do lead, mesmo depois de já ter avisado o David.
+
+**Convenção daqui pra frente**: qualquer fluxo (n8n ou backend) que informe ao
+lead que um humano vai assumir a conversa **precisa**, no mesmo passo, marcar a
+conversa como `human_takeover` — hoje via `PATCH
+/api/internal/n8n/conversations/:phone/takeover?nutritionist_id=` (novo
+endpoint interno, x-internal-key). Sem isso, a proteção existente em
+`webhook.routes.ts` (que já checa `human_takeover` antes de encaminhar pro n8n)
+nunca entra em ação de fato. Existe agora também o caminho de volta -
+`POST /api/conversations/:id/resume` (JWT da nutri) + botão "Devolver para IA"
+em `/conversas` - que não existia antes (só existia `POST /:id/takeover` pra
+assumir manualmente, nunca o inverso).
+
 ## PendÃªncias em aberto
+
+- (2026-07-01 RESOLVIDO NO CODIGO) Bug de infra: 3 env vars para a mesma
+  coisa ("URL publica da Frame API"). A migracao uazapi consolidou tudo em
+  `API_PUBLIC_URL`. Remover `API_URL` e `EVOLUTION_API_URL/KEY` do EasyPanel
+  apos o deploy da migracao.
 
 - (2026-06-16) Regra para telas reais: nao usar fallbacks ficticios de
   pacientes/conversas/metricas quando a API retorna vazio. Em paginas

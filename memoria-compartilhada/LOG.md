@@ -6,6 +6,148 @@
 
 ---
 
+## 2026-07-02 - Claude Code (fix: escalação pra humano repetia mensagem)
+
+Heloísa reportou, olhando os executions do n8n, que a IA reenviava "vou chamar
+o David" várias vezes na mesma conversa depois de já ter escalado pra humano.
+Causa raiz: `webhook.routes.ts` já bloqueia o encaminhamento de mensagens pro
+n8n quando `conversations.status = 'human_takeover'`, mas o workflow
+`FRAME - Orquestrador` nunca marcava esse status ao classificar rota `HUMANO`
+— só mandava o WhatsApp de escalação e logava, então a próxima mensagem do
+lead ainda batia como conversa `active` e era reclassificada do zero.
+
+**Fix**: novo endpoint interno `PATCH
+/api/internal/n8n/conversations/:phone/takeover?nutritionist_id=`
+(`internal.routes.ts`); novo node `Marcar conversa como humano` no workflow do
+Orquestrador (`I6DwIWxE6qYNasZj`), conectado a partir de `Preparar mensagem de
+escalacao`, chamando esse endpoint — editado e **publicado** via n8n MCP.
+Como não existia caminho de volta de `human_takeover` pra automático, criado
+`POST /api/conversations/:id/resume` + botão "Devolver para IA" em
+`/conversas` (substitui "Assumir" quando a conversa já está assumida).
+`npx tsc --noEmit` ok em api e dashboard. Detalhes completos e efeito
+colateral esperado (fallback do classificador agora também silencia a IA até
+alguém devolver manualmente) documentados em MEMORY.md/STATUS.md.
+
+## 2026-07-01 - Claude Code (vinculação manual da instância uazapi do David)
+
+Heloisa decidiu reaproveitar a instância uazapi que já existia (criada diretamente no
+site uazapi antes da migração) em vez de criar uma nova pelo fluxo `/api/whatsapp/connect`.
+Isso evita duplicidade de instância na conta uazapi.
+
+**Dados da instância a vincular:**
+- `nutritionist_id`: `2dedeb18-6695-4b6d-a49b-09b7f8b340e0` (David Effgen)
+- `instance_token`: `3041108b-c9a6-42fa-b9cc-6b390fd0e587`
+- `instance_id`: `r71f138f3a679b9`
+- Nome da instância na uazapi: `RA5S2j` (informativo, não armazenado na tabela)
+
+**Por que não passou pelo fluxo normal `/connect`:**
+O fluxo `/connect` chama `createInstance()` na uazapi e gera um token novo. Como a
+instância já existia (com token próprio), criar outra resultaria em duas instâncias
+distintas registradas na conta uazapi, ambas ouvindo o mesmo número — o que causaria
+duplicidade de mensagens recebidas.
+
+**Self-healing de status confirmado:**
+`GET /api/whatsapp/status` (`whatsapp.routes.ts` linhas 106-114) consulta o status
+ao vivo via `getInstanceStatus(instance_token)` e atualiza `status = 'connected'`
+no banco automaticamente quando detecta a instância ativa. Não é necessário acertar
+o `status` manualmente — ele se corrige na próxima chamada ao dashboard.
+
+**Status da execução:**
+O banco de produção (EasyPanel PostgreSQL interno) não é acessível externamente —
+porta 5432 não está exposta no firewall do servidor. O SQL para execução manual
+via EasyPanel está documentado na resposta da sessão de 2026-07-01.
+Pré-requisito: a migration `schema.sql` (ALTER TABLE ... instance_token/instance_id)
+deve ser rodada antes deste UPDATE (ela faz parte do commit pendente da migração uazapi).
+
+---
+
+## 2026-07-01 - Claude Code (migração Evolution API → uazapi — substituição total)
+
+Heloisa decidiu abandonar a Evolution API (estava bloqueando números reais) e migrar 100%
+para a uazapi. Substituição total em 10 arquivos, sem suporte duplo.
+
+**Arquivos reescritos (3 completos):**
+- `apps/api/src/services/whatsapp.service.ts` — todas as chamadas HTTP agora apontam para uazapi.
+  `getQRCode/getPairingCode` unificados em `connectInstance(instanceToken, phone?)`.
+  `markAsRead` removida (uazapi usa `readchat/readmessages` no send). `createInstance` agora
+  retorna `{token, id}` — ambos persistidos no banco. `deleteInstance` usa `DELETE /instance`
+  (sem instanceName na URL). Todas as funções públicas mantiveram assinaturas compatíveis
+  (3º parâmetro virou `instanceToken` em vez de `instanceName`).
+- `apps/api/src/routes/whatsapp.routes.ts` — `/connect` cria instância com `UAZAPI_ADMIN_TOKEN`,
+  persiste `instance_token` + `instance_id`. Webhook URL usa `API_PUBLIC_URL` (corrigindo
+  pendência de 2026-07-01 onde `API_URL` era usada). `/qr` chama `connectInstance` sem phone.
+  `/pairing-code` chama `connectInstance` com phone. Sem `getQRCode`/`getPairingCode`.
+- `apps/api/src/routes/webhook.routes.ts` — `parseEvolutionPayload` → `parseUazapiPayload`
+  (novo formato: `event:"messages"`, `instance:"<id>"`, `data.text`, `data.chatid`, etc.).
+  Roteamento multi-tenant agora usa `instance_id` (campo `instance` do payload) em vez de
+  `instance_name`. `activeInstance` → `activeToken`. Payload do n8n substitui
+  `evolution_api_url/key` por `uazapi_base_url/instance_token`.
+
+**Arquivos atualizados (7 pontuais):**
+- `webhook-events.service.ts` — `getConnectionData` retorna `instance_token/uazapi_base_url`.
+- `followup.service.ts` — 8 pontos: SQL (`instance_name→instance_token`), fallback sends,
+  payload do lembrete de consulta (evolution→uazapi).
+- `report.service.ts` — SQL + sendMessage com instance_token.
+- `patient.routes.ts` — SQL + sendMessage com instance_token.
+- `internal.routes.ts` — 5 pontos: SQLs, endpoint `/whatsapp/send` (aceita `nutritionist_id`
+  OU `instance_token`), resposta `/n8n/context` (whatsapp.instance_token/uazapi_base_url).
+- `integrations.routes.ts` — mock de teste atualizado.
+- `db/schema.sql` — `ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS instance_token TEXT`
+  e `instance_id TEXT` + índice único em `instance_id`.
+
+**Env vars:** `EVOLUTION_API_URL/KEY` removidas do código. Entram `UAZAPI_BASE_URL` e
+`UAZAPI_ADMIN_TOKEN`. Criado `apps/api/.env.example` com todas as vars documentadas.
+`API_URL` e `INTERNAL_API_URL` removidas — sistema usa apenas `API_PUBLIC_URL`.
+
+**`npx tsc --noEmit`:** sem erros. Sem commit/push — aguardando revisão da Heloisa.
+
+**Pendência de validação em produção:** o parser `parseUazapiPayload` foi escrito com base
+na documentação da uazapi (docs.uazapi.com), mas ainda não foi validado contra um payload
+real. Recomendado capturar via webhook.cool antes do primeiro deploy em produção e ajustar
+campos se necessário (especialmente `data.text`, `data.chatid`, `data.messageid`).
+
+**Para o EasyPanel:** adicionar `UAZAPI_BASE_URL` e `UAZAPI_ADMIN_TOKEN`; remover
+`EVOLUTION_API_URL`, `EVOLUTION_API_KEY`; confirmar que `API_PUBLIC_URL` está setada
+(a URL do webhook agora usa exclusivamente essa var).
+
+---
+
+## 2026-07-01 - Claude Code (fix producao: webhook do WhatsApp do David nao disparava)
+
+Heloisa reportou que reconectou o WhatsApp do David (troca de numero) e o
+webhook parou de disparar. Diagnostico: `POST /api/whatsapp/connect`
+(`apps/api/src/routes/whatsapp.routes.ts:22`) monta a URL do webhook usando
+a env var `API_URL`, que em producao esta setada como
+`http://nutriapp_api:3001` (hostname interno do Docker). Consultado
+`GET /webhook/find/{instance}` direto na Evolution API confirmou que era
+exatamente essa URL interna que estava registrada na instancia do David
+(`nutri-2dedeb18-6695-4b6d-a49b-09b7f8b340e0`) - a Evolution API (servico
+separado no EasyPanel, dominio publico proprio) nao consegue resolver esse
+hostname, entao a entrega do webhook falhava silenciosamente.
+
+**Fix aplicado agora (sem deploy)**: chamado `POST /webhook/set/{instance}`
+direto na Evolution API para reapontar o webhook para
+`https://api.framesystem.com.br/webhook/whatsapp/{instance}` (testado e
+respondendo 200). Confirmado via `webhook/find` (URL atualizada) e
+`instance/connectionState` (`state: open`). A pedido da Heloisa, so a
+correcao imediata na Evolution foi feita nesta sessao - a correcao de
+codigo (ver pendencia abaixo) ainda nao foi aplicada.
+
+**Pendencia para o codigo** (nao alterado ainda, precisa decisao/execucao
+futura): o backend usa 3 nomes de env var diferentes pro mesmo conceito
+("URL publica da Frame API"): `API_URL` (so em `whatsapp.routes.ts`, com
+fallback `http://localhost:3001`), `API_PUBLIC_URL` (usada em
+`webhook.routes.ts`, `google-calendar.service.ts`, `ai.service.ts`) e
+`INTERNAL_API_URL` (documentada no `.env.example`, nunca lida no codigo -
+morta). Qualquer proxima nutri que conectar o WhatsApp pela primeira vez
+vai cair no mesmo bug se a env var `API_URL` em producao nao estiver
+setada para a URL publica. Recomendado: unificar tudo para `API_PUBLIC_URL`
+em `whatsapp.routes.ts`, remover `INTERNAL_API_URL` do `.env.example`, e
+conferir/ajustar `API_URL` no EasyPanel (ou removê-la, já que não seria
+mais usada).
+
+---
+
 ## 2026-06-18 - Claude Code (backend funcional: regras, Google Calendar, servicos, location/dia)
 
 Sessao focada em deixar o sistema 100% funcional sem tocar no design. Tudo

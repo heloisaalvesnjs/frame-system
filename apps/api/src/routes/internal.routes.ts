@@ -1059,6 +1059,41 @@ export async function internalRoutes(app: FastifyInstance) {
     }
   })
 
+  // ── PATCH /api/internal/n8n/conversations/:phone/takeover ─────────
+  // Marca a conversa ativa mais recente do telefone como 'human_takeover'.
+  // Usado pelo Orquestrador ao escalar para humano, pra evitar reclassificar
+  // e reenviar a mensagem de escalação a cada nova mensagem do lead —
+  // webhook.routes.ts já bloqueia o encaminhamento pro n8n quando a conversa
+  // está nesse status.
+  app.patch('/n8n/conversations/:phone/takeover', auth, async (request, reply) => {
+    const { phone } = request.params as { phone: string }
+    const { nutritionist_id } = request.query as Record<string, string>
+
+    if (!nutritionist_id) {
+      return reply.code(400).send({ error: 'nutritionist_id é obrigatório (query param)' })
+    }
+
+    try {
+      const updated = await queryOne<any>(
+        `UPDATE conversations SET status = 'human_takeover'
+         WHERE id = (
+           SELECT id FROM conversations
+           WHERE nutritionist_id = $1 AND client_phone = $2
+           ORDER BY created_at DESC LIMIT 1
+         )
+         RETURNING id, status`,
+        [nutritionist_id, phone]
+      )
+      if (!updated) {
+        return reply.code(404).send({ error: 'Conversa não encontrada' })
+      }
+      return reply.send({ ok: true, conversation: updated })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/conversations/takeover] Erro ao marcar takeover')
+      return reply.code(500).send({ error: 'Erro interno ao marcar takeover' })
+    }
+  })
+
   // ── POST /api/internal/n8n/automation-logs ────────────────────────
   // Registra execuções do n8n para auditoria e debugging.
   app.post('/n8n/automation-logs', auth, async (request, reply) => {
@@ -1102,6 +1137,157 @@ export async function internalRoutes(app: FastifyInstance) {
     } catch (err) {
       app.log.error({ err }, '[n8n/automation-logs] Erro ao registrar log')
       return reply.code(500).send({ error: 'Erro interno ao registrar log de automação' })
+    }
+  })
+
+  // ── POST /api/internal/n8n/payments/create-charge ─────────────────
+  // Cria uma cobrança PIX no Asaas para o paciente, vinculada a um agendamento.
+  // Requer que o nutricionista tenha asaas_api_key configurada.
+  app.post('/n8n/payments/create-charge', auth, async (request, reply) => {
+    const schema = z.object({
+      nutritionist_id: z.string().uuid(),
+      appointment_id:  z.string().uuid().optional(),
+      amount:          z.number().positive(),
+      type:            z.enum(['sinal', 'integral']),
+      due_date:        z.string().optional(),
+      client_name:     z.string().min(1),
+      client_cpf:      z.string().optional(),
+      client_phone:    z.string().min(8),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Dados inválidos', details: (err as Error).message })
+    }
+
+    try {
+      // 1. Busca a chave Asaas do nutricionista
+      const nutri = await queryOne<{ asaas_api_key: string | null }>(
+        'SELECT asaas_api_key FROM nutritionists WHERE id = $1',
+        [body.nutritionist_id]
+      )
+      if (!nutri?.asaas_api_key) {
+        return reply.code(422).send({ error: 'Nutricionista sem asaas_api_key configurada' })
+      }
+
+      const asaasKey    = nutri.asaas_api_key
+      const asaasBase   = 'https://api.asaas.com/v3'
+      const asaasHeaders = {
+        'Content-Type': 'application/json',
+        'access_token': asaasKey,
+      }
+
+      // 2. Busca ou cria cliente no Asaas
+      // Tenta encontrar pelo CPF (mais confiável) ou pelo nome+telefone
+      let asaasCustomerId: string | null = null
+
+      if (body.client_cpf) {
+        const cpfClean = body.client_cpf.replace(/\D/g, '')
+        const searchRes = await fetch(
+          `${asaasBase}/customers?cpfCnpj=${cpfClean}`,
+          { headers: asaasHeaders }
+        )
+        if (searchRes.ok) {
+          const searchData = await searchRes.json() as { data?: { id: string }[] }
+          asaasCustomerId = searchData.data?.[0]?.id ?? null
+        }
+      }
+
+      if (!asaasCustomerId) {
+        const createCustomer = await fetch(`${asaasBase}/customers`, {
+          method: 'POST',
+          headers: asaasHeaders,
+          body: JSON.stringify({
+            name:     body.client_name,
+            cpfCnpj: body.client_cpf?.replace(/\D/g, '') ?? undefined,
+            mobilePhone: body.client_phone.replace(/\D/g, ''),
+          }),
+        })
+        if (!createCustomer.ok) {
+          const errText = await createCustomer.text()
+          app.log.error({ status: createCustomer.status, body: errText }, '[n8n/payments] Erro ao criar cliente no Asaas')
+          return reply.code(502).send({ error: 'Erro ao criar cliente no Asaas', detail: errText })
+        }
+        const customerData = await createCustomer.json() as { id: string }
+        asaasCustomerId = customerData.id
+      }
+
+      // 3. Cria a cobrança PIX no Asaas
+      const dueDate = body.due_date ?? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        .toISOString().split('T')[0] // padrão: 3 dias a partir de hoje
+
+      const chargePayload: Record<string, unknown> = {
+        customer:        asaasCustomerId,
+        billingType:     'PIX',
+        value:           body.amount,
+        dueDate,
+        description:     `${body.type === 'sinal' ? 'Sinal' : 'Pagamento integral'} — consulta nutricional`,
+        externalReference: body.appointment_id ?? null,
+      }
+
+      const chargeRes = await fetch(`${asaasBase}/payments`, {
+        method: 'POST',
+        headers: asaasHeaders,
+        body: JSON.stringify(chargePayload),
+      })
+      if (!chargeRes.ok) {
+        const errText = await chargeRes.text()
+        app.log.error({ status: chargeRes.status, body: errText }, '[n8n/payments] Erro ao criar cobrança no Asaas')
+        return reply.code(502).send({ error: 'Erro ao criar cobrança no Asaas', detail: errText })
+      }
+      const chargeData = await chargeRes.json() as {
+        id: string; status: string; value: number; dueDate: string
+      }
+      const asaasPaymentId = chargeData.id
+
+      // 4. Busca QR Code PIX
+      let pixQrCode: string | null = null
+      let pixCopyPaste: string | null = null
+      const pixRes = await fetch(
+        `${asaasBase}/payments/${asaasPaymentId}/pixQrCode`,
+        { headers: asaasHeaders }
+      )
+      if (pixRes.ok) {
+        const pixData = await pixRes.json() as { encodedImage?: string; payload?: string }
+        pixQrCode   = pixData.encodedImage ?? null
+        pixCopyPaste = pixData.payload ?? null
+      } else {
+        app.log.warn({ asaasPaymentId }, '[n8n/payments] Não foi possível obter o QR Code PIX (não crítico)')
+      }
+
+      // 5. Persiste o pagamento no banco
+      const payRows = await query<{ id: string }>(
+        `INSERT INTO payments
+           (nutritionist_id, appointment_id, asaas_payment_id, external_reference,
+            amount, type, method, status, pix_qr_code, pix_copy_paste, due_date)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PIX', 'pending', $7, $8, $9)
+         RETURNING id`,
+        [
+          body.nutritionist_id,
+          body.appointment_id ?? null,
+          asaasPaymentId,
+          body.appointment_id ?? null,
+          body.amount,
+          body.type,
+          pixQrCode,
+          pixCopyPaste,
+          dueDate,
+        ]
+      )
+
+      return reply.send({
+        ok:               true,
+        payment_id:       payRows[0].id,
+        asaas_payment_id: asaasPaymentId,
+        pix_qr_code:      pixQrCode,
+        pix_copy_paste:   pixCopyPaste,
+        status:           'pending',
+      })
+    } catch (err) {
+      app.log.error({ err, body }, '[n8n/payments/create-charge] Erro ao criar cobrança')
+      return reply.code(500).send({ error: 'Erro interno ao criar cobrança' })
     }
   })
 }

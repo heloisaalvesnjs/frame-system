@@ -91,6 +91,12 @@ export default function ConversasPage() {
     onError: () => toast.error('Não foi possível assumir a conversa'),
   })
 
+  const resume = useMutation({
+    mutationFn: () => api.post(`/api/conversations/${selected!.id}/resume`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['conversations'] }); toast.success('IA voltou a responder essa conversa') },
+    onError: () => toast.error('Não foi possível devolver a conversa para a IA'),
+  })
+
   const sendMessage = useMutation({
     mutationFn: (content: string) => api.post(`/api/conversations/${selected!.id}/messages`, { content }),
     onSuccess: () => {
@@ -352,15 +358,27 @@ export default function ConversasPage() {
                 <a href={`https://wa.me/${selected.client_phone?.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
                   <Btn variant="secondary" size="sm" className="w-full">WhatsApp</Btn>
                 </a>
-                <Btn
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => takeover.mutate()}
-                  disabled={takeover.isPending || selected.status === 'human_takeover'}
-                >
-                  Assumir
-                </Btn>
+                {selected.status === 'human_takeover' ? (
+                  <Btn
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => resume.mutate()}
+                    disabled={resume.isPending}
+                  >
+                    Devolver para IA
+                  </Btn>
+                ) : (
+                  <Btn
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => takeover.mutate()}
+                    disabled={takeover.isPending}
+                  >
+                    Assumir
+                  </Btn>
+                )}
               </div>
             </div>
 

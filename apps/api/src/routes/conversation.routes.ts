@@ -69,6 +69,21 @@ export async function conversationRoutes(app: FastifyInstance) {
     return reply.send({ ok: true, conversation: updated })
   })
 
+  // POST /api/conversations/:id/resume — devolve a conversa para a IA
+  // (reverte human_takeover, seja manual ou de uma escalação automática do n8n)
+  app.post('/:id/resume', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { id } = request.params as any
+
+    const [updated] = await query(
+      `UPDATE conversations SET status = 'active'
+       WHERE id = $1 AND nutritionist_id = $2 RETURNING *`,
+      [id, nutritionistId]
+    )
+    if (!updated) return reply.code(404).send({ error: 'Conversa não encontrada' })
+    return reply.send({ ok: true, conversation: updated })
+  })
+
   // POST /api/conversations/:id/resolve — marca como resolvida
   app.post('/:id/resolve', auth, async (request, reply) => {
     const { id: nutritionistId } = (request as any).user
