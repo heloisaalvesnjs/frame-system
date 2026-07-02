@@ -75,43 +75,14 @@ function parseUazapiPayload(payload: unknown): {
 
 export async function webhookRoutes(app: FastifyInstance) {
 
-  // DEBUG temporário — captura QUALQUER requisição que chegue aqui, antes de qualquer parsing.
-  // Existe pra descobrir se a uazapi está de fato batendo neste endpoint: o log dentro de
-  // handleIncoming só roda DEPOIS que o corpo já foi parseado como JSON pelo Fastify — se o
-  // corpo vier malformado (ou em outro content-type), o Fastify rejeita antes de chegar lá,
-  // em silêncio total. Remover após validar o formato real do payload da uazapi.
-  app.addHook('onRequest', async (request) => {
-    request.log.warn(
-      { method: request.method, url: request.url, headers: request.headers },
-      '[webhook][DEBUG] requisição bruta recebida (onRequest, antes do parse)'
-    )
-  })
-
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (request, body, done) => {
-    try {
-      const json = body ? JSON.parse(body as string) : {}
-      done(null, json)
-    } catch (err) {
-      request.log.error(
-        { url: request.url, rawBody: body },
-        '[webhook][DEBUG] falha ao parsear JSON do corpo — payload bruto acima'
-      )
-      done(err as Error, undefined)
-    }
-  })
-
-  // Handler central: recebe o payload uazapi, roteia pelo instance_id, processa em background
+  // Handler central: recebe o payload uazapi, roteia pelo instance_token, processa em background
   async function handleIncoming(request: any, reply: any) {
     const payload = request.body as unknown
-
-    // DEBUG temporário — remover após validar o formato real do payload da uazapi
-    app.log.warn({ payload }, '[webhook][DEBUG] payload bruto recebido')
 
     const parsed = parseUazapiPayload(payload)
 
     // ── Filtra eventos que não são mensagens recebidas do cliente ──────────────
     if (!parsed.isMessage || parsed.fromMe || !parsed.phone || !parsed.messageText) {
-      app.log.warn({ parsed }, '[webhook][DEBUG] descartado — não reconhecido como mensagem válida')
       return reply.send({ ok: true })
     }
 
