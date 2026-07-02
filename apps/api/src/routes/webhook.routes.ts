@@ -252,8 +252,9 @@ export async function webhookRoutes(app: FastifyInstance) {
                   // Credenciais uazapi para o n8n enviar mensagens de resposta
                   instance_token:  activeToken,
                   uazapi_base_url: process.env.UAZAPI_BASE_URL || '',
-                  // Frame API interna
-                  internal_api_url: process.env.API_PUBLIC_URL || 'https://api.framesystem.com.br',
+                  // Frame API interna — usa o hostname interno do Docker (evita hairpin no proxy
+                  // do EasyPanel quando o n8n chama a própria API pelo domínio público)
+                  internal_api_url: process.env.API_INTERNAL_URL || process.env.API_PUBLIC_URL || 'https://api.framesystem.com.br',
                   internal_api_key: process.env.INTERNAL_API_KEY,
                   // Outros serviços
                   n8n_base_url:  process.env.N8N_WEBHOOK_URL?.split('/webhook')[0] || '',
