@@ -573,15 +573,17 @@ export async function internalRoutes(app: FastifyInstance) {
   })
 
   // ── GET /api/internal/n8n/available-dates ────────────────────────────
-  // Retorna datas disponíveis para agendamento nos próximos dias.
+  // Retorna datas disponíveis para agendamento dentro de um único mês.
   // Usado pelo n8n para oferecer datas ao paciente após ele informar a cidade
   // (presencial) ou depois de confirmar interesse (online).
   // Query params:
   //   nutritionist_id — obrigatório
   //   modality        — 'presencial' | 'online' (obrigatório)
   //   city            — nome da cidade (obrigatório se modality=presencial)
+  //   month           — opcional, formato YYYY-MM. Sem isso, usa o mês atual.
+  //                     Nunca retorna datas antes de hoje, mesmo se month for o mês atual.
   app.get('/n8n/available-dates', auth, async (request, reply) => {
-    const { nutritionist_id, modality, city } = request.query as Record<string, string>
+    const { nutritionist_id, modality, city, month } = request.query as Record<string, string>
 
     if (!nutritionist_id || !modality) {
       return reply.code(400).send({ error: 'nutritionist_id e modality são obrigatórios' })
@@ -592,6 +594,22 @@ export async function internalRoutes(app: FastifyInstance) {
     if (modality === 'presencial' && !city) {
       return reply.code(400).send({ error: 'city é obrigatório para modality=presencial' })
     }
+
+    // Resolve o mês alvo (padrão: mês atual) e limita o início ao dia de hoje,
+    // pra nunca oferecer uma data que já passou.
+    const now = new Date()
+    let targetYear = now.getFullYear()
+    let targetMonthIdx = now.getMonth() // 0-indexed
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split('-').map(Number)
+      targetYear = y
+      targetMonthIdx = m - 1
+    }
+    const monthStart         = new Date(targetYear, targetMonthIdx, 1)
+    const monthEndExclusive  = new Date(targetYear, targetMonthIdx + 1, 1)
+    const today               = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const rangeStartDate      = monthStart > today ? monthStart : today
+    const monthLabel          = `${targetYear}-${String(targetMonthIdx + 1).padStart(2, '0')}`
 
     // Arrays estáticos em português — sem biblioteca de datas externa
     const PT_DAYS_LONG  = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
@@ -657,11 +675,11 @@ export async function internalRoutes(app: FastifyInstance) {
            FROM date_location_overrides dlo
            JOIN locations l ON l.id = dlo.location_id
            WHERE dlo.nutritionist_id = $1
-             AND dlo.date >= CURRENT_DATE
-             AND dlo.date <= CURRENT_DATE + INTERVAL '60 days'
+             AND dlo.date >= $3
+             AND dlo.date < $4
              AND l.city ILIKE $2
            ORDER BY dlo.date ASC`,
-          [nutritionist_id, `%${city}%`]
+          [nutritionist_id, `%${city}%`, toDateStr(rangeStartDate), toDateStr(monthEndExclusive)]
         )
 
         const dates = rows
@@ -682,11 +700,12 @@ export async function internalRoutes(app: FastifyInstance) {
         if (!dates.length) {
           return reply.send({
             available: false,
-            reason: `Não há datas disponíveis para ${city} nos próximos 60 dias.`,
+            reason: `Não há datas disponíveis para ${city} em ${monthLabel}. Posso tentar outro mês.`,
+            month: monthLabel,
           })
         }
 
-        return reply.send({ modality, city, dates })
+        return reply.send({ modality, city, month: monthLabel, dates })
       }
 
       // ── Online ───────────────────────────────────────────────────────
@@ -705,17 +724,17 @@ export async function internalRoutes(app: FastifyInstance) {
       }
       const activeDays = new Set<number>(availRows.map((r: any) => r.day_of_week as number))
 
-      // 2. Gera candidatos: próximas 30 datas (a partir de amanhã) nos dias ativos.
-      //    Limite de 180 dias percorridos para não entrar em loop em agendas esparsas.
+      // 2. Gera candidatos dentro do mês alvo, nos dias ativos.
+      //    Sempre a partir de amanhã (nunca hoje), mesmo se o mês alvo for o atual.
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       tomorrow.setHours(0, 0, 0, 0)
 
-      const candidateDateStrs: string[] = []
-      const cursor = new Date(tomorrow)
-      const LIMIT_MS = 180 * 86_400_000
+      const onlineRangeStart = rangeStartDate > tomorrow ? rangeStartDate : tomorrow
 
-      while (candidateDateStrs.length < 30 && cursor.getTime() - tomorrow.getTime() < LIMIT_MS) {
+      const candidateDateStrs: string[] = []
+      const cursor = new Date(onlineRangeStart)
+      while (cursor < monthEndExclusive) {
         if (activeDays.has(cursor.getDay())) {
           candidateDateStrs.push(toDateStr(cursor))
         }
@@ -725,7 +744,8 @@ export async function internalRoutes(app: FastifyInstance) {
       if (!candidateDateStrs.length) {
         return reply.send({
           available: false,
-          reason: 'Sem disponibilidade configurada para atendimento online.',
+          reason: `Sem disponibilidade para atendimento online em ${monthLabel}. Posso tentar outro mês.`,
+          month: monthLabel,
         })
       }
 
@@ -774,11 +794,12 @@ export async function internalRoutes(app: FastifyInstance) {
       if (!dates.length) {
         return reply.send({
           available: false,
-          reason: 'Não há datas disponíveis para atendimento online nos próximos dias.',
+          reason: `Não há datas disponíveis para atendimento online em ${monthLabel}. Posso tentar outro mês.`,
+          month: monthLabel,
         })
       }
 
-      return reply.send({ modality, dates })
+      return reply.send({ modality, month: monthLabel, dates })
 
     } catch (err) {
       app.log.error({ err }, '[n8n/available-dates] Erro ao buscar datas disponíveis')
