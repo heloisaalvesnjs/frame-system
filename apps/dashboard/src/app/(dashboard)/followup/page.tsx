@@ -6,8 +6,7 @@ import { toast } from 'sonner'
 import { CheckCircle, XCircle, AlertCircle, ChevronRight, Loader2, MessageSquare, Mail, Calendar, RotateCcw, MoreHorizontal, Pause, Play, Zap, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Btn, Badge } from '@/components/ui/finance-primitives'
-import { V4Button, V4Card, V4CardPad, V4Metric, V4Page, V4Tag } from '@/components/v4/V4Primitives'
+import { Btn, Badge, Card, Toggle } from '@/components/ui/finance-primitives'
 
 // ── Status checker (configuração da IA) ───────────────────────────
 interface StatusItem {
@@ -34,7 +33,7 @@ function AIStatusChecker() {
   ]
   const score = checks.filter(c => c.ok).length
   return (
-    <V4CardPad>
+    <Card className="!p-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[13px] font-medium text-t1">Configuração da IA</p>
         <span
@@ -57,27 +56,7 @@ function AIStatusChecker() {
           </div>
         ))}
       </div>
-    </V4CardPad>
-  )
-}
-
-// ── Toggle ────────────────────────────────────────────────────────
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className="relative h-[22px] w-10 shrink-0 rounded-full transition-colors"
-      style={{
-        background: value ? 'var(--brand)' : 'var(--raised)',
-        border: value ? 'none' : '1px solid var(--border)',
-      }}
-    >
-      <span
-        className="absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform"
-        style={{ left: value ? '20px' : '2px' }}
-      />
-    </button>
+    </Card>
   )
 }
 
@@ -138,7 +117,7 @@ function AutoCard({ icon: Icon, iconColor, trigger, title, desc, enabled, onTogg
   children?: React.ReactNode
 }) {
   return (
-    <V4CardPad className={enabled ? '' : 'opacity-75'}>
+    <Card className={cn('!p-4', !enabled && 'opacity-75')}>
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--raised)]" style={{ color: iconColor }}>
           <Icon className="h-4 w-4" strokeWidth={1.75} />
@@ -146,18 +125,18 @@ function AutoCard({ icon: Icon, iconColor, trigger, title, desc, enabled, onTogg
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[13px] font-medium text-t1">{title}</p>
-            <V4Tag>{trigger}</V4Tag>
+            <Badge>{trigger}</Badge>
           </div>
           <p className="mt-0.5 text-[12px] leading-relaxed text-t3">{desc}</p>
         </div>
-        <Toggle value={enabled} onChange={onToggle} />
+        <Toggle checked={enabled} onChange={onToggle} size="md" />
       </div>
 
       <div className="mt-3 flex items-center gap-2.5 border-t border-[var(--border)] pt-2.5">
         <FlowStatusDot active={enabled} />
-        <V4Button className="ml-auto h-8 px-3" onClick={onEdit}>
+        <Btn variant="secondary" size="sm" className="ml-auto" onClick={onEdit}>
           {expanded ? 'Fechar' : 'Editar'}
-        </V4Button>
+        </Btn>
       </div>
 
       {expanded && (
@@ -165,16 +144,16 @@ function AutoCard({ icon: Icon, iconColor, trigger, title, desc, enabled, onTogg
           {children}
         </div>
       )}
-    </V4CardPad>
+    </Card>
   )
 }
 
 function SaveBar({ saving, dirty, onSave }: { saving: boolean; dirty: boolean; onSave: () => void }) {
   return (
-    <V4Button variant="primary" className="h-8 px-3" onClick={onSave} disabled={saving || !dirty}>
+    <Btn variant="primary" size="md" className="h-8 px-3" onClick={onSave} disabled={saving || !dirty}>
       {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
       Salvar
-    </V4Button>
+    </Btn>
   )
 }
 

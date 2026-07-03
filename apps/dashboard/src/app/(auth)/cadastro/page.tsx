@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, forwardRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -110,9 +110,9 @@ function PendingScreen({ email }: { email: string }) {
 
 // ── Password field ────────────────────────────────────────────────────────────
 
-function PasswordField({ label, error, placeholder, ...props }: {
+const PasswordField = forwardRef<HTMLInputElement, {
   label: string; error?: string; placeholder?: string; [k: string]: any
-}) {
+}>(function PasswordField({ label, error, placeholder, ...props }, ref) {
   const [show, setShow] = useState(false)
   return (
     <div>
@@ -120,6 +120,7 @@ function PasswordField({ label, error, placeholder, ...props }: {
       <div className="relative">
         <input
           {...props}
+          ref={ref}
           type={show ? 'text' : 'password'}
           placeholder={placeholder}
           className="input pr-10"
@@ -138,7 +139,7 @@ function PasswordField({ label, error, placeholder, ...props }: {
       {error && <p className="text-[12px] mt-1.5" style={{ color: '#EF4444' }}>{error}</p>}
     </div>
   )
-}
+})
 
 // ── Formulário nutricionista ──────────────────────────────────────────────────
 

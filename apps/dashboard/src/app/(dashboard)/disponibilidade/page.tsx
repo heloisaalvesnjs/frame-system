@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Badge, Btn, Card, SectionTitle } from '@/components/ui/finance-primitives'
+import { Badge, Btn, Card, SectionTitle, Toggle } from '@/components/ui/finance-primitives'
 
 // ─── Types ────────────────────────────────────────────────
 interface DayConfig {
@@ -101,17 +101,6 @@ const DEFAULT_DAYS: DayConfig[] = DAYS_META.map(m => ({
 }))
 
 // ─── helpers ─────────────────────────────────────────────
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" onClick={() => onChange(!checked)}
-      className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-all"
-      style={{ background: checked ? 'var(--brand)' : 'var(--bg-surface)', border: checked ? 'none' : '1px solid var(--line-2)' }}>
-      <span className="absolute top-0.5 inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
-        style={{ transform: checked ? 'translateX(18px)' : 'translateX(2px)' }} />
-    </button>
-  )
-}
-
 function TimeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) {
   return (
     <div className="flex flex-col gap-1">
@@ -176,7 +165,7 @@ function DayRow({
         <div className="pb-4 pt-2 pl-32" style={{ borderTop: '1px solid var(--line-1)' }}>
           <div className="flex items-center gap-3 mb-3 flex-wrap">
             <span className="text-[12px] text-2 shrink-0">Ativo</span>
-            <Toggle checked={day.is_active} onChange={v => onChange({ is_active: v })} />
+            <Toggle checked={day.is_active} onChange={v => onChange({ is_active: v })} size="sm" />
           </div>
           {day.is_active && (
             <>
@@ -187,7 +176,7 @@ function DayRow({
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-3 uppercase tracking-wider font-mono">Pausa almoço</span>
                   <div className="flex items-center gap-2 h-[38px]">
-                    <Toggle checked={day.has_break} onChange={v => onChange({ has_break: v })} />
+                    <Toggle checked={day.has_break} onChange={v => onChange({ has_break: v })} size="sm" />
                     <Coffee className={cn('w-3.5 h-3.5', day.has_break ? 'text-amber-400' : 'text-3')} />
                   </div>
                 </div>

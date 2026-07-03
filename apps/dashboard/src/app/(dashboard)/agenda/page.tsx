@@ -131,7 +131,7 @@ function GoogleCalendarCard() {
   }, [searchParams, qc])
   const isConnected = gcalStatus?.connected
   return (
-    <div className="rounded-xl p-3 space-y-2" style={{ border:'1px solid var(--border)', background:'var(--surface)' }}>
+    <div className="rounded-xl p-3 space-y-2" style={{ border:'1px solid var(--line-1)', background:'var(--bg-elevated)' }}>
       <div className="flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -140,7 +140,7 @@ function GoogleCalendarCard() {
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
         <p className="text-[11px] font-semibold text-t1">Google Agenda</p>
-        <div className={cn('ml-auto w-2 h-2 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-t3')} />
+        <span className="ml-auto w-2 h-2 rounded-full shrink-0" style={{ background: isConnected ? 'var(--brand)' : 'var(--text-3)' }} />
       </div>
       {isConnected ? (
         <div className="flex items-center gap-3">
@@ -235,14 +235,14 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh]"
-        style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+        style={{ background:'var(--bg-elevated)', border:'1px solid var(--line-1)' }}>
 
-        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom:'1px solid var(--border)' }}>
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom:'1px solid var(--line-1)' }}>
           <div>
-            <p className="font-bold text-t1">Nova consulta</p>
-            <p className="text-xs text-t3 mt-0.5">{format(parseISO(dateStr), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
+            <p className="font-bold text-1">Nova consulta</p>
+            <p className="text-xs text-3 mt-0.5">{format(parseISO(dateStr), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-t3 hover:bg-[var(--raised)]">
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-3 hover:bg-[var(--bg-surface)]">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -251,28 +251,28 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Data</label>
+              <label className="text-xs text-3 block mb-1.5">Data</label>
               <input type="date" value={dateStr} onChange={e => setDateStr(e.target.value)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
             </div>
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Horário</label>
+              <label className="text-xs text-3 block mb-1.5">Horário</label>
               <input type="time" value={timeStr} onChange={e => setTimeStr(e.target.value)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-t3 block mb-1.5">Paciente</label>
+            <label className="text-xs text-3 block mb-1.5">Paciente</label>
             {selectedClient ? (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border:'1px solid var(--border)', background:'var(--raised)' }}>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border:'1px solid var(--line-1)', background:'var(--bg-surface)' }}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-t1 truncate">{selectedClient.name}</p>
-                  <p className="text-xs text-t3">{selectedClient.phone}</p>
+                  <p className="text-sm font-medium text-1 truncate">{selectedClient.name}</p>
+                  <p className="text-xs text-3">{selectedClient.phone}</p>
                 </div>
-                <button onClick={() => { setSelectedClient(null); setClientSearch('') }} className="text-t3 hover:text-[var(--danger)]">
+                <button onClick={() => { setSelectedClient(null); setClientSearch('') }} className="text-3 hover:text-[var(--danger)]">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -282,31 +282,31 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
                   <input value={clientSearch} onChange={e => { setClientSearch(e.target.value); setShowClientSearch(true) }}
                     onFocus={() => setShowClientSearch(true)}
                     placeholder="Buscar paciente existente..."
-                    className="w-full h-9 rounded-lg px-3 text-sm text-t1 placeholder:text-t3 focus:outline-none"
-                    style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                    className="w-full h-9 rounded-lg px-3 text-sm text-1 placeholder:text-3 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                    style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
                   {showClientSearch && clientResults.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-xl"
-                      style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+                      style={{ background:'var(--bg-elevated)', border:'1px solid var(--line-1)' }}>
                       {clientResults.slice(0, 5).map(c => (
                         <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setShowClientSearch(false) }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--raised)]">
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-surface)]">
                           <div>
-                            <p className="text-sm text-t1">{c.name}</p>
-                            <p className="text-xs text-t3">{c.phone}</p>
+                            <p className="text-sm text-1">{c.name}</p>
+                            <p className="text-xs text-3">{c.phone}</p>
                           </div>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <p className="text-[10px] text-t3">Ou cadastre agora:</p>
+                <p className="text-[10px] text-3">Ou cadastre agora:</p>
                 <div className="grid grid-cols-2 gap-2">
                   <input value={newClientName} onChange={e => setNewClientName(e.target.value)}
-                    placeholder="Nome" className="h-9 rounded-lg px-3 text-sm text-t1 placeholder:text-t3 focus:outline-none"
-                    style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                    placeholder="Nome" className="h-9 rounded-lg px-3 text-sm text-1 placeholder:text-3 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                    style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
                   <input value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)}
-                    placeholder="Telefone" className="h-9 rounded-lg px-3 text-sm text-t1 placeholder:text-t3 focus:outline-none"
-                    style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                    placeholder="Telefone" className="h-9 rounded-lg px-3 text-sm text-1 placeholder:text-3 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                    style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
                 </div>
               </div>
             )}
@@ -314,18 +314,18 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Duração</label>
+              <label className="text-xs text-3 block mb-1.5">Duração</label>
               <select value={duration} onChange={e => setDuration(Number(e.target.value))}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none cursor-pointer"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }}>
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none cursor-pointer"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }}>
                 {DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Modalidade</label>
+              <label className="text-xs text-3 block mb-1.5">Modalidade</label>
               <select value={modality} onChange={e => setModality(e.target.value as any)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none cursor-pointer"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }}>
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none cursor-pointer"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }}>
                 <option value="presencial">Presencial</option>
                 <option value="online">Online</option>
               </select>
@@ -334,10 +334,10 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
 
           {locations.length > 0 && (
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Local de atendimento</label>
+              <label className="text-xs text-3 block mb-1.5">Local de atendimento</label>
               <select value={locationId} onChange={e => setLocationId(e.target.value)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none cursor-pointer"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }}>
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none cursor-pointer"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }}>
                 <option value="">Sem local específico</option>
                 {locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.city ? ` — ${l.city}` : ''}</option>)}
               </select>
@@ -345,15 +345,15 @@ function NewAppointmentModal({ initialDate, onClose, onSaved }: {
           )}
 
           <div>
-            <label className="text-xs text-t3 block mb-1.5">Observações (opcional)</label>
+            <label className="text-xs text-3 block mb-1.5">Observações (opcional)</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               placeholder="Alguma observação sobre a consulta..."
-              className="w-full rounded-lg px-3 py-2 text-sm text-t1 placeholder:text-t3 resize-none focus:outline-none"
-              style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+              className="w-full rounded-lg px-3 py-2 text-sm text-1 placeholder:text-3 resize-none focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+              style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
           </div>
         </div>
 
-        <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop:'1px solid var(--border)' }}>
+        <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop:'1px solid var(--line-1)' }}>
           <Btn variant="secondary" onClick={onClose} className="flex-1">Cancelar</Btn>
           <Btn variant="primary" onClick={handleSave} disabled={saving} className="flex-1">
             {saving ? 'Salvando…' : 'Agendar consulta'}
@@ -376,15 +376,15 @@ function AppointmentModal({ appt, onClose, onUpdate }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden z-10"
-        style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+        style={{ background:'var(--bg-elevated)', border:'1px solid var(--line-1)' }}>
         <div className={cn('px-5 py-4 flex items-start justify-between gap-3', s.bg)}>
           <div>
-            <p className="font-display font-bold text-[17px] text-t1 leading-tight">{appt.client_name}</p>
-            <p className="text-sm text-t2 mt-0.5">
+            <p className="font-display font-bold text-[17px] text-1 leading-tight">{appt.client_name}</p>
+            <p className="text-sm text-2 mt-0.5">
               {format(dt, "EEEE, d 'de' MMMM", { locale: ptBR })} · {format(dt, 'HH:mm')} – {format(endTime, 'HH:mm')}
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-t3 hover:bg-[var(--raised)] flex-shrink-0">
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-3 hover:bg-[var(--bg-surface)] flex-shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -400,11 +400,11 @@ function AppointmentModal({ appt, onClose, onUpdate }: {
               <Badge variant="default"><MapPin className="w-3 h-3" /> {appt.location_name}</Badge>
             )}
           </div>
-          <div className="text-xs text-t2 space-y-1">
-            <p><span className="text-t3">WhatsApp:</span> {appt.client_phone}</p>
-            <p><span className="text-t3">Duração:</span> {dur} min</p>
+          <div className="text-xs text-2 space-y-1">
+            <p><span className="text-3">WhatsApp:</span> {appt.client_phone}</p>
+            <p><span className="text-3">Duração:</span> {dur} min</p>
           </div>
-          {appt.notes && <p className="text-xs text-t2 rounded-lg px-3 py-2" style={{ background:'var(--raised)', border:'1px solid var(--border)' }}>{appt.notes}</p>}
+          {appt.notes && <p className="text-xs text-2 rounded-lg px-3 py-2" style={{ background:'var(--bg-surface)', border:'1px solid var(--line-1)' }}>{appt.notes}</p>}
         </div>
         {appt.status !== 'cancelled' && appt.status !== 'completed' && (
           <div className="px-5 pb-5 flex gap-2">
@@ -457,41 +457,41 @@ function BlockTimeModal({ initialDate, onClose, onSaved }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden z-10"
-        style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--border)' }}>
+        style={{ background:'var(--bg-elevated)', border:'1px solid var(--line-1)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--line-1)' }}>
           <div>
-            <p className="font-bold text-t1">Bloquear horário</p>
-            <p className="text-xs text-t3 mt-0.5">A IA não vai oferecer este período</p>
+            <p className="font-bold text-1">Bloquear horário</p>
+            <p className="text-xs text-3 mt-0.5">A IA não vai oferecer este período</p>
           </div>
-          <button onClick={onClose} className="text-t3 hover:text-t1"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-3 hover:text-1"><X className="w-5 h-5" /></button>
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>
-            <label className="text-xs text-t3 block mb-1.5">Data</label>
+            <label className="text-xs text-3 block mb-1.5">Data</label>
             <input type="date" value={dateStr} onChange={e => setDateStr(e.target.value)}
-              className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none"
-              style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+              className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+              style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Das</label>
+              <label className="text-xs text-3 block mb-1.5">Das</label>
               <input type="time" value={startStr} onChange={e => setStartStr(e.target.value)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
             </div>
             <div>
-              <label className="text-xs text-t3 block mb-1.5">Até</label>
+              <label className="text-xs text-3 block mb-1.5">Até</label>
               <input type="time" value={endStr} onChange={e => setEndStr(e.target.value)}
-                className="w-full h-9 rounded-lg px-3 text-sm text-t1 focus:outline-none"
-                style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+                className="w-full h-9 rounded-lg px-3 text-sm text-1 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+                style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
             </div>
           </div>
           <div>
-            <label className="text-xs text-t3 block mb-1.5">Motivo (opcional)</label>
+            <label className="text-xs text-3 block mb-1.5">Motivo (opcional)</label>
             <input value={reason} onChange={e => setReason(e.target.value)}
               placeholder="Ex: Viagem, reunião, feriado..."
-              className="w-full h-9 rounded-lg px-3 text-sm text-t1 placeholder:text-t3 focus:outline-none"
-              style={{ border:'1px solid var(--border)', background:'var(--raised)' }} />
+              className="w-full h-9 rounded-lg px-3 text-sm text-1 placeholder:text-3 focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
+              style={{ border:'1px solid var(--line-2)', background:'var(--bg-surface)' }} />
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">

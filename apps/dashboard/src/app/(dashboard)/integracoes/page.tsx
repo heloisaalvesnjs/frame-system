@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, Plus, Search, Upload, X } from 'lucide-react'
+import { Check, Loader2, Search, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { Badge, Btn } from '@/components/ui/finance-primitives'
@@ -166,7 +166,7 @@ function WhatsAppCard() {
       id: 'whatsapp',
       name: 'WhatsApp Business',
       category: 'Comunicação',
-      desc: 'Canal principal de atendimento via Evolution API.',
+      desc: 'Canal principal de atendimento via WhatsApp.',
       bg: '#E8FBEF',
       iconColor: '#25D366',
       connected: waConnected,
@@ -224,14 +224,9 @@ export default function IntegracoesPage() {
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-10 px-8 py-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-1">Integrações</h1>
-          <p className="mt-1 text-[13px] text-3">{activeCount} conectada{activeCount !== 1 ? 's' : ''} · disponíveis para conectar</p>
-        </div>
-        <Btn variant="primary" size="sm">
-          <Plus className="h-3.5 w-3.5" /> Sugerir integração
-        </Btn>
+      <div>
+        <h1 className="text-[22px] font-bold tracking-tight text-1">Integrações</h1>
+        <p className="mt-1 text-[13px] text-3">{activeCount} conectada{activeCount !== 1 ? 's' : ''} · disponíveis para conectar</p>
       </div>
 
       {/* Search */}

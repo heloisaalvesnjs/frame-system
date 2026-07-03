@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { FileImage, FileText, X as XIcon, Loader2 } from 'lucide-react'
+import { FileImage, FileText, X as XIcon, Loader2, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Card, Badge, Btn } from '@/components/ui/finance-primitives'
+import { Card, Badge, Btn, Toggle } from '@/components/ui/finance-primitives'
 
 const DEFAULT_SERVICES_MSG =
 `Tenho algumas opções para você 😊
@@ -15,32 +15,160 @@ const DEFAULT_SERVICES_MSG =
 
 Qual dessas faz mais sentido pra você agora? Se tiver dúvida, me conta e te ajudo a escolher a melhor!`
 
-// ── Toggle ────────────────────────────────────────────────────────
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+// ── Service types ─────────────────────────────────────────────────
+type Service = {
+  id: string
+  name: string
+  category?: string
+  modality: 'online' | 'presencial' | 'ambos'
+  price?: number
+  description?: string
+}
+
+type ServiceForm = {
+  name: string
+  category: string
+  modality: 'online' | 'presencial' | 'ambos'
+  price: string
+  description: string
+}
+
+// ── Service modal ─────────────────────────────────────────────────
+function ServiceModal({ service, onClose, onSaved }: {
+  service: Service | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState<ServiceForm>({
+    name: service?.name || '',
+    category: service?.category || '',
+    modality: service?.modality || 'ambos',
+    price: service?.price != null ? String(service.price) : '',
+    description: service?.description || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  const f = (field: keyof ServiceForm) => (v: string) =>
+    setForm(prev => ({ ...prev, [field]: v }))
+
+  async function save() {
+    if (!form.name.trim()) { toast.error('Nome obrigatório'); return }
+    setSaving(true)
+    try {
+      const payload = {
+        name: form.name.trim(),
+        category: form.category.trim() || undefined,
+        modality: form.modality,
+        price: form.price ? Number(form.price) : undefined,
+        description: form.description.trim() || undefined,
+      }
+      if (service) {
+        await api.put(`/api/services/${service.id}`, payload)
+      } else {
+        await api.post('/api/services', payload)
+      }
+      toast.success(service ? 'Serviço atualizado!' : 'Serviço criado!')
+      onSaved()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Erro ao salvar serviço')
+    } finally { setSaving(false) }
+  }
+
+  const inputClass = 'w-full h-9 px-3 rounded-lg text-[13px] outline-none transition focus:ring-2'
+  const inputStyle = { background: 'var(--raised)', color: 'var(--t1)', border: '1px solid var(--border)' }
+
   return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange(!checked)}
-      className={cn('relative inline-flex flex-shrink-0 rounded-full transition-all duration-200 focus:outline-none', disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
-      style={{
-        height: '24px',
-        width: '44px',
-        background: checked ? 'var(--brand)' : 'var(--raised)',
-        border: checked ? 'none' : '1px solid var(--border)',
-        boxShadow: checked ? '0 0 0 3px rgba(0,194,124,0.18)' : 'none',
-      }}
-      title={checked ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar'}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <span
-        className="absolute top-0.5 inline-block rounded-full shadow-sm transition-transform duration-200"
-        style={{
-          height: '20px',
-          width: '20px',
-          background: checked ? '#fff' : 'var(--t3)',
-          transform: checked ? 'translateX(22px)' : 'translateX(2px)',
-        }}
-      />
-    </button>
+      <div
+        className="w-full max-w-md rounded-2xl p-6 space-y-4"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-elevated)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {service ? 'Editar serviço' : 'Novo serviço'}
+          </h3>
+          <button onClick={onClose} className="transition hover:opacity-70" style={{ color: 'var(--t3)' }}>
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11.5px] font-medium block mb-1" style={{ color: 'var(--t3)' }}>Nome *</label>
+            <input
+              value={form.name}
+              onChange={e => f('name')(e.target.value)}
+              placeholder="Ex: Consulta inicial"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="text-[11.5px] font-medium block mb-1" style={{ color: 'var(--t3)' }}>Categoria</label>
+            <input
+              value={form.category}
+              onChange={e => f('category')(e.target.value)}
+              placeholder="Ex: Consulta, Plano, Pacote"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="text-[11.5px] font-medium block mb-1" style={{ color: 'var(--t3)' }}>Modalidade</label>
+            <select
+              value={form.modality}
+              onChange={e => f('modality')(e.target.value as 'online' | 'presencial' | 'ambos')}
+              className={inputClass}
+              style={inputStyle}
+            >
+              <option value="online">Online</option>
+              <option value="presencial">Presencial</option>
+              <option value="ambos">Online + Presencial</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11.5px] font-medium block mb-1" style={{ color: 'var(--t3)' }}>Preço (R$)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.price}
+              onChange={e => f('price')(e.target.value)}
+              placeholder="0,00"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="text-[11.5px] font-medium block mb-1" style={{ color: 'var(--t3)' }}>Descrição</label>
+            <textarea
+              value={form.description}
+              onChange={e => f('description')(e.target.value)}
+              rows={3}
+              placeholder="Descreva brevemente o serviço..."
+              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none resize-none transition focus:ring-2"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 justify-end pt-1">
+          <Btn variant="ghost" size="sm" onClick={onClose}>Cancelar</Btn>
+          <Btn variant="primary" size="sm" onClick={save} disabled={saving}>
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Salvar
+          </Btn>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -87,7 +215,8 @@ function ModalityCard({ emoji, iconBg, title, subtitle, info, loading, onUpload,
         <Toggle
           checked={active}
           disabled={!hasFile}
-          onChange={v => onToggle(v)}
+          onChange={onToggle}
+          size="lg"
         />
       </div>
 
@@ -173,7 +302,7 @@ function MsgGroup({ title, subtitle, enabled, onToggle, text, onTextChange, vari
         </div>
         <div className="flex items-center gap-2.5 flex-shrink-0">
           <StatusTag active={enabled} />
-          <Toggle checked={enabled} onChange={onToggle} />
+          <Toggle checked={enabled} onChange={onToggle} size="lg" />
         </div>
       </div>
 
@@ -228,9 +357,33 @@ function MsgGroup({ title, subtitle, enabled, onToggle, text, onTextChange, vari
 }
 
 // ── Página ────────────────────────────────────────────────────────
-export default function PlanosPage() {
+export default function ServicosPage() {
   const qc = useQueryClient()
 
+  // ── Services state ─────────────────────────────────────────
+  const [showServiceModal, setShowServiceModal] = useState(false)
+  const [editingService, setEditingService] = useState<Service | null>(null)
+
+  const { data: servicesData } = useQuery<Service[]>({
+    queryKey: ['services'],
+    queryFn: () => api.get('/api/services').then(r => r.data.services ?? []),
+  })
+  const services = servicesData ?? []
+
+  async function deleteService(id: string) {
+    try {
+      await api.delete(`/api/services/${id}`)
+      qc.invalidateQueries({ queryKey: ['services'] })
+      toast.success('Serviço removido.')
+    } catch { toast.error('Erro ao remover serviço') }
+  }
+
+  function openNew() { setEditingService(null); setShowServiceModal(true) }
+  function openEdit(s: Service) { setEditingService(s); setShowServiceModal(true) }
+  function closeModal() { setShowServiceModal(false); setEditingService(null) }
+  function onSaved() { qc.invalidateQueries({ queryKey: ['services'] }); closeModal() }
+
+  // ── Planos/media state ─────────────────────────────────────
   const [plansMedia, setPlansMedia] = useState<Record<MediaVariant, MediaEntry>>({ geral: null, online: null, presencial: null })
   const [uploadingVariant, setUploadingVariant] = useState<MediaVariant | null>(null)
 
@@ -358,100 +511,163 @@ export default function PlanosPage() {
     catch { toast.error('Erro ao salvar.') }
   }
 
+  const modalityLabel: Record<string, string> = {
+    online: 'Online',
+    presencial: 'Presencial',
+    ambos: 'Online + Presencial',
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {showServiceModal && (
+        <ServiceModal service={editingService} onClose={closeModal} onSaved={onSaved} />
+      )}
+
       <div>
-        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Planos</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Configure os planos que você oferece e as mensagens automáticas de entrega</p>
+        <h1 className="font-display font-bold text-[22px] tracking-tight" style={{ color: 'var(--t1)' }}>Serviços & Planos</h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--t3)' }}>Configure os serviços oferecidos e as mensagens automáticas de entrega</p>
       </div>
 
-      {/* ── Modalidades de atendimento ─────────────────────────────── */}
+      {/* ── Serviços ─────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--t1)' }}>Modalidades de atendimento</h2>
-        <div className="grid md:grid-cols-3 gap-3.5">
-          <ModalityCard
-            emoji="🌐"
-            iconBg="rgba(10,132,255,0.1)"
-            title="Online"
-            subtitle="Teleconsulta / remoto"
-            info={plansMedia.online}
-            loading={uploadingVariant === 'online'}
-            onUpload={f => uploadMedia(f, 'online')}
-            onDelete={() => deleteMedia('online')}
-            onToggle={v => toggleMedia('online', v)}
-          />
-          <ModalityCard
-            emoji="📍"
-            iconBg="rgba(0,194,124,0.1)"
-            title="Presencial"
-            subtitle="Consultório / clínica"
-            info={plansMedia.presencial}
-            loading={uploadingVariant === 'presencial'}
-            onUpload={f => uploadMedia(f, 'presencial')}
-            onDelete={() => deleteMedia('presencial')}
-            onToggle={v => toggleMedia('presencial', v)}
-          />
-          <ModalityCard
-            emoji="✨"
-            iconBg="rgba(191,90,242,0.1)"
-            title="Geral"
-            subtitle="Ambas as modalidades"
-            info={plansMedia.geral}
-            loading={uploadingVariant === 'geral'}
-            onUpload={f => uploadMedia(f, 'geral')}
-            onDelete={() => deleteMedia('geral')}
-            onToggle={v => toggleMedia('geral', v)}
-          />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>Serviços</h2>
+          <Btn variant="secondary" size="sm" onClick={openNew}>+ Novo serviço</Btn>
         </div>
-        <p className="text-[11px] mt-2.5" style={{ color: 'var(--t3)' }}>
-          A IA envia o arquivo automaticamente ao apresentar os planos
-        </p>
+        <Card>
+          {services.length === 0 ? (
+            <div className="py-8 text-center text-[13px]" style={{ color: 'var(--t3)' }}>
+              Nenhum serviço cadastrado.{' '}
+              <button className="underline transition hover:opacity-70" style={{ color: 'var(--brand)' }} onClick={openNew}>
+                Adicionar agora
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ '--tw-divide-color': 'var(--border)' } as any}>
+              {services.map(s => (
+                <div key={s.id} className="flex items-center gap-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{s.name}</div>
+                    <div className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                      {[
+                        s.category,
+                        modalityLabel[s.modality] ?? s.modality,
+                        s.price != null ? `R$ ${Number(s.price).toFixed(0)}` : '',
+                      ].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="success">Ativo</Badge>
+                    <Btn variant="ghost" size="sm" onClick={() => openEdit(s)}>Editar</Btn>
+                    <Btn
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteService(s.id)}
+                      className="!px-1.5 !text-[var(--t3)] hover:!text-[var(--danger)]"
+                      title="Remover serviço"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
 
-      {/* ── Mensagens dos planos ───────────────────────────────────── */}
+      {/* ── Planos e mensagens automáticas ───────────────────────── */}
       <div>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--t1)' }}>Mensagens dos planos</h2>
-        <div className="flex flex-col gap-2.5">
-          <MsgGroup
-            title="Mensagem planos Online"
-            subtitle="Enviada automaticamente quando o cliente pergunta sobre planos online"
-            enabled={msgOnlineEnabled}
-            onToggle={toggleMsgOnline}
-            text={msgOnlineText}
-            onTextChange={v => { setMsgOnlineText(v); setMsgDirty(true) }}
-            variables={['{planos_online}', '{planos}', '{nutri}']}
-            defaultMsg={`Temos essas opções de consultoria online:\n\n{planos_online}\n\nQual faz mais sentido pra você agora?`}
-            onSave={saveMsgConfig}
-            saving={savingMsg}
-            dirty={msgDirty}
-          />
-          <MsgGroup
-            title="Mensagem planos Presenciais"
-            subtitle="Enviada automaticamente quando o cliente pergunta sobre planos presenciais"
-            enabled={msgPresencialEnabled}
-            onToggle={toggleMsgPresencial}
-            text={msgPresencialText}
-            onTextChange={v => { setMsgPresencialText(v); setMsgDirty(true) }}
-            variables={['{planos_presencial}', '{planos}', '{nutri}']}
-            defaultMsg={`Para o atendimento presencial temos:\n\n{planos_presencial}\n\nQual faz mais sentido pra você?`}
-            onSave={saveMsgConfig}
-            saving={savingMsg}
-            dirty={msgDirty}
-          />
-          <MsgGroup
-            title="Mensagem geral (todos os planos)"
-            subtitle="Usada quando nenhuma mensagem específica acima estiver ativa"
-            enabled={msgEnabled}
-            onToggle={toggleMsg}
-            text={msgText}
-            onTextChange={v => { setMsgText(v); setMsgDirty(true) }}
-            variables={['{planos}', '{planos_online}', '{planos_presencial}', '{nutri}']}
-            defaultMsg={DEFAULT_SERVICES_MSG}
-            onSave={saveMsgConfig}
-            saving={savingMsg}
-            dirty={msgDirty}
-            onReset={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
-          />
+        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--t1)' }}>Planos e mensagens automáticas</h2>
+
+        {/* Modalidades de atendimento */}
+        <div className="mb-4">
+          <p className="text-[12px] mb-3" style={{ color: 'var(--t2)' }}>Modalidades de atendimento — arquivo de plano por canal</p>
+          <div className="grid md:grid-cols-3 gap-3.5">
+            <ModalityCard
+              emoji="🌐"
+              iconBg="rgba(10,132,255,0.1)"
+              title="Online"
+              subtitle="Teleconsulta / remoto"
+              info={plansMedia.online}
+              loading={uploadingVariant === 'online'}
+              onUpload={f => uploadMedia(f, 'online')}
+              onDelete={() => deleteMedia('online')}
+              onToggle={v => toggleMedia('online', v)}
+            />
+            <ModalityCard
+              emoji="📍"
+              iconBg="rgba(0,194,124,0.1)"
+              title="Presencial"
+              subtitle="Consultório / clínica"
+              info={plansMedia.presencial}
+              loading={uploadingVariant === 'presencial'}
+              onUpload={f => uploadMedia(f, 'presencial')}
+              onDelete={() => deleteMedia('presencial')}
+              onToggle={v => toggleMedia('presencial', v)}
+            />
+            <ModalityCard
+              emoji="✨"
+              iconBg="rgba(191,90,242,0.1)"
+              title="Geral"
+              subtitle="Ambas as modalidades"
+              info={plansMedia.geral}
+              loading={uploadingVariant === 'geral'}
+              onUpload={f => uploadMedia(f, 'geral')}
+              onDelete={() => deleteMedia('geral')}
+              onToggle={v => toggleMedia('geral', v)}
+            />
+          </div>
+          <p className="text-[11px] mt-2.5" style={{ color: 'var(--t3)' }}>
+            A IA envia o arquivo automaticamente ao apresentar os planos
+          </p>
+        </div>
+
+        {/* Mensagens dos planos */}
+        <div>
+          <p className="text-[12px] mb-3" style={{ color: 'var(--t2)' }}>Mensagens automáticas ao apresentar planos</p>
+          <div className="flex flex-col gap-2.5">
+            <MsgGroup
+              title="Mensagem planos Online"
+              subtitle="Enviada automaticamente quando o cliente pergunta sobre planos online"
+              enabled={msgOnlineEnabled}
+              onToggle={toggleMsgOnline}
+              text={msgOnlineText}
+              onTextChange={v => { setMsgOnlineText(v); setMsgDirty(true) }}
+              variables={['{planos_online}', '{planos}', '{nutri}']}
+              defaultMsg={`Temos essas opções de consultoria online:\n\n{planos_online}\n\nQual faz mais sentido pra você agora?`}
+              onSave={saveMsgConfig}
+              saving={savingMsg}
+              dirty={msgDirty}
+            />
+            <MsgGroup
+              title="Mensagem planos Presenciais"
+              subtitle="Enviada automaticamente quando o cliente pergunta sobre planos presenciais"
+              enabled={msgPresencialEnabled}
+              onToggle={toggleMsgPresencial}
+              text={msgPresencialText}
+              onTextChange={v => { setMsgPresencialText(v); setMsgDirty(true) }}
+              variables={['{planos_presencial}', '{planos}', '{nutri}']}
+              defaultMsg={`Para o atendimento presencial temos:\n\n{planos_presencial}\n\nQual faz mais sentido pra você?`}
+              onSave={saveMsgConfig}
+              saving={savingMsg}
+              dirty={msgDirty}
+            />
+            <MsgGroup
+              title="Mensagem geral (todos os planos)"
+              subtitle="Usada quando nenhuma mensagem específica acima estiver ativa"
+              enabled={msgEnabled}
+              onToggle={toggleMsg}
+              text={msgText}
+              onTextChange={v => { setMsgText(v); setMsgDirty(true) }}
+              variables={['{planos}', '{planos_online}', '{planos_presencial}', '{nutri}']}
+              defaultMsg={DEFAULT_SERVICES_MSG}
+              onSave={saveMsgConfig}
+              saving={savingMsg}
+              dirty={msgDirty}
+              onReset={() => { setMsgText(DEFAULT_SERVICES_MSG); setMsgDirty(true) }}
+            />
+          </div>
         </div>
       </div>
     </div>

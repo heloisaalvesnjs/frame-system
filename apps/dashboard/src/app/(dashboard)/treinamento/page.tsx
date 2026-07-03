@@ -14,7 +14,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Badge, Btn, Card, SectionTitle } from '@/components/ui/finance-primitives'
+import { Badge, Btn, Card, SectionTitle, Toggle } from '@/components/ui/finance-primitives'
 
 // ─── helpers ────────────────────────────────────────────
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -44,17 +44,6 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
       className="w-full p-3.5 rounded-lg text-[13px] text-1 outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-ring)] transition resize-none leading-relaxed"
       style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line-2)' }}
     />
-  )
-}
-
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button onClick={() => onChange(!on)} type="button"
-      className="relative w-9 h-5 rounded-full transition shrink-0"
-      style={{ background: on ? 'var(--brand)' : 'var(--bg-surface)' }}>
-      <span className="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-        style={{ left: on ? 'calc(100% - 18px)' : '2px' }} />
-    </button>
   )
 }
 
@@ -358,7 +347,7 @@ function LimitsSection({ assistant, onSave }: { assistant: any; onSave: () => vo
       <div className="divide-y divide-[var(--line-1)]">
         {LIMITES_OPTIONS.map(opt => (
           <Row key={opt.key} title={opt.title} desc={opt.desc}
-            control={<Toggle on={limits[opt.key] !== false}
+            control={<Toggle checked={limits[opt.key] !== false} size="sm"
               onChange={v => setLimits(prev => ({ ...prev, [opt.key]: v }))} />} />
         ))}
       </div>
@@ -380,15 +369,17 @@ function HandoffSection({ assistant, onSave }: { assistant: any; onSave: () => v
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (assistant?.farewell_message) {
-      // use farewell_message as a proxy for handoff message if set
+    if (assistant) {
+      setTransfer(assistant.handoff_enabled ?? true)
+      setAutoUrgency(assistant.handoff_auto_urgent ?? true)
+      setMsg(assistant.handoff_message || 'Vou te conectar com a nutricionista agora mesmo. Ela retorna em alguns minutos.')
     }
   }, [assistant])
 
   async function save() {
     setSaving(true)
     try {
-      await api.post('/api/assistants', { farewell_message: msg })
+      await api.post('/api/assistants', { handoff_message: msg, handoff_enabled: transfer, handoff_auto_urgent: autoUrgency })
       toast.success('Configurações de transferência salvas!')
       onSave()
     } catch { toast.error('Erro ao salvar.') }
@@ -401,9 +392,9 @@ function HandoffSection({ assistant, onSave }: { assistant: any; onSave: () => v
       <div className="space-y-5">
         <div className="divide-y divide-[var(--line-1)]">
           <Row title="Permitir transferência" desc="Paciente pode pedir 'falar com nutricionista'"
-            control={<Toggle on={transfer} onChange={setTransfer} />} />
+            control={<Toggle checked={transfer} onChange={setTransfer} size="sm" />} />
           <Row title="Transferir automaticamente em urgências"
-            control={<Toggle on={autoUrgency} onChange={setAutoUrgency} />} />
+            control={<Toggle checked={autoUrgency} onChange={setAutoUrgency} size="sm" />} />
         </div>
         <Field label="Mensagem ao transferir">
           <TextArea rows={3} value={msg} onChange={e => setMsg(e.target.value)} />
@@ -421,23 +412,12 @@ function HandoffSection({ assistant, onSave }: { assistant: any; onSave: () => v
 
 // ─── rules section ───────────────────────────────────────
 function RulesSection() {
-  const [confirmar, setConfirmar]     = useState(true)
-  const [foraDhora, setForaDhora]     = useState(true)
-  const [sugerirHorario, setSugerir]  = useState(true)
-  const [lembrete, setLembrete]       = useState(true)
-
   return (
     <Card>
       <SectionTitle title="Regras de atendimento" hint="Como a assistente se comporta" />
-      <div className="divide-y divide-[var(--line-1)]">
-        <Row title="Sempre confirmar dados antes de agendar" desc="Nome, telefone e e-mail"
-          control={<Toggle on={confirmar} onChange={setConfirmar} />} />
-        <Row title="Responder fora do horário comercial" desc="Avisa que retorna no próximo dia útil"
-          control={<Toggle on={foraDhora} onChange={setForaDhora} />} />
-        <Row title="Sugerir o melhor horário disponível" desc="Baseado na agenda configurada"
-          control={<Toggle on={sugerirHorario} onChange={setSugerir} />} />
-        <Row title="Enviar lembrete pós-agendamento" desc="Confirmação 24h antes da consulta"
-          control={<Toggle on={lembrete} onChange={setLembrete} />} />
+      <div className="py-6 text-center">
+        <p className="text-[13px] font-medium text-1">Regras de atendimento</p>
+        <p className="text-[12px] mt-1 text-3">Em desenvolvimento — em breve por aqui.</p>
       </div>
     </Card>
   )
@@ -591,16 +571,9 @@ export default function TreinamentoPage() {
 
   return (
     <div className="mx-auto max-w-[1240px] px-8 py-8 space-y-8">
-      {/* Sub-header with subtitle + actions */}
-      <div className="flex items-center justify-between gap-4 flex-wrap -mt-2">
+      {/* Sub-header */}
+      <div className="-mt-2">
         <p className="text-[13px] text-2">Configure como {assistantName} atende seus pacientes</p>
-        <div className="flex items-center gap-2">
-          <Btn variant="ghost" size="sm">Histórico</Btn>
-          <Btn variant="primary" size="sm">
-            <Sparkles className="w-3 h-3" />
-            Salvar e publicar
-          </Btn>
-        </div>
       </div>
 
       {/* Hero compacto */}

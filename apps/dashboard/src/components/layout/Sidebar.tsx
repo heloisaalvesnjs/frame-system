@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import api from '@/lib/api'
 import {
   Home,
   Inbox,
@@ -25,7 +27,7 @@ const groups: Array<{
     label: 'Operação',
     items: [
       { href: '/dashboard', label: 'Início',            icon: Home },
-      { href: '/conversas', label: 'Caixa de entrada',  icon: Inbox, badge: '12' },
+      { href: '/conversas', label: 'Caixa de entrada',  icon: Inbox },
       { href: '/agenda',    label: 'Agenda',             icon: Calendar },
       { href: '/clientes',  label: 'Pacientes',          icon: Users },
     ],
@@ -55,6 +57,13 @@ interface SidebarProps {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useAuth()
+
+  const { data: convStats } = useQuery<any>({
+    queryKey: ['conversations-stats'],
+    queryFn: () => api.get('/api/conversations/stats').then(r => r.data.stats),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  })
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
@@ -172,7 +181,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       }}
                     />
                     <span className="truncate">{item.label}</span>
-                    {item.badge && (
+                    {item.href === '/conversas' && (convStats?.human_takeover ?? 0) > 0 && (
                       <span
                         className="ml-auto rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
                         style={{
@@ -180,7 +189,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                           color: 'var(--brand-lime)',
                         }}
                       >
-                        {item.badge}
+                        {convStats.human_takeover}
                       </span>
                     )}
                   </Link>

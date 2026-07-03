@@ -2,6 +2,51 @@ import React from 'react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
+// ─── Toggle ────────────────────────────────────────────────────────
+export function Toggle({
+  checked,
+  onChange,
+  disabled,
+  size = 'md',
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const dims = {
+    sm: { w: 36, h: 20, knob: 16 },
+    md: { w: 40, h: 22, knob: 18 },
+    lg: { w: 44, h: 24, knob: 20 },
+  }[size]
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      className={cn(
+        'relative inline-flex flex-shrink-0 rounded-full transition-all duration-200',
+        disabled && 'cursor-not-allowed opacity-50',
+      )}
+      style={{
+        width: dims.w,
+        height: dims.h,
+        background: checked ? 'var(--brand)' : 'var(--raised)',
+        border: checked ? 'none' : '1px solid var(--border)',
+      }}
+    >
+      <span
+        className="absolute top-0.5 rounded-full bg-white shadow-sm transition-transform duration-200"
+        style={{
+          width: dims.knob,
+          height: dims.knob,
+          transform: `translateX(${checked ? dims.w - dims.knob - 2 : 2}px)`,
+        }}
+      />
+    </button>
+  )
+}
+
 // ─── Card ──────────────────────────────────────────────────────
 export function Card({ className, style, children }: { className?: string; style?: React.CSSProperties; children: ReactNode }) {
   return <div className={cn('surface p-6', className)} style={style}>{children}</div>
