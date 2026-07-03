@@ -229,8 +229,8 @@ export async function buildPosConsultaPayload(
   const connData = await getConnectionData(nutritionist_id, client_phone)
 
   const ass = await queryOne<any>(
-    `SELECT pos_consulta_message FROM assistants
-     WHERE nutritionist_id = $1 AND is_active = true LIMIT 1`,
+    `SELECT auto_feedback_message AS pos_consulta_message FROM assistants
+     WHERE nutritionist_id = $1 AND is_active = true AND auto_feedback_enabled = true LIMIT 1`,
     [nutritionist_id]
   ).catch(() => null)
 
@@ -266,8 +266,8 @@ export async function buildRetornoPayload(
   const connData = await getConnectionData(nutritionist_id, client_phone)
 
   const ass = await queryOne<any>(
-    `SELECT retorno_message, retorno_days FROM assistants
-     WHERE nutritionist_id = $1 AND is_active = true LIMIT 1`,
+    `SELECT auto_return_message AS retorno_message, auto_return_days AS retorno_days FROM assistants
+     WHERE nutritionist_id = $1 AND is_active = true AND auto_return_enabled = true LIMIT 1`,
     [nutritionist_id]
   ).catch(() => null)
 

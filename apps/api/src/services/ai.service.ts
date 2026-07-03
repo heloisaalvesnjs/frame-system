@@ -559,6 +559,11 @@ Esta pessoa já realizou ${appointmentCount} consulta(s) com ${nutriName}. Ela N
     ? `\nAO ENCERRAR A CONVERSA: use algo como "${farewellMsg}" (adapte naturalmente ao contexto).\n`
     : ''
 
+  const handoffMsg = assistant.handoff_message?.trim() || null
+  const handoffSection = handoffMsg
+    ? `\nAO TRANSFERIR PARA ATENDIMENTO HUMANO: use algo como "${handoffMsg}" (adapte naturalmente ao contexto).\n`
+    : ''
+
   const frasesProibidas: string[] = Array.isArray(assistant.frases_proibidas) ? assistant.frases_proibidas.filter(Boolean) : []
   const frasesPreferidas: string[] = Array.isArray(assistant.frases_preferidas) ? assistant.frases_preferidas.filter(Boolean) : []
 
@@ -616,7 +621,7 @@ QUEM VOCÊ É:
 Você é uma recepcionista humana, experiente, que gosta do que faz. Sua função é receber a pessoa com calor, entender rapidamente o que ela busca e marcar a consulta. Você não é nutricionista — não dá conselhos alimentares. Você é a pessoa que abre a porta do consultório.
 
 ${toneGuide} ${emojiRule} Escreva como se fosse uma mensagem de WhatsApp real: frases curtas, sem listas, sem asterisco, sem markdown. Máximo 2 frases por mensagem. 1 pergunta por vez. Nunca use "Claro!", "Com certeza!", "Certamente" — soa robótico.
-${assistant.pdf_content ? `\nSOBRE O CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}${frasesProibidasSection}${frasesPreferidasSection}${farewellSection}
+${assistant.pdf_content ? `\nSOBRE O CONSULTÓRIO:\n${assistant.pdf_content}\n` : ''}${trainingSection}${firstMsgInstruction ? `\n${firstMsgInstruction}\n` : ''}${frasesProibidasSection}${frasesPreferidasSection}${farewellSection}${handoffSection}
 FLUXO DA CONVERSA:
 
 1. ENTENDER O OBJETIVO

@@ -208,7 +208,7 @@ export async function runAppointmentReminders(): Promise<void> {
 export async function runPosConsulta(): Promise<void> {
   console.log('[pos-consulta] Verificando consultas concluídas...')
 
-  // Consultas que terminaram há entre 2h e 4h e ainda não enviaram pós-consulta
+  // Consultas que terminaram há aprox. auto_feedback_delay_hours (±20min) e ainda não enviaram pós-consulta
   const done = await query<any>(`
     SELECT
       a.id,
@@ -216,17 +216,18 @@ export async function runPosConsulta(): Promise<void> {
       COALESCE(a.client_phone, c.phone) AS client_phone,
       c.name AS client_name,
       w.instance_token,
-      ass.pos_consulta_message
+      ass.auto_feedback_message AS pos_consulta_message
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN assistants ass         ON ass.nutritionist_id = a.nutritionist_id AND ass.is_active = true
     JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id AND w.status = 'connected'
     WHERE a.status IN ('scheduled', 'confirmed', 'completed')
       AND a.pos_consulta_sent = false
-      AND ass.pos_consulta_message IS NOT NULL
-      -- Consulta já aconteceu há entre 2h e 4h
-      AND a.scheduled_at BETWEEN NOW() - INTERVAL '4 hours'
-                              AND NOW() - INTERVAL '2 hours'
+      AND ass.auto_feedback_enabled = true AND ass.auto_feedback_message IS NOT NULL
+      -- Consulta já aconteceu há aproximadamente auto_feedback_delay_hours (janela ±20min)
+      AND a.scheduled_at BETWEEN
+            NOW() - (COALESCE(ass.auto_feedback_delay_hours, 2) || ' hours')::INTERVAL - INTERVAL '20 minutes'
+        AND NOW() - (COALESCE(ass.auto_feedback_delay_hours, 2) || ' hours')::INTERVAL + INTERVAL '20 minutes'
   `)
 
   console.log(`[pos-consulta] ${done.length} pós-consulta(s) para enviar`)
@@ -276,21 +277,21 @@ export async function runRetorno(): Promise<void> {
       c.name              AS client_name,
       a.scheduled_at,
       w.instance_token,
-      ass.retorno_message,
-      ass.retorno_days
+      ass.auto_return_message AS retorno_message,
+      ass.auto_return_days AS retorno_days
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN assistants ass         ON ass.nutritionist_id = a.nutritionist_id
                                 AND ass.is_active = true
-                                AND ass.retorno_message IS NOT NULL
+                                AND ass.auto_return_enabled = true AND ass.auto_return_message IS NOT NULL
     JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
                                 AND w.status = 'connected'
     WHERE a.status IN ('scheduled', 'confirmed', 'completed')
       AND a.return_message_sent = false
-      -- Consulta foi há exatamente retorno_days dias (janela de ±12h para o cron)
+      -- Consulta foi há exatamente auto_return_days dias (janela de ±12h para o cron)
       AND a.scheduled_at BETWEEN
-            NOW() - (COALESCE(ass.retorno_days, 30) || ' days')::INTERVAL - INTERVAL '12 hours'
-        AND NOW() - (COALESCE(ass.retorno_days, 30) || ' days')::INTERVAL + INTERVAL '12 hours'
+            NOW() - (COALESCE(ass.auto_return_days, 30) || ' days')::INTERVAL - INTERVAL '12 hours'
+        AND NOW() - (COALESCE(ass.auto_return_days, 30) || ' days')::INTERVAL + INTERVAL '12 hours'
       -- Não tem consulta futura marcada
       AND NOT EXISTS (
         SELECT 1 FROM appointments a2

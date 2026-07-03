@@ -354,4 +354,39 @@ export async function webhookRoutes(app: FastifyInstance) {
   app.post('/whatsapp/:instanceParam', async (request, reply) => {
     return handleIncoming(request, reply)
   })
+
+  // ── POST /webhook/asaas ────────────────────────────────────────────
+  // Recebe eventos do Asaas (confirmação de pagamento PIX).
+  // Handler TOTALMENTE ISOLADO — não chama handleIncoming nem parseUazapiPayload.
+  app.post('/asaas', async (request, reply) => {
+    try {
+      const token = request.headers['asaas-access-token']
+      if (process.env.ASAAS_WEBHOOK_TOKEN && token !== process.env.ASAAS_WEBHOOK_TOKEN) {
+        return reply.code(401).send({ error: 'unauthorized' })
+      }
+
+      const body = request.body as any
+      const event          = body?.event as string | undefined
+      const asaasPaymentId = body?.payment?.id as string | undefined
+
+      if ((event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') && asaasPaymentId) {
+        await query(
+          `UPDATE payments SET status = 'confirmed', paid_at = NOW(), updated_at = NOW()
+           WHERE asaas_payment_id = $1`,
+          [asaasPaymentId]
+        )
+        await query(
+          `UPDATE appointments SET status = 'confirmed'
+           WHERE id = (SELECT appointment_id FROM payments WHERE asaas_payment_id = $1)`,
+          [asaasPaymentId]
+        )
+        app.log.info({ event, asaasPaymentId }, '[webhook/asaas] Pagamento confirmado')
+      }
+
+      return reply.send({ ok: true })
+    } catch (err) {
+      app.log.error(err, '[webhook/asaas] erro ao processar')
+      return reply.code(500).send({ ok: false })
+    }
+  })
 }

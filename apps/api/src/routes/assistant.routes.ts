@@ -36,7 +36,8 @@ export async function assistantRoutes(app: FastifyInstance) {
                 CASE WHEN plans_media_path IS NOT NULL THEN true ELSE false END as has_plans_media,
                 plans_media,
                 CASE WHEN pdf_path IS NOT NULL THEN split_part(pdf_path, '/', -1) ELSE NULL END as pdf_filename,
-                farewell_message, frases_proibidas, frases_preferidas, custom_objections,
+                farewell_message, handoff_message, handoff_enabled, handoff_auto_urgent,
+                frases_proibidas, frases_preferidas, custom_objections,
                 conversation_examples, clinical_rules
          FROM assistants WHERE nutritionist_id = $1`,
         [id]
@@ -111,7 +112,10 @@ export async function assistantRoutes(app: FastifyInstance) {
       retorno_message: z.string().nullish().transform(v => v ?? undefined),
       retorno_days: z.number().int().min(1).max(365).nullish().transform(v => v ?? undefined),
       // Perfil da atendente (B.4)
-      farewell_message: z.string().nullish().transform(v => v ?? undefined),
+      farewell_message:     z.string().nullish().transform(v => v ?? undefined),
+      handoff_message:      z.string().nullish().transform(v => v ?? undefined),
+      handoff_enabled:      z.boolean().nullish().transform(v => v ?? undefined),
+      handoff_auto_urgent:  z.boolean().nullish().transform(v => v ?? undefined),
       frases_proibidas: z.array(z.string()).nullish().transform(v => v ?? undefined),
       frases_preferidas: z.array(z.string()).nullish().transform(v => v ?? undefined),
       // Roteiros de venda — objeções personalizadas (B.7)
@@ -202,6 +206,9 @@ export async function assistantRoutes(app: FastifyInstance) {
         if (body.retorno_message !== undefined)            { autoUpdates.push(`retorno_message = $${p++}`);            autoParams.push(body.retorno_message) }
         if (body.retorno_days !== undefined)               { autoUpdates.push(`retorno_days = $${p++}`);               autoParams.push(body.retorno_days) }
         if (body.farewell_message !== undefined)           { autoUpdates.push(`farewell_message = $${p++}`);           autoParams.push(body.farewell_message) }
+        if (body.handoff_message !== undefined)            { autoUpdates.push(`handoff_message = $${p++}`);            autoParams.push(body.handoff_message) }
+        if (body.handoff_enabled !== undefined)            { autoUpdates.push(`handoff_enabled = $${p++}`);            autoParams.push(body.handoff_enabled) }
+        if (body.handoff_auto_urgent !== undefined)        { autoUpdates.push(`handoff_auto_urgent = $${p++}`);        autoParams.push(body.handoff_auto_urgent) }
         if (body.frases_proibidas !== undefined)           { autoUpdates.push(`frases_proibidas = $${p++}`);           autoParams.push(JSON.stringify(body.frases_proibidas)) }
         if (body.frases_preferidas !== undefined)          { autoUpdates.push(`frases_preferidas = $${p++}`);          autoParams.push(JSON.stringify(body.frases_preferidas)) }
         if (body.custom_objections !== undefined)          { autoUpdates.push(`custom_objections = $${p++}`);          autoParams.push(JSON.stringify(body.custom_objections)) }

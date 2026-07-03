@@ -585,6 +585,27 @@ CREATE TABLE IF NOT EXISTS date_location_overrides (
 );
 CREATE INDEX IF NOT EXISTS idx_date_loc_overrides ON date_location_overrides(nutritionist_id, date);
 
+-- ── Membros de equipe (assistentes, recepcionistas, viewers) ──────────────────
+-- CREATE TABLE precisa vir antes dos ALTER TABLE team_members abaixo.
+CREATE TABLE IF NOT EXISTS team_members (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  name            TEXT,
+  email           TEXT NOT NULL,
+  role            TEXT NOT NULL DEFAULT 'receptionist',   -- admin | receptionist | viewer
+  status          TEXT NOT NULL DEFAULT 'pending',        -- pending | active
+  invite_token    TEXT UNIQUE NOT NULL DEFAULT gen_random_uuid()::text,
+  password_hash   TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(nutritionist_id, email)
+);
+CREATE INDEX IF NOT EXISTS idx_team_members_nutri ON team_members(nutritionist_id);
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_team_members_updated BEFORE UPDATE ON team_members FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- Reset de senha para membros de equipe
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_token TEXT;
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;
@@ -626,3 +647,43 @@ CREATE TABLE IF NOT EXISTS automation_logs (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_automation_logs_nutri ON automation_logs(nutritionist_id, created_at DESC);
+
+-- ── Automação de follow-up (Pós-consulta / Lembrete / Retorno) — alinhamento com frontend `auto_*` ──
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_feedback_enabled       BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_feedback_delay_hours  INT DEFAULT 2;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_feedback_message      TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_reminder_enabled      BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_reminder_hours_before INT DEFAULT 24;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_reminder_message      TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_return_enabled        BOOLEAN DEFAULT false;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_return_days           INT DEFAULT 30;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS auto_return_message        TEXT;
+
+-- ── Mensagem de transferência para humano, separada da despedida real ──
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS handoff_message      TEXT;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS handoff_enabled      BOOLEAN DEFAULT true;
+ALTER TABLE assistants ADD COLUMN IF NOT EXISTS handoff_auto_urgent  BOOLEAN DEFAULT true;
+
+-- ── Integração de pagamento Asaas (PIX) ──
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS asaas_api_key TEXT;
+
+CREATE TABLE IF NOT EXISTS payments (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nutritionist_id    UUID NOT NULL REFERENCES nutritionists(id),
+  appointment_id     UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  asaas_payment_id   TEXT UNIQUE,
+  external_reference TEXT,
+  amount             NUMERIC(10,2) NOT NULL,
+  type               TEXT NOT NULL,
+  method             TEXT DEFAULT 'PIX',
+  status             TEXT NOT NULL DEFAULT 'pending',
+  pix_qr_code        TEXT,
+  pix_copy_paste     TEXT,
+  due_date           DATE,
+  paid_at            TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_payments_appointment ON payments(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_asaas_id    ON payments(asaas_payment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_nutri       ON payments(nutritionist_id, created_at DESC);
