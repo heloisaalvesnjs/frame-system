@@ -94,12 +94,17 @@ export async function internalRoutes(app: FastifyInstance) {
   // Envia uma mensagem WhatsApp via uazapi.
   // Body: { nutritionist_id, phone, text } — busca o token no banco
   //    ou: { instance_token, phone, text }  — token direto
+  // Campos opcionais:
+  //   delay        — ms de atraso antes de enviar (uazapi simula digitação)
+  //   readmessages — marca as mensagens como lidas (default: true)
   app.post('/whatsapp/send', auth, async (request, reply) => {
     const schema = z.object({
       nutritionist_id: z.string().uuid().optional(),
       instance_token:  z.string().optional(),
-      phone: z.string().min(8),
-      text:  z.string().min(1),
+      phone:           z.string().min(8),
+      text:            z.string().min(1),
+      delay:           z.number().int().min(0).optional(),
+      readmessages:    z.boolean().optional(),
     })
 
     const body = schema.parse(request.body)
@@ -121,7 +126,10 @@ export async function internalRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: 'instance_token ou nutritionist_id com instância conectada é obrigatório' })
       }
 
-      await sendMessage(body.phone, body.text, token)
+      await sendMessage(body.phone, body.text, token, {
+        delay:        body.delay,
+        readmessages: body.readmessages,
+      })
       return reply.send({ ok: true })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao enviar mensagem'
@@ -290,7 +298,7 @@ export async function internalRoutes(app: FastifyInstance) {
 
       // 5. Busca ou cria cliente pelo telefone
       let client = await queryOne<any>(
-        `SELECT id, name, phone, goal, stage, created_at
+        `SELECT id, name, phone, goal, stage, ai_summary, created_at
          FROM clients
          WHERE nutritionist_id = $1 AND phone = $2`,
         [nutritionist_id, client_phone]
@@ -378,6 +386,7 @@ export async function internalRoutes(app: FastifyInstance) {
           goal: client.goal,
           stage: client.stage || 'novo_contato',
           is_returning: isReturning,
+          ai_summary: client.ai_summary ?? null,
         },
         conversation: {
           id: conversation.id,
@@ -1056,6 +1065,47 @@ export async function internalRoutes(app: FastifyInstance) {
     } catch (err) {
       app.log.error({ err }, '[n8n/clients/stage] Erro ao atualizar stage')
       return reply.code(500).send({ error: 'Erro interno ao atualizar stage' })
+    }
+  })
+
+  // ── PATCH /api/internal/n8n/clients/:phone/summary ────────────────
+  // Atualiza o resumo de IA (memória longa) de um cliente pelo telefone.
+  // Chamado pelo n8n após cada interação para acumular contexto do lead:
+  // objetivo, preferências, histórico de perguntas, etc.
+  // A fusão/síntese do texto é feita pelo n8n (LLM separado) — a API só persiste.
+  app.patch('/n8n/clients/:phone/summary', auth, async (request, reply) => {
+    const { phone } = request.params as { phone: string }
+    const { nutritionist_id } = request.query as Record<string, string>
+
+    const schema = z.object({
+      summary: z.string().min(1).max(4000),
+    })
+
+    let body: z.infer<typeof schema>
+    try {
+      body = schema.parse(request.body)
+    } catch (err) {
+      return reply.code(400).send({ error: 'Dados inválidos', details: (err as Error).message })
+    }
+
+    if (!nutritionist_id) {
+      return reply.code(400).send({ error: 'nutritionist_id é obrigatório (query param)' })
+    }
+
+    try {
+      const updated = await queryOne<any>(
+        `UPDATE clients SET ai_summary = $1, ai_summary_updated_at = NOW()
+         WHERE nutritionist_id = $2 AND phone = $3
+         RETURNING id`,
+        [body.summary, nutritionist_id, phone]
+      )
+      if (!updated) {
+        return reply.code(404).send({ error: 'Cliente não encontrado' })
+      }
+      return reply.send({ ok: true })
+    } catch (err) {
+      app.log.error({ err }, '[n8n/clients/summary] Erro ao atualizar ai_summary')
+      return reply.code(500).send({ error: 'Erro interno ao atualizar resumo do cliente' })
     }
   })
 

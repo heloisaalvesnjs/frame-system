@@ -73,17 +73,36 @@ async function getInstanceTokenForNutri(nutritionist_id: string): Promise<string
  * Envia mensagem de texto via uazapi.
  * instanceToken: token de autenticação da instância (não é o admintoken).
  * readchat/readmessages: marca a conversa como lida ao enviar (equivalente ao markAsRead da Evolution).
+ *
+ * options.delay: atraso em ms antes de enviar (uazapi simula digitação no servidor).
+ *   O template da mentoria usa string "5000" mas o uazapi provavelmente aceita number também.
+ *   Validar contra payload real se houver comportamento inesperado.
+ * options.readmessages: controla se marca mensagens como lidas (default: true).
  */
-export async function sendMessage(phone: string, text: string, instanceToken: string): Promise<void> {
+export async function sendMessage(
+  phone: string,
+  text: string,
+  instanceToken: string,
+  options?: { delay?: number; readmessages?: boolean }
+): Promise<void> {
   const number = phone.replace(/\D/g, '').replace('@s.whatsapp.net', '')
+  const payload: Record<string, unknown> = {
+    number,
+    text,
+    readchat: true,
+    readmessages: options?.readmessages ?? true,
+  }
+  if (options?.delay !== undefined) {
+    payload.delay = options.delay
+  }
   const res = await fetch(`${UAZAPI_BASE_URL}/send/text`, {
     method: 'POST',
     headers: instanceHeaders(instanceToken),
-    body: JSON.stringify({ number, text, readchat: true, readmessages: true }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`[uazapi] Erro ao enviar: ${body}`)
+    const errBody = await res.text()
+    throw new Error(`[uazapi] Erro ao enviar: ${errBody}`)
   }
 }
 

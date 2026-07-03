@@ -687,3 +687,10 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_appointment ON payments(appointment_id);
 CREATE INDEX IF NOT EXISTS idx_payments_asaas_id    ON payments(asaas_payment_id);
 CREATE INDEX IF NOT EXISTS idx_payments_nutri       ON payments(nutritionist_id, created_at DESC);
+
+-- ── Memória longa por cliente — resumo textual acumulado pela IA ──────────────
+-- ai_summary: texto livre gerado e mantido pelo n8n após cada conversa
+--   (ex: "prefere online, mora na Serra, já perguntou sobre plano trimestral")
+-- ai_summary_updated_at: quando foi atualizado pela última vez
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_summary            TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_summary_updated_at TIMESTAMPTZ;

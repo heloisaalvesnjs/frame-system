@@ -41,6 +41,8 @@ function parseUazapiPayload(payload: unknown): {
   messageText: string
   messageId: string
   instanceToken: string
+  messageType: string
+  isAudio: boolean
 } {
   const p = (payload ?? {}) as Record<string, unknown>
   const eventType     = (p.EventType ?? p.event ?? '') as string
@@ -63,6 +65,13 @@ function parseUazapiPayload(payload: unknown): {
   const messageText = ((message.text ?? message.content) ?? '') as string
   const messageId   = (message.messageid ?? '') as string
 
+  // Tipo da mensagem — vem no campo `type` do payload real (confirmado no JSDoc acima: "type: text")
+  // Para áudio: 'ptt' = voice note gravado no app (push-to-talk), 'audio' = arquivo de áudio
+  // ATENÇÃO: valores baseados no formato real capturado em 2026-07-02 + spec uazapi.
+  // Validar contra um payload real de áudio se o comportamento for inesperado.
+  const messageType = (message.type ?? '') as string
+  const isAudio = messageType === 'ptt' || messageType === 'audio'
+
   return {
     isMessage: isEventMessage && isDirectMessage,
     fromMe,
@@ -70,6 +79,8 @@ function parseUazapiPayload(payload: unknown): {
     messageText,
     messageId,
     instanceToken,
+    messageType,
+    isAudio,
   }
 }
 
@@ -80,6 +91,39 @@ export async function webhookRoutes(app: FastifyInstance) {
     const payload = request.body as unknown
 
     const parsed = parseUazapiPayload(payload)
+
+    // ── 3b: Log mensagens fromMe — instrumentação para futura distinção ───────
+    // fromMe=true pode ser: (1) nossa API enviou via uazapi, (2) dono respondeu manualmente.
+    // Ainda não diferenciamos os dois — o campo `wasSentByApi` pode ajudar quando validarmos.
+    // NÃO implementar takeover automático aqui até confirmar o payload real.
+    if (parsed.isMessage && parsed.fromMe && parsed.phone) {
+      const msg = (payload as Record<string, unknown>)?.message as Record<string, unknown> | undefined ?? {}
+      app.log.info({
+        fromMe:       true,
+        phone:        parsed.phone,
+        messageType:  parsed.messageType,
+        hasText:      !!parsed.messageText,
+        wasSentByApi: (msg.wasSentByApi) ?? null,
+        instanceToken: parsed.instanceToken ? `${parsed.instanceToken.slice(0, 8)}...` : null,
+      }, '[webhook] Mensagem fromMe recebida — só logando, sem processar')
+    }
+
+    // ── 3a: Áudio sem texto — responde com mensagem fixa e descarta ───────────
+    // Detectado via message.type ('ptt' = voice note; 'audio' = arquivo de áudio).
+    // NOTA: 'ptt' e 'audio' são os valores esperados com base na spec da uazapi +
+    // histórico de payloads — validar contra um áudio real se não funcionar.
+    if (parsed.isMessage && !parsed.fromMe && parsed.phone && !parsed.messageText && parsed.isAudio) {
+      if (parsed.instanceToken) {
+        await sendMessage(
+          parsed.phone,
+          'Ainda não consigo ouvir áudios por aqui 🙈 Pode me escrever em texto, por favor?',
+          parsed.instanceToken
+        ).catch(err => app.log.warn({ err, phone: parsed.phone }, '[webhook] Falha ao enviar resposta para áudio não suportado'))
+      } else {
+        app.log.warn({ phone: parsed.phone, messageType: parsed.messageType }, '[webhook] Áudio recebido mas sem instanceToken para responder')
+      }
+      return reply.send({ ok: true })
+    }
 
     // ── Filtra eventos que não são mensagens recebidas do cliente ──────────────
     if (!parsed.isMessage || parsed.fromMe || !parsed.phone || !parsed.messageText) {
