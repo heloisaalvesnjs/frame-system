@@ -51,7 +51,11 @@ export async function runFollowupSequences(): Promise<void> {
       FROM conversations c
       JOIN last_msg lm          ON lm.conversation_id = c.id AND lm.role = 'user'
       JOIN assistants ass        ON ass.nutritionist_id = c.nutritionist_id AND ass.is_active = true
-      JOIN whatsapp_connections w ON w.nutritionist_id = c.nutritionist_id AND w.status = 'connected'
+      -- Não filtra por status='connected': mesma razão documentada em internal.routes.ts
+      -- (POST /whatsapp/send) — essa coluna só se autocorrige quando alguém abre
+      -- Integrações, então fica defasada e bloquearia os crons mesmo com instância
+      -- de fato conectada na uazapi.
+      JOIN whatsapp_connections w ON w.nutritionist_id = c.nutritionist_id
       LEFT JOIN clients cl       ON cl.phone = c.client_phone AND cl.nutritionist_id = c.nutritionist_id
       WHERE c.status = 'active'
         AND ass.vacation_mode = false
@@ -140,7 +144,8 @@ export async function runAppointmentReminders(): Promise<void> {
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN nutritionists n       ON n.id = a.nutritionist_id AND n.is_active = true
-    JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id AND w.status = 'connected'
+    -- Não filtra por status='connected' (coluna defasada, ver runFollowupSequences acima)
+    JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
     LEFT JOIN locations l      ON l.id = a.location_id
     WHERE a.status IN ('scheduled', 'confirmed')
       AND a.reminder_sent = false
@@ -220,7 +225,8 @@ export async function runPosConsulta(): Promise<void> {
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN assistants ass         ON ass.nutritionist_id = a.nutritionist_id AND ass.is_active = true
-    JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id AND w.status = 'connected'
+    -- Não filtra por status='connected' (coluna defasada, ver runFollowupSequences acima)
+    JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
     WHERE a.status IN ('scheduled', 'confirmed', 'completed')
       AND a.pos_consulta_sent = false
       AND ass.auto_feedback_enabled = true AND ass.auto_feedback_message IS NOT NULL
@@ -284,8 +290,8 @@ export async function runRetorno(): Promise<void> {
     JOIN assistants ass         ON ass.nutritionist_id = a.nutritionist_id
                                 AND ass.is_active = true
                                 AND ass.auto_return_enabled = true AND ass.auto_return_message IS NOT NULL
+    -- Não filtra por status='connected' (coluna defasada, ver runFollowupSequences acima)
     JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
-                                AND w.status = 'connected'
     WHERE a.status IN ('scheduled', 'confirmed', 'completed')
       AND a.return_message_sent = false
       -- Consulta foi há exatamente auto_return_days dias (janela de ±12h para o cron)
