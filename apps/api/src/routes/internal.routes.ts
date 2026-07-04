@@ -358,6 +358,27 @@ export async function internalRoutes(app: FastifyInstance) {
       )
       const isReturning = (apptCountRow?.count ?? 0) > 0
 
+      // 9. Próxima consulta futura (se houver) — permite a IA reconhecer "já agendada"
+      // sem precisar perguntar de novo.
+      const nextAppointment = await queryOne<any>(
+        `SELECT a.id, a.scheduled_at, a.modality, l.name AS location_name, l.address, l.city
+         FROM appointments a
+         LEFT JOIN locations l ON l.id = a.location_id
+         WHERE a.client_id = $1 AND a.status != 'cancelled' AND a.scheduled_at > NOW()
+         ORDER BY a.scheduled_at ASC LIMIT 1`,
+        [client.id]
+      )
+
+      // 10. Última consulta passada (se houver) — ajuda a IA a distinguir paciente
+      // atual/antigo de lead novo, mesmo sem consulta futura marcada.
+      const lastAppointment = await queryOne<any>(
+        `SELECT scheduled_at, status
+         FROM appointments
+         WHERE client_id = $1 AND status != 'cancelled' AND scheduled_at <= NOW()
+         ORDER BY scheduled_at DESC LIMIT 1`,
+        [client.id]
+      )
+
       return reply.send({
         nutritionist: {
           id: nutritionist.id,
@@ -391,6 +412,18 @@ export async function internalRoutes(app: FastifyInstance) {
           stage: client.stage || 'novo_contato',
           is_returning: isReturning,
           ai_summary: client.ai_summary ?? null,
+          has_upcoming_appointment: !!nextAppointment,
+          next_appointment: nextAppointment ? {
+            scheduled_at:  nextAppointment.scheduled_at,
+            modality:      nextAppointment.modality,
+            location_name: nextAppointment.location_name,
+            address:       nextAppointment.address,
+            city:          nextAppointment.city,
+          } : null,
+          last_appointment: lastAppointment ? {
+            scheduled_at: lastAppointment.scheduled_at,
+            status:       lastAppointment.status,
+          } : null,
         },
         conversation: {
           id: conversation.id,
