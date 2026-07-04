@@ -132,8 +132,10 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     const { phone, messageText, messageId, instanceToken } = parsed
 
-    // Deduplicação
-    const dedupeKey = messageId || `${phone}:${messageText}:${Date.now()}`
+    // Deduplicação — sem messageId (uazapi não manda em todo payload), cai no fallback
+    // por phone+texto; incluir Date.now() aqui tornaria a chave sempre única e anularia
+    // a dedupe justamente no caso em que ela é mais necessária (retentativas sem id estável).
+    const dedupeKey = messageId || `${phone}:${messageText}`
     if (recentlyProcessed.has(dedupeKey)) {
       app.log.warn(`[webhook] Duplicata ignorada: ${dedupeKey}`)
       return reply.send({ ok: true })
