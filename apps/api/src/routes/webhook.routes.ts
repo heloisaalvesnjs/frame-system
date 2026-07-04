@@ -181,6 +181,14 @@ export async function webhookRoutes(app: FastifyInstance) {
           await query(`DELETE FROM messages WHERE conversation_id = $1`, [conversation.id])
           await query(`DELETE FROM conversations WHERE id = $1`, [conversation.id])
         }
+        // Reseta também o cliente — sem isso, a IA continuava recebendo o
+        // ai_summary/stage antigo mesmo com a conversa zerada, e "lembrava"
+        // de testes anteriores em vez de tratar como lead do zero de fato.
+        await query(
+          `UPDATE clients SET stage = 'novo_contato', ai_summary = NULL, goal = NULL
+           WHERE nutritionist_id = $1 AND phone = $2`,
+          [nutritionist_id, phone]
+        )
         await sendMessage(phone, '🔄 Conversa reiniciada! Pode mandar oi para começar do zero.', activeToken)
         return reply.send({ ok: true })
       }
