@@ -142,19 +142,22 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     try {
       // Multi-tenant: roteia pelo instance_token do payload (a uazapi manda o token
-      // direto no corpo — não precisa de instance_id nem de lookup por instância)
-      const connection = instanceToken
-        ? await queryOne<{ nutritionist_id: string; instance_token: string }>(
-            `SELECT nutritionist_id, instance_token FROM whatsapp_connections WHERE instance_token = $1`,
-            [instanceToken]
-          )
-        : await queryOne<{ nutritionist_id: string; instance_token: string }>(
-            `SELECT nutritionist_id, instance_token FROM whatsapp_connections
-             WHERE status = 'connected' ORDER BY updated_at DESC LIMIT 1`
-          )
+      // direto no corpo — não precisa de instance_id nem de lookup por instância).
+      // Sem fallback para "conexão mais recente": o payload real confirmado sempre
+      // traz `token` (ver JSDoc acima); um POST forjado sem token seria roteado pra
+      // conta de outra nutricionista se caísse num fallback (risco cross-tenant).
+      if (!instanceToken) {
+        app.log.warn('[webhook] Payload sem instance_token — descartado (nenhum fallback de roteamento)')
+        return reply.send({ ok: true })
+      }
+
+      const connection = await queryOne<{ nutritionist_id: string; instance_token: string }>(
+        `SELECT nutritionist_id, instance_token FROM whatsapp_connections WHERE instance_token = $1`,
+        [instanceToken]
+      )
 
       if (!connection) {
-        app.log.warn(`[webhook] Nenhuma conexão encontrada${instanceToken ? ` para instance_token: ${instanceToken}` : ''}`)
+        app.log.warn(`[webhook] Nenhuma conexão encontrada para instance_token: ${instanceToken}`)
         return reply.send({ ok: true })
       }
 
@@ -302,7 +305,9 @@ export async function webhookRoutes(app: FastifyInstance) {
                   internal_api_key: process.env.INTERNAL_API_KEY,
                   // Outros serviços
                   n8n_base_url:  process.env.N8N_WEBHOOK_URL?.split('/webhook')[0] || '',
-                  claude_api_key: process.env.ANTHROPIC_API_KEY,
+                  // claude_api_key removido (S2 da auditoria E2E 2026-07-03): nenhum
+                  // workflow usa esse campo (os AI Agents usam a credencial Anthropic
+                  // do próprio n8n) e ele ficava gravado em claro nos logs de execução.
                 }),
                 signal: AbortSignal.timeout(5000),
               })

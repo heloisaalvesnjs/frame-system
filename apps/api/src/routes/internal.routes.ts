@@ -113,9 +113,13 @@ export async function internalRoutes(app: FastifyInstance) {
       let token = body.instance_token
 
       if (!token && body.nutritionist_id) {
+        // Não filtra por status = 'connected': essa coluna só se autocorrige
+        // quando alguém abre Integrações, então fica defasada e já bloqueou
+        // envios reais com a instância de fato conectada na uazapi (fonte de
+        // verdade). sendMessage propaga erro se o envio realmente falhar.
         const conn = await queryOne<{ instance_token: string }>(
           `SELECT instance_token FROM whatsapp_connections
-           WHERE nutritionist_id = $1 AND status = 'connected' AND instance_token IS NOT NULL
+           WHERE nutritionist_id = $1 AND instance_token IS NOT NULL
            LIMIT 1`,
           [body.nutritionist_id]
         )

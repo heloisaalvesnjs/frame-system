@@ -56,11 +56,18 @@ function splitIntoChunks(text: string): string[] {
   return chunks.filter(c => c.length > 0)
 }
 
-/** Busca o instance_token ativo de um nutricionista */
+/**
+ * Busca o instance_token ativo de um nutricionista.
+ * Não filtra por `status = 'connected'`: essa coluna só se autocorrige quando
+ * alguém abre a tela de Integrações (GET /api/whatsapp/status), então fica
+ * defasada e bloqueava envios reais mesmo com a instância conectada de
+ * verdade na uazapi. A uazapi é a fonte de verdade sobre conectividade —
+ * sendMessage já propaga o erro se o envio falhar de fato.
+ */
 async function getInstanceTokenForNutri(nutritionist_id: string): Promise<string | null> {
   const conn = await queryOne<{ instance_token: string }>(
     `SELECT instance_token FROM whatsapp_connections
-     WHERE nutritionist_id = $1 AND status = 'connected' AND instance_token IS NOT NULL
+     WHERE nutritionist_id = $1 AND instance_token IS NOT NULL
      LIMIT 1`,
     [nutritionist_id]
   )
