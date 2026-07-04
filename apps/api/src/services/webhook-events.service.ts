@@ -36,6 +36,11 @@ export async function getConnectionData(nutritionist_id: string, client_phone?: 
     instance_token:  row?.instance_token ?? null,
     client_name:     row?.client_name    ?? null,
     uazapi_base_url: process.env.UAZAPI_BASE_URL ?? null,
+    // Mesmas credenciais que webhook.routes.ts já anexa nos payloads de mensagem de
+    // lead — necessárias para o workflow FRAME - Eventos chamar a Frame API de volta
+    // (ex: /whatsapp/send) sem depender de env vars locais do n8n.
+    internal_api_url: process.env.API_INTERNAL_URL || process.env.API_PUBLIC_URL || 'https://api.framesystem.com.br',
+    internal_api_key: process.env.INTERNAL_API_KEY,
   }
 }
 
@@ -45,6 +50,11 @@ export async function getConnectionData(nutritionist_id: string, client_phone?: 
  * Dispara um evento para o n8n do Frame System.
  * Fire-and-forget — erros são logados mas não propagados.
  *
+ * Usa N8N_EVENTS_WEBHOOK_URL quando configurada (workflow FRAME - Eventos
+ * dedicado). Fallback para N8N_WEBHOOK_URL se não configurada (compatibilidade
+ * com o setup anterior, onde o Orquestrador recebia todos os eventos e os
+ * descartava silenciosamente por não serem mensagem de lead).
+ *
  * @param event  Tipo do evento
  * @param data   Payload completo incluindo message, client_phone, instance_token, etc.
  */
@@ -52,7 +62,7 @@ export async function fireWebhookEvent(
   event: WebhookEventType,
   data: Record<string, any>
 ): Promise<void> {
-  const n8nUrl = process.env.N8N_WEBHOOK_URL
+  const n8nUrl = process.env.N8N_EVENTS_WEBHOOK_URL ?? process.env.N8N_WEBHOOK_URL
   if (!n8nUrl) {
     // n8n não configurado — fallback via followup.service já cuida do envio direto
     return

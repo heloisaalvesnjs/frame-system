@@ -1,0 +1,191 @@
+{
+  "name": "FRAME - Eventos",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4001-8001-000000000001",
+      "name": "Receber evento Frame API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "frame-eventos-prod",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "frame-eventos",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-4002-8002-000000000002",
+      "name": "Extrair dados do evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst event = body?.event || 'unknown';\n\n// Cada tipo de evento tem o texto pronto num campo diferente.\n// followup_due / pos_consulta_due / retorno_due usam `message` (ja com {nome} substituido).\n// appointment_booked vem de 2 origens diferentes:\n//   - runAppointmentReminders (lembrete 24h): campo `message` ja montado com data/hora/local\n//   - buildAppointmentPayload (confirmacao de booking): campo `confirmation_message` do local\n//   Prioridade: message > confirmation_message (lembrete tem message completo; booking so tem confirmation_message)\nconst textByEvent = {\n  followup_due:       body?.message || null,\n  pos_consulta_due:   body?.message || null,\n  retorno_due:        body?.message || null,\n  appointment_booked: body?.message || body?.confirmation_message || null,\n  first_contact:      body?.message || null,\n};\n\nconst text = textByEvent[event] || null;\n\nreturn [{\n  json: {\n    event,\n    nutritionist_id: body?.nutritionist_id || null,\n    client_phone:    body?.client_phone    || null,\n    text,\n    has_text: !!(text && text.trim().length > 0),\n    internal_api_url: body?.internal_api_url || 'https://api.framesystem.com.br',\n    internal_api_key: body?.internal_api_key || null,\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-4003-8003-000000000003",
+      "name": "Tem mensagem para enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-text",
+              "leftValue": "={{ $json.has_text }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-4004-8004-000000000004",
+      "name": "Enviar mensagem WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.internal_api_url }}/api/internal/whatsapp/send",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $json.internal_api_key }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ nutritionist_id: $json.nutritionist_id, phone: $json.client_phone, text: $json.text }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-4005-8005-000000000005",
+      "name": "Evento sem mensagem - ignorar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 420],
+      "parameters": {}
+    },
+    {
+      "id": "a1b2c3d4-0006-4006-8006-000000000006",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 560],
+      "parameters": {}
+    },
+    {
+      "id": "a1b2c3d4-0007-4007-8007-000000000007",
+      "name": "Registrar erro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 560],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.framesystem.com.br/api/internal/n8n/automation-logs",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {event_type: 'FRAME - Eventos', agent_used: 'eventos', success: false, error: $json.execution?.error?.message || 'Erro desconhecido no workflow de eventos'} }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Receber evento Frame API": {
+      "main": [
+        [
+          {
+            "node": "Extrair dados do evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair dados do evento": {
+      "main": [
+        [
+          {
+            "node": "Tem mensagem para enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem mensagem para enviar?": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensagem WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Evento sem mensagem - ignorar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Registrar erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "active": false
+}

@@ -1,0 +1,148 @@
+{
+  "_instrucoes": "Estes 4 nodes devem ser ADICIONADOS ao workflow FRAME - Agente Agendamento (4jTfG8Ez6mXsRMNl) via MCP update_workflow. O ponto de insercao e APOS o node 'Criar agendamento', em paralelo com o branch existente para 'Montar confirmacao'.",
+  "_conexao": {
+    "de": "Criar agendamento",
+    "para_branch_existente": "Montar confirmacao (nao alterar)",
+    "para_novo_branch_pix": "Preparar dados PIX",
+    "descricao": "Adicionar segunda saida do node Criar agendamento para Preparar dados PIX. Os dois branches (Montar confirmacao e Preparar dados PIX) rodam em paralelo."
+  },
+  "_dependencia_backend_critica": {
+    "problema": "O endpoint POST /api/internal/n8n/appointments retorna {ok, appointment_id, scheduled_at, location: {id, name, address}} mas NAO retorna deposit_amount nem price. O campo 'amount' em create-charge e obrigatorio.",
+    "solucao_atual_implementada": "O node 'Preparar dados PIX' busca o preco no primeiro servico com price > 0 no contexto. Isso e uma aproximacao — funciona para David que tem servicos com preco configurado, mas pode ser impreciso se houver multiplos servicos com precos diferentes.",
+    "solucao_definitiva_recomendada": "Adicionar deposit_amount e deposit_required ao retorno de POST /n8n/appointments (buscando da tabela locations via location_id resolvido internamente). Quando isso for feito, atualizar 'Preparar dados PIX' para usar apptResponse.deposit_amount diretamente.",
+    "comportamento_sem_preco": "Se nenhum servico tiver price > 0 (ou se services[] estiver vazio), o node retorna skip_pix: true e o branch de PIX e encerrado silenciosamente. O lead recebe apenas a mensagem de confirmacao normal — sem erro, sem mensagem de pagamento."
+  },
+  "nodes": [
+    {
+      "id": "c3d4e5f6-0001-4001-8001-000000000001",
+      "name": "Preparar dados PIX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 600],
+      "parameters": {
+        "jsCode": "// Dados do agendamento recem criado\nconst apptResponse = $('Criar agendamento').item.json;\n\n// Se o agendamento falhou, pula PIX\nif (!apptResponse.ok || !apptResponse.appointment_id) {\n  return [{ json: { skip_pix: true, reason: 'Agendamento sem appointment_id' } }];\n}\n\n// Dados do contexto (buscado pelo node 'Buscar contexto' mais cedo no workflow)\nconst ctx = $('Buscar contexto').item.json;\nconst services = ctx.services || [];\n\n// Busca o primeiro servico com preco positivo\nconst service = services.find(function(s) { return s.price && Number(s.price) > 0; });\nconst priceRaw = service ? Number(service.price) : 0;\n\nif (!priceRaw) {\n  return [{ json: { skip_pix: true, reason: 'Sem servico com preco configurado' } }];\n}\n\n// Sinal de 10% do valor integral, minimo R$50\nconst depositAmount = Math.max(50, Math.round(priceRaw * 0.10 * 100) / 100);\n\nreturn [{\n  json: {\n    skip_pix: false,\n    appointment_id: apptResponse.appointment_id,\n    nutritionist_id: ctx.nutritionist ? ctx.nutritionist.id : null,\n    client_phone: ctx.client ? ctx.client.phone : null,\n    client_name: (ctx.client && ctx.client.name) ? ctx.client.name : 'Cliente',\n    amount: depositAmount,\n    type: 'sinal',\n  }\n}];"
+      }
+    },
+    {
+      "id": "c3d4e5f6-0002-4002-8002-000000000002",
+      "name": "Cobrar PIX?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1620, 600],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-skip-pix",
+              "leftValue": "={{ $json.skip_pix }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c3d4e5f6-0003-4003-8003-000000000003",
+      "name": "Criar cobranca PIX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 560],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.framesystem.com.br/api/internal/n8n/payments/create-charge",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {nutritionist_id: $json.nutritionist_id, appointment_id: $json.appointment_id, client_name: $json.client_name, client_phone: $json.client_phone, amount: Number($json.amount), type: $json.type} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "c3d4e5f6-0004-4004-8004-000000000004",
+      "name": "Enviar PIX WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2060, 560],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.framesystem.com.br/api/internal/whatsapp/send",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nutritionist_id",
+              "value": "={{ $('Preparar dados PIX').item.json.nutritionist_id }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Preparar dados PIX').item.json.client_phone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ 'Para garantir seu horario, segue o link para o sinal:' + '\\n\\n' + ($json.pix_copy_paste || $json.invoiceUrl || '') }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "_conexoes_a_adicionar": {
+    "Preparar dados PIX": {
+      "main": [
+        [{"node": "Cobrar PIX?", "type": "main", "index": 0}]
+      ]
+    },
+    "Cobrar PIX?": {
+      "main": [
+        [{"node": "Criar cobranca PIX", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Criar cobranca PIX": {
+      "main": [
+        [{"node": "Enviar PIX WhatsApp", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "_notas_criticas": [
+    "O node 'Cobrar PIX?' tem output false (index 1) vazio — se skip_pix for true, o branch termina ali. Nao precisa de NoOp, o fluxo simplesmente para nesse ramo.",
+    "O node 'Criar cobranca PIX' tem continueOnFail: true. Se a API retornar 422 (Asaas sem chave configurada) ou 502 (erro no Asaas), o workflow nao quebra — 'Enviar PIX WhatsApp' recebe o erro como item e tenta usar $json.pix_copy_paste que sera null, resultando em mensagem invalida. Adicionar uma verificacao extra com IF 'tem pix_copy_paste?' antes de Enviar PIX WhatsApp para producao robusta.",
+    "A expressao em 'text' do Enviar PIX WhatsApp usa '\\n\\n' (dois backslashes-n) — no contexto do MCP JSON isso deve ser escrito como '\\\\n\\\\n'. Validar apos salvar.",
+    "A conexao nova do node 'Criar agendamento' para 'Preparar dados PIX' deve ser adicionada como segunda aresta do output 0 (o mesmo output que ja vai para 'Montar confirmacao'). Confirmar o nome exato do node de criacao via get_workflow_details antes de editar.",
+    "O campo 'amount' e enviado como string via keypair — o backend Zod (z.number().positive()) pode rejeitar string. Verificar se keypair converte automaticamente para numero ou se e necessario usar specifyBody: 'json' com objeto construido manualmente.",
+    "Este branch de PIX depende da chave Asaas estar configurada em nutritionists.asaas_api_key. Enquanto nao estiver configurada, create-charge retorna 422 e o branch encerra sem enviar mensagem ao lead (comportamento correto para o MVP)."
+  ]
+}
