@@ -595,8 +595,11 @@ export async function internalRoutes(app: FastifyInstance) {
   //   city            — nome da cidade (obrigatório se modality=presencial)
   //   month           — opcional, formato YYYY-MM. Sem isso, usa o mês atual.
   //                     Nunca retorna datas antes de hoje, mesmo se month for o mês atual.
+  //   week            — opcional, valor 'atual'. Restringe o limite superior pro fim
+  //                     da semana corrente (domingo) em vez do mês inteiro — usado
+  //                     quando o lead pede datas "dessa semana" em vez de um mês.
   app.get('/n8n/available-dates', auth, async (request, reply) => {
-    const { nutritionist_id, modality, city, month } = request.query as Record<string, string>
+    const { nutritionist_id, modality, city, month, week } = request.query as Record<string, string>
 
     if (!nutritionist_id || !modality) {
       return reply.code(400).send({ error: 'nutritionist_id e modality são obrigatórios' })
@@ -619,10 +622,24 @@ export async function internalRoutes(app: FastifyInstance) {
       targetMonthIdx = m - 1
     }
     const monthStart         = new Date(targetYear, targetMonthIdx, 1)
-    const monthEndExclusive  = new Date(targetYear, targetMonthIdx + 1, 1)
+    let monthEndExclusive    = new Date(targetYear, targetMonthIdx + 1, 1)
     const today               = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const rangeStartDate      = monthStart > today ? monthStart : today
     const monthLabel          = `${targetYear}-${String(targetMonthIdx + 1).padStart(2, '0')}`
+    const periodLabel         = week === 'atual' ? 'nessa semana' : `em ${monthLabel}`
+
+    // Lead pediu especificamente "essa semana" — restringe o limite superior pro
+    // fim da semana atual (domingo) em vez do mês inteiro. Nunca amplia o
+    // intervalo, só reduz (min entre o fim do mês e o fim da semana).
+    if (week === 'atual') {
+      const dayOfWeek = rangeStartDate.getDay() // 0 = domingo
+      const daysUntilSunday = (7 - dayOfWeek) % 7
+      const endOfWeekExclusive = new Date(rangeStartDate)
+      endOfWeekExclusive.setDate(endOfWeekExclusive.getDate() + daysUntilSunday + 1)
+      if (endOfWeekExclusive < monthEndExclusive) {
+        monthEndExclusive = endOfWeekExclusive
+      }
+    }
 
     // Arrays estáticos em português — sem biblioteca de datas externa
     const PT_DAYS_LONG  = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
@@ -713,7 +730,7 @@ export async function internalRoutes(app: FastifyInstance) {
         if (!dates.length) {
           return reply.send({
             available: false,
-            reason: `Não há datas disponíveis para ${city} em ${monthLabel}. Posso tentar outro mês.`,
+            reason: `Não há datas disponíveis para ${city} ${periodLabel}. Posso tentar outro mês.`,
             month: monthLabel,
           })
         }
@@ -807,7 +824,7 @@ export async function internalRoutes(app: FastifyInstance) {
       if (!dates.length) {
         return reply.send({
           available: false,
-          reason: `Não há datas disponíveis para atendimento online em ${monthLabel}. Posso tentar outro mês.`,
+          reason: `Não há datas disponíveis para atendimento online ${periodLabel}. Posso tentar outro mês.`,
           month: monthLabel,
         })
       }
