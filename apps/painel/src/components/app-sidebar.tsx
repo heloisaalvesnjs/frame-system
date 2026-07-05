@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
 	Sidebar,
@@ -21,9 +22,13 @@ export function AppSidebar() {
 			<SidebarHeader className="h-14 justify-center">
 				<SidebarMenuButton asChild className="gap-2">
 					<Link href="/">
-						<span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-primary-foreground">
-							F
-						</span>
+						<Image
+							src="/logo.png"
+							alt="Frame System"
+							width={24}
+							height={22}
+							className="shrink-0"
+						/>
 						<span className="font-semibold tracking-tight">Frame System</span>
 					</Link>
 				</SidebarMenuButton>

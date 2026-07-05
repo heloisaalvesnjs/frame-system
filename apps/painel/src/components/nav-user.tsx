@@ -1,9 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
 	Avatar,
 	AvatarFallback,
-	AvatarImage,
 } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -14,79 +14,61 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserIcon, BellIcon, CommandIcon, LifeBuoyIcon, GraduationCapIcon, CreditCardIcon, LogOutIcon } from "lucide-react";
-
-const user = {
-	name: "Shaban Haider",
-	email: "shaban@efferd.com",
-	avatar: "https://github.com/shabanhr.png",
-};
+import { UserIcon, SettingsIcon, LogOutIcon } from "lucide-react";
+import { useAuth } from "@/lib/use-auth";
+import { clearSession } from "@/lib/api";
 
 export function NavUser() {
+	const router = useRouter();
+	const { user } = useAuth();
+	const name = user?.name ?? "Nutricionista";
+	const email = user?.email ?? "";
+	const initial = name.charAt(0).toUpperCase();
+
+	function handleLogout() {
+		clearSession();
+		router.replace("/login");
+	}
+
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Avatar className="size-8">
-					<AvatarImage src={user.avatar} />
-					<AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+				<Avatar className="size-8 cursor-pointer">
+					<AvatarFallback className="bg-primary text-primary-foreground">
+						{initial}
+					</AvatarFallback>
 				</Avatar>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-60">
 				<DropdownMenuItem className="flex items-center justify-start gap-2">
 					<DropdownMenuLabel className="flex items-center gap-3">
 						<Avatar className="size-10">
-							<AvatarImage src={user.avatar} />
-							<AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+							<AvatarFallback className="bg-primary text-primary-foreground">
+								{initial}
+							</AvatarFallback>
 						</Avatar>
 						<div>
-							<span className="font-medium text-foreground">{user.name}</span>{" "}
+							<span className="font-medium text-foreground">{name}</span>
 							<br />
 							<div className="max-w-full overflow-hidden overflow-ellipsis whitespace-nowrap text-muted-foreground text-xs">
-								{user.email}
+								{email}
 							</div>
 						</div>
 					</DropdownMenuLabel>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuItem>
-						<UserIcon
-						/>
-						Profile
+					<DropdownMenuItem asChild>
+						<a href="/configuracoes">
+							<UserIcon />
+							Meu perfil
+						</a>
 					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem>
-						<BellIcon
-						/>
-						Notifications
-					</DropdownMenuItem>
-					<DropdownMenuItem>
-						<CommandIcon
-						/>
-						Keyboard shortcuts
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem>
-						<LifeBuoyIcon
-						/>
-						Help center
-					</DropdownMenuItem>
-					<DropdownMenuItem>
-						<GraduationCapIcon
-						/>
-						Agent training
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem>
-						<CreditCardIcon
-						/>
-						Subscription
+					<DropdownMenuItem asChild>
+						<a href="/configuracoes">
+							<SettingsIcon />
+							Configurações
+						</a>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
@@ -94,10 +76,10 @@ export function NavUser() {
 					<DropdownMenuItem
 						className="w-full cursor-pointer"
 						variant="destructive"
+						onClick={handleLogout}
 					>
-						<LogOutIcon
-						/>
-						Log out
+						<LogOutIcon />
+						Sair
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>

@@ -7,6 +7,7 @@ import {
 	UsersIcon,
 	BotIcon,
 	SettingsIcon,
+	PlugIcon,
 	HelpCircleIcon,
 	ActivityIcon,
 } from "lucide-react";
@@ -74,6 +75,11 @@ export const navGroups: SidebarNavGroup[] = [
 	{
 		label: "Conta",
 		items: [
+			{
+				title: "Integrações",
+				path: "/integracoes",
+				icon: <PlugIcon />,
+			},
 			{
 				title: "Configurações",
 				path: "/configuracoes",
