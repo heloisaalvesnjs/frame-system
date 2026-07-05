@@ -43,8 +43,21 @@ const app = Fastify({
 })
 
 // ── Plugins ────────────────────────────────────────────────
+// Dois frontends consomem a API (dashboard legado + painel novo), cada um
+// com sua própria origem — origin fixo único bloquearia um dos dois.
+const allowedOrigins = [
+  process.env.DASHBOARD_URL || 'http://localhost:3000',
+  process.env.PAINEL_URL || 'http://localhost:3100',
+].filter(Boolean)
+
 app.register(cors, {
-  origin: process.env.DASHBOARD_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Not allowed by CORS'), false)
+    }
+  },
   credentials: true
 })
 
