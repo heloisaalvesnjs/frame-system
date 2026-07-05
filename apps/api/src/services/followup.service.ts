@@ -60,6 +60,7 @@ export async function runFollowupSequences(): Promise<void> {
       WHERE c.status = 'active'
         AND ass.vacation_mode = false
         AND ass.followup_enabled = true
+        AND COALESCE(cl.opted_out, false) = false
         AND c.last_message_at > NOW() - INTERVAL '7 days'
         -- Não tem consulta agendada/futura
         AND NOT EXISTS (
@@ -294,6 +295,7 @@ export async function runRetorno(): Promise<void> {
     JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
     WHERE a.status IN ('scheduled', 'confirmed', 'completed')
       AND a.return_message_sent = false
+      AND COALESCE(c.opted_out, false) = false
       -- Consulta foi há exatamente auto_return_days dias (janela de ±12h para o cron)
       AND a.scheduled_at BETWEEN
             NOW() - (COALESCE(ass.auto_return_days, 30) || ' days')::INTERVAL - INTERVAL '12 hours'

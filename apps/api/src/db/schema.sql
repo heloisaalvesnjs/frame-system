@@ -694,3 +694,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_nutri       ON payments(nutritionist_id,
 -- ai_summary_updated_at: quando foi atualizado pela última vez
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_summary            TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_summary_updated_at TIMESTAMPTZ;
+
+-- Opt-out: lead pediu explicitamente para não receber mais mensagens automáticas.
+-- Bloqueia follow-up/reativação nos crons; mensagem nova do lead limpa a flag.
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS opted_out BOOLEAN DEFAULT false;

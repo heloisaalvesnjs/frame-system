@@ -6,6 +6,295 @@
 
 ---
 
+## 2026-07-05 - Claude Code (auditoria E2E do atendimento + correções + banco Supabase provisionado)
+
+Auditoria completa do fluxo (n8n + webhook backend) entregue em chat, seguida de
+execução das correções aprovadas pela Heloísa:
+
+- **n8n (publicado)**: `onError: continueRegularOutput` em todos os nodes "Enviar
+  WhatsApp *" dos loops de blocos (Atendimento + Agendamento + PIX) — falha de envio
+  não derruba mais o workflow no meio da resposta. Texto do "Formatar datas" corrigido
+  (removida "lista de espera", feature inexistente; 1 CTA só). Prompt do Atendimento
+  ganhou "ATALHO DE PREÇO" (lead que pede valor direto recebe preço em até 2 mensagens)
+  e regra de OPT-OUT explícita. Escaping verificado (join('\n') literal preservado).
+- **Backend (commitado, aguarda deploy)**: fallback para imagem/vídeo/documento/sticker
+  sem texto no webhook (antes: silêncio total); opt-out persistido (coluna
+  `clients.opted_out` + detecção conservadora no webhook + reengajamento automático +
+  filtros nos crons de follow-up/retorno). Código resiliente a coluna ausente
+  (try/catch) até a migration rodar no banco ativo. `tsc --noEmit` ok.
+- **Supabase provisionado**: schema.sql completo (32 tabelas, paridade total incluindo
+  colunas uazapi) + david-seed.sql executados no projeto Supabase. IMPORTANTE: o host
+  correto do pooler é `aws-1-sa-east-1.pooler.supabase.com` (o `aws-0` documentado no
+  MIGRATION_SUPABASE.md retorna "tenant not found"). Seed corrigido: INSERT de
+  whatsapp_connections agora inclui `instance_token` (sem ele o roteamento do webhook
+  quebra). Verificado: Daniela, 6 services com preço (destrava PIX), 7 locations,
+  opted_out. Banco de produção AINDA NÃO trocado — falta Heloísa trocar DATABASE_URL
+  no EasyPanel + dump da agenda/disponibilidade do banco atual (sem acesso externo).
+- Descoberto na auditoria: `supabase-setup.sql` está desatualizado (pré-uazapi) — usar
+  `schema.sql` como fonte de verdade em migrações futuras.
+
+## 2026-07-04 - Claude Code (auditoria completa dos 4 workflows n8n + bug crítico de envio corrigido)
+
+A pedido da Heloísa ("faça uma auditoria completa em todos workflows, teste cada um,
+corrija todos os erros"), investiguei ~80 execuções com erro dos 4 workflows ativos
+(Orquestrador, Atendimento, Agendamento, Eventos) via MCP n8n (`search_executions` +
+`get_execution` com `includeData`), lendo os dados reais de cada falha em vez de só a
+estrutura dos workflows. Achado o bug mais grave em produção desde a migração uazapi:
+`POST /api/internal/whatsapp/send` recusava com 400 mesmo com a instância do David
+realmente conectada (confirmado direto na uazapi via `GET /instance/status`), porque a
+query em `whatsapp.service.ts`/`internal.routes.ts` exigia `whatsapp_connections.status
+= 'connected'` — coluna que só se autocorrige quando alguém abre a tela de Integrações.
+Efeito real observado nos logs: a IA respondia perfeitamente (texto correto, nas
+executions 314/319/322) mas a mensagem nunca saía pro WhatsApp. Corrigido removendo essa
+dependência nas duas queries (commit `642a80c`). Aproveitei pra corrigir também S1 (fallback
+inseguro de roteamento por "instância mais recente conectada" quando falta `instance_token`
+no payload — risco cross-tenant) e S2 (parou de mandar `claude_api_key`/`ANTHROPIC_API_KEY`
+em claro pro n8n, campo confirmado não usado por nenhum workflow) da auditoria E2E de
+2026-07-03. `npx tsc --noEmit` ok. Commitado e enviado pra `origin/main`.
+**Redis NOAUTH** intermitente no Orquestrador (rajada de 6 falhas em 25s às 22:09 de
+2026-07-03, nunca mais depois) — parece reinício momentâneo do serviço, não configuração
+quebrada, sem ação tomada. **Rota `/clients/:phone/summary`** (memória longa) que retornava
+404 ontem à noite já está 200 OK agora (deploy alcançou o commit `5932be9` entre ontem e
+hoje). **Pendente de confirmação**: testei o endpoint `/whatsapp/send` ~3 min após o push
+de hoje e ainda respondia com o erro antigo — deploy do EasyPanel pode precisar ser
+disparado manualmente (padrão já visto antes neste projeto). Detalhes completos em
+STATUS.md (2026-07-04).
+
+## 2026-07-03 (noite, 2ª retomada) - Claude Code (2 dos 3 workflows da auditoria aplicados)
+
+A pedido da Heloísa, acionei o `n8n-specialist` pra criar os 3 workflows faltantes da
+auditoria (`FRAME - Eventos`, takeover verbal do Atendimento, Cobrança PIX). Descoberta
+importante: esse agente não tem ferramentas MCP do n8n (só arquivos) — ele entregou specs
+detalhadas em `n8n-workflows/*.json` numa worktree isolada, sem aplicar nada de verdade.
+Apliquei eu mesmo, corrigindo 2 riscos que as specs tinham (mesmo padrão de erro do Passo
+C: `$env.INTERNAL_API_KEY` não confirmada + URL pública hardcoded em vez do hostname
+interno do Docker):
+- **Takeover verbal do Atendimento**: publicado em `nrzMUgIFzjQ3Zf8F` — quando a IA usa a
+  frase de transferência ("vou chamar ele"), agora marca `human_takeover` de verdade via
+  PATCH `/conversations/:phone/takeover`.
+- **Cobrança PIX**: publicado em `4jTfG8Ez6mXsRMNl` — branch paralelo após criar
+  agendamento, chama `/n8n/payments/create-charge` (já existia no backend) e manda o PIX
+  copia-e-cola por WhatsApp. Adicionei uma proteção extra (IF `tem pix_copy_paste?`) que
+  não estava no plano do agente, pra não mandar mensagem quebrada enquanto o Asaas do
+  David não estiver configurado.
+- **`FRAME - Eventos`** (lembrete 24h): só especificado, não aplicado — depende de import
+  manual da Heloísa no n8n + de uma mudança de backend (`webhook-events.service.ts`,
+  adiciona `internal_api_url`/`internal_api_key` no payload de eventos + fallback de env
+  var `N8N_EVENTS_WEBHOOK_URL`) que fiz no working tree mas não commitei ainda. Detalhes
+  completos e checklist de pendências em STATUS.md.
+
+Arquivos de spec do agente trazidos da worktree isolada pra `n8n-workflows/` na pasta
+principal (pasta tinha sido apagada numa limpeza anterior).
+
+---
+
+## 2026-07-03 (noite, retomada) - Claude Code (humanização + memória longa: passos C-H concluídos)
+
+Retomada a sessão interrompida por créditos (ver entrada anterior "handoff pra
+Codex" logo abaixo — no fim, quem retomou foi o próprio Claude Code, não o
+Codex). Como a Heloísa não respondeu se autorizava disparar execuções de teste
+contra os 3 workflows em produção, segui o caminho seguro já documentado no
+plano: publicar cada passo com revisão estrutural cuidadosa e verificação via
+`get_workflow_details` após cada mudança, sem usar `execute_workflow`/
+`prepare_test_pin_data`.
+
+**Passo C — Debounce Redis atômico no Orquestrador** (`I6DwIWxE6qYNasZj`,
+publicado, `activeVersionId: c2020c66`). Substituídos `Aguardar 10 segundos` +
+`Verificar acumulo de mensagens` + `Sou o mais recente?` por: `Redis push`
+(node "Guardar mensagem no buffer", lista `frame:{nutri}:{phone}:buffer`) +
+`Redis incr` (node "Incrementar contador de rajada", chave
+`frame:{nutri}:{phone}:counter`, `expire:true`/`ttl:120`) + IF "É a primeira
+mensagem da rajada?" (`Object.values($json)[0] === 1`) + `Aguardar 15 segundos`
++ `Redis get` (keyType `list`, node "Ler mensagens acumuladas") + Code
+"Concatenar mensagens" (join `\n\n`, filtra vazios) + `Redis delete` (buffer e
+contador). **Achado técnico não previsto no plano original**: confirmado via
+leitura do código-fonte do node `n8n-nodes-base.redis` (raw.githubusercontent)
+que a operação `push` **descarta o valor de retorno do RPUSH/LPUSH e nunca
+expõe o tamanho da lista** — por isso o plano original ("usar a resposta do
+push pra saber se é o primeiro") não era implementável; troquei por um
+contador Redis separado via `incr`, que É atômico e retorna o valor
+incrementado (`{ [chave]: valor }`), confirmando corretamente "sou a 1ª
+mensagem" sem a corrida de condição do padrão get+Code+set que a spec original
+propunha (bug #8 do plano). Corrigidas na mesma operação as referências
+`$('Verificar acumulo de mensagens')...`/`$('Registrar chegada').item.json.
+message_text` no `AI Agent Orquestrador` (bugs #5/#6 do plano) — e também, não
+previsto explicitamente no plano mas do mesmo bug: os 2 nodes que encaminham
+pros sub-workflows (`Chamar Agente Atendimento`/`Chamar Agente Agendamento`) e
+o Code `Preparar mensagem de escalacao` também usavam
+`$('Registrar chegada').item.json.message_text` (só a 1ª mensagem da rajada,
+mesmo com debounce funcionando) — corrigidos pra usar
+`$('Concatenar mensagens').item.json.message_text` também.
+
+**Passo D — Separação por parágrafo** (Atendimento `nrzMUgIFzjQ3Zf8F` e
+Agendamento `4jTfG8Ez6mXsRMNl`, publicados). Instrução adicionada ao
+`systemMessage` de cada AI Agent pedindo blocos de 1-3 frases separados por
+`\n\n`, como se a IA estivesse digitando várias mensagens seguidas no
+WhatsApp.
+
+**Passo E — Blocos humanizados** (mesmos 2 workflows, publicados). Pattern:
+Code "Preparar blocos" (split por `\n\n`, filtra vazios) → `Loop blocos`
+(`n8n-nodes-base.splitInBatches`, `batchSize:1`) → node de envio existente
+(reaproveitado, só trocando a fonte do texto pro item do loop) → `Aguardar 1
+segundo` → volta pro loop; saída "done" do loop segue pro fluxo normal de
+salvar mensagem/log (usando sempre o texto completo original via referência
+nomeada ao node produtor, não o `$json` do loop). Atendimento: 1 ponto
+(`Enviar resposta WhatsApp`). Agendamento: 4 pontos (`Enviar WhatsApp
+datas/slots/confirmacao/texto`) — pra minimizar risco, o Code "Preparar
+blocos X" de cada ramo reemite o MESMO nome de campo `text_to_send` (só que
+com o bloco atual em vez do texto completo), então os nodes de envio
+existentes não precisaram ser tocados, só rewired.
+
+**Passo F — `delay:4000`/`readmessages:true`** ativado nos 5 nodes de envio em
+loop (1 Atendimento + 4 Agendamento), publicados.
+
+**Passo G — `ai_summary` no prompt** (mesmos 2 workflows, publicados). Campo
+`text` (turno dinâmico) do AI Agent Atendimento e AI Agent Agendamento passou a
+incluir bloco "O QUE VOCÊ JÁ SABE SOBRE ESSE LEAD" usando
+`$('Buscar contexto').item.json.client.ai_summary` (sem `.context`, confirmado
+direto no código de `internal.routes.ts` antes de editar).
+
+**Passo H — Memória longa via Haiku** (mesmos 2 workflows, publicados). Fork
+paralelo (não bloqueia o envio) a partir do AI Agent (Atendimento) ou dos nodes
+que montam a resposta conversacional (Agendamento: `Preparar resposta texto` e
+`Montar confirmacao`, não nos ramos transacionais de datas/slots): Code
+"Montar input do resumo" (junta resumo atual + novo turno, prompt de fusão
+"nunca apague informação antiga relevante") → HTTP Request pra
+`https://api.anthropic.com/v1/messages` com `authentication:
+predefinedCredentialType` + `nodeCredentialType: anthropicApi` (credencial
+`0xxzbFr5hm3xvzRU`, "Anthropic account" — nunca `$env.CLAUDE_API_KEY`, bug #9
+do plano, essa env var não existe confirmada), modelo `claude-haiku-4-5-20251001`,
+header `anthropic-version: 2023-06-01` manual (não vem do credential) → HTTP
+PATCH `/n8n/clients/{phone}/summary?nutritionist_id=` com
+`onError: continueRegularOutput`.
+
+**Lição técnica registrada em MEMORY.md** (custou 2 correções na mesma
+sessão): ao editar via MCP um campo n8n que é uma expressão `{{ }}` inteira
+(não texto estático com pedaços de expressão), o valor armazenado é o próprio
+código-fonte JS — nunca pode ter quebra de linha real, só o texto literal de 2
+caracteres `\n`. Como a chamada MCP já é JSON, isso exige escrever `\\n`
+(dupla contra-barra) na chamada. Descoberto porque o node `n8n-nodes-base.
+redis` `push` não expõe o tamanho da lista (ver Passo C) me obrigou a ler
+código-fonte de mais coisas do que o normal nesta sessão, incluindo isso.
+Verificação usada depois de cada edição desse tipo: `get_workflow_details` de
+novo + contar `\n` reais no valor (tem que dar 0).
+
+**Nenhum destes passos foi validado com execução ao vivo** (mesmo bloqueio de
+permissão da sessão anterior, e a Heloísa não respondeu à pergunta de novo
+nesta sessão) — só verificação estrutural via `get_workflow_details` após cada
+publish. Validar na próxima mensagem real que chegar de qualquer lead via
+`get_execution`, conferindo especialmente: 1 resposta só por rajada de
+mensagens (não duplicada), blocos chegando separados com delay perceptível, e
+o resumo do lead sendo de fato atualizado depois da conversa.
+
+---
+
+## 2026-07-03 (noite) - Claude Code (handoff pra Codex: humanização e memória longa)
+
+Sessão interrompida por fim de créditos no meio da implementação do plano de
+humanização (ver STATUS.md, entrada "(noite) — HANDOFF PARA CODEX" para o
+detalhamento completo). Resumo: backend commitado/enviado (`5932be9`), Window
+Buffer Memory removido e publicado nos 3 workflows n8n. Faltam os passos
+C-H (debounce Redis, blocos humanizados, delay, ai_summary no prompt, braço de
+memória Haiku) — todos documentados passo a passo no plano
+`C:\Users\Heloisa\.claude\plans\happy-baking-island.md`, que também lista 9
+bugs reais encontrados na spec original do `n8n-specialist`
+(`obsidian/03 - Técnico/n8n/Spec - Humanizacao e Memoria Longa (2026-07-03).md`)
+que teriam quebrado produção se implementados ao pé da letra (o mais grave:
+campo errado faria a IA ecoar a mensagem do lead em vez de mandar datas de
+agendamento). Bloqueio pendente: permissões do Claude Code recusaram testar
+workflows em produção mesmo com número falso — Heloísa ainda não decidiu como
+validar as próximas etapas.
+
+## 2026-07-03 - Claude Code (fix produção: escalação repetida + rota HUMANO indevida + saudação dupla)
+
+Heloísa reportou: IA re-enviando "vou chamar o David", escalando quando o lead só
+queria marcar consulta, e respondendo 2x a saudações seguidas ("Ei" + "Bom dia").
+Diagnóstico via executions do n8n (`FRAME - Orquestrador`, execs 292/294/295/300/302).
+3 bugs corrigidos via MCP e **publicados** (`activeVersionId: b1156d1e`):
+
+1. **O fix de takeover de 2026-07-02 estava quebrado em produção**: o node
+   `Marcar conversa como humano` mandava header `content-type: application/json`
+   com `sendBody: false` → Fastify rejeitava com 400 `FST_ERR_CTP_EMPTY_JSON_BODY`
+   → a conversa NUNCA era marcada `human_takeover` → cada mensagem nova do lead
+   reprocessava e re-enviava a escalação. Corrigido: `sendBody: true` +
+   `jsonBody: {}` (o endpoint não lê body, só params/query — verificado em
+   `internal.routes.ts:1068`).
+2. **Classificador tratava "marcar consulta com o David" como HUMANO** (conf.
+   0.97) — qualquer menção ao nome do David virava escalação. System message do
+   `AI Agent Orquestrador` reescrito: a consulta é sempre com o David, citar o
+   nome ao marcar = AGENDAMENTO; HUMANO só pra pedido explícito de FALAR com
+   pessoa (não marcar), reclamação séria, emergência ou caso sensível; na
+   dúvida, não escalar.
+3. **Anti-acúmulo de mensagens nunca funcionou** (causa da saudação dupla):
+   (a) `Salvar mensagem do cliente` rodava em paralelo mas, com executionOrder
+   v1, só executava DEPOIS do branch principal inteiro — a mensagem nova nunca
+   estava no banco na hora da checagem; rewired pra
+   `Registrar chegada → Salvar mensagem do cliente → Aguardar` (salva antes de
+   esperar); (b) o código de `Verificar acumulo de mensagens` filtrava
+   `sender === 'user'`, mas a API retorna `sender: 'client'` — a checagem nunca
+   detectava nada; corrigido (aceita client/user, com margem de 1s pra não
+   contar a própria mensagem recém-salva e se auto-descartar); (c) node
+   "Aguardar 45 segundos" esperava só 3s — ajustado pra 10s e renomeado
+   `Aguardar 10 segundos` (compromisso latência × acúmulo).
+
+Sem mudança de código no repo (tudo no n8n). **Nota**: a conversa do lead
+5527999337639 recebeu a escalação antes do fix e NÃO está `human_takeover`
+(o 400 impediu) — se ele mandar nova mensagem, cai em AGENDAMENTO normalmente.
+Mensagens a <1s de intervalo ainda podem gerar resposta dupla (janela da margem).
+
+**2ª rodada (mesma tarde)**, a pedido da Heloísa ("veja se tem mais algo que pode
+me prejudicar" + estudo do template da mentoria):
+- Publicado no Orquestrador (`activeVersionId: 3575550b`): guard
+  `Filtrar so mensagens de lead` (B1 da auditoria — eventos de cron/payload sem
+  texto não chegam mais na IA) e notificação de escalação pro WhatsApp da nutri
+  (B2 — condicional a `nutritionists.phone`, que está NULL pro David; log de
+  escalação agora registra se notificou ou não).
+- Auditoria E2E atualizada com callout de status (linha "takeover ✅" corrigida —
+  estava errada, o node nasceu quebrado).
+- Template da mentoria (`Template IA + Agendamento`, `qNMmTmMOTdo9WwGc`)
+  dissecado: análise + plano de adoção em
+  `obsidian/03 - Técnico/n8n/Análise - Template Mentoria IA + Agendamento (2026-07-03).md`
+  (debounce Redis, blocos humanizados com delay, memória longa 2 camadas,
+  fromMe→takeover, áudio; rejeitados Baserow/Google Calendar/monólito).
+- Confirmado no repo: trabalho de 02/07 está commitado (`ce1229e`/`51e6a61` em
+  `origin/main`); working tree só tem `david-seed.sql`/`supabase-setup.sql`
+  não rastreados + artefatos soltos.
+
+## 2026-07-03 - Codex (Excalidraw: proposta comercial Frame System)
+
+- Acessou no Chrome a imagem enviada pela Heloisa via ChatGPT: proposta comercial em estilo whiteboard/hand-drawn com 12 quadros (capa, problema, solucao, como funciona, inclusos, cronograma, suporte, responsabilidades, planos, pagamento, motivos e proximos passos).
+- Gerou `exports/frame-system-proposta-comercial.excalidraw` e colou/importou a cena no Excalidraw aberto em `https://excalidraw.com/` como elementos editaveis: cards numerados, textos, bullets, icones simples, timeline, planos, fluxo e footer.
+- Manteve o conteudo antigo do canvas intacto e colocou a nova proposta como um bloco separado, sem apagar elementos existentes.
+
+## 2026-07-03 - Codex (mockup dashboard a partir de referencia Instagram)
+
+- Acessou a referencia enviada no Instagram (`/p/DZ9Muguny2q/`), identificada como um dashboard SaaS de project management de `sujon.co`/`oripioagency`, e usou apenas a direcao visual/estrutura: layout claro, cards modulares, fila de tarefas, progresso e composicao limpa.
+- Criou `exports/frame-system-dashboard-instagram-reference.html`, mockup HTML do zero para o dashboard do Frame System: sidebar escura, hero operacional, painel da assistente IA, metricas, fila comercial, board de tarefas, agenda do dia, grafico semanal e ultimas mensagens.
+- Nao portou para o app Next.js real ainda; a entrega ficou como mockup estatico para revisao visual antes de substituir a tela funcional atual.
+
+## 2026-07-03 - Claude Code (auditoria E2E: gap para produto vendável)
+
+A pedido da Heloísa, auditoria profunda do estado atual (backend real, 3
+workflows n8n publicados, crons de follow-up) pra fechar o gap até a 1ª
+nutricionista pagante. Resultado completo em
+`obsidian/02 - Produto/Auditoria E2E - Gap para Venda (2026-07-03).md`.
+Achados novos (não mapeados antes): **(B1)** lembrete 24h/pós-consulta/retorno
+quebrados em produção — `fireWebhookEvent` posta na MESMA URL do Orquestrador,
+que trata evento como mensagem de lead (`message_text` undefined) e ainda marca
+`reminder_sent=true`; **(B2)** escalação pra humano nunca manda WhatsApp pro
+David (só pro lead + badge no dashboard, apesar do log dizer "David
+notificado"); **(B3)** Agente Atendimento diz "vou chamar o David" (casos
+clínicos) sem marcar `human_takeover`; **(B4)** nenhum agente coleta o nome do
+lead → agenda enche de "Cliente"; **(S1)** falha de segurança: POST sem token
+em `/webhook/whatsapp` cai no fallback "instância conectada mais recente"
+(`webhook.routes.ts:107`) — spoofing/cross-tenant; **(S2)** `ANTHROPIC_API_KEY`
+e `INTERNAL_API_KEY` viajam no payload pro n8n e ficam em claro nos execution
+logs (a Claude key nem é usada); **(S3)** webhooks n8n dos sub-agentes aceitam
+POST público e leem `internal_api_url` do payload (abuso de tokens Claude).
+Plano priorizado P0/P1/P2 no documento do Obsidian. Nenhum código alterado
+nesta sessão — só análise + documentação.
+
+
 ## 2026-07-02 - Claude Code (fix: escalação pra humano repetia mensagem)
 
 Heloísa reportou, olhando os executions do n8n, que a IA reenviava "vou chamar
@@ -61,6 +350,11 @@ deve ser rodada antes deste UPDATE (ela faz parte do commit pendente da migraç�
 
 ---
 
+## 2026-07-03 - Codex (Excalidraw: proposta comercial Frame System)
+
+- Acessou no Chrome a imagem enviada pela Heloisa via ChatGPT: proposta comercial em estilo whiteboard/hand-drawn com 12 quadros (capa, problema, solucao, como funciona, inclusos, cronograma, suporte, responsabilidades, planos, pagamento, motivos e proximos passos).
+- Gerou `exports/frame-system-proposta-comercial.excalidraw` e colou/importou a cena no Excalidraw aberto em `https://excalidraw.com/` como elementos editaveis: cards numerados, textos, bullets, icones simples, timeline, planos, fluxo e footer.
+- Manteve o conteudo antigo do canvas intacto e colocou a nova proposta como um bloco separado, sem apagar elementos existentes.
 ## 2026-07-01 - Claude Code (migração Evolution API → uazapi — substituição total)
 
 Heloisa decidiu abandonar a Evolution API (estava bloqueando números reais) e migrar 100%
@@ -112,6 +406,11 @@ campos se necessário (especialmente `data.text`, `data.chatid`, `data.messageid
 
 ---
 
+## 2026-07-03 - Codex (Excalidraw: proposta comercial Frame System)
+
+- Acessou no Chrome a imagem enviada pela Heloisa via ChatGPT: proposta comercial em estilo whiteboard/hand-drawn com 12 quadros (capa, problema, solucao, como funciona, inclusos, cronograma, suporte, responsabilidades, planos, pagamento, motivos e proximos passos).
+- Gerou `exports/frame-system-proposta-comercial.excalidraw` e colou/importou a cena no Excalidraw aberto em `https://excalidraw.com/` como elementos editaveis: cards numerados, textos, bullets, icones simples, timeline, planos, fluxo e footer.
+- Manteve o conteudo antigo do canvas intacto e colocou a nova proposta como um bloco separado, sem apagar elementos existentes.
 ## 2026-07-01 - Claude Code (fix producao: webhook do WhatsApp do David nao disparava)
 
 Heloisa reportou que reconectou o WhatsApp do David (troca de numero) e o
@@ -148,6 +447,11 @@ mais usada).
 
 ---
 
+## 2026-07-03 - Codex (Excalidraw: proposta comercial Frame System)
+
+- Acessou no Chrome a imagem enviada pela Heloisa via ChatGPT: proposta comercial em estilo whiteboard/hand-drawn com 12 quadros (capa, problema, solucao, como funciona, inclusos, cronograma, suporte, responsabilidades, planos, pagamento, motivos e proximos passos).
+- Gerou `exports/frame-system-proposta-comercial.excalidraw` e colou/importou a cena no Excalidraw aberto em `https://excalidraw.com/` como elementos editaveis: cards numerados, textos, bullets, icones simples, timeline, planos, fluxo e footer.
+- Manteve o conteudo antigo do canvas intacto e colocou a nova proposta como um bloco separado, sem apagar elementos existentes.
 ## 2026-06-18 - Claude Code (backend funcional: regras, Google Calendar, servicos, location/dia)
 
 Sessao focada em deixar o sistema 100% funcional sem tocar no design. Tudo
@@ -173,6 +477,11 @@ Pendencias tecnicas remanescentes (nao criticas para MVP):
 
 ---
 
+## 2026-07-03 - Codex (Excalidraw: proposta comercial Frame System)
+
+- Acessou no Chrome a imagem enviada pela Heloisa via ChatGPT: proposta comercial em estilo whiteboard/hand-drawn com 12 quadros (capa, problema, solucao, como funciona, inclusos, cronograma, suporte, responsabilidades, planos, pagamento, motivos e proximos passos).
+- Gerou `exports/frame-system-proposta-comercial.excalidraw` e colou/importou a cena no Excalidraw aberto em `https://excalidraw.com/` como elementos editaveis: cards numerados, textos, bullets, icones simples, timeline, planos, fluxo e footer.
+- Manteve o conteudo antigo do canvas intacto e colocou a nova proposta como um bloco separado, sem apagar elementos existentes.
 ## 2026-06-17 - Codex (mockup Lovable clean / agenda e disponibilidade)
 
 - Criou `exports/frame-ascend-lovable-clean.html` com uma versao mais limpa
@@ -934,3 +1243,10 @@ versionados (ver MEMORY.md).
 - Validacoes: `npx.cmd tsc --noEmit` em `apps/dashboard` e `apps/api` ok;
   `npm.cmd run build` em `apps/dashboard` ok (40 rotas). Browser interno nao
   abriu por erro de permissao do Windows, portanto sem screenshot local.
+
+
+
+
+
+
+

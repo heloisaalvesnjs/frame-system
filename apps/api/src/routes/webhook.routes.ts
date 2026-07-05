@@ -43,6 +43,7 @@ function parseUazapiPayload(payload: unknown): {
   instanceToken: string
   messageType: string
   isAudio: boolean
+  isVisualMedia: boolean
 } {
   const p = (payload ?? {}) as Record<string, unknown>
   const eventType     = (p.EventType ?? p.event ?? '') as string
@@ -71,6 +72,9 @@ function parseUazapiPayload(payload: unknown): {
   // Validar contra um payload real de áudio se o comportamento for inesperado.
   const messageType = (message.type ?? '') as string
   const isAudio = messageType === 'ptt' || messageType === 'audio'
+  // Outras mídias sem texto (imagem, vídeo, documento, sticker) também precisam
+  // de fallback — sem isso o lead manda uma foto/PDF e recebe silêncio total.
+  const isVisualMedia = ['image', 'video', 'document', 'sticker'].includes(messageType)
 
   return {
     isMessage: isEventMessage && isDirectMessage,
@@ -81,6 +85,7 @@ function parseUazapiPayload(payload: unknown): {
     instanceToken,
     messageType,
     isAudio,
+    isVisualMedia,
   }
 }
 
@@ -121,6 +126,21 @@ export async function webhookRoutes(app: FastifyInstance) {
         ).catch(err => app.log.warn({ err, phone: parsed.phone }, '[webhook] Falha ao enviar resposta para áudio não suportado'))
       } else {
         app.log.warn({ phone: parsed.phone, messageType: parsed.messageType }, '[webhook] Áudio recebido mas sem instanceToken para responder')
+      }
+      return reply.send({ ok: true })
+    }
+
+    // ── 3c: Imagem/vídeo/documento/sticker sem texto — responde e descarta ────
+    // Mesmo racional do áudio: melhor avisar que não lê o arquivo do que silêncio.
+    if (parsed.isMessage && !parsed.fromMe && parsed.phone && !parsed.messageText && parsed.isVisualMedia) {
+      if (parsed.instanceToken) {
+        await sendMessage(
+          parsed.phone,
+          'Recebi seu arquivo! 📎 Por aqui eu ainda só consigo ler texto — me conta em palavras o que você precisa? Se for exame ou algo de saúde, já te conecto com o David.',
+          parsed.instanceToken
+        ).catch(err => app.log.warn({ err, phone: parsed.phone, messageType: parsed.messageType }, '[webhook] Falha ao enviar resposta para mídia não suportada'))
+      } else {
+        app.log.warn({ phone: parsed.phone, messageType: parsed.messageType }, '[webhook] Mídia recebida mas sem instanceToken para responder')
       }
       return reply.send({ ok: true })
     }
@@ -201,6 +221,34 @@ export async function webhookRoutes(app: FastifyInstance) {
         )
         return reply.send({ ok: true })
       }
+
+      // ── Opt-out explícito: lead pediu para parar de receber mensagens ─────────
+      // Detecção conservadora (comandos curtos ou frases inequívocas) para evitar
+      // falso positivo. try/catch: a coluna opted_out pode ainda não existir no
+      // banco antes da migration — não pode derrubar o webhook por isso.
+      const wantsOptOut = /^(parar|pare|stop|sair)[.!]*$|n[aã]o quero mais (receber|mensagem)|pare de (me )?(mandar|enviar)|n[aã]o me mande mais/i.test(messageText.trim())
+      if (wantsOptOut) {
+        try {
+          await query(
+            `UPDATE clients SET opted_out = true WHERE nutritionist_id = $1 AND phone = $2`,
+            [nutritionist_id, phone]
+          )
+        } catch (err) {
+          app.log.warn({ err }, '[webhook] Falha ao marcar opted_out (coluna pode não existir ainda)')
+        }
+        await sendMessage(phone, 'Tudo bem! Não vou mais te mandar mensagens 😊 Se mudar de ideia, é só me chamar por aqui.', activeToken)
+          .catch(err => app.log.warn({ err }, '[webhook] Falha ao confirmar opt-out'))
+        return reply.send({ ok: true })
+      }
+
+      // Lead que tinha saído e mandou mensagem nova = reengajou (limpa a flag)
+      try {
+        await query(
+          `UPDATE clients SET opted_out = false
+           WHERE nutritionist_id = $1 AND phone = $2 AND opted_out = true`,
+          [nutritionist_id, phone]
+        )
+      } catch { /* coluna pode não existir antes da migration — segue o fluxo */ }
 
       // ── Verifica horário de funcionamento e modo férias ──────────────────────
       const assistantConfig = await queryOne<any>(
