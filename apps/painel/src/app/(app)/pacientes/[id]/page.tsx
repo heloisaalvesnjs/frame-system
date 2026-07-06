@@ -6,20 +6,14 @@ import { api, ApiError } from "@/lib/api";
 import type { ClientDetail, Meal, MealItem, TacoFood } from "@/lib/meal-types";
 import { STAGE_LABEL } from "@/lib/meal-types";
 import { calcMacros, getSubstitutions } from "@/lib/foods";
-import { FoodPicker } from "@/components/food-picker";
+import { FoodSwapSheet } from "@/components/food-swap-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionGroup, PageHeader } from "@/components/section-group";
 import {
   ArrowLeftIcon,
   PlusIcon,
@@ -28,6 +22,8 @@ import {
   RepeatIcon,
   CalendarCheckIcon,
   SparklesIcon,
+  ClipboardListIcon,
+  UserIcon,
 } from "lucide-react";
 
 function uid() {
@@ -50,23 +46,22 @@ export default function PacienteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Campos editáveis do cabeçalho
   const [goal, setGoal] = useState("");
   const [returnDate, setReturnDate] = useState("");
   const [notes, setNotes] = useState("");
   const [savingInfo, setSavingInfo] = useState(false);
 
-  // Plano alimentar
   const [meals, setMeals] = useState<Meal[]>([]);
   const [savingPlan, setSavingPlan] = useState(false);
 
-  // FoodPicker: alvo pode ser um meal (comida principal) ou um item (troca)
+  // FoodSwapSheet state
   const [picker, setPicker] = useState<
     | { kind: "food"; mealId: string }
-    | { kind: "sub"; mealId: string; itemIdx: number }
+    | { kind: "sub"; mealId: string; itemIdx: number; baseFood: TacoFood | null }
     | null
   >(null);
-  // Sugestões de troca por item
+
+  // Sugestões inline por item
   const [suggestFor, setSuggestFor] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<TacoFood[]>([]);
 
@@ -106,7 +101,6 @@ export default function PacienteDetailPage() {
     }
   }
 
-  // ── Plano alimentar ──────────────────────────────────────────────────────
   function addMeal() {
     setMeals((m) => [...m, { id: uid(), name: "Nova refeição", time: "", items: [] }]);
   }
@@ -126,14 +120,20 @@ export default function PacienteDetailPage() {
   function removeItem(mealId: string, idx: number) {
     setMeals((m) => m.map((x) => (x.id === mealId ? { ...x, items: x.items.filter((_, i) => i !== idx) } : x)));
   }
-  function addSubToItem(mealId: string, itemIdx: number, food: TacoFood, qty: number, unit: string) {
+  function addSubToItem(mealId: string, itemIdx: number, food: TacoFood, qty: number) {
     setMeals((m) =>
       m.map((x) => {
         if (x.id !== mealId) return x;
         const items = x.items.map((it, i) => {
           if (i !== itemIdx) return it;
           if (it.substitutions.some((s) => s.food_id === food.id)) return it;
-          return { ...it, substitutions: [...it.substitutions, { food_id: food.id, name: food.name, quantity: qty, unit }] };
+          return {
+            ...it,
+            substitutions: [
+              ...it.substitutions,
+              { food_id: food.id, name: food.name, quantity: qty, unit: "g" },
+            ],
+          };
         });
         return { ...x, items };
       })
@@ -179,6 +179,10 @@ export default function PacienteDetailPage() {
     }
   }
 
+  // Resolve the baseFood for sub mode from meals state
+  const pickerBaseFood: TacoFood | null =
+    picker?.kind === "sub" ? picker.baseFood : null;
+
   if (loading) {
     return <div className="mx-auto w-full max-w-4xl text-sm text-muted-foreground">Carregando paciente...</div>;
   }
@@ -192,7 +196,7 @@ export default function PacienteDetailPage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <button
         onClick={() => router.push("/pacientes")}
         className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -201,10 +205,10 @@ export default function PacienteDetailPage() {
       </button>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{client.name ?? "Sem nome"}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{formatPhone(client.phone)}</p>
-        </div>
+        <PageHeader
+          title={client.name ?? "Sem nome"}
+          description={formatPhone(client.phone)}
+        />
         {client.stage && (
           <Badge variant="outline">{STAGE_LABEL[client.stage] ?? client.stage}</Badge>
         )}
@@ -247,49 +251,46 @@ export default function PacienteDetailPage() {
         </Card>
       </div>
 
-      {/* Informações editáveis */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Acompanhamento</CardTitle>
-          <CardDescription>Objetivo, data de retorno e observações do paciente.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="goal">Objetivo</Label>
-            <Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Emagrecimento, hipertrofia..." />
+      {/* Acompanhamento */}
+      <SectionGroup
+        icon={UserIcon}
+        title="Acompanhamento"
+        description="Objetivo, data de retorno e observações do paciente."
+      >
+        <div className="p-4 flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="goal">Objetivo</Label>
+              <Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Emagrecimento, hipertrofia..." />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="return">Data de retorno</Label>
+              <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="notes">Observações</Label>
+              <Textarea id="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="return">Data de retorno</Label>
-            <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
+          <div className="flex justify-end">
+            <Button onClick={saveInfo} disabled={savingInfo}>{savingInfo ? "Salvando..." : "Salvar"}</Button>
           </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea id="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button onClick={saveInfo} disabled={savingInfo}>{savingInfo ? "Salvando..." : "Salvar"}</Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </SectionGroup>
 
       {/* Plano alimentar */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <UtensilsCrossedIcon className="size-4 text-primary" /> Plano alimentar
-              </CardTitle>
-              <CardDescription>
-                Monte as refeições e, em cada alimento, adicione as trocas equivalentes que o paciente pode fazer.
-              </CardDescription>
-            </div>
+      <SectionGroup
+        icon={UtensilsCrossedIcon}
+        title="Plano alimentar"
+        description="Monte as refeições e, em cada alimento, adicione as trocas equivalentes."
+      >
+        <div className="p-4 flex flex-col gap-4">
+          <div className="flex justify-end">
             <Button size="sm" variant="outline" onClick={addMeal}>
               <PlusIcon /> Refeição
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+
           {meals.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Nenhuma refeição ainda. Clique em &quot;Refeição&quot; para começar o plano.
@@ -325,6 +326,22 @@ export default function PacienteDetailPage() {
                 )}
                 {meal.items.map((item, idx) => {
                   const key = `${meal.id}:${idx}`;
+                  // Reconstruct a minimal TacoFood-like object for sub mode
+                  const itemAsBase: TacoFood = {
+                    id: item.food_id,
+                    name: item.name,
+                    category: "",
+                    kcal: item.kcal > 0 && item.quantity > 0
+                      ? Math.round((item.kcal / item.quantity) * 100)
+                      : 100,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0,
+                    fiber: 0,
+                    typical_amount: item.quantity,
+                    typical_unit: item.unit,
+                    unit_weight_g: 1,
+                  };
                   return (
                     <div key={idx} className="flex flex-col gap-2 p-3">
                       <div className="flex items-center justify-between gap-2">
@@ -339,11 +356,13 @@ export default function PacienteDetailPage() {
                             size="sm" variant="ghost"
                             onClick={() => showSuggestions(meal.id, idx, item.food_id)}
                           >
-                            <SparklesIcon /> Sugerir trocas
+                            <SparklesIcon /> Sugerir
                           </Button>
                           <Button
                             size="sm" variant="ghost"
-                            onClick={() => setPicker({ kind: "sub", mealId: meal.id, itemIdx: idx })}
+                            onClick={() =>
+                              setPicker({ kind: "sub", mealId: meal.id, itemIdx: idx, baseFood: itemAsBase })
+                            }
                           >
                             <RepeatIcon /> Troca
                           </Button>
@@ -353,7 +372,6 @@ export default function PacienteDetailPage() {
                         </div>
                       </div>
 
-                      {/* Sugestões automáticas */}
                       {suggestFor === key && (
                         <div className="flex flex-wrap gap-1.5 rounded-md border border-dashed border-border p-2">
                           {suggestions.length === 0 ? (
@@ -362,7 +380,7 @@ export default function PacienteDetailPage() {
                             suggestions.map((s) => (
                               <button
                                 key={s.id}
-                                onClick={() => addSubToItem(meal.id, idx, s, s.typical_amount || 100, s.typical_unit || "g")}
+                                onClick={() => addSubToItem(meal.id, idx, s, s.typical_amount || 100)}
                                 className="rounded-full border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary"
                               >
                                 + {s.name}
@@ -372,7 +390,6 @@ export default function PacienteDetailPage() {
                         </div>
                       )}
 
-                      {/* Trocas definidas */}
                       {item.substitutions.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pl-1">
                           <span className="text-xs text-muted-foreground">ou trocar por:</span>
@@ -395,21 +412,26 @@ export default function PacienteDetailPage() {
               </div>
             </div>
           ))}
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button onClick={savePlan} disabled={savingPlan}>{savingPlan ? "Salvando..." : "Salvar plano alimentar"}</Button>
-        </CardFooter>
-      </Card>
+
+          {meals.length > 0 && (
+            <div className="flex justify-end">
+              <Button onClick={savePlan} disabled={savingPlan}>
+                {savingPlan ? "Salvando..." : "Salvar plano alimentar"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </SectionGroup>
 
       {/* Histórico de consultas */}
       {appointments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Histórico de consultas</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col divide-y divide-border">
+        <SectionGroup
+          icon={ClipboardListIcon}
+          title="Histórico de consultas"
+        >
+          <div className="flex flex-col divide-y divide-border">
             {appointments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between py-2 text-sm first:pt-0 last:pb-0">
+              <div key={a.id} className="flex items-center justify-between p-3 text-sm first:pt-3 last:pb-3">
                 <span>{fmtDateTime(a.scheduled_at)}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground capitalize">{a.modality}</span>
@@ -417,18 +439,22 @@ export default function PacienteDetailPage() {
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionGroup>
       )}
 
-      <FoodPicker
+      <FoodSwapSheet
         open={!!picker}
         onOpenChange={(o) => !o && setPicker(null)}
-        title={picker?.kind === "sub" ? "Adicionar troca" : "Adicionar alimento"}
-        onSelect={(food, qty, unit) => {
+        mode={picker?.kind === "sub" ? "sub" : "food"}
+        baseFood={pickerBaseFood}
+        onSelect={(food, qty) => {
           if (!picker) return;
-          if (picker.kind === "food") addFoodToMeal(picker.mealId, food, qty, unit);
-          else addSubToItem(picker.mealId, picker.itemIdx, food, qty, unit);
+          if (picker.kind === "food") {
+            addFoodToMeal(picker.mealId, food, qty, food.typical_unit || "g");
+          } else {
+            addSubToItem(picker.mealId, picker.itemIdx, food, qty);
+          }
         }}
       />
     </div>

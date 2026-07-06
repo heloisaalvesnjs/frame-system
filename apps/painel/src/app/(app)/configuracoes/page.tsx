@@ -6,15 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { UserIcon } from "lucide-react";
+import { SectionGroup, PageHeader } from "@/components/section-group";
 
 type Profile = {
   id: string;
@@ -85,11 +78,8 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Seu perfil e dados de contato.</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+      <PageHeader title="Configurações" description="Seu perfil e dados de contato." />
 
       {message && (
         <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
@@ -97,42 +87,41 @@ export default function ConfiguracoesPage() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <UserIcon className="size-4 text-primary" />
-            Perfil
-          </CardTitle>
-          <CardDescription>{profile?.email}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="profile-name">Nome</Label>
-            <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} />
+      <SectionGroup
+        icon={UserIcon}
+        title="Perfil"
+        description={profile?.email}
+      >
+        <div className="p-4 flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="profile-name">Nome</Label>
+              <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="profile-phone">Telefone</Label>
+              <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="profile-specialty">Especialidade</Label>
+              <Input
+                id="profile-specialty"
+                value={specialty}
+                onChange={(e) => setSpecialty(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="profile-bio">Bio</Label>
+              <Textarea id="profile-bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="profile-phone">Telefone</Label>
-            <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="flex justify-end">
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar perfil"}
+            </Button>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="profile-specialty">Especialidade</Label>
-            <Input
-              id="profile-specialty"
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="profile-bio">Bio</Label>
-            <Textarea id="profile-bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Salvando..." : "Salvar perfil"}
-          </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </SectionGroup>
     </div>
   );
 }

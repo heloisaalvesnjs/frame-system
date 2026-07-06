@@ -3,11 +3,9 @@ import {
 	LayoutGridIcon,
 	MessageSquareTextIcon,
 	CalendarDaysIcon,
-	ClockIcon,
 	UsersIcon,
 	BotIcon,
 	SettingsIcon,
-	PlugIcon,
 	HelpCircleIcon,
 	ActivityIcon,
 } from "lucide-react";
@@ -51,11 +49,6 @@ export const navGroups: SidebarNavGroup[] = [
 				icon: <CalendarDaysIcon />,
 			},
 			{
-				title: "Disponibilidade",
-				path: "/disponibilidade",
-				icon: <ClockIcon />,
-			},
-			{
 				title: "Pacientes",
 				path: "/pacientes",
 				icon: <UsersIcon />,
@@ -75,11 +68,6 @@ export const navGroups: SidebarNavGroup[] = [
 	{
 		label: "Conta",
 		items: [
-			{
-				title: "Integrações",
-				path: "/integracoes",
-				icon: <PlugIcon />,
-			},
 			{
 				title: "Configurações",
 				path: "/configuracoes",
