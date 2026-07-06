@@ -127,7 +127,8 @@ export async function availabilityRoutes(app: FastifyInstance) {
   app.get('/date-locations', auth, async (request, reply) => {
     const { id } = (request as any).user
     const rows = await query<any>(
-      `SELECT d.id, d.date, d.location_id, l.name AS location_name, l.modality, l.color
+      `SELECT d.id, d.date, d.location_id, l.name AS location_name, l.modality, l.color,
+              d.start_time::text AS start_time, d.end_time::text AS end_time, d.slot_duration
        FROM date_location_overrides d
        LEFT JOIN locations l ON l.id = d.location_id
        WHERE d.nutritionist_id = $1 AND d.date >= CURRENT_DATE
@@ -138,19 +139,25 @@ export async function availabilityRoutes(app: FastifyInstance) {
   })
 
   // POST /api/availability/date-locations
+  // Horário é por dia (não existe mais grade semanal única): se start_time/
+  // end_time vierem vazios, o available-slots cai no fallback 08:00-18:00/30min.
   app.post('/date-locations', auth, async (request, reply) => {
     const { id } = (request as any).user
     const body = z.object({
-      date:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      location_id: z.string().uuid().nullable(),
+      date:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      location_id:   z.string().uuid().nullable(),
+      start_time:    z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      end_time:      z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      slot_duration: z.number().int().min(15).max(240).nullable().optional(),
     }).parse(request.body)
 
     const [row] = await query<any>(
-      `INSERT INTO date_location_overrides (nutritionist_id, date, location_id)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (nutritionist_id, date) DO UPDATE SET location_id = $3
-       RETURNING id, date, location_id`,
-      [id, body.date, body.location_id]
+      `INSERT INTO date_location_overrides (nutritionist_id, date, location_id, start_time, end_time, slot_duration)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (nutritionist_id, date) DO UPDATE SET
+         location_id = $3, start_time = $4, end_time = $5, slot_duration = $6
+       RETURNING id, date, location_id, start_time::text AS start_time, end_time::text AS end_time, slot_duration`,
+      [id, body.date, body.location_id, body.start_time ?? null, body.end_time ?? null, body.slot_duration ?? null]
     )
     return reply.send({ override: row })
   })

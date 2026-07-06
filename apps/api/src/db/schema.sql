@@ -585,6 +585,14 @@ CREATE TABLE IF NOT EXISTS date_location_overrides (
 );
 CREATE INDEX IF NOT EXISTS idx_date_loc_overrides ON date_location_overrides(nutritionist_id, date);
 
+-- (2026-07-06) Horário por dia específico. A config semanal de `availability`
+-- deixou de fazer sentido pro David (horário muda de local pra local, dia a
+-- dia) — agora o nutri define local E horário no mesmo clique no calendário.
+-- NULL nesses campos = usa o horário padrão (08:00-18:00, 30min) como fallback.
+ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS start_time    TIME;
+ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS end_time      TIME;
+ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS slot_duration INT;
+
 -- ── Membros de equipe (assistentes, recepcionistas, viewers) ──────────────────
 -- CREATE TABLE precisa vir antes dos ALTER TABLE team_members abaixo.
 CREATE TABLE IF NOT EXISTS team_members (

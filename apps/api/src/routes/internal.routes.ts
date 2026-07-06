@@ -469,8 +469,14 @@ export async function internalRoutes(app: FastifyInstance) {
       }
 
       // Busca os horarios do dia. Online usa a agenda propria (colunas online_*
-      // em nutritionists); presencial usa a availability semanal por dia.
+      // em nutritionists). Presencial usa o horario DESSE DIA especifico em
+      // date_location_overrides (o nutri define local + horario juntos no
+      // calendario — nao existe mais grade semanal fixa, o horario muda de
+      // local pra local). Override sem horario definido cai no fallback.
+      const DEFAULT_START = '08:00', DEFAULT_END = '18:00', DEFAULT_SLOT = 30
       let avail: any
+      let locationData: { id: string; name: string; address: string | null } | null = null
+
       if (modality === 'online') {
         const cfg = await queryOne<any>(
           `SELECT online_enabled, online_weekdays,
@@ -487,26 +493,14 @@ export async function internalRoutes(app: FastifyInstance) {
         }
         avail = cfg
       } else {
-        avail = await queryOne<any>(
-          `SELECT av.start_time, av.end_time, av.slot_duration, av.break_start, av.break_end,
-                  n.min_advance_hours, n.max_appointments_per_day
-           FROM availability av
-           JOIN nutritionists n ON n.id = av.nutritionist_id
-           WHERE av.nutritionist_id = $1 AND av.day_of_week = $2 AND av.is_active = true`,
-          [nutritionist_id, dayOfWeek]
-        )
-        if (!avail) {
-          return reply.send({ available: false, reason: 'Sem disponibilidade configurada para este dia da semana' })
-        }
-      }
-
-      // Para presencial: verifica date_location_overrides com a cidade solicitada
-      let locationData: { id: string; name: string; address: string | null } | null = null
-      if (modality === 'presencial') {
         const override = await queryOne<any>(
-          `SELECT dlo.location_id, l.name, l.address, l.city
+          `SELECT dlo.location_id, l.name, l.address, l.city,
+                  dlo.start_time::text AS start_time, dlo.end_time::text AS end_time,
+                  dlo.slot_duration,
+                  n.min_advance_hours, n.max_appointments_per_day
            FROM date_location_overrides dlo
            JOIN locations l ON l.id = dlo.location_id
+           JOIN nutritionists n ON n.id = dlo.nutritionist_id
            WHERE dlo.nutritionist_id = $1 AND dlo.date = $2
              AND l.city ILIKE $3`,
           [nutritionist_id, date, `%${city}%`]
@@ -518,6 +512,15 @@ export async function internalRoutes(app: FastifyInstance) {
           })
         }
         locationData = { id: override.location_id, name: override.name, address: override.address }
+        avail = {
+          start_time:    override.start_time ?? DEFAULT_START,
+          end_time:      override.end_time ?? DEFAULT_END,
+          slot_duration: override.slot_duration ?? DEFAULT_SLOT,
+          break_start: null,
+          break_end: null,
+          min_advance_hours: override.min_advance_hours,
+          max_appointments_per_day: override.max_appointments_per_day,
+        }
       }
 
       // Busca agendamentos existentes para a data
@@ -999,15 +1002,22 @@ export async function internalRoutes(app: FastifyInstance) {
         }
       }
 
-      // 4. Busca slot_duration da disponibilidade do dia
-      const [yr, mo, dy] = dateStr.split('-').map(Number)
-      const dayOfWeek = new Date(yr, mo - 1, dy).getDay()
-      const availData = await queryOne<any>(
-        `SELECT slot_duration FROM availability
-         WHERE nutritionist_id = $1 AND day_of_week = $2 AND is_active = true`,
-        [nutritionist_id, dayOfWeek]
-      )
-      const duration: number = availData?.slot_duration ?? 50
+      // 4. Busca slot_duration do dia. Presencial: horario e por data especifica
+      // (date_location_overrides); online: agenda propria (online_slot_duration).
+      let duration = 50
+      if (modality === 'presencial') {
+        const override = await queryOne<any>(
+          `SELECT slot_duration FROM date_location_overrides WHERE nutritionist_id = $1 AND date = $2`,
+          [nutritionist_id, dateStr]
+        )
+        duration = override?.slot_duration ?? 30
+      } else {
+        const nutri = await queryOne<any>(
+          `SELECT online_slot_duration FROM nutritionists WHERE id = $1`,
+          [nutritionist_id]
+        )
+        duration = nutri?.online_slot_duration ?? 30
+      }
 
       // 5. Cria o agendamento
       const apptRows = await query<any>(
