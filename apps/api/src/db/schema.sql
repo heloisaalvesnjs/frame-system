@@ -710,3 +710,6 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_summary_updated_at TIMESTAMPTZ;
 -- Opt-out: lead pediu explicitamente para não receber mais mensagens automáticas.
 -- Bloqueia follow-up/reativação nos crons; mensagem nova do lead limpa a flag.
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS opted_out BOOLEAN DEFAULT false;
+
+-- Data de retorno definida pela nutri (quando o paciente deve voltar).
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS return_date DATE;

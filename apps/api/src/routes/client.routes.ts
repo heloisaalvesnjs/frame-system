@@ -534,10 +534,13 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
     const { clientId } = request.params as { clientId: string }
 
     const schema = z.object({
-      name:      z.string().min(1).optional(),
-      goal:      z.string().optional(),
-      notes:     z.string().optional(),
-      birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      name:        z.string().min(1).optional(),
+      goal:        z.string().nullish(),
+      notes:       z.string().nullish(),
+      birthdate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      // Data de retorno definida pela nutri (quando o paciente deve voltar).
+      // '' limpa a data (envia null pro banco).
+      return_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish().or(z.literal('')),
       ai_memory: z.object({
         restricoes: z.array(z.string()).optional(),
         preferencias: z.array(z.string()).optional(),
@@ -545,18 +548,24 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       }).optional()
     })
     const body = schema.parse(request.body)
+    // Só toca em return_date se o campo veio no request; '' limpa (null).
+    const touchReturn = body.return_date !== undefined
+    const returnDate  = body.return_date ? body.return_date : null
 
     const [updated] = await query(
       `UPDATE clients SET
-         name      = COALESCE($3, name),
-         goal      = COALESCE($4, goal),
-         notes     = COALESCE($5, notes),
-         birthdate = COALESCE($6::DATE, birthdate),
-         ai_memory = COALESCE($7::JSONB, ai_memory),
-         updated_at = NOW()
+         name        = COALESCE($3, name),
+         goal        = COALESCE($4, goal),
+         notes       = COALESCE($5, notes),
+         birthdate   = COALESCE($6::DATE, birthdate),
+         ai_memory   = COALESCE($7::JSONB, ai_memory),
+         return_date = CASE WHEN $9 THEN $8::DATE ELSE return_date END,
+         updated_at  = NOW()
        WHERE id = $1 AND nutritionist_id = $2
        RETURNING *`,
-      [clientId, nutritionistId, body.name, body.goal, body.notes, body.birthdate ?? null, body.ai_memory ? JSON.stringify(body.ai_memory) : null]
+      [clientId, nutritionistId, body.name, body.goal, body.notes, body.birthdate ?? null,
+       body.ai_memory ? JSON.stringify(body.ai_memory) : null,
+       returnDate, touchReturn]
     )
     if (!updated) return reply.code(404).send({ error: 'Cliente não encontrado' })
     return reply.send(updated)
