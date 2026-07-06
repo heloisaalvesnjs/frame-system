@@ -33,9 +33,17 @@ DASHBOARD NOVO (`apps/painel`, Next 16 + shadcn + bloco @efferd/dashboard-3) —
 - Login: warning setState-in-render corrigido.
 
 **AINDA PENDENTE (pedido da Heloisa, proxima fase — features grandes)**:
-1. Consolidar tudo de IA dentro da aba Assistente com sub-abas (Identidade, Conhecimento, Servicos/Precos, Disponibilidade, Integracoes) — ela aprovou essa ideia.
-2. Aba Pacientes rica: por a DIETA do cliente ali, controle de ultima consulta/data de retorno/se marcou, e SISTEMA DE TROCA DE ALIMENTOS (ver foods.routes.ts + meal_plans). Feature grande, merece foco proprio.
+1. ~~Consolidar tudo de IA dentro da aba Assistente~~ FEITO (ver abaixo).
+2. Aba Pacientes: dieta + troca de alimentos JA TEM UMA V1 BOA (ver abaixo). Falta ainda: controle de ultima consulta/data de retorno mais visivel (hoje so tem campo de texto livre, sem automacao de lembrete).
 3. Telas Atendimento (inbox ao vivo)/Agenda (calendario)/Visao geral (metricas reais) ainda placeholder.
+
+(2026-07-06) Redesign completo do painel a pedido da Heloisa (ela reagiu ao teste real de WhatsApp + prints de outro app de troca de alimentos que gostou). Fluxo usado: acionei `/designer` (spec de cores/componentes) -> `/dev-frontend` (implementacao) -> revisei/corrigi eu mesma (build quebrado por useSearchParams sem Suspense, CategoryIcon sem fundo colorido, consolidacao de nav incompleta) antes de commitar. Validado com login real + dados reais do David (TACO, agenda, calendario).
+
+- **Troca de alimentos (FoodSwapSheet)**: substituiu o FoodPicker simples. Sheet lateral com busca na tabela TACO real, categorias coloridas (carboidratos/proteinas/gorduras/frutas/vegetais/laticinios — paleta derivada do verde/lima Frame, sem roxo/lilas), conversao proporcional de gramas em tempo real (`(qty/100) * (kcal_base/kcal_troca) * 100`), ordenacao padrao/a-z/menor g/maior g. Categorizacao e por heuristica de palavra-chave (`apps/painel/src/lib/food-category.ts`) — decorativo, nao precisa ser perfeito.
+- **SectionGroup + PageHeader** (`apps/painel/src/components/section-group.tsx`): padrao de secao (icone+titulo fora do card) aplicado em Assistente/Disponibilidade/Integracoes/Pacientes-detalhe/Configuracoes — tira a cara de "formulario".
+- **LocationBadge + paleta curada de 10 cores** (`location-badge.tsx`/`location-palette.ts`): calendario mostra pill com opacidade baixa + ponto solido em vez de texto colorido cru. A cor salva no banco (livre, dado antigo) ainda e usada como está — a paleta curada e so uma sugestao pro formulario de criar local (formulario de locations ainda nao existe no painel novo).
+- **Consolidacao de navegacao**: sidebar principal ficou so Visao geral/Atendimento/Agenda/Pacientes/Assistente/Configuracoes. Disponibilidade e Integracoes viram sub-abas de Assistente (`/assistente?tab=disponibilidade` etc), junto com Identidade e 2 placeholders novos (Conhecimento, Servicos e Precos — ainda nao implementados, so "em breve").
+- **Disponibilidade sem grade semanal fixa**: o dialog do dia no calendario agora define local E horario (inicio/fim/duracao) juntos. Backend: `date_location_overrides` ganhou `start_time`/`end_time`/`slot_duration` (nullable, fallback 08:00-18:00/30min). `available-slots` e criacao de agendamento (presencial) leem o horario do dia especifico, nao mais a tabela `availability` semanal (que continua existindo no banco, so nao e mais usada pelo frontend novo).
 
 ## Codex
 [Status aguardando atualiza��o]
