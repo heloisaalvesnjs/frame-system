@@ -66,6 +66,57 @@ export async function nutritionistRoutes(app: FastifyInstance) {
     return reply.send({ ok: true, rules: updated })
   })
 
+  // GET /api/nutritionists/online-availability
+  app.get('/online-availability', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const row = await queryOne<any>(
+      `SELECT online_enabled, online_weekdays,
+              online_start::text        AS online_start,
+              online_end::text          AS online_end,
+              online_slot_duration,
+              online_break_start::text  AS online_break_start,
+              online_break_end::text    AS online_break_end
+       FROM nutritionists WHERE id = $1`,
+      [id]
+    )
+    return reply.send({
+      online_enabled:       row?.online_enabled ?? true,
+      online_weekdays:      row?.online_weekdays ?? [1, 2, 3, 4, 5],
+      online_start:         row?.online_start?.slice(0, 5) ?? '08:00',
+      online_end:           row?.online_end?.slice(0, 5) ?? '18:00',
+      online_slot_duration: row?.online_slot_duration ?? 30,
+      online_break_start:   row?.online_break_start?.slice(0, 5) ?? null,
+      online_break_end:     row?.online_break_end?.slice(0, 5) ?? null,
+    })
+  })
+
+  // PUT /api/nutritionists/online-availability
+  app.put('/online-availability', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const schema = z.object({
+      online_enabled:       z.boolean(),
+      online_weekdays:      z.array(z.number().int().min(0).max(6)),
+      online_start:         z.string().regex(/^\d{2}:\d{2}$/),
+      online_end:           z.string().regex(/^\d{2}:\d{2}$/),
+      online_slot_duration: z.number().int().min(15).max(240),
+      online_break_start:   z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      online_break_end:     z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+    })
+    const body = schema.parse(request.body)
+
+    await query(
+      `UPDATE nutritionists SET
+         online_enabled = $2, online_weekdays = $3,
+         online_start = $4, online_end = $5, online_slot_duration = $6,
+         online_break_start = $7, online_break_end = $8, updated_at = NOW()
+       WHERE id = $1`,
+      [id, body.online_enabled, body.online_weekdays,
+       body.online_start, body.online_end, body.online_slot_duration,
+       body.online_break_start ?? null, body.online_break_end ?? null]
+    )
+    return reply.send({ ok: true })
+  })
+
   // POST /api/nutritionists/change-password
   app.post('/change-password', auth, async (request, reply) => {
     const { id } = (request as any).user

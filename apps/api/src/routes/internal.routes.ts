@@ -468,17 +468,36 @@ export async function internalRoutes(app: FastifyInstance) {
         return reply.send({ available: false, reason: 'Data bloqueada pelo nutricionista' })
       }
 
-      // Busca disponibilidade semanal para esse dia + regras do nutricionista
-      const avail = await queryOne<any>(
-        `SELECT av.start_time, av.end_time, av.slot_duration, av.break_start, av.break_end,
-                n.min_advance_hours, n.max_appointments_per_day
-         FROM availability av
-         JOIN nutritionists n ON n.id = av.nutritionist_id
-         WHERE av.nutritionist_id = $1 AND av.day_of_week = $2 AND av.is_active = true`,
-        [nutritionist_id, dayOfWeek]
-      )
-      if (!avail) {
-        return reply.send({ available: false, reason: 'Sem disponibilidade configurada para este dia da semana' })
+      // Busca os horarios do dia. Online usa a agenda propria (colunas online_*
+      // em nutritionists); presencial usa a availability semanal por dia.
+      let avail: any
+      if (modality === 'online') {
+        const cfg = await queryOne<any>(
+          `SELECT online_enabled, online_weekdays,
+                  online_start::text AS start_time, online_end::text AS end_time,
+                  online_slot_duration AS slot_duration,
+                  online_break_start::text AS break_start, online_break_end::text AS break_end,
+                  min_advance_hours, max_appointments_per_day
+           FROM nutritionists WHERE id = $1`,
+          [nutritionist_id]
+        )
+        const weekdays: number[] = cfg?.online_weekdays ?? []
+        if (!cfg?.online_enabled || !weekdays.includes(dayOfWeek)) {
+          return reply.send({ available: false, reason: 'Sem atendimento online neste dia da semana' })
+        }
+        avail = cfg
+      } else {
+        avail = await queryOne<any>(
+          `SELECT av.start_time, av.end_time, av.slot_duration, av.break_start, av.break_end,
+                  n.min_advance_hours, n.max_appointments_per_day
+           FROM availability av
+           JOIN nutritionists n ON n.id = av.nutritionist_id
+           WHERE av.nutritionist_id = $1 AND av.day_of_week = $2 AND av.is_active = true`,
+          [nutritionist_id, dayOfWeek]
+        )
+        if (!avail) {
+          return reply.send({ available: false, reason: 'Sem disponibilidade configurada para este dia da semana' })
+        }
       }
 
       // Para presencial: verifica date_location_overrides com a cidade solicitada
@@ -779,20 +798,19 @@ export async function internalRoutes(app: FastifyInstance) {
       }
 
       // ── Online ───────────────────────────────────────────────────────
-      // 1. Busca os dias da semana com availability ativa
-      const availRows = await query<any>(
-        `SELECT day_of_week FROM availability
-         WHERE nutritionist_id = $1 AND is_active = true
-         ORDER BY day_of_week`,
+      // 1. Dias da semana em que o nutri atende online (agenda propria, NAO
+      //    a availability do presencial — ver colunas online_* em nutritionists)
+      const onlineCfg = await queryOne<any>(
+        `SELECT online_enabled, online_weekdays FROM nutritionists WHERE id = $1`,
         [nutritionist_id]
       )
-      if (!availRows.length) {
+      if (!onlineCfg?.online_enabled || !(onlineCfg.online_weekdays?.length)) {
         return reply.send({
           available: false,
-          reason: 'Sem disponibilidade configurada para atendimento online.',
+          reason: 'Atendimento online não está disponível no momento.',
         })
       }
-      const activeDays = new Set<number>(availRows.map((r: any) => r.day_of_week as number))
+      const activeDays = new Set<number>((onlineCfg.online_weekdays as number[]))
 
       // 2. Gera candidatos dentro do mês alvo, nos dias ativos.
       //    Sempre a partir de amanhã (nunca hoje), mesmo se o mês alvo for o atual.

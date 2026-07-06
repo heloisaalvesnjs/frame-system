@@ -625,6 +625,18 @@ ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS buffer_between_minutes  INT D
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS min_advance_hours        INT DEFAULT 3;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS max_appointments_per_day INT DEFAULT 8;
 
+-- ── Atendimento online: agenda propria (2026-07-05) ─────────────────────────
+-- O presencial e definido por data+cidade (date_location_overrides). O online
+-- precisava de config propria: quais dias da semana e horario o nutri atende
+-- online, independente do presencial. online_weekdays: array de 0-6 (0=domingo).
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_enabled       BOOLEAN DEFAULT true;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_weekdays      INT[]   DEFAULT '{1,2,3,4,5}';
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_start         TIME    DEFAULT '08:00';
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_end           TIME    DEFAULT '18:00';
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_slot_duration INT     DEFAULT 30;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_break_start   TIME;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS online_break_end     TIME;
+
 -- ── Migração Evolution API → uazapi (2026-07-01) ────────────────────────────
 -- instance_token: token de autenticação por instância (header `token` na uazapi)
 -- instance_id:    ID único da instância retornado na criação; identifica a instância
