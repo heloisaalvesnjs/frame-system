@@ -26,5 +26,16 @@ DASHBOARD NOVO (`apps/painel`, Next 16 + shadcn + bloco @efferd/dashboard-3) —
 
 **Pendencia de schema conhecida**: `availability` (horario semanal) so tem 1 horario por dia da semana, nao por local — o David tem "horario diferente por local" que hoje nao e representado (so a cidade-por-data resolve isso). Registrar como melhoria futura se vier a ser bloqueante.
 
+(2026-07-05 noite) Rodada de correcoes pos-teste real de WhatsApp da Heloisa (fluxo de venda completo funcionou ate o fechamento):
+- **BUG CRITICO corrigido+deployado**: POST /api/internal/n8n/appointments rejeitava `client_name:null`/`service_id:null` (n8n envia null explicito; z.string().optional() rejeita null) -> 400 "Dados invalidos" no MOMENTO do fechamento da venda (execucao n8n 411). Trocado pra .nullish(). Era o "fluxo deu erro na hora de criar o agendamento".
+- **Agenda ONLINE propria (nova)**: colunas online_enabled/online_weekdays/online_start/online_end/online_slot_duration/online_break_* em `nutritionists` (aplicadas no Supabase, David default seg-sex 08-18). Endpoints GET+PUT /api/nutritionists/online-availability. available-dates e available-slots (online) usam essa agenda; presencial (date_location_overrides) intocado. Resolve "online nao tem config de data/horario".
+- **Disponibilidade redesenhada**: era lista plana (virava bagunca). Agora calendario mensal presencial (clique no dia -> dialog cidade/bloquear/limpar, cores por cidade) + aba Online (chips de dias + horario). Validado com dados reais do David.
+- Login: warning setState-in-render corrigido.
+
+**AINDA PENDENTE (pedido da Heloisa, proxima fase — features grandes)**:
+1. Consolidar tudo de IA dentro da aba Assistente com sub-abas (Identidade, Conhecimento, Servicos/Precos, Disponibilidade, Integracoes) — ela aprovou essa ideia.
+2. Aba Pacientes rica: por a DIETA do cliente ali, controle de ultima consulta/data de retorno/se marcou, e SISTEMA DE TROCA DE ALIMENTOS (ver foods.routes.ts + meal_plans). Feature grande, merece foco proprio.
+3. Telas Atendimento (inbox ao vivo)/Agenda (calendario)/Visao geral (metricas reais) ainda placeholder.
+
 ## Codex
 [Status aguardando atualiza��o]
