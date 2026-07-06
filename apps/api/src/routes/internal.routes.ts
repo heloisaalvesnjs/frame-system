@@ -881,15 +881,19 @@ export async function internalRoutes(app: FastifyInstance) {
   // Cria um agendamento. Retornar appointment_id é OBRIGATÓRIO — a IA
   // nunca pode confirmar ao paciente sem ele.
   app.post('/n8n/appointments', auth, async (request, reply) => {
+    // .nullish() (não .optional()): o n8n envia os campos ausentes como `null`
+    // explícito no JSON (ex: client_name quando o lead não deu o nome), e
+    // z.string().optional() rejeita null — quebrava a criação do agendamento
+    // no fechamento da venda. nullish aceita string | null | undefined.
     const schema = z.object({
       nutritionist_id: z.string().uuid(),
       client_phone:    z.string().min(8),
-      client_name:     z.string().optional(),
+      client_name:     z.string().nullish(),
       scheduled_at:    z.string().min(1),
       modality:        z.enum(['presencial', 'online']),
-      city:            z.string().optional(),
-      notes:           z.string().optional(),
-      service_id:      z.string().uuid().optional(),
+      city:            z.string().nullish(),
+      notes:           z.string().nullish(),
+      service_id:      z.string().uuid().nullish(),
     })
 
     let body: z.infer<typeof schema>
