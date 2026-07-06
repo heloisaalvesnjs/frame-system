@@ -12,7 +12,7 @@ import { query, queryOne } from '../db'
 export async function followupSequencesRoutes(app: FastifyInstance) {
   // GET /api/followup-sequences — lista todas as etapas do nutricionista
   app.get('/', { preHandler: [(app as any).authenticate] }, async (req: any) => {
-    const nutritionist_id = req.user.nutritionistId
+    const nutritionist_id = req.user.id
 
     const sequences = await query<any>(
       `SELECT id, step_order, delay_hours, message, is_active
@@ -27,7 +27,7 @@ export async function followupSequencesRoutes(app: FastifyInstance) {
 
   // POST /api/followup-sequences — cria uma nova etapa
   app.post('/', { preHandler: [(app as any).authenticate] }, async (req: any, reply: any) => {
-    const nutritionist_id = req.user.nutritionistId
+    const nutritionist_id = req.user.id
     const { step_order, delay_hours, message } = req.body as any
 
     if (!message?.trim()) {
@@ -61,7 +61,7 @@ export async function followupSequencesRoutes(app: FastifyInstance) {
 
   // PUT /api/followup-sequences/:id — atualiza uma etapa existente
   app.put('/:id', { preHandler: [(app as any).authenticate] }, async (req: any, reply: any) => {
-    const nutritionist_id = req.user.nutritionistId
+    const nutritionist_id = req.user.id
     const { id }          = req.params as any
     const { delay_hours, message, is_active, step_order } = req.body as any
 
@@ -88,7 +88,7 @@ export async function followupSequencesRoutes(app: FastifyInstance) {
 
   // DELETE /api/followup-sequences/:id — remove uma etapa
   app.delete('/:id', { preHandler: [(app as any).authenticate] }, async (req: any, reply: any) => {
-    const nutritionist_id = req.user.nutritionistId
+    const nutritionist_id = req.user.id
     const { id }          = req.params as any
 
     await query(
@@ -114,7 +114,7 @@ export async function followupSequencesRoutes(app: FastifyInstance) {
 
   // PUT /api/followup-sequences/reorder — reordena as etapas (recebe array de ids em ordem)
   app.put('/reorder', { preHandler: [(app as any).authenticate] }, async (req: any, reply: any) => {
-    const nutritionist_id = req.user.nutritionistId
+    const nutritionist_id = req.user.id
     const { ids } = req.body as { ids: string[] }
 
     if (!Array.isArray(ids)) return reply.code(400).send({ error: 'ids deve ser um array' })
