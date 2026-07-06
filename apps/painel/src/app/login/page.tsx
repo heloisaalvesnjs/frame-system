@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { login, getToken, ApiError } from "@/lib/api";
@@ -15,9 +15,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (typeof window !== "undefined" && getToken()) {
-    router.replace("/");
-  }
+  useEffect(() => {
+    if (getToken()) router.replace("/");
+  }, [router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { AvailabilityDay, BlockedDate, DateLocationOverride, Location } from "@/lib/types";
+import type {
+  AvailabilityDay,
+  BlockedDate,
+  DateLocationOverride,
+  Location,
+  OnlineAvailability,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -23,33 +28,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarOffIcon, MapPinIcon, Trash2Icon, PlusIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MapPinIcon,
+  MonitorIcon,
+  CalendarOffIcon,
+} from "lucide-react";
 
-// A API pode devolver DATE como "YYYY-MM-DD" puro ou timestamp ISO completo
-// (driver do Postgres) — normaliza pra sempre usar só a data, sem shift de fuso.
-function shortDate(iso: string): string {
-  return iso.slice(0, 10);
+const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const WEEKDAYS_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const MONTHS = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+function iso(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
-
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function shortDate(s: string) {
+  return s.slice(0, 10);
 }
 
 export default function DisponibilidadePage() {
+  const [tab, setTab] = useState<"presencial" | "online">("presencial");
   const [locations, setLocations] = useState<Location[]>([]);
   const [days, setDays] = useState<AvailabilityDay[]>([]);
-  const [blocked, setBlocked] = useState<BlockedDate[]>([]);
-  const [overrides, setOverrides] = useState<DateLocationOverride[]>([]);
+  const [blocked, setBlocked] = useState<Map<string, string | null>>(new Map());
+  const [overrides, setOverrides] = useState<Map<string, DateLocationOverride>>(new Map());
+  const [online, setOnline] = useState<OnlineAvailability | null>(null);
   const [loading, setLoading] = useState(true);
-  const [savingDays, setSavingDays] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [blockDate, setBlockDate] = useState(todayIso());
-  const [blockReason, setBlockReason] = useState("");
-  const [overrideDate, setOverrideDate] = useState(todayIso());
-  const [overrideLocation, setOverrideLocation] = useState<string>("");
+  const today = new Date();
+  const [viewY, setViewY] = useState(today.getFullYear());
+  const [viewM, setViewM] = useState(today.getMonth());
+
+  const [dayDialog, setDayDialog] = useState<string | null>(null);
+  const [dialogCity, setDialogCity] = useState<string>("");
 
   useEffect(() => {
     loadAll();
@@ -66,10 +89,20 @@ export default function DisponibilidadePage() {
       ]);
       setLocations(locRes.locations);
       setDays(availRes.availability);
-      setBlocked(blockedRes.blocked.map((b) => ({ ...b, blocked_date: shortDate(b.blocked_date) })));
-      setOverrides(overridesRes.overrides.map((o) => ({ ...o, date: shortDate(o.date) })));
-      if (locRes.locations.length > 0 && !overrideLocation) {
-        setOverrideLocation(locRes.locations[0].id);
+      setBlocked(new Map(blockedRes.blocked.map((b) => [shortDate(b.blocked_date), b.reason])));
+      setOverrides(
+        new Map(overridesRes.overrides.map((o) => [shortDate(o.date), { ...o, date: shortDate(o.date) }]))
+      );
+      // Config online é opcional: endpoint pode ainda não estar deployado (janela
+      // de deploy). Não pode derrubar o resto da tela — cai num default local.
+      try {
+        setOnline(await api.get<OnlineAvailability>("/api/nutritionists/online-availability"));
+      } catch {
+        setOnline({
+          online_enabled: true, online_weekdays: [1, 2, 3, 4, 5],
+          online_start: "08:00", online_end: "18:00", online_slot_duration: 30,
+          online_break_start: null, online_break_end: null,
+        });
       }
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Erro ao carregar disponibilidade");
@@ -78,18 +111,121 @@ export default function DisponibilidadePage() {
     }
   }
 
-  function updateDay(dayOfWeek: number, patch: Partial<AvailabilityDay>) {
-    setDays((prev) =>
-      prev.map((d) => (d.day_of_week === dayOfWeek ? { ...d, ...patch } : d))
-    );
+  // ── Calendário ──────────────────────────────────────────────────────────
+  const grid = useMemo(() => {
+    const firstDow = new Date(viewY, viewM, 1).getDay();
+    const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDow; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [viewY, viewM]);
+
+  function prevMonth() {
+    if (viewM === 0) { setViewY(viewY - 1); setViewM(11); }
+    else setViewM(viewM - 1);
+  }
+  function nextMonth() {
+    if (viewM === 11) { setViewY(viewY + 1); setViewM(0); }
+    else setViewM(viewM + 1);
   }
 
-  async function saveDays() {
-    setSavingDays(true);
+  function openDay(d: number) {
+    const key = iso(viewY, viewM, d);
+    setDayDialog(key);
+    setDialogCity(overrides.get(key)?.location_id ?? "");
+  }
+
+  async function saveDayCity() {
+    if (!dayDialog || !dialogCity) return;
+    try {
+      const loc = locations.find((l) => l.id === dialogCity);
+      await api.post("/api/availability/date-locations", { date: dayDialog, location_id: dialogCity });
+      // Se estava bloqueado, desbloqueia (definir local implica atender)
+      if (blocked.has(dayDialog)) {
+        await api.delete(`/api/availability/blocked/${dayDialog}`).catch(() => {});
+        setBlocked((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
+      }
+      setOverrides((prev) => {
+        const n = new Map(prev);
+        n.set(dayDialog, {
+          id: dayDialog, date: dayDialog, location_id: dialogCity,
+          location_name: loc?.name ?? null, modality: loc?.modality ?? null, color: loc?.color ?? null,
+        });
+        return n;
+      });
+      setDayDialog(null);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao salvar local do dia");
+    }
+  }
+
+  async function blockDay() {
+    if (!dayDialog) return;
+    try {
+      await api.post("/api/availability/blocked", { blocked_date: dayDialog });
+      setBlocked((prev) => { const n = new Map(prev); n.set(dayDialog, null); return n; });
+      // Remove override se existir (dia sem atendimento não tem cidade)
+      if (overrides.has(dayDialog)) {
+        await api.delete(`/api/availability/date-locations/${dayDialog}`).catch(() => {});
+        setOverrides((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
+      }
+      setDayDialog(null);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao bloquear dia");
+    }
+  }
+
+  async function clearDay() {
+    if (!dayDialog) return;
+    if (overrides.has(dayDialog)) {
+      await api.delete(`/api/availability/date-locations/${dayDialog}`).catch(() => {});
+    }
+    if (blocked.has(dayDialog)) {
+      await api.delete(`/api/availability/blocked/${dayDialog}`).catch(() => {});
+    }
+    setOverrides((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
+    setBlocked((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
+    setDayDialog(null);
+  }
+
+  // ── Online ──────────────────────────────────────────────────────────────
+  const [savingOnline, setSavingOnline] = useState(false);
+  function toggleWeekday(wd: number) {
+    if (!online) return;
+    const has = online.online_weekdays.includes(wd);
+    setOnline({
+      ...online,
+      online_weekdays: has
+        ? online.online_weekdays.filter((d) => d !== wd)
+        : [...online.online_weekdays, wd].sort(),
+    });
+  }
+  async function saveOnline() {
+    if (!online) return;
+    setSavingOnline(true);
     setMessage(null);
     try {
+      await api.put("/api/nutritionists/online-availability", online);
+      setMessage("Atendimento online salvo! A IA já oferece esses dias e horários.");
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao salvar online");
+    } finally {
+      setSavingOnline(false);
+    }
+  }
+
+  // ── Horário presencial (grade semanal) ─────────────────────────────────
+  const [savingDays, setSavingDays] = useState(false);
+  function updateDay(dow: number, patch: Partial<AvailabilityDay>) {
+    setDays((prev) => prev.map((d) => (d.day_of_week === dow ? { ...d, ...patch } : d)));
+  }
+  async function saveDays() {
+    setSavingDays(true);
+    try {
       await api.put("/api/availability", { availability: days });
-      setMessage("Horários salvos! Já valem no próximo atendimento da IA.");
+      setMessage("Horários presenciais salvos.");
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Erro ao salvar horários");
     } finally {
@@ -97,68 +233,12 @@ export default function DisponibilidadePage() {
     }
   }
 
-  async function addBlockedDate() {
-    try {
-      const { blocked: row } = await api.post<{ blocked: BlockedDate }>(
-        "/api/availability/blocked",
-        { blocked_date: blockDate, reason: blockReason || undefined }
-      );
-      const normalized = { ...row, blocked_date: shortDate(row.blocked_date) };
-      setBlocked((prev) => {
-        const withoutDup = prev.filter((b) => b.blocked_date !== normalized.blocked_date);
-        return [...withoutDup, normalized].sort((a, b) => a.blocked_date.localeCompare(b.blocked_date));
-      });
-      setBlockReason("");
-    } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Erro ao bloquear data");
-    }
-  }
-
-  async function removeBlockedDate(date: string) {
-    await api.delete(`/api/availability/blocked/${date}`);
-    setBlocked((prev) => prev.filter((b) => b.blocked_date !== date));
-  }
-
-  async function addOverride() {
-    if (!overrideLocation) return;
-    try {
-      const location = locations.find((l) => l.id === overrideLocation);
-      const { override } = await api.post<{ override: { id: string; date: string; location_id: string } }>(
-        "/api/availability/date-locations",
-        { date: overrideDate, location_id: overrideLocation }
-      );
-      const normalizedDate = shortDate(override.date);
-      setOverrides((prev) => {
-        const withoutDup = prev.filter((o) => o.date !== normalizedDate);
-        return [
-          ...withoutDup,
-          {
-            id: override.id,
-            date: normalizedDate,
-            location_id: override.location_id,
-            location_name: location?.name ?? null,
-            modality: location?.modality ?? null,
-            color: location?.color ?? null,
-          },
-        ].sort((a, b) => a.date.localeCompare(b.date));
-      });
-    } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Erro ao definir cidade do dia");
-    }
-  }
-
-  async function removeOverride(date: string) {
-    await api.delete(`/api/availability/date-locations/${date}`);
-    setOverrides((prev) => prev.filter((o) => o.date !== date));
-  }
-
   if (loading) {
-    return (
-      <div className="mx-auto w-full max-w-4xl text-sm text-muted-foreground">
-        Carregando disponibilidade...
-      </div>
-    );
+    return <div className="mx-auto w-full max-w-4xl text-sm text-muted-foreground">Carregando...</div>;
   }
+
+  const dialogOverride = dayDialog ? overrides.get(dayDialog) : null;
+  const dialogBlocked = dayDialog ? blocked.has(dayDialog) : false;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -175,244 +255,273 @@ export default function DisponibilidadePage() {
         </div>
       )}
 
-      {locations.length === 0 && (
-        <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-          Você ainda não tem locais de atendimento cadastrados. Cadastre em Configurações
-          antes de definir a cidade de cada dia.
-        </div>
+      {/* Segmented control */}
+      <div className="inline-flex w-fit rounded-lg border border-border bg-muted/40 p-1">
+        <button
+          onClick={() => setTab("presencial")}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === "presencial" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+          }`}
+        >
+          <MapPinIcon className="size-4" /> Presencial
+        </button>
+        <button
+          onClick={() => setTab("online")}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === "online" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+          }`}
+        >
+          <MonitorIcon className="size-4" /> Online
+        </button>
+      </div>
+
+      {tab === "presencial" ? (
+        <>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Calendário presencial</CardTitle>
+                  <CardDescription>
+                    Clique num dia para escolher a cidade que você atende ou marcar como fechado.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="icon-sm" variant="outline" onClick={prevMonth} aria-label="Mês anterior">
+                    <ChevronLeftIcon />
+                  </Button>
+                  <span className="w-36 text-center text-sm font-medium capitalize">
+                    {MONTHS[viewM]} {viewY}
+                  </span>
+                  <Button size="icon-sm" variant="outline" onClick={nextMonth} aria-label="Próximo mês">
+                    <ChevronRightIcon />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {WEEKDAYS_SHORT.map((w) => (
+                  <div key={w} className="pb-2 text-xs font-medium text-muted-foreground">{w}</div>
+                ))}
+                {grid.map((d, i) => {
+                  if (d === null) return <div key={i} />;
+                  const key = iso(viewY, viewM, d);
+                  const ov = overrides.get(key);
+                  const isBlocked = blocked.has(key);
+                  const isPast =
+                    new Date(viewY, viewM, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => openDay(d)}
+                      className={`flex min-h-16 flex-col items-start gap-1 rounded-md border p-1.5 text-left transition-colors hover:border-primary ${
+                        isPast ? "opacity-40" : ""
+                      } ${isBlocked ? "border-destructive/40 bg-destructive/5" : "border-border"}`}
+                    >
+                      <span className="text-xs font-medium">{d}</span>
+                      {ov && (
+                        <span
+                          className="line-clamp-2 w-full rounded px-1 py-0.5 text-[10px] font-medium leading-tight"
+                          style={{
+                            backgroundColor: (ov.color ?? "#2E7D32") + "22",
+                            color: ov.color ?? "#2E7D32",
+                          }}
+                        >
+                          {ov.location_name}
+                        </span>
+                      )}
+                      {isBlocked && (
+                        <span className="text-[10px] font-medium text-destructive">Fechado</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {locations.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-3 border-t border-border pt-3">
+                  {locations.map((l) => (
+                    <div key={l.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="size-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                      {l.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Horário presencial por dia da semana</CardTitle>
+              <CardDescription>
+                Os horários usados nas datas que você marcou no calendário acima.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col divide-y divide-border">
+                {days.map((day) => (
+                  <div key={day.day_of_week} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex w-32 items-center gap-2">
+                      <Switch
+                        checked={day.is_active}
+                        onCheckedChange={(c) => updateDay(day.day_of_week, { is_active: c })}
+                      />
+                      <span className="text-sm font-medium">{day.label}</span>
+                    </div>
+                    <Input type="time" value={day.start_time} disabled={!day.is_active}
+                      onChange={(e) => updateDay(day.day_of_week, { start_time: e.target.value })} className="w-28" />
+                    <span className="text-sm text-muted-foreground">até</span>
+                    <Input type="time" value={day.end_time} disabled={!day.is_active}
+                      onChange={(e) => updateDay(day.day_of_week, { end_time: e.target.value })} className="w-28" />
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={15} step={5} value={day.slot_duration} disabled={!day.is_active}
+                        onChange={(e) => updateDay(day.day_of_week, { slot_duration: Number(e.target.value) })} className="w-20" />
+                      <span className="text-sm text-muted-foreground">min</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button onClick={saveDays} disabled={savingDays}>
+                {savingDays ? "Salvando..." : "Salvar horários"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </>
+      ) : (
+        online && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MonitorIcon className="size-4 text-primary" />
+                Atendimento online
+              </CardTitle>
+              <CardDescription>
+                Dias da semana e horário em que você atende online — independente do presencial.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <div className="flex items-center justify-between rounded-md border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium">Atendo online</p>
+                  <p className="text-sm text-muted-foreground">Se desligado, a IA não oferece consulta online.</p>
+                </div>
+                <Switch
+                  checked={online.online_enabled}
+                  onCheckedChange={(c) => setOnline({ ...online, online_enabled: c })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>Dias da semana</Label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEKDAYS_FULL.map((w, wd) => {
+                    const on = online.online_weekdays.includes(wd);
+                    return (
+                      <button
+                        key={wd}
+                        disabled={!online.online_enabled}
+                        onClick={() => toggleWeekday(wd)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${
+                          on
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary"
+                        }`}
+                      >
+                        {WEEKDAYS_SHORT[wd]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="on-start">Início</Label>
+                  <Input id="on-start" type="time" value={online.online_start} disabled={!online.online_enabled}
+                    onChange={(e) => setOnline({ ...online, online_start: e.target.value })} className="w-28" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="on-end">Fim</Label>
+                  <Input id="on-end" type="time" value={online.online_end} disabled={!online.online_enabled}
+                    onChange={(e) => setOnline({ ...online, online_end: e.target.value })} className="w-28" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="on-dur">Duração (min)</Label>
+                  <Input id="on-dur" type="number" min={15} step={5} value={online.online_slot_duration}
+                    disabled={!online.online_enabled}
+                    onChange={(e) => setOnline({ ...online, online_slot_duration: Number(e.target.value) })} className="w-24" />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button onClick={saveOnline} disabled={savingOnline}>
+                {savingOnline ? "Salvando..." : "Salvar online"}
+              </Button>
+            </CardFooter>
+          </Card>
+        )
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MapPinIcon className="size-4 text-primary" />
-            Cidade de cada dia
-          </CardTitle>
-          <CardDescription>
-            Defina qual local você atende em uma data específica — é isso que a IA oferece
-            para marcar consulta. Cadastre quantas datas quiser, em qualquer local.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-end gap-3">
+      {/* Dialog do dia */}
+      <Dialog open={!!dayDialog} onOpenChange={(o) => !o && setDayDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {dayDialog && formatFull(dayDialog)}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-2">
+            {dialogBlocked && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <CalendarOffIcon className="size-4" /> Este dia está marcado como sem atendimento.
+              </div>
+            )}
+            {dialogOverride && !dialogBlocked && (
+              <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
+                Atendimento presencial em <strong>{dialogOverride.location_name}</strong>.
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="override-date">Data</Label>
-              <Input
-                id="override-date"
-                type="date"
-                value={overrideDate}
-                onChange={(e) => setOverrideDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Local</Label>
-              <Select value={overrideLocation} onValueChange={setOverrideLocation}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Selecione o local" />
+              <Label>Atender presencialmente em</Label>
+              <Select value={dialogCity} onValueChange={setDialogCity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha o local" />
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
-                      {l.name}
-                      {l.city ? ` — ${l.city}` : ""}
+                      {l.name}{l.city ? ` — ${l.city}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={addOverride} disabled={!overrideLocation}>
-              <PlusIcon />
-              Definir
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+            <Button variant="outline" onClick={blockDay} className="text-destructive">
+              <CalendarOffIcon /> Não atendo neste dia
             </Button>
-          </div>
-
-          {overrides.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Local</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {overrides.map((o) => (
-                  <TableRow key={o.date}>
-                    <TableCell className="font-medium">{formatDate(o.date)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        style={o.color ? { borderColor: o.color, color: o.color } : undefined}
-                      >
-                        {o.location_name ?? "Sem local"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => removeOverride(o.date)}
-                        aria-label="Remover"
-                      >
-                        <Trash2Icon className="text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma data com local definido ainda.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarOffIcon className="size-4 text-destructive" />
-            Dias sem atendimento
-          </CardTitle>
-          <CardDescription>
-            &quot;Não vou atender neste dia&quot; — bloqueia a data inteira, mesmo que já tenha local definido.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="block-date">Data</Label>
-              <Input
-                id="block-date"
-                type="date"
-                value={blockDate}
-                onChange={(e) => setBlockDate(e.target.value)}
-                className="w-40"
-              />
+            <div className="flex gap-2">
+              {(dialogOverride || dialogBlocked) && (
+                <Button variant="ghost" onClick={clearDay}>Limpar</Button>
+              )}
+              <Button onClick={saveDayCity} disabled={!dialogCity}>Salvar</Button>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="block-reason">Motivo (opcional)</Label>
-              <Input
-                id="block-reason"
-                placeholder="Ex: viagem, feriado..."
-                value={blockReason}
-                onChange={(e) => setBlockReason(e.target.value)}
-                className="w-56"
-              />
-            </div>
-            <Button variant="outline" onClick={addBlockedDate}>
-              <PlusIcon />
-              Bloquear dia
-            </Button>
-          </div>
-
-          {blocked.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {blocked.map((b) => (
-                  <TableRow key={b.blocked_date}>
-                    <TableCell className="font-medium">{formatDate(b.blocked_date)}</TableCell>
-                    <TableCell className="text-muted-foreground">{b.reason ?? "—"}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => removeBlockedDate(b.blocked_date)}
-                        aria-label="Remover bloqueio"
-                      >
-                        <Trash2Icon className="text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum dia bloqueado no momento.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Horário padrão por dia da semana</CardTitle>
-          <CardDescription>
-            Base geral de horários (duração da consulta e pausa). A cidade de cada dia é
-            definida acima — este bloco só cuida do horário.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col divide-y divide-border">
-            {days.map((day) => (
-              <div
-                key={day.day_of_week}
-                className="flex flex-wrap items-center gap-4 py-3 first:pt-0 last:pb-0"
-              >
-                <div className="flex w-36 items-center gap-2">
-                  <Switch
-                    checked={day.is_active}
-                    onCheckedChange={(checked) => updateDay(day.day_of_week, { is_active: checked })}
-                  />
-                  <span className="text-sm font-medium">{day.label}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={day.start_time}
-                    disabled={!day.is_active}
-                    onChange={(e) => updateDay(day.day_of_week, { start_time: e.target.value })}
-                    className="w-28"
-                  />
-                  <span className="text-sm text-muted-foreground">até</span>
-                  <Input
-                    type="time"
-                    value={day.end_time}
-                    disabled={!day.is_active}
-                    onChange={(e) => updateDay(day.day_of_week, { end_time: e.target.value })}
-                    className="w-28"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Consulta de</span>
-                  <Input
-                    type="number"
-                    min={15}
-                    step={5}
-                    value={day.slot_duration}
-                    disabled={!day.is_active}
-                    onChange={(e) =>
-                      updateDay(day.day_of_week, { slot_duration: Number(e.target.value) })
-                    }
-                    className="w-20"
-                  />
-                  <span className="text-sm text-muted-foreground">min</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button onClick={saveDays} disabled={savingDays}>
-            {savingDays ? "Salvando..." : "Salvar horários"}
-          </Button>
-        </CardFooter>
-      </Card>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function formatDate(iso: string) {
-  // A API pode retornar DATE como "YYYY-MM-DD" puro ou como timestamp ISO
-  // completo (driver do Postgres serializando para Date) — usamos só os
-  // 10 primeiros caracteres pra sempre pegar a data local, sem shift de fuso.
-  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+function formatFull(isoStr: string) {
+  const [y, m, d] = isoStr.split("-").map(Number);
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+  return date.toLocaleDateString("pt-BR", {
+    weekday: "long", day: "2-digit", month: "long", year: "numeric",
+  });
 }

@@ -34,3 +34,13 @@ export type DateLocationOverride = {
   modality: string | null;
   color: string | null;
 };
+
+export type OnlineAvailability = {
+  online_enabled: boolean;
+  online_weekdays: number[];
+  online_start: string;
+  online_end: string;
+  online_slot_duration: number;
+  online_break_start: string | null;
+  online_break_end: string | null;
+};
