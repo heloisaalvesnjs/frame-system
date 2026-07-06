@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ type ClientRow = {
 };
 
 export default function PacientesPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,11 @@ export default function PacientesPage() {
               </TableHeader>
               <TableBody>
                 {clients.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow
+                    key={c.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/pacientes/${c.id}`)}
+                  >
                     <TableCell className="font-medium">{c.name ?? "Sem nome"}</TableCell>
                     <TableCell className="text-muted-foreground">{formatPhone(c.phone)}</TableCell>
                     <TableCell>
