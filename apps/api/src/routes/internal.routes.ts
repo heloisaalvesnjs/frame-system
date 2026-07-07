@@ -1240,8 +1240,14 @@ export async function internalRoutes(app: FastifyInstance) {
   // ── POST /api/internal/n8n/automation-logs ────────────────────────
   // Registra execuções do n8n para auditoria e debugging.
   app.post('/n8n/automation-logs', auth, async (request, reply) => {
+    // nutritionist_id: aceita string livre (o fluxo de erro do n8n às vezes manda
+    // literais como 'unknown' quando não sabe o valor real) - só usamos o valor
+    // se for de fato um UUID válido, senão gravamos null. Isso é só uma tabela de
+    // log/auditoria, não faz sentido rejeitar a escrita inteira por causa disso -
+    // rejeitar aqui apagava o log de erro do próprio workflow que estava falhando.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     const schema = z.object({
-      nutritionist_id: z.string().uuid().optional(),
+      nutritionist_id: z.string().optional(),
       client_phone:    z.string().optional(),
       event_type:      z.string().min(1),
       agent_used:      z.string().optional(),
@@ -1266,7 +1272,7 @@ export async function internalRoutes(app: FastifyInstance) {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
         [
-          body.nutritionist_id ?? null,
+          body.nutritionist_id && UUID_RE.test(body.nutritionist_id) ? body.nutritionist_id : null,
           body.client_phone ?? null,
           body.event_type,
           body.agent_used ?? null,
