@@ -4,9 +4,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { login, getToken, ApiError } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,50 +31,61 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <Image src="/logo.png" alt="Frame System" width={72} height={66} priority />
-          <CardTitle className="mt-2">Entrar no Frame System</CardTitle>
-          <CardDescription>Acesse o painel do seu atendimento</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-sm font-medium">
-                E-mail
-              </label>
-              <Input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@email.com"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-sm font-medium">
-                Senha
-              </label>
-              <Input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={loading} className="mt-2">
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.25)]">
+        <div className="mb-6 flex flex-col gap-4">
+          <Image src="/logo.png" alt="Frame System" width={48} height={44} priority />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Entrar no Frame System</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Acesse o painel do seu atendimento
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-muted-foreground">E-mail</span>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-11 rounded-lg border border-border bg-background/40 px-3.5 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              placeholder="voce@clinica.com.br"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-muted-foreground">Senha</span>
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11 rounded-lg border border-border bg-background/40 px-3.5 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              placeholder="••••••••"
+            />
+          </label>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-2 h-11 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition hover:brightness-110 disabled:opacity-70"
+          >
+            {loading ? "Entrando..." : "Entrar"}
+          </button>
+
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            Problemas para entrar?{" "}
+            <span className="text-primary">Entre em contato com o suporte</span>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { WrenchIcon } from "lucide-react";
+import { Wrench } from "lucide-react";
 
 export function PagePlaceholder({
   title,
@@ -15,8 +15,8 @@ export function PagePlaceholder({
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-          {icon ?? <WrenchIcon className="size-5" />}
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary">
+          {icon ?? <Wrench className="h-5 w-5" />}
         </div>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
@@ -24,26 +24,25 @@ export function PagePlaceholder({
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-10 text-center">
-        <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <WrenchIcon className="size-6" />
+      <div className="card-soft flex flex-col items-center gap-5 p-10 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary">
+          <Wrench className="h-6 w-6" />
         </div>
         <div>
           <h2 className="text-lg font-semibold">Em construção</h2>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Esta tela vai ler e escrever direto na Frame API — o que você salvar aqui já vale
-            no atendimento da IA.
+            Esta tela vai ler e escrever direto na Frame API.
           </p>
         </div>
         {points && points.length > 0 && (
-          <ul className="grid w-full max-w-md gap-2 text-left text-sm">
+          <ul className="grid w-full max-w-md gap-2 text-left text-sm text-muted-foreground">
             {points.map((p) => (
               <li
                 key={p}
-                className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2"
+                className="flex items-start gap-2 rounded-lg border border-border bg-surface-2/40 px-3 py-2"
               >
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                <span className="text-muted-foreground">{p}</span>
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                {p}
               </li>
             ))}
           </ul>

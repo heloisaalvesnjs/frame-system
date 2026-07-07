@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { SectionGroup, PageHeader } from "@/components/section-group";
-import { BellRingIcon, MessageCircleHeartIcon, RotateCcwIcon, RepeatIcon } from "lucide-react";
+import { BellRing, MessageCircleHeart, RotateCcw, Repeat, Zap } from "lucide-react";
 
 type AutomationConfig = {
   auto_reminder_enabled: boolean;
@@ -41,6 +38,67 @@ const DEFAULTS: AutomationConfig = {
   followup_message_1: "Oi! Ainda tem interesse em começar o acompanhamento?",
   followup_message_2: "Só passando pra saber se ficou alguma dúvida sobre os planos.",
 };
+
+// ─── Primitivos locais ────────────────────────────────────────────────────────
+
+function Group({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <div className="grid h-6 w-6 place-items-center rounded-md bg-primary/15 text-primary">
+          {icon}
+        </div>
+        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+      </div>
+      <div className="card-soft p-5">{children}</div>
+    </section>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2/40 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <button
+        onClick={() => onCheckedChange(!checked)}
+        className={
+          "relative h-6 w-11 rounded-full transition " +
+          (checked ? "bg-primary" : "bg-muted")
+        }
+      >
+        <span
+          className={
+            "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all " +
+            (checked ? "left-[22px]" : "left-0.5")
+          }
+        />
+      </button>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AutomacoesPage() {
   const [cfg, setCfg] = useState<AutomationConfig>(DEFAULTS);
@@ -98,11 +156,19 @@ export default function AutomacoesPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-      <PageHeader
-        title="Automações"
-        description="Mensagens que a assistente envia sozinha, sem você precisar lembrar."
-      />
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      {/* Cabeçalho */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Automações</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mensagens que a assistente envia sozinha, sem você precisar lembrar.
+          </p>
+        </div>
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
+          <Zap className="h-4 w-4" />
+        </div>
+      </div>
 
       {message && (
         <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
@@ -110,29 +176,19 @@ export default function AutomacoesPage() {
         </div>
       )}
 
-      <SectionGroup
-        icon={BellRingIcon}
-        title="Lembrete de consulta"
-        description="Envia uma mensagem antes da consulta pra reduzir faltas."
-      >
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Enviar lembrete automático</p>
-              <p className="text-sm text-muted-foreground">
-                Dispara antes do horário marcado da consulta.
-              </p>
-            </div>
-            <Switch
-              checked={cfg.auto_reminder_enabled}
-              onCheckedChange={(c) => update("auto_reminder_enabled", c)}
-            />
-          </div>
+      {/* Lembrete de consulta */}
+      <Group title="Lembrete de consulta" icon={<BellRing className="h-4 w-4" />}>
+        <div className="flex flex-col gap-4">
+          <ToggleRow
+            title="Enviar lembrete automático"
+            description="Dispara antes do horário marcado da consulta."
+            checked={cfg.auto_reminder_enabled}
+            onCheckedChange={(c) => update("auto_reminder_enabled", c)}
+          />
           <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reminder-hours">Horas antes</Label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Horas antes</span>
               <Input
-                id="reminder-hours"
                 type="number"
                 min={1}
                 max={72}
@@ -140,44 +196,33 @@ export default function AutomacoesPage() {
                 value={cfg.auto_reminder_hours_before}
                 onChange={(e) => update("auto_reminder_hours_before", Number(e.target.value))}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reminder-msg">Mensagem</Label>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Mensagem</span>
               <Textarea
-                id="reminder-msg"
                 rows={2}
                 disabled={!cfg.auto_reminder_enabled}
                 value={cfg.auto_reminder_message ?? ""}
                 onChange={(e) => update("auto_reminder_message", e.target.value)}
               />
-            </div>
+            </label>
           </div>
         </div>
-      </SectionGroup>
+      </Group>
 
-      <SectionGroup
-        icon={MessageCircleHeartIcon}
-        title="Pós-consulta"
-        description="Pergunta como foi a consulta logo depois que ela acontece."
-      >
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Enviar mensagem pós-consulta</p>
-              <p className="text-sm text-muted-foreground">
-                Dispara depois do horário marcado da consulta.
-              </p>
-            </div>
-            <Switch
-              checked={cfg.auto_feedback_enabled}
-              onCheckedChange={(c) => update("auto_feedback_enabled", c)}
-            />
-          </div>
+      {/* Pós-consulta */}
+      <Group title="Pós-consulta" icon={<MessageCircleHeart className="h-4 w-4" />}>
+        <div className="flex flex-col gap-4">
+          <ToggleRow
+            title="Enviar mensagem pós-consulta"
+            description="Dispara depois do horário marcado da consulta."
+            checked={cfg.auto_feedback_enabled}
+            onCheckedChange={(c) => update("auto_feedback_enabled", c)}
+          />
           <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="feedback-hours">Horas depois</Label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Horas depois</span>
               <Input
-                id="feedback-hours"
                 type="number"
                 min={1}
                 max={72}
@@ -185,44 +230,33 @@ export default function AutomacoesPage() {
                 value={cfg.auto_feedback_delay_hours}
                 onChange={(e) => update("auto_feedback_delay_hours", Number(e.target.value))}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="feedback-msg">Mensagem</Label>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Mensagem</span>
               <Textarea
-                id="feedback-msg"
                 rows={2}
                 disabled={!cfg.auto_feedback_enabled}
                 value={cfg.auto_feedback_message ?? ""}
                 onChange={(e) => update("auto_feedback_message", e.target.value)}
               />
-            </div>
+            </label>
           </div>
         </div>
-      </SectionGroup>
+      </Group>
 
-      <SectionGroup
-        icon={RotateCcwIcon}
-        title="Retorno"
-        description="Convida o paciente a marcar retorno depois de um tempo sem consulta."
-      >
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Enviar convite de retorno</p>
-              <p className="text-sm text-muted-foreground">
-                Dispara quando o paciente não tem consulta futura marcada.
-              </p>
-            </div>
-            <Switch
-              checked={cfg.auto_return_enabled}
-              onCheckedChange={(c) => update("auto_return_enabled", c)}
-            />
-          </div>
+      {/* Retorno */}
+      <Group title="Retorno" icon={<RotateCcw className="h-4 w-4" />}>
+        <div className="flex flex-col gap-4">
+          <ToggleRow
+            title="Enviar convite de retorno"
+            description="Dispara quando o paciente não tem consulta futura marcada."
+            checked={cfg.auto_return_enabled}
+            onCheckedChange={(c) => update("auto_return_enabled", c)}
+          />
           <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="return-days">Dias sem consulta</Label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Dias sem consulta</span>
               <Input
-                id="return-days"
                 type="number"
                 min={1}
                 max={365}
@@ -230,44 +264,33 @@ export default function AutomacoesPage() {
                 value={cfg.auto_return_days}
                 onChange={(e) => update("auto_return_days", Number(e.target.value))}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="return-msg">Mensagem</Label>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Mensagem</span>
               <Textarea
-                id="return-msg"
                 rows={2}
                 disabled={!cfg.auto_return_enabled}
                 value={cfg.auto_return_message ?? ""}
                 onChange={(e) => update("auto_return_message", e.target.value)}
               />
-            </div>
+            </label>
           </div>
         </div>
-      </SectionGroup>
+      </Group>
 
-      <SectionGroup
-        icon={RepeatIcon}
-        title="Reengajamento de leads"
-        description="Quando um lead some no meio da conversa, sem responder."
-      >
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Tentar reengajar automaticamente</p>
-              <p className="text-sm text-muted-foreground">
-                Manda até 2 mensagens de resgate se o lead parar de responder.
-              </p>
-            </div>
-            <Switch
-              checked={cfg.followup_enabled}
-              onCheckedChange={(c) => update("followup_enabled", c)}
-            />
-          </div>
+      {/* Reengajamento */}
+      <Group title="Reengajamento de leads" icon={<Repeat className="h-4 w-4" />}>
+        <div className="flex flex-col gap-4">
+          <ToggleRow
+            title="Tentar reengajar automaticamente"
+            description="Manda até 2 mensagens de resgate se o lead parar de responder."
+            checked={cfg.followup_enabled}
+            onCheckedChange={(c) => update("followup_enabled", c)}
+          />
           <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="followup-hours">Horas sem resposta</Label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Horas sem resposta</span>
               <Input
-                id="followup-hours"
                 type="number"
                 min={1}
                 max={48}
@@ -275,35 +298,37 @@ export default function AutomacoesPage() {
                 value={cfg.followup_delay_hours}
                 onChange={(e) => update("followup_delay_hours", Number(e.target.value))}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="followup-msg-1">1ª mensagem de resgate</Label>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">1ª mensagem de resgate</span>
               <Textarea
-                id="followup-msg-1"
                 rows={2}
                 disabled={!cfg.followup_enabled}
                 value={cfg.followup_message_1 ?? ""}
                 onChange={(e) => update("followup_message_1", e.target.value)}
               />
-            </div>
+            </label>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="followup-msg-2">2ª mensagem de resgate</Label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">2ª mensagem de resgate</span>
             <Textarea
-              id="followup-msg-2"
               rows={2}
               disabled={!cfg.followup_enabled}
               value={cfg.followup_message_2 ?? ""}
               onChange={(e) => update("followup_message_2", e.target.value)}
             />
-          </div>
+          </label>
         </div>
-      </SectionGroup>
+      </Group>
 
       <div className="flex justify-end">
-        <Button onClick={save} disabled={saving}>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+        >
           {saving ? "Salvando..." : "Salvar automações"}
-        </Button>
+        </button>
       </div>
     </div>
   );

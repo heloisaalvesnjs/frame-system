@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, type CSSProperties } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { TacoFood } from "@/lib/meal-types";
 import { searchFoods, getSubstitutions } from "@/lib/foods";
 import { categorize, CATEGORY_STYLE, type FoodCategory } from "@/lib/food-category";
@@ -16,25 +16,25 @@ import { SearchIcon, ArrowLeftIcon } from "lucide-react";
 
 type SortMode = "default" | "az" | "menor_g" | "maior_g";
 
-function CategoryIcon({ food, size = 40 }: { food: TacoFood; size?: number }) {
+// Ponto colorido por grupo alimentar — mesmo mapeamento de pacientes/[id]/page.tsx
+const FOOD_DOT_CLASS: Record<string, string> = {
+  carboidrato: "bg-food-carb",
+  proteina: "bg-food-protein",
+  gordura: "bg-food-fat",
+  fruta: "bg-food-fruit",
+  vegetal: "bg-food-veg",
+  laticinios: "bg-food-dairy",
+};
+
+function foodDotClass(food: TacoFood): string {
   const cat = categorize(food);
-  const style = CATEGORY_STYLE[cat];
-  return (
-    <span
-      className="flex items-center justify-center rounded-full shrink-0 select-none dark:[background-color:var(--cat-bg-dark)] [background-color:var(--cat-bg-light)]"
-      style={
-        {
-          width: size,
-          height: size,
-          fontSize: size * 0.45,
-          "--cat-bg-dark": style.bgDark,
-          "--cat-bg-light": style.bgLight,
-        } as CSSProperties
-      }
-    >
-      {style.emoji}
-    </span>
-  );
+  return FOOD_DOT_CLASS[cat] ?? "bg-muted-foreground/40";
+}
+
+function FoodDot({ food, size = "md" }: { food: TacoFood; size?: "sm" | "md" | "lg" }) {
+  const dotClass = foodDotClass(food);
+  const sizeMap = { sm: "h-2 w-2", md: "h-2.5 w-2.5", lg: "h-3 w-3" };
+  return <span className={`rounded-full shrink-0 ${sizeMap[size]} ${dotClass}`} />;
 }
 
 function CategoryPill({
@@ -47,17 +47,15 @@ function CategoryPill({
   onClick: () => void;
 }) {
   const style = CATEGORY_STYLE[category];
+  const dotClass = FOOD_DOT_CLASS[category] ?? "bg-muted-foreground/40";
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors"
-      style={
-        active
-          ? { backgroundColor: style.colorDark + "22", color: style.colorDark, borderColor: style.colorDark + "55" }
-          : undefined
-      }
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+        active ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+      }`}
     >
-      <span>{style.emoji}</span>
+      <span className={`h-2 w-2 rounded-full ${dotClass}`} />
       {style.label}
     </button>
   );
@@ -151,7 +149,7 @@ function SearchView({
             onClick={() => onSelect(f)}
             className="flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left last:border-0 hover:bg-muted/60 transition-colors"
           >
-            <CategoryIcon food={f} size={36} />
+            <FoodDot food={f} size="lg" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{f.name}</p>
               <p className="text-xs text-muted-foreground">{f.kcal} kcal/100g</p>
@@ -178,8 +176,6 @@ function SwapView({
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortMode>("default");
 
-  const baseCat = categorize(baseFood);
-  const baseStyle = CATEGORY_STYLE[baseCat];
   const baseKcalFor = Math.round((baseFood.kcal / 100) * userQty);
 
   useEffect(() => {
@@ -201,24 +197,15 @@ function SwapView({
   return (
     <div className="flex flex-col gap-4 overflow-hidden">
       {/* Card do alimento selecionado */}
-      <div
-        className="flex items-center gap-3 rounded-xl p-3"
-        style={{ backgroundColor: baseStyle.bgDark + "44", border: `1px solid ${baseStyle.colorDark}33` }}
-      >
-        <CategoryIcon food={baseFood} size={48} />
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+        <FoodDot food={baseFood} size="lg" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate">{baseFood.name}</p>
           <div className="flex gap-1.5 mt-1 flex-wrap">
-            <span
-              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: baseStyle.colorDark + "33", color: baseStyle.colorDark }}
-            >
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
               {baseKcalFor} kcal
             </span>
-            <span
-              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: baseStyle.colorDark + "22", color: baseStyle.colorDark }}
-            >
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
               {Math.round((baseFood.protein / 100) * userQty * 10) / 10}g prot
             </span>
           </div>
@@ -272,25 +259,20 @@ function SwapView({
         {sorted.map((sub) => {
           const swapG = calcSwapGrams(userQty, baseFood.kcal, sub.kcal);
           const swapKcal = Math.round((sub.kcal / 100) * swapG);
-          const subCat = categorize(sub);
-          const subStyle = CATEGORY_STYLE[subCat];
           return (
             <button
               key={sub.id}
               onClick={() => onConfirm(sub, swapG)}
               className="flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left last:border-0 hover:bg-muted/60 transition-colors"
             >
-              <CategoryIcon food={sub} size={36} />
+              <FoodDot food={sub} size="lg" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{sub.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {swapG}g · {swapKcal} kcal
                 </p>
               </div>
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                style={{ backgroundColor: subStyle.colorDark + "22", color: subStyle.colorDark }}
-              >
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-muted text-muted-foreground">
                 {swapG}g
               </span>
             </button>

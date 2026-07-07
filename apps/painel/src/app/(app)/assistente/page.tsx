@@ -13,10 +13,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -32,24 +29,26 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  BotIcon,
-  SendIcon,
-  SparklesIcon,
-  MapPinIcon,
-  MonitorIcon,
-  CalendarOffIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  MessageCircleIcon,
-  RefreshCcwIcon,
-  Loader2Icon,
-  BookOpenIcon,
-  PackageIcon,
-  PlugIcon,
+  User,
+  Calendar,
+  Zap,
+  BookOpen,
+  DollarSign,
+  Sparkles,
+  Send,
+  MapPin,
+  Monitor,
+  CalendarOff,
+  ChevronLeft,
+  ChevronRight,
+  MessageCircle,
+  RefreshCcw,
+  Loader2,
+  Plus,
+  X,
 } from "lucide-react";
-import { SectionGroup, PageHeader } from "@/components/section-group";
+import { SectionGroup } from "@/components/section-group";
 import { LocationBadge } from "@/components/location-badge";
-import { PagePlaceholder } from "@/components/page-placeholder";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,13 +66,13 @@ const STATUS_LABEL: Record<string, { label: string; dotClass: string }> = {
   disconnected: { label: "Desconectado", dotClass: "bg-destructive" },
 };
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function linesToArray(text: string): string[] {
   return text.split("\n").map((l) => l.trim()).filter(Boolean);
 }
 
-// ─── Calendário helpers ──────────────────────────────────────────────────────
+// ─── Calendário ───────────────────────────────────────────────────────────────
 
 const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const WEEKDAYS_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -94,10 +93,185 @@ function formatFull(isoStr: string) {
   });
 }
 
+// ─── Small pieces ─────────────────────────────────────────────────────────────
+
+function Group({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <div className="grid h-6 w-6 place-items-center rounded-md bg-primary/15 text-primary">
+          {icon}
+        </div>
+        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+      </div>
+      <div className="card-soft p-5">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2/40 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <button
+        onClick={() => onCheckedChange(!checked)}
+        className={
+          "relative h-6 w-11 rounded-full transition " +
+          (checked ? "bg-primary" : "bg-muted")
+        }
+      >
+        <span
+          className={
+            "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all " +
+            (checked ? "left-[22px]" : "left-0.5")
+          }
+        />
+      </button>
+    </div>
+  );
+}
+
+function TagInput({
+  value,
+  onChange,
+  accent,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  accent: "primary" | "destructive";
+  placeholder?: string;
+}) {
+  const tags = value.split("\n").map((l) => l.trim()).filter(Boolean);
+  const [input, setInput] = useState("");
+  const cls =
+    accent === "primary"
+      ? "bg-primary/15 text-primary"
+      : "bg-destructive/15 text-destructive";
+
+  function add() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    if (!tags.includes(trimmed)) {
+      onChange([...tags, trimmed].join("\n"));
+    }
+    setInput("");
+  }
+
+  function remove(tag: string) {
+    onChange(tags.filter((t) => t !== tag).join("\n"));
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface-2/60 p-2 min-h-[44px]">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className={"inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs " + cls}
+        >
+          {t}
+          <button
+            onClick={() => remove(t)}
+            className="opacity-60 hover:opacity-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); add(); }
+        }}
+        placeholder={placeholder ?? "digite e enter"}
+        className="min-w-[100px] flex-1 bg-transparent px-1 text-xs outline-none placeholder:text-muted-foreground/60"
+      />
+      <Plus className="h-3 w-3 text-muted-foreground" />
+    </div>
+  );
+}
+
+function Bubble({
+  side,
+  name,
+  children,
+}: {
+  side: "me" | "them";
+  name?: string;
+  children: React.ReactNode;
+}) {
+  const isMe = side === "me";
+  return (
+    <div className={"flex " + (isMe ? "justify-end" : "justify-start")}>
+      <div
+        className={
+          "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm " +
+          (isMe
+            ? "rounded-br-sm bg-primary text-primary-foreground"
+            : "rounded-bl-sm border border-border bg-surface-2/60")
+        }
+      >
+        {name && !isMe && (
+          <div className="mb-0.5 text-[10px] font-medium uppercase tracking-widest text-primary">
+            {name}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ComingSoon({ title }: { title: string }) {
+  return (
+    <div className="card-soft flex flex-col items-center gap-4 p-12 text-center">
+      <div className="grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary">
+        <Sparkles className="h-6 w-6" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+          Essa aba está em construção. Em breve você vai poder configurar por aqui.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sub-tab: Identidade ──────────────────────────────────────────────────────
 
 function IdentidadeTab() {
-  const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -124,7 +298,6 @@ function IdentidadeTab() {
     try {
       const { assistant: a } = await api.get<{ assistant: Assistant | null }>("/api/assistants");
       if (a) {
-        setAssistant(a);
         setName(a.name ?? "");
         setTone(a.tone ?? "");
         setGreeting(a.greeting_message ?? "");
@@ -195,145 +368,141 @@ function IdentidadeTab() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      {message && (
-        <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
-          {message}
-        </div>
-      )}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="flex flex-col gap-5">
+        {message && (
+          <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
+            {message}
+          </div>
+        )}
 
-      <SectionGroup
-        icon={BotIcon}
-        title="Identidade"
-        description="Nome, tom de voz e as mensagens de abertura e fechamento."
-      >
-        <div className="p-4 flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="assistant-name">Nome da assistente</Label>
-              <Input id="assistant-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="assistant-tone">Tom de voz</Label>
-              <Input
-                id="assistant-tone"
+        <Group title="Identidade" icon={<User className="h-4 w-4" />}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Nome da assistente">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+              />
+            </Field>
+            <Field label="Tom de voz">
+              <input
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
                 placeholder="acolhedor, direto, animado..."
+                className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
               />
+            </Field>
+          </div>
+        </Group>
+
+        <Group title="Mensagens" icon={<Sparkles className="h-4 w-4" />}>
+          <div className="grid gap-4">
+            <Field label="Saudação">
+              <textarea
+                rows={2}
+                value={greeting}
+                onChange={(e) => setGreeting(e.target.value)}
+                className="w-full rounded-lg border border-border bg-surface-2/60 px-3 py-2 text-sm outline-none focus:border-primary/50"
+              />
+            </Field>
+            <Field label="Despedida">
+              <textarea
+                rows={2}
+                value={farewell}
+                onChange={(e) => setFarewell(e.target.value)}
+                className="w-full rounded-lg border border-border bg-surface-2/60 px-3 py-2 text-sm outline-none focus:border-primary/50"
+              />
+            </Field>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Frases preferidas">
+                <TagInput value={preferidas} onChange={setPreferidas} accent="primary" placeholder="Bacana" />
+              </Field>
+              <Field label="Frases proibidas">
+                <TagInput value={proibidas} onChange={setProibidas} accent="destructive" placeholder="barato" />
+              </Field>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="assistant-greeting">Mensagem de boas-vindas</Label>
-            <Textarea id="assistant-greeting" rows={3} value={greeting} onChange={(e) => setGreeting(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="assistant-farewell">Mensagem de despedida</Label>
-            <Textarea id="assistant-farewell" rows={2} value={farewell} onChange={(e) => setFarewell(e.target.value)} />
-          </div>
-        </div>
-      </SectionGroup>
+        </Group>
 
-      <SectionGroup title="Jeito de falar" description="Uma frase por linha.">
-        <div className="p-4 grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="preferidas">Frases que sempre usa</Label>
-            <Textarea
-              id="preferidas"
-              rows={5}
-              value={preferidas}
-              onChange={(e) => setPreferidas(e.target.value)}
-              placeholder={"Bacana\nQue ótimo\nPerfeito"}
+        <Group title="Comportamento" icon={<Zap className="h-4 w-4" />}>
+          <div className="grid gap-3">
+            <ToggleRow
+              title="Atender 24 horas"
+              description="Se desligado, respeita os horários definidos em Disponibilidade."
+              checked={ai24h}
+              onCheckedChange={setAi24h}
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="proibidas">Frases proibidas</Label>
-            <Textarea
-              id="proibidas"
-              rows={5}
-              value={proibidas}
-              onChange={(e) => setProibidas(e.target.value)}
-              placeholder={"barato\ndieta relâmpago"}
+            <ToggleRow
+              title="Pausar a IA completamente"
+              description="Nenhuma mensagem é respondida automaticamente enquanto estiver pausada."
+              checked={aiPaused}
+              onCheckedChange={setAiPaused}
             />
-          </div>
-        </div>
-      </SectionGroup>
-
-      <SectionGroup title="Ligar e desligar">
-        <div className="p-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Atender 24 horas</p>
-              <p className="text-sm text-muted-foreground">
-                Se desligado, respeita os horários definidos em Disponibilidade.
-              </p>
+            <div className="flex justify-end">
+              <button
+                onClick={save}
+                disabled={saving}
+                className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Salvar alterações"}
+              </button>
             </div>
-            <Switch checked={ai24h} onCheckedChange={setAi24h} />
           </div>
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Pausar a IA completamente</p>
-              <p className="text-sm text-muted-foreground">
-                Nenhuma mensagem é respondida automaticamente enquanto estiver pausada.
-              </p>
-            </div>
-            <Switch checked={aiPaused} onCheckedChange={setAiPaused} />
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={save} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar alterações"}
-            </Button>
-          </div>
-        </div>
-      </SectionGroup>
+        </Group>
+      </div>
 
-      <SectionGroup
-        icon={SparklesIcon}
-        title="Testar atendimento"
-        description="Converse com a IA usando as configurações atuais — não afeta pacientes reais."
-      >
-        <div className="p-4 flex flex-col gap-3">
-          <div className="flex h-72 flex-col gap-3 overflow-y-auto rounded-md border border-border bg-muted/40 p-3">
+      {/* Painel de chat de teste fixo */}
+      <div>
+        <div className="mb-3 flex items-end justify-between px-1">
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight">Testar ao vivo</h2>
+            <p className="text-xs text-muted-foreground">Converse com a assistente</p>
+          </div>
+          <button
+            onClick={resetTest}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Reiniciar
+          </button>
+        </div>
+        <div className="card-soft flex h-[520px] flex-col overflow-hidden">
+          <div className="flex-1 space-y-3 overflow-auto p-4 text-sm">
             {chatHistory.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Mande uma mensagem como se fosse um paciente, por exemplo &quot;oi&quot;.
-              </p>
+              <Bubble side="them" name={name || "IA"}>
+                Oi! Mande uma mensagem como se fosse um paciente, por exemplo &quot;oi&quot;.
+              </Bubble>
             )}
             {chatHistory.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                  m.role === "user"
-                    ? "self-end bg-primary text-primary-foreground"
-                    : "self-start bg-card text-card-foreground border border-border"
-                }`}
-              >
+              <Bubble key={i} side={m.role === "user" ? "me" : "them"} name={m.role === "assistant" ? (name || "IA") : undefined}>
                 {m.content}
-              </div>
+              </Bubble>
             ))}
             {chatLoading && (
-              <div className="self-start rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-                Digitando...
-              </div>
+              <Bubble side="them" name={name || "IA"}>
+                <span className="text-muted-foreground">Digitando...</span>
+              </Bubble>
             )}
             <div ref={chatEndRef} />
           </div>
-          <div className="flex gap-2">
-            <Input
+          <div className="flex items-center gap-2 border-t border-border p-3">
+            <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") sendTestMessage(); }}
-              placeholder="Digite como um paciente..."
+              placeholder="Escreva uma mensagem..."
+              className="h-10 flex-1 rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
             />
-            <Button onClick={sendTestMessage} disabled={chatLoading}>
-              <SendIcon />
-            </Button>
-            <Button variant="outline" onClick={resetTest}>
-              Reiniciar
-            </Button>
+            <button
+              onClick={sendTestMessage}
+              disabled={chatLoading}
+              className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground hover:brightness-110 disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      </SectionGroup>
+      </div>
     </div>
   );
 }
@@ -461,17 +630,19 @@ function DisponibilidadeTab() {
     if (!dayDialog) return;
     if (overrides.has(dayDialog)) await api.delete(`/api/availability/date-locations/${dayDialog}`).catch(() => {});
     if (blocked.has(dayDialog)) await api.delete(`/api/availability/blocked/${dayDialog}`).catch(() => {});
-    setOverrides((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
-    setBlocked((prev) => { const n = new Map(prev); n.delete(dayDialog); return n; });
+    setOverrides((prev) => { const n = new Map(prev); n.delete(dayDialog!); return n; });
+    setBlocked((prev) => { const n = new Map(prev); n.delete(dayDialog!); return n; });
     setDayDialog(null);
   }
 
   const [savingOnline, setSavingOnline] = useState(false);
+
   function toggleWeekday(wd: number) {
     if (!online) return;
     const has = online.online_weekdays.includes(wd);
     setOnline({ ...online, online_weekdays: has ? online.online_weekdays.filter((d) => d !== wd) : [...online.online_weekdays, wd].sort() });
   }
+
   async function saveOnline() {
     if (!online) return;
     setSavingOnline(true);
@@ -491,54 +662,81 @@ function DisponibilidadeTab() {
   const dialogBlocked = dayDialog ? blocked.has(dayDialog) : false;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {message && (
         <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
           {message}
         </div>
       )}
 
-      <div className="inline-flex w-fit rounded-lg border border-border bg-muted/40 p-1">
-        <button
-          onClick={() => setInnerTab("presencial")}
-          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            innerTab === "presencial" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-          }`}
-        >
-          <MapPinIcon className="size-4" /> Presencial
-        </button>
-        <button
-          onClick={() => setInnerTab("online")}
-          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            innerTab === "online" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-          }`}
-        >
-          <MonitorIcon className="size-4" /> Online
-        </button>
+      {/* Toggle segmentado Presencial/Online */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-full border border-border p-1 text-sm">
+          <button
+            onClick={() => setInnerTab("presencial")}
+            className={
+              "inline-flex items-center gap-2 rounded-full px-4 py-1.5 transition " +
+              (innerTab === "presencial"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            <MapPin className="size-3.5" /> Presencial
+          </button>
+          <button
+            onClick={() => setInnerTab("online")}
+            className={
+              "inline-flex items-center gap-2 rounded-full px-4 py-1.5 transition " +
+              (innerTab === "online"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            <Monitor className="size-3.5" /> Online
+          </button>
+        </div>
+        {innerTab === "presencial" && locations.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {locations.map((l) => (
+              <div key={l.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="size-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                {l.name}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {innerTab === "presencial" ? (
-        <SectionGroup
-          icon={MapPinIcon}
-          title="Calendário presencial"
-          description="Clique num dia para escolher o local e horário, ou marcar como fechado."
-        >
-          <div className="p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Button size="icon-sm" variant="outline" onClick={prevMonth} aria-label="Mês anterior">
-                <ChevronLeftIcon />
-              </Button>
-              <span className="w-36 text-center text-sm font-medium capitalize">
-                {MONTHS[viewM]} {viewY}
-              </span>
-              <Button size="icon-sm" variant="outline" onClick={nextMonth} aria-label="Próximo mês">
-                <ChevronRightIcon />
-              </Button>
+        <section>
+          <div className="mb-3 flex items-end justify-between px-1">
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight">Calendário presencial</h2>
+              <p className="text-xs text-muted-foreground">
+                {MONTHS[viewM].charAt(0).toUpperCase() + MONTHS[viewM].slice(1)} {viewY} · clique num dia para escolher local e horário
+              </p>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {WEEKDAYS_SHORT.map((w) => (
-                <div key={w} className="pb-2 text-xs font-medium text-muted-foreground">{w}</div>
-              ))}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={prevMonth}
+                className="grid h-7 w-7 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                onClick={nextMonth}
+                className="grid h-7 w-7 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="card-soft overflow-hidden p-3">
+            <div className="grid grid-cols-7 gap-2 pb-2 text-center text-[11px] uppercase tracking-widest text-muted-foreground">
+              {WEEKDAYS_SHORT.map((w) => <div key={w}>{w}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
               {grid.map((d, i) => {
                 if (d === null) return <div key={i} />;
                 const key = isoDate(viewY, viewM, d);
@@ -549,7 +747,13 @@ function DisponibilidadeTab() {
                   <button
                     key={i}
                     onClick={() => openDay(d)}
-                    className={`flex min-h-16 flex-col items-start gap-1 rounded-md border p-1.5 text-left transition-colors hover:border-primary ${isPast ? "opacity-40" : ""} ${isBlocked ? "border-destructive/40 bg-destructive/5" : "border-border"}`}
+                    className={
+                      "flex h-24 flex-col items-start gap-1.5 rounded-xl border p-2 text-left transition " +
+                      (isPast ? "opacity-40 " : "") +
+                      (isBlocked
+                        ? "border-destructive/40 bg-destructive/5"
+                        : "border-border bg-surface-2/40 hover:border-primary/40 hover:bg-surface-2/70")
+                    }
                   >
                     <span className="text-xs font-medium">{d}</span>
                     {ov && <LocationBadge color={ov.color ?? "#2E7D32"} name={ov.location_name ?? ""} />}
@@ -558,32 +762,35 @@ function DisponibilidadeTab() {
                 );
               })}
             </div>
-            {locations.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-3 border-t border-border pt-3">
-                {locations.map((l) => (
-                  <div key={l.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="size-2.5 rounded-full" style={{ backgroundColor: l.color }} />
-                    {l.name}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </SectionGroup>
+        </section>
       ) : (
         online && (
           <SectionGroup
-            icon={MonitorIcon}
+            icon={Monitor}
             title="Atendimento online"
             description="Dias da semana e horário em que você atende online — independente do presencial."
           >
             <div className="p-4 flex flex-col gap-5">
-              <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2/40 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium">Atendo online</p>
-                  <p className="text-sm text-muted-foreground">Se desligado, a IA não oferece consulta online.</p>
+                  <p className="text-xs text-muted-foreground">Se desligado, a IA não oferece consulta online.</p>
                 </div>
-                <Switch checked={online.online_enabled} onCheckedChange={(c) => setOnline({ ...online, online_enabled: c })} />
+                <button
+                  onClick={() => setOnline({ ...online, online_enabled: !online.online_enabled })}
+                  className={
+                    "relative h-6 w-11 rounded-full transition " +
+                    (online.online_enabled ? "bg-primary" : "bg-muted")
+                  }
+                >
+                  <span
+                    className={
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all " +
+                      (online.online_enabled ? "left-[22px]" : "left-0.5")
+                    }
+                  />
+                </button>
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Dias da semana</Label>
@@ -591,8 +798,14 @@ function DisponibilidadeTab() {
                   {WEEKDAYS_FULL.map((w, wd) => {
                     const on = online.online_weekdays.includes(wd);
                     return (
-                      <button key={wd} disabled={!online.online_enabled} onClick={() => toggleWeekday(wd)}
-                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary"}`}
+                      <button
+                        key={wd}
+                        disabled={!online.online_enabled}
+                        onClick={() => toggleWeekday(wd)}
+                        className={
+                          "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 " +
+                          (on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary")
+                        }
                       >
                         {WEEKDAYS_SHORT[wd]}
                       </button>
@@ -602,86 +815,128 @@ function DisponibilidadeTab() {
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="dis-on-start">Início</Label>
-                  <Input id="dis-on-start" type="time" value={online.online_start} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_start: e.target.value })} className="w-28" />
+                  <Label>Início</Label>
+                  <Input type="time" value={online.online_start} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_start: e.target.value })} className="w-28" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="dis-on-end">Fim</Label>
-                  <Input id="dis-on-end" type="time" value={online.online_end} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_end: e.target.value })} className="w-28" />
+                  <Label>Fim</Label>
+                  <Input type="time" value={online.online_end} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_end: e.target.value })} className="w-28" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="dis-on-dur">Duração (min)</Label>
-                  <Input id="dis-on-dur" type="number" min={15} step={5} value={online.online_slot_duration} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_slot_duration: Number(e.target.value) })} className="w-24" />
+                  <Label>Duração (min)</Label>
+                  <Input type="number" min={15} step={5} value={online.online_slot_duration} disabled={!online.online_enabled} onChange={(e) => setOnline({ ...online, online_slot_duration: Number(e.target.value) })} className="w-24" />
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={saveOnline} disabled={savingOnline}>
+                <button
+                  onClick={saveOnline}
+                  disabled={savingOnline}
+                  className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                >
                   {savingOnline ? "Salvando..." : "Salvar online"}
-                </Button>
+                </button>
               </div>
             </div>
           </SectionGroup>
         )
       )}
 
-      <Dialog open={!!dayDialog} onOpenChange={(o) => !o && setDayDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{dayDialog && formatFull(dayDialog)}</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-2">
-            {dialogBlocked && (
-              <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                <CalendarOffIcon className="size-4" /> Este dia está marcado como sem atendimento.
+      {/* Dialog de dia — overlay customizado */}
+      {dayDialog && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDayDialog(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground capitalize">
+                  {MONTHS[Number(dayDialog.split("-")[1]) - 1]} {dayDialog.split("-")[0]}
+                </div>
+                <h3 className="text-lg font-semibold">{formatFull(dayDialog)}</h3>
               </div>
-            )}
-            {dialogOverride && !dialogBlocked && (
-              <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
-                Atendimento presencial em <strong>{dialogOverride.location_name}</strong>.
-              </div>
-            )}
-            <div className="flex flex-col gap-1.5">
-              <Label>Atender presencialmente em</Label>
-              <Select value={dialogCity} onValueChange={setDialogCity}>
-                <SelectTrigger><SelectValue placeholder="Escolha o local" /></SelectTrigger>
-                <SelectContent>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.name}{l.city ? ` — ${l.city}` : ""}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <button
+                onClick={() => setDayDialog(null)}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="dlg2-start">Início (opcional)</Label>
-                <Input id="dlg2-start" type="time" value={dialogStart} onChange={(e) => setDialogStart(e.target.value)} />
+
+            <div className="mt-5 flex flex-col gap-4">
+              {dialogBlocked && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  <CalendarOff className="size-4" /> Este dia está marcado como sem atendimento.
+                </div>
+              )}
+              {dialogOverride && !dialogBlocked && (
+                <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
+                  Atendimento presencial em <strong>{dialogOverride.location_name}</strong>.
+                </div>
+              )}
+
+              <div>
+                <div className="mb-2 text-xs text-muted-foreground">Local de atendimento</div>
+                <Select value={dialogCity} onValueChange={setDialogCity}>
+                  <SelectTrigger><SelectValue placeholder="Escolha o local" /></SelectTrigger>
+                  <SelectContent>
+                    {locations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}{l.city ? ` — ${l.city}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Início (opcional)</Label>
+                  <Input type="time" value={dialogStart} onChange={(e) => setDialogStart(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Fim (opcional)</Label>
+                  <Input type="time" value={dialogEnd} onChange={(e) => setDialogEnd(e.target.value)} />
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="dlg2-end">Fim (opcional)</Label>
-                <Input id="dlg2-end" type="time" value={dialogEnd} onChange={(e) => setDialogEnd(e.target.value)} />
+                <Label>Duração da consulta em min (opcional)</Label>
+                <Input type="number" min={15} step={5} value={dialogSlot} onChange={(e) => setDialogSlot(e.target.value)} placeholder="30" className="w-28" />
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="dlg2-slot">Duração da consulta em min (opcional)</Label>
-              <Input id="dlg2-slot" type="number" min={15} step={5} value={dialogSlot} onChange={(e) => setDialogSlot(e.target.value)} placeholder="30" className="w-28" />
+
+            <div className="mt-6 flex items-center justify-between">
+              <button
+                onClick={blockDay}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <CalendarOff className="inline mr-1 h-3 w-3" /> Não atendo neste dia
+              </button>
+              <div className="flex items-center gap-2">
+                {(dialogOverride || dialogBlocked) && (
+                  <button
+                    onClick={clearDay}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
+                <button
+                  onClick={saveDayCity}
+                  disabled={!dialogCity}
+                  className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                >
+                  Salvar
+                </button>
+              </div>
             </div>
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-            <Button variant="outline" onClick={blockDay} className="text-destructive">
-              <CalendarOffIcon /> Não atendo neste dia
-            </Button>
-            <div className="flex gap-2">
-              {(dialogOverride || dialogBlocked) && <Button variant="ghost" onClick={clearDay}>Limpar</Button>}
-              <Button onClick={saveDayCity} disabled={!dialogCity}>Salvar</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </>
+      )}
     </div>
   );
 }
 
-// ─── Sub-tab: Integrações ────────────────────────────────────────────────────
+// ─── Sub-tab: Integrações ─────────────────────────────────────────────────────
 
 function IntegracoesTab() {
   const [wa, setWa] = useState<WhatsappStatus | null>(null);
@@ -711,58 +966,88 @@ function IntegracoesTab() {
   const statusInfo = wa ? STATUS_LABEL[wa.status] ?? STATUS_LABEL.disconnected : null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <SectionGroup
-        icon={MessageCircleIcon}
-        title="WhatsApp"
-        description="Número usado pela IA para conversar com os pacientes."
-      >
-        <div className="p-4 flex items-center justify-between gap-4">
-          <div>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Group title="WhatsApp Business" icon={<Zap className="h-4 w-4" />}>
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
+              <path d="M20 3.5A11.9 11.9 0 0 0 2.5 20L2 22l2-.5A11.9 11.9 0 1 0 20 3.5Zm-8 18.1a9.7 9.7 0 0 1-4.9-1.3l-.3-.2-3 .8.8-2.9-.2-.3A9.7 9.7 0 1 1 12 21.6Z" />
+            </svg>
+          </div>
+          <div className="flex-1">
             {loading ? (
               <p className="text-sm text-muted-foreground">Verificando conexão...</p>
             ) : (
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="gap-1.5">
-                  <span className={`size-1.5 rounded-full ${statusInfo?.dotClass ?? "bg-muted-foreground"}`} />
-                  {statusInfo?.label ?? "Desconhecido"}
-                </Badge>
-                {wa?.phone && <span className="text-sm text-muted-foreground">{wa.phone}</span>}
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">
+                      {wa?.status === "connected" ? "Número conectado" : "WhatsApp"}
+                    </div>
+                    {wa?.phone && (
+                      <div className="text-xs text-muted-foreground">{wa.phone}</div>
+                    )}
+                  </div>
+                  {statusInfo && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                      <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dotClass}`} />
+                      {statusInfo.label}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={refresh}
+                    disabled={refreshing}
+                    className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                    Reconectar
+                  </button>
+                  <button className="h-9 rounded-lg border border-destructive/60 px-3 text-xs text-destructive">
+                    Desconectar
+                  </button>
+                </div>
+              </>
             )}
           </div>
-          <Button size="icon-sm" variant="outline" onClick={refresh} disabled={refreshing}>
-            {refreshing ? <Loader2Icon className="animate-spin" /> : <RefreshCcwIcon />}
-          </Button>
         </div>
-      </SectionGroup>
+      </Group>
 
-      <SectionGroup title="Como funciona por trás" variant="muted">
-        <div className="p-4 flex flex-col gap-3 text-sm text-muted-foreground">
-          <p>
-            <strong className="text-foreground">n8n</strong> — recebe cada mensagem, decide
-            se é dúvida, agendamento ou algo pra você, e já lê tudo que está configurado aqui
-            no painel (planos, disponibilidade, base de conhecimento) em tempo real.
-          </p>
-          <p>
-            <strong className="text-foreground">Claude (IA)</strong> — o modelo que gera as
-            respostas da assistente.
-          </p>
-          <p>
-            <strong className="text-foreground">Google Calendar</strong> e{" "}
-            <strong className="text-foreground">Asaas (PIX)</strong> — configuráveis em breve
-            nesta tela.
-          </p>
+      <Group title="Google Calendar" icon={<Calendar className="h-4 w-4" />}>
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
+            <Calendar className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Não conectado</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sincronize consultas automaticamente com seu Google Calendar.
+            </p>
+            <button className="mt-4 h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:brightness-110">
+              Conectar
+            </button>
+          </div>
         </div>
-      </SectionGroup>
+      </Group>
     </div>
   );
 }
 
-// ─── Page principal ──────────────────────────────────────────────────────────
+// ─── Tabs definition ──────────────────────────────────────────────────────────
 
-const TAB_VALUES = ["identidade", "disponibilidade", "integracoes", "conhecimento", "servicos"] as const;
-type TabValue = typeof TAB_VALUES[number];
+const TABS = [
+  { id: "identidade", label: "Identidade", icon: User },
+  { id: "disponibilidade", label: "Disponibilidade", icon: Calendar },
+  { id: "integracoes", label: "Integrações", icon: Zap },
+  { id: "conhecimento", label: "Conhecimento", icon: BookOpen },
+  { id: "servicos", label: "Serviços e preços", icon: DollarSign },
+] as const;
+
+type TabValue = typeof TABS[number]["id"];
+const TAB_IDS = TABS.map((t) => t.id);
+
+// ─── Page principal ──────────────────────────────────────────────────────────
 
 export default function AssistentePage() {
   return (
@@ -776,81 +1061,57 @@ function AssistentePageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabParam = searchParams.get("tab") as TabValue | null;
-  const activeTab: TabValue = TAB_VALUES.includes(tabParam as TabValue) ? (tabParam as TabValue) : "identidade";
+  const activeTab: TabValue = TAB_IDS.includes(tabParam as TabValue) ? (tabParam as TabValue) : "identidade";
 
-  function handleTabChange(value: string) {
+  function handleTabChange(value: TabValue) {
     router.replace(`/assistente?tab=${value}`, { scroll: false });
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <PageHeader
-        title="Assistente (IA)"
-        description="Configure o atendimento, disponibilidade e integrações da sua IA."
-      />
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      {/* Cabeçalho */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Assistente (IA)</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Configure o atendimento, disponibilidade e integrações.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> ativa
+        </span>
+      </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="identidade">
-            <BotIcon className="size-4 mr-1.5" />
-            Identidade
-          </TabsTrigger>
-          <TabsTrigger value="disponibilidade">
-            <MapPinIcon className="size-4 mr-1.5" />
-            Disponibilidade
-          </TabsTrigger>
-          <TabsTrigger value="integracoes">
-            <PlugIcon className="size-4 mr-1.5" />
-            Integrações
-          </TabsTrigger>
-          <TabsTrigger value="conhecimento">
-            <BookOpenIcon className="size-4 mr-1.5" />
-            Conhecimento
-          </TabsTrigger>
-          <TabsTrigger value="servicos">
-            <PackageIcon className="size-4 mr-1.5" />
-            Serviços e Preços
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs em pill */}
+      <div className="flex flex-wrap gap-1.5 border-b border-border pb-2">
+        {TABS.map((t) => {
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => handleTabChange(t.id)}
+              className={
+                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition " +
+                (active
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground")
+              }
+            >
+              <t.icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="identidade" className="mt-6">
-          <IdentidadeTab />
-        </TabsContent>
-
-        <TabsContent value="disponibilidade" className="mt-6">
-          <DisponibilidadeTab />
-        </TabsContent>
-
-        <TabsContent value="integracoes" className="mt-6">
-          <IntegracoesTab />
-        </TabsContent>
-
-        <TabsContent value="conhecimento" className="mt-6">
-          <PagePlaceholder
-            title="Base de conhecimento"
-            description="Aqui você vai poder carregar PDFs, textos e perguntas frequentes que a IA usará nos atendimentos."
-            icon={<BookOpenIcon className="size-4" />}
-            points={[
-              "Upload de PDF de planos alimentares e protocolos",
-              "Perguntas e respostas frequentes dos seus pacientes",
-              "Textos de referência para a IA citar durante o atendimento",
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="servicos" className="mt-6">
-          <PagePlaceholder
-            title="Serviços e Preços"
-            description="Configure os serviços que você oferece e os valores — a IA informará os pacientes automaticamente."
-            icon={<PackageIcon className="size-4" />}
-            points={[
-              "Consulta presencial e online com valores individuais",
-              "Pacotes de acompanhamento",
-              "A IA menciona os valores corretos sem precisar de script",
-            ]}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Conteúdo da aba */}
+      <div>
+        {activeTab === "identidade" && <IdentidadeTab />}
+        {activeTab === "disponibilidade" && <DisponibilidadeTab />}
+        {activeTab === "integracoes" && <IntegracoesTab />}
+        {activeTab === "conhecimento" && <ComingSoon title="Conhecimento" />}
+        {activeTab === "servicos" && <ComingSoon title="Serviços e preços" />}
+      </div>
     </div>
   );
 }

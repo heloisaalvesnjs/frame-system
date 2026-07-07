@@ -2,15 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { PageHeader } from "@/components/section-group";
-import {
-  CalendarCheckIcon,
-  UsersIcon,
-  MessageSquareIcon,
-  TrendingUpIcon,
-  UserPlusIcon,
-  CalendarPlusIcon,
-} from "lucide-react";
+import { useAuth } from "@/lib/use-auth";
+import { ArrowUpRight, CalendarCheck, Users, MessageSquare, TrendingUp } from "lucide-react";
 
 type Metrics = {
   total_clients: number;
@@ -32,8 +25,6 @@ type ActivityItem = {
   occurred_at: string;
   client_name: string | null;
   client_phone: string;
-  scheduled_at?: string;
-  status?: string;
 };
 
 function todayIso(offsetDays = 0) {
@@ -42,7 +33,36 @@ function todayIso(offsetDays = 0) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function todayPtBR() {
+  return new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0].toUpperCase())
+    .join("");
+}
+
 export default function Home() {
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -64,7 +84,7 @@ export default function Home() {
       ]);
       setMetrics(metricsRes.metrics);
       setUpcoming(apptsRes.appointments.slice(0, 5));
-      setActivity(activityRes.activity.slice(0, 6));
+      setActivity(activityRes.activity.slice(0, 5));
     } catch (err) {
       if (!(err instanceof ApiError)) throw err;
     } finally {
@@ -72,45 +92,52 @@ export default function Home() {
     }
   }
 
+  const firstName = user?.name?.split(" ")[0] ?? "Nutricionista";
+
   const stats = [
-    {
-      label: "Pacientes ativos",
-      value: metrics?.total_clients ?? "—",
-      icon: UsersIcon,
-    },
-    {
-      label: "Consultas na semana",
-      value: metrics?.appointments_week ?? "—",
-      icon: CalendarCheckIcon,
-    },
-    {
-      label: "Conversas ativas",
-      value: metrics?.active_conversations ?? "—",
-      icon: MessageSquareIcon,
-    },
+    { label: "Consultas na semana", value: metrics?.appointments_week ?? "—", icon: CalendarCheck },
+    { label: "Pacientes ativos", value: metrics?.total_clients ?? "—", icon: Users },
+    { label: "Conversas ativas", value: metrics?.active_conversations ?? "—", icon: MessageSquare },
     {
       label: "Taxa de conversão",
       value: metrics?.conversion_rate != null ? `${metrics.conversion_rate}%` : "—",
-      icon: TrendingUpIcon,
+      icon: TrendingUp,
     },
   ];
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Carregando visão geral...</div>;
+    return (
+      <div className="mx-auto flex max-w-7xl flex-col gap-8">
+        <div className="h-16 animate-pulse rounded-xl bg-muted/40" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-muted/40" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader
-        title="Visão geral"
-        description="Resumo do seu atendimento hoje e da semana."
-      />
+    <div className="mx-auto flex max-w-7xl flex-col gap-8">
+      <div>
+        <p className="text-sm text-muted-foreground">{capitalize(todayPtBR())}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          {greeting()}, {firstName} 🌱
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Resumo do seu atendimento hoje e da semana.
+        </p>
+      </div>
 
+      {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <s.icon className="size-4" />
+          <div key={s.label} className="card-soft p-5">
+            <div className="flex items-center justify-between">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/15 text-primary">
+                <s.icon className="h-4 w-4" />
+              </div>
             </div>
             <div className="mt-4">
               <div className="text-2xl font-semibold tracking-tight">{s.value}</div>
@@ -120,14 +147,20 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Próximas consultas</h2>
-            <span className="text-xs text-muted-foreground">Próximos 7 dias</span>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {/* Próximas consultas */}
+        <div className="card-soft xl:col-span-2 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Próximas consultas</h2>
+              <p className="text-xs text-muted-foreground">Próximos 7 dias</p>
+            </div>
+            <button className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
+              Ver todas <ArrowUpRight className="h-3 w-3" />
+            </button>
           </div>
           {upcoming.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="mt-6 text-sm text-muted-foreground">
               Nenhuma consulta marcada nos próximos dias.
             </p>
           ) : (
@@ -138,7 +171,7 @@ export default function Home() {
                 const day = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
                 return (
                   <li key={a.id} className="flex items-center gap-3 py-3">
-                    <div className="w-16 shrink-0">
+                    <div className="w-14 shrink-0">
                       <div className="text-sm font-medium text-primary">{time}</div>
                       <div className="text-[11px] text-muted-foreground">{day}</div>
                     </div>
@@ -155,43 +188,43 @@ export default function Home() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6">
+        {/* Atividade recente */}
+        <div className="card-soft p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Atividade recente</h2>
-            <span className="text-xs text-muted-foreground">Últimos 7 dias</span>
+            <span className="text-xs text-muted-foreground">7 dias</span>
           </div>
           {activity.length === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">Nenhuma atividade recente.</p>
           ) : (
             <ul className="mt-4 flex flex-col gap-3">
-              {activity.map((item, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3"
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                    {item.type === "new_lead" ? (
-                      <UserPlusIcon className="size-4" />
-                    ) : (
-                      <CalendarPlusIcon className="size-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">
-                      {item.client_name ?? item.client_phone}
+              {activity.map((item, i) => {
+                const name = item.client_name ?? item.client_phone;
+                return (
+                  <li
+                    key={i}
+                    className="flex items-start gap-3 rounded-xl border border-border bg-surface-2/40 p-3.5"
+                  >
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                      {initials(name)}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {item.type === "new_lead" ? "Novo lead iniciou conversa" : "Consulta agendada"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {new Date(item.occurred_at).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    })}
-                  </span>
-                </li>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-medium">{name}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(item.occurred_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {item.type === "new_lead" ? "Novo lead iniciou conversa" : "Consulta agendada"}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
