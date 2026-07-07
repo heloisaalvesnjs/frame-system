@@ -35,7 +35,14 @@ DASHBOARD NOVO (`apps/painel`, Next 16 + shadcn + bloco @efferd/dashboard-3) —
 **AINDA PENDENTE (pedido da Heloisa, proxima fase — features grandes)**:
 1. ~~Consolidar tudo de IA dentro da aba Assistente~~ FEITO (ver abaixo).
 2. Aba Pacientes: dieta + troca de alimentos JA TEM UMA V1 BOA (ver abaixo). Falta ainda: controle de ultima consulta/data de retorno mais visivel (hoje so tem campo de texto livre, sem automacao de lembrete).
-3. Telas Atendimento (inbox ao vivo)/Agenda (calendario)/Visao geral (metricas reais) ainda placeholder.
+3. ~~Visao geral (metricas reais)~~ FEITO (ver abaixo). Atendimento (inbox ao vivo)/Agenda (calendario) ainda placeholder.
+
+(2026-07-06 noite) Heloisa testou o painel no Lovable (ela mandou o export do projeto pra melhorar so o visual, como planejado) e aprovou o resultado — pediu pra portar a ideia visual pras paginas que ainda faltavam, e notou que faltava uma tela de Automacoes.
+- **BUG CRITICO corrigido**: `followup-sequences.routes.ts` usava `req.user.nutritionistId` (nao existe no JWT, so tem `id`) — todas as 5 rotas desse arquivo quebravam silenciosamente. Corrigido pra `req.user.id`.
+- **NOVA pagina /automacoes** (real, nao mockup): Lembrete de consulta, Pos-consulta, Retorno e Reengajamento de leads — usa campos que ja existiam no backend sem UI (`auto_reminder_*`, `auto_feedback_*`, `auto_return_*`, `followup_*` em `assistants`, expostos via `/api/assistants`). Adicionada ao menu (grupo Inteligencia, ao lado de Assistente).
+- **Visao geral deixou de ser mockup**: usava o template inteiro do `@efferd/dashboard-3` (numeros inventados). Agora usa `/api/metrics/overview` + `/api/appointments` (proximos 7 dias) + `/api/metrics/recent-activity` — dados reais. Componentes antigos do template (`dashboard.tsx`, `stats.tsx`, charts, etc.) ficaram orfaos, ainda nao removidos (dead code inofensivo).
+- **PagePlaceholder redesenhado** (usado por Atendimento/Agenda/Conhecimento/Servicos e Precos): icone central + card "em construcao" + lista de features futuras em mini-cards, no padrao que a Heloisa aprovou no Lovable.
+- Gerado tambem `PAINEL_TELAS_LOVABLE.md` na raiz do repo (guia de telas pra colar no Lovable, com a regra de so mexer no visual, nao recriar auth/dados).
 
 (2026-07-06) Redesign completo do painel a pedido da Heloisa (ela reagiu ao teste real de WhatsApp + prints de outro app de troca de alimentos que gostou). Fluxo usado: acionei `/designer` (spec de cores/componentes) -> `/dev-frontend` (implementacao) -> revisei/corrigi eu mesma (build quebrado por useSearchParams sem Suspense, CategoryIcon sem fundo colorido, consolidacao de nav incompleta) antes de commitar. Validado com login real + dados reais do David (TACO, agenda, calendario).
 
