@@ -12,29 +12,54 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, ArrowLeftIcon } from "lucide-react";
+import {
+  SearchIcon,
+  ArrowLeftIcon,
+  Wheat,
+  Beef,
+  Droplets,
+  Apple,
+  Carrot,
+  Milk,
+  HelpCircle,
+} from "lucide-react";
 
 type SortMode = "default" | "az" | "menor_g" | "maior_g";
 
-// Ponto colorido por grupo alimentar — mesmo mapeamento de pacientes/[id]/page.tsx
-const FOOD_DOT_CLASS: Record<string, string> = {
-  carboidrato: "bg-food-carb",
-  proteina: "bg-food-protein",
-  gordura: "bg-food-fat",
-  fruta: "bg-food-fruit",
-  vegetal: "bg-food-veg",
-  laticinios: "bg-food-dairy",
+// Ícone ilustrativo por categoria alimentar — usado tanto no sheet quanto disponível
+// para importação em pacientes/[id]/page.tsx (CategoryIcon)
+const CATEGORY_ICON: Record<FoodCategory, React.ElementType> = {
+  carboidrato: Wheat,
+  proteina:    Beef,
+  gordura:     Droplets,
+  fruta:       Apple,
+  vegetal:     Carrot,
+  laticinios:  Milk,
+  outros:      HelpCircle,
 };
 
-function foodDotClass(food: TacoFood): string {
+// Exportado para reutilização em outras páginas
+export function CategoryIcon({
+  food,
+  size = "md",
+}: {
+  food: TacoFood | { name: string; category: string };
+  size?: "sm" | "md" | "lg";
+}) {
   const cat = categorize(food);
-  return FOOD_DOT_CLASS[cat] ?? "bg-muted-foreground/40";
-}
-
-function FoodDot({ food, size = "md" }: { food: TacoFood; size?: "sm" | "md" | "lg" }) {
-  const dotClass = foodDotClass(food);
-  const sizeMap = { sm: "h-2 w-2", md: "h-2.5 w-2.5", lg: "h-3 w-3" };
-  return <span className={`rounded-full shrink-0 ${sizeMap[size]} ${dotClass}`} />;
+  const style = CATEGORY_STYLE[cat];
+  const Icon = CATEGORY_ICON[cat];
+  const sizeMap = { sm: 28, md: 36, lg: 40 };
+  const iconSizeMap = { sm: "h-3.5 w-3.5", md: "h-4.5 w-4.5", lg: "h-5 w-5" };
+  const dim = sizeMap[size];
+  return (
+    <span
+      className={`shrink-0 inline-flex items-center justify-center rounded-xl ${style.bgClass}/20`}
+      style={{ width: dim, height: dim }}
+    >
+      <Icon className={`${iconSizeMap[size]} text-[color:${style.colorVar}]`} style={{ color: style.colorVar }} />
+    </span>
+  );
 }
 
 function CategoryPill({
@@ -47,7 +72,7 @@ function CategoryPill({
   onClick: () => void;
 }) {
   const style = CATEGORY_STYLE[category];
-  const dotClass = FOOD_DOT_CLASS[category] ?? "bg-muted-foreground/40";
+  const Icon = CATEGORY_ICON[category];
   return (
     <button
       onClick={onClick}
@@ -55,34 +80,24 @@ function CategoryPill({
         active ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${dotClass}`} />
+      <Icon className="h-3 w-3" style={{ color: style.colorVar }} />
       {style.label}
     </button>
   );
 }
 
 // ─── SearchView ───────────────────────────────────────────────────────────────
-function SearchView({
-  onSelect,
-}: {
-  onSelect: (food: TacoFood) => void;
-}) {
+function SearchView({ onSelect }: { onSelect: (food: TacoFood) => void }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<TacoFood[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FoodCategory | null>(null);
 
   const doSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
+    if (!query.trim()) { setResults([]); return; }
     setLoading(true);
-    try {
-      setResults(await searchFoods(query));
-    } finally {
-      setLoading(false);
-    }
+    try { setResults(await searchFoods(query)); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -104,7 +119,7 @@ function SearchView({
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="o que você quer trocar? (arroz, banana, frango...)"
+          placeholder="Buscar na tabela TACO (arroz, frango, banana...)"
           className="pl-9"
         />
       </div>
@@ -132,9 +147,7 @@ function SearchView({
       )}
 
       <div className="flex-1 overflow-y-auto rounded-xl border border-border">
-        {loading && (
-          <p className="p-3 text-sm text-muted-foreground">Buscando...</p>
-        )}
+        {loading && <p className="p-3 text-sm text-muted-foreground">Buscando...</p>}
         {!loading && q && results.length === 0 && (
           <p className="p-3 text-sm text-muted-foreground">Nenhum alimento encontrado.</p>
         )}
@@ -149,7 +162,7 @@ function SearchView({
             onClick={() => onSelect(f)}
             className="flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left last:border-0 hover:bg-muted/60 transition-colors"
           >
-            <FoodDot food={f} size="lg" />
+            <CategoryIcon food={f} size="md" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{f.name}</p>
               <p className="text-xs text-muted-foreground">{f.kcal} kcal/100g</p>
@@ -196,9 +209,9 @@ function SwapView({
 
   return (
     <div className="flex flex-col gap-4 overflow-hidden">
-      {/* Card do alimento selecionado */}
+      {/* Card do alimento base */}
       <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
-        <FoodDot food={baseFood} size="lg" />
+        <CategoryIcon food={baseFood} size="lg" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate">{baseFood.name}</p>
           <div className="flex gap-1.5 mt-1 flex-wrap">
@@ -226,9 +239,7 @@ function SwapView({
               onChange={(e) => setUserQty(Math.max(1, Number(e.target.value)))}
               className="w-24 text-lg font-bold"
             />
-            <span className="text-sm text-muted-foreground">
-              = {baseKcalFor} kcal
-            </span>
+            <span className="text-sm text-muted-foreground">= {baseKcalFor} kcal</span>
           </div>
         </div>
       </div>
@@ -250,9 +261,7 @@ function SwapView({
 
       {/* Lista de trocas */}
       <div className="flex-1 overflow-y-auto rounded-xl border border-border">
-        {loading && (
-          <p className="p-3 text-sm text-muted-foreground">Carregando trocas...</p>
-        )}
+        {loading && <p className="p-3 text-sm text-muted-foreground">Carregando trocas...</p>}
         {!loading && sorted.length === 0 && (
           <p className="p-3 text-sm text-muted-foreground">Sem trocas disponíveis para este alimento.</p>
         )}
@@ -265,12 +274,10 @@ function SwapView({
               onClick={() => onConfirm(sub, swapG)}
               className="flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left last:border-0 hover:bg-muted/60 transition-colors"
             >
-              <FoodDot food={sub} size="lg" />
+              <CategoryIcon food={sub} size="md" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{sub.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {swapG}g · {swapKcal} kcal
-                </p>
+                <p className="text-xs text-muted-foreground">{swapG}g · {swapKcal} kcal</p>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-muted text-muted-foreground">
                 {swapG}g
@@ -302,9 +309,8 @@ export function FoodSwapSheet({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  /** "food" = adicionar novo alimento; "sub" = adicionar troca com view swap completa */
+  /** "food" = adicionar novo alimento; "sub" = troca com view swap */
   mode: "food" | "sub";
-  /** Para mode="sub": o alimento cujas trocas serão listadas automaticamente */
   baseFood?: TacoFood | null;
   onSelect: (food: TacoFood, qty: number) => void;
 }) {
@@ -341,8 +347,7 @@ export function FoodSwapSheet({
     onOpenChange(false);
   }
 
-  const title =
-    view === "swap" ? "Escolher troca equivalente" : "Adicionar alimento";
+  const title = view === "swap" ? "Escolher troca equivalente" : "Adicionar alimento";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -350,7 +355,6 @@ export function FoodSwapSheet({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
-
         <div className="flex-1 overflow-hidden flex flex-col">
           {view === "search" ? (
             <SearchView onSelect={handleSearchSelect} />

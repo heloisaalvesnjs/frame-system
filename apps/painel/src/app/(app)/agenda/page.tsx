@@ -5,14 +5,13 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  MapPin,
-  Video,
   Plus,
   Clock,
   X,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { LOCATION_PALETTE } from "@/lib/location-palette";
+import { LocationBadge } from "@/components/location-badge";
 
 type Appointment = {
   id: string;
@@ -40,14 +39,6 @@ function locationColor(name: string | null): string {
     name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)
   ) % LOCATION_PALETTE.length;
   return LOCATION_PALETTE[idx].hex;
-}
-
-// CSS classes de badge para um local (similar ao CITY_STYLES do Lovable, mas dinâmico)
-function locationBadgeStyle(color: string): React.CSSProperties {
-  return {
-    backgroundColor: color + "26",
-    color,
-  };
 }
 
 function displayName(a: Appointment): string {
@@ -275,13 +266,7 @@ function ApptRow({
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{a.client_name}</div>
         <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span
-            className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5"
-            style={locationBadgeStyle(color)}
-          >
-            {a.modality === "online" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
-            {label}
-          </span>
+          <LocationBadge color={color} name={label} />
         </div>
       </div>
     </li>
@@ -523,13 +508,11 @@ export default function AgendaPage() {
                         hour: "2-digit", minute: "2-digit",
                       });
                       return (
-                        <div
+                        <LocationBadge
                           key={idx}
-                          className="truncate rounded px-1 py-0.5 text-[10px] leading-tight"
-                          style={locationBadgeStyle(color)}
-                        >
-                          {hour} {a.client_name.split(" ")[0]}
-                        </div>
+                          color={color}
+                          name={`${hour} ${a.client_name.split(" ")[0]}`}
+                        />
                       );
                     })}
                     {dayAppts.length > 2 && (
@@ -545,19 +528,11 @@ export default function AgendaPage() {
 
           {/* Legenda dinâmica */}
           {allLocations.length > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4 text-[11px] text-muted-foreground">
-              <span>Local:</span>
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+              <span className="text-[11px] text-muted-foreground">Local:</span>
               {allLocations.map((loc) => {
                 const color = loc === "Online" ? "#7ECEF4" : locationColor(loc);
-                return (
-                  <span key={loc} className="inline-flex items-center gap-1.5">
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    {loc}
-                  </span>
-                );
+                return <LocationBadge key={loc} color={color} name={loc} />;
               })}
             </div>
           )}

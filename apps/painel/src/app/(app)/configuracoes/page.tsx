@@ -5,24 +5,16 @@ import {
   User,
   Bell,
   Lock,
-  CreditCard,
-  Plug,
-  Palette,
-  Check,
 } from "lucide-react";
 import { api, ApiError, setSession, getStoredUser, type Nutritionist } from "@/lib/api";
-import { PagePlaceholder } from "@/components/page-placeholder";
 
 // --- Abas disponíveis ---
-type TabId = "perfil" | "seguranca" | "notificacoes" | "assinatura" | "integracoes" | "aparencia";
+type TabId = "perfil" | "seguranca" | "notificacoes";
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "perfil",       label: "Perfil",        icon: <User className="h-4 w-4" /> },
   { id: "seguranca",    label: "Segurança",      icon: <Lock className="h-4 w-4" /> },
   { id: "notificacoes", label: "Notificações",   icon: <Bell className="h-4 w-4" /> },
-  { id: "assinatura",   label: "Assinatura",     icon: <CreditCard className="h-4 w-4" /> },
-  { id: "integracoes",  label: "Integrações",    icon: <Plug className="h-4 w-4" /> },
-  { id: "aparencia",    label: "Aparência",      icon: <Palette className="h-4 w-4" /> },
 ];
 
 // --- Shared primitives ---
@@ -272,15 +264,138 @@ function SegurancaTab() {
   );
 }
 
-// --- Abas sem backend (placeholder) ---
-function ComingSoonTab({ title, description }: { title: string; description: string }) {
+// --- Aba Notificações (real, GET/PUT /api/nutritionists/notification-preferences) ---
+type NotifPrefs = {
+  notify_ai_daily_report: boolean;
+  notify_new_lead: boolean;
+  notify_appointment_reminder: boolean;
+  notify_whatsapp_disconnected: boolean;
+};
+
+const NOTIF_ROWS: {
+  key: keyof NotifPrefs;
+  title: string;
+  description: string;
+}[] = [
+  {
+    key: "notify_ai_daily_report",
+    title: "Resumo diário da IA",
+    description: "Receba um resumo do que a assistente fez no dia",
+  },
+  {
+    key: "notify_new_lead",
+    title: "Novo lead no WhatsApp",
+    description: "Seja avisado quando um lead novo iniciar conversa",
+  },
+  {
+    key: "notify_appointment_reminder",
+    title: "Lembrete de consulta",
+    description: "Receba um lembrete das suas consultas do dia",
+  },
+  {
+    key: "notify_whatsapp_disconnected",
+    title: "WhatsApp desconectado",
+    description: "Seja avisado se a conexão do WhatsApp cair",
+  },
+];
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+}) {
   return (
-    <PagePlaceholder
-      title={title}
-      description={description}
-      icon={<Check className="size-5" />}
-      points={["Em breve disponível nesta aba"]}
-    />
+    <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2/40 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <button
+        onClick={() => onCheckedChange(!checked)}
+        className={
+          "relative h-6 w-11 rounded-full transition " +
+          (checked ? "bg-primary" : "bg-muted")
+        }
+      >
+        <span
+          className={
+            "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-all " +
+            (checked ? "left-[22px]" : "left-0.5")
+          }
+        />
+      </button>
+    </div>
+  );
+}
+
+function NotificacoesTab() {
+  const [prefs, setPrefs] = useState<NotifPrefs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    api.get<{ preferences: NotifPrefs }>("/api/nutritionists/notification-preferences")
+      .then((r) => setPrefs(r.preferences))
+      .catch((e) => setMessage({ text: e instanceof ApiError ? e.message : "Erro ao carregar", ok: false }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function toggle(key: keyof NotifPrefs, value: boolean) {
+    if (!prefs) return;
+    const updated = { ...prefs, [key]: value };
+    setPrefs(updated);
+    try {
+      const r = await api.put<{ preferences: NotifPrefs }>(
+        "/api/nutritionists/notification-preferences",
+        { [key]: value }
+      );
+      setPrefs(r.preferences);
+      setMessage({ text: "Preferências salvas.", ok: true });
+      setTimeout(() => setMessage(null), 2500);
+    } catch (err) {
+      setPrefs(prefs);
+      setMessage({ text: err instanceof ApiError ? err.message : "Erro ao salvar", ok: false });
+    }
+  }
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Carregando...</div>;
+  }
+
+  return (
+    <Section title="Notificações" icon={<Bell className="h-4 w-4" />}>
+      {message && (
+        <div
+          className={[
+            "rounded-lg border px-3 py-2 text-sm",
+            message.ok
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-destructive/30 bg-destructive/10 text-destructive",
+          ].join(" ")}
+        >
+          {message.text}
+        </div>
+      )}
+      <div className="card-soft p-5">
+        <div className="flex flex-col gap-3">
+          {prefs && NOTIF_ROWS.map((row) => (
+            <ToggleRow
+              key={row.key}
+              title={row.title}
+              description={row.description}
+              checked={prefs[row.key]}
+              onCheckedChange={(v) => toggle(row.key, v)}
+            />
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }
 
@@ -320,30 +435,7 @@ export default function ConfiguracoesPage() {
         <div className="flex flex-col gap-6">
           {tab === "perfil" && <PerfilTab />}
           {tab === "seguranca" && <SegurancaTab />}
-          {tab === "notificacoes" && (
-            <ComingSoonTab
-              title="Notificações"
-              description="Configuração de alertas por e-mail, WhatsApp e push — em breve."
-            />
-          )}
-          {tab === "assinatura" && (
-            <ComingSoonTab
-              title="Assinatura"
-              description="Gerenciamento de plano e cobrança — em breve."
-            />
-          )}
-          {tab === "integracoes" && (
-            <ComingSoonTab
-              title="Integrações externas"
-              description="Google Calendar, Gmail e outras integrações — em breve. O WhatsApp e as configurações da IA ficam na aba Assistente."
-            />
-          )}
-          {tab === "aparencia" && (
-            <ComingSoonTab
-              title="Aparência"
-              description="Tema e personalização visual do painel — em breve."
-            />
-          )}
+          {tab === "notificacoes" && <NotificacoesTab />}
         </div>
       </div>
     </div>

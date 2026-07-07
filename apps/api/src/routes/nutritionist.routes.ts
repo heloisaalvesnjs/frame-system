@@ -208,4 +208,62 @@ export async function nutritionistRoutes(app: FastifyInstance) {
     )
     return reply.send({ ok: true })
   })
+
+  // GET /api/nutritionists/notification-preferences
+  app.get('/notification-preferences', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const nutri = await queryOne<{
+      notify_ai_daily_report:      boolean
+      notify_new_lead:             boolean
+      notify_appointment_reminder: boolean
+      notify_whatsapp_disconnected: boolean
+    }>(
+      `SELECT notify_ai_daily_report, notify_new_lead,
+              notify_appointment_reminder, notify_whatsapp_disconnected
+       FROM nutritionists WHERE id = $1`,
+      [id]
+    )
+    if (!nutri) return reply.code(404).send({ error: 'Usuário não encontrado' })
+
+    return reply.send({ preferences: nutri })
+  })
+
+  // PUT /api/nutritionists/notification-preferences
+  app.put('/notification-preferences', auth, async (request, reply) => {
+    const { id } = (request as any).user
+
+    const schema = z.object({
+      notify_ai_daily_report:       z.boolean().optional(),
+      notify_new_lead:              z.boolean().optional(),
+      notify_appointment_reminder:  z.boolean().optional(),
+      notify_whatsapp_disconnected: z.boolean().optional(),
+    })
+    const body = schema.parse(request.body)
+
+    const nutri = await queryOne<{
+      notify_ai_daily_report:      boolean
+      notify_new_lead:             boolean
+      notify_appointment_reminder: boolean
+      notify_whatsapp_disconnected: boolean
+    }>(
+      `UPDATE nutritionists SET
+         notify_ai_daily_report       = COALESCE($2, notify_ai_daily_report),
+         notify_new_lead              = COALESCE($3, notify_new_lead),
+         notify_appointment_reminder  = COALESCE($4, notify_appointment_reminder),
+         notify_whatsapp_disconnected = COALESCE($5, notify_whatsapp_disconnected),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING notify_ai_daily_report, notify_new_lead,
+                 notify_appointment_reminder, notify_whatsapp_disconnected`,
+      [id,
+       body.notify_ai_daily_report      ?? null,
+       body.notify_new_lead             ?? null,
+       body.notify_appointment_reminder ?? null,
+       body.notify_whatsapp_disconnected ?? null]
+    )
+    if (!nutri) return reply.code(404).send({ error: 'Usuário não encontrado' })
+
+    return reply.send({ preferences: nutri })
+  })
 }

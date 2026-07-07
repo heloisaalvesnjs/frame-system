@@ -1,11 +1,11 @@
 export const CATEGORY_STYLE = {
-  carboidratos: { emoji: "🍞", bgDark: "#2A2010", colorDark: "#F5C842", bgLight: "#FFF8E1", colorLight: "#8A6D1A", label: "Carboidratos" },
-  proteinas:    { emoji: "🍗", bgDark: "#261510", colorDark: "#E8824A", bgLight: "#FBE9E7", colorLight: "#B5461F", label: "Proteínas" },
-  gorduras:     { emoji: "🥑", bgDark: "#1A2010", colorDark: "#A8F13C", bgLight: "#F1F8E9", colorLight: "#4C7A1F", label: "Gorduras" },
-  frutas:       { emoji: "🍓", bgDark: "#26101A", colorDark: "#F06292", bgLight: "#FCE4EC", colorLight: "#AD1457", label: "Frutas" },
-  vegetais:     { emoji: "🥦", bgDark: "#0F2118", colorDark: "#61D836", bgLight: "#E8F5E9", colorLight: "#2E7D32", label: "Vegetais" },
-  laticinios:   { emoji: "🥛", bgDark: "#1A1E26", colorDark: "#90CAF9", bgLight: "#E3F2FD", colorLight: "#1565C0", label: "Laticínios" },
-  outros:       { emoji: "🫙", bgDark: "#1B211E", colorDark: "#9BA39A", bgLight: "#EEF0EA", colorLight: "#5F675E", label: "Outros" },
+  carboidrato: { bgClass: "bg-food-carb", colorVar: "var(--food-carb)", label: "Carboidratos" },
+  proteina:    { bgClass: "bg-food-protein", colorVar: "var(--food-protein)", label: "Proteínas" },
+  gordura:     { bgClass: "bg-food-fat", colorVar: "var(--food-fat)", label: "Gorduras" },
+  fruta:       { bgClass: "bg-food-fruit", colorVar: "var(--food-fruit)", label: "Frutas" },
+  vegetal:     { bgClass: "bg-food-veg", colorVar: "var(--food-veg)", label: "Vegetais" },
+  laticinios:  { bgClass: "bg-food-dairy", colorVar: "var(--food-dairy)", label: "Laticínios" },
+  outros:      { bgClass: "bg-muted-foreground/40", colorVar: "currentColor", label: "Outros" },
 } as const;
 
 export type FoodCategory = keyof typeof CATEGORY_STYLE;
@@ -20,10 +20,10 @@ const DAIRY_KEYWORDS = ["leite", "queijo", "iogurte", "requeijão", "ricota", "m
 export function categorize(food: { name: string; category: string }): FoodCategory {
   const text = `${food.name} ${food.category}`.toLowerCase();
   if (DAIRY_KEYWORDS.some((k) => text.includes(k))) return "laticinios";
-  if (PROTEIN_KEYWORDS.some((k) => text.includes(k))) return "proteinas";
-  if (CARB_KEYWORDS.some((k) => text.includes(k))) return "carboidratos";
-  if (FAT_KEYWORDS.some((k) => text.includes(k))) return "gorduras";
-  if (FRUIT_KEYWORDS.some((k) => text.includes(k))) return "frutas";
-  if (VEGGIE_KEYWORDS.some((k) => text.includes(k))) return "vegetais";
+  if (PROTEIN_KEYWORDS.some((k) => text.includes(k))) return "proteina";
+  if (CARB_KEYWORDS.some((k) => text.includes(k))) return "carboidrato";
+  if (FAT_KEYWORDS.some((k) => text.includes(k))) return "gordura";
+  if (FRUIT_KEYWORDS.some((k) => text.includes(k))) return "fruta";
+  if (VEGGIE_KEYWORDS.some((k) => text.includes(k))) return "vegetal";
   return "outros";
 }

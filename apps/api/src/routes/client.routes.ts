@@ -598,6 +598,89 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_')
     }
 
+    // ── Anamnese ─────────────────────────────────────────────────────────────
+
+  // GET /api/clients/:clientId/anamnesis — retorna anamnese ou null
+  app.get('/:clientId/anamnesis', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    const anamnesis = await queryOne<any>(
+      `SELECT id, data, updated_at, created_at FROM anamneses
+       WHERE nutritionist_id = $1 AND client_id = $2`,
+      [nutritionistId, clientId]
+    )
+    return reply.send({ anamnesis: anamnesis ?? null })
+  })
+
+  // PUT /api/clients/:clientId/anamnesis — upsert da anamnese
+  app.put('/:clientId/anamnesis', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const schema = z.object({ data: z.record(z.string(), z.any()) })
+    const body = schema.parse(request.body)
+
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    const [anamnesis] = await query<any>(
+      `INSERT INTO anamneses (nutritionist_id, client_id, data)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (nutritionist_id, client_id)
+       DO UPDATE SET data = $3, updated_at = NOW()
+       RETURNING id, data, updated_at, created_at`,
+      [nutritionistId, clientId, JSON.stringify(body.data)]
+    )
+    return reply.send({ anamnesis })
+  })
+
+  // ── Medidas (nutricionista registra) ─────────────────────────────────────
+
+  // POST /api/clients/:clientId/measurements — insere medida em weight_logs
+  app.post('/:clientId/measurements', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { clientId } = request.params as { clientId: string }
+
+    const schema = z.object({
+      weight_kg: z.number().positive().optional(),
+      waist_cm:  z.number().positive().optional(),
+      hip_cm:    z.number().positive().optional(),
+      notes:     z.string().optional(),
+      logged_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).refine(
+      d => d.weight_kg !== undefined || d.waist_cm !== undefined || d.hip_cm !== undefined,
+      { message: 'Informe ao menos um dado numérico (weight_kg, waist_cm ou hip_cm)' }
+    )
+    const body = schema.parse(request.body)
+
+    const client = await queryOne<{ id: string }>(
+      `SELECT id FROM clients WHERE id = $1 AND nutritionist_id = $2`,
+      [clientId, nutritionistId]
+    )
+    if (!client) return reply.code(404).send({ error: 'Cliente não encontrado' })
+
+    const [log] = await query<any>(
+      `INSERT INTO weight_logs (client_id, weight_kg, waist_cm, hip_cm, notes, logged_at)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::date, CURRENT_DATE))
+       RETURNING id, weight_kg::text, waist_cm::text, hip_cm::text, notes, logged_at::text, created_at`,
+      [clientId, body.weight_kg ?? null, body.waist_cm ?? null, body.hip_cm ?? null,
+       body.notes ?? null, body.logged_at ?? null]
+    )
+    return reply.code(201).send({ log })
+  })
+
+  // ── Import CSV/Excel ──────────────────────────────────────────────────────
+
     let imported = 0
     let skipped  = 0
 

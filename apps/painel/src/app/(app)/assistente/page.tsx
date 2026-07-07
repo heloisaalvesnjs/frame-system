@@ -41,11 +41,13 @@ import {
   CalendarOff,
   ChevronLeft,
   ChevronRight,
-  MessageCircle,
   RefreshCcw,
   Loader2,
   Plus,
   X,
+  Trash2,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { SectionGroup } from "@/components/section-group";
 import { LocationBadge } from "@/components/location-badge";
@@ -1034,6 +1036,421 @@ function IntegracoesTab() {
   );
 }
 
+// ─── Sub-tab: Conhecimento ────────────────────────────────────────────────────
+
+function ConhecimentoTab() {
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.get<{ content: string | null }>("/api/assistants/manual-content")
+      .then((r) => setContent(r.content ?? ""))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await api.post("/api/assistants/interview", { manual: content });
+      setMessage("Conteúdo salvo! A assistente já usa no próximo atendimento.");
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadPdf(file: File) {
+    setUploading(true);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = typeof window !== "undefined" ? window.localStorage.getItem("frame_token") : null;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/assistants/upload-pdf`,
+        {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Erro no upload");
+      setMessage(`PDF processado! Preview: ${json.preview ?? ""}`);
+      const r = await api.get<{ content: string | null }>("/api/assistants/manual-content");
+      setContent(r.content ?? "");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Erro ao fazer upload");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removePdf() {
+    setMessage(null);
+    try {
+      await api.delete("/api/assistants/pdf");
+      setContent("");
+      setMessage("PDF removido.");
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao remover PDF");
+    }
+  }
+
+  if (loading) return <div className="text-sm text-muted-foreground">Carregando...</div>;
+
+  return (
+    <div className="flex flex-col gap-5">
+      {message && (
+        <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
+          {message}
+        </div>
+      )}
+
+      <Group title="Sobre o consultório" icon={<BookOpen className="h-4 w-4" />}>
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted-foreground">
+            Escreva tudo que a assistente precisa saber: especialidades, diferenciais, protocolo, público, FAQ, preços, condições de pagamento, etc.
+          </p>
+          <textarea
+            rows={14}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Ex: Sou nutricionista clínica com foco em emagrecimento saudável. Atendo presencialmente em Vila Velha e online. Minha consulta custa R$ 250 e dura 50 minutos..."
+            className="w-full rounded-lg border border-border bg-surface-2/60 px-3 py-2 text-sm outline-none focus:border-primary/50 resize-none"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </Group>
+
+      <Group title="Upload de PDF" icon={<BookOpen className="h-4 w-4" />}>
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted-foreground">
+            Envie um PDF com informações do consultório — o texto será extraído e usado pela assistente.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="h-10 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              {uploading ? "Processando..." : "Selecionar PDF"}
+            </button>
+            {content && (
+              <button
+                onClick={removePdf}
+                className="inline-flex items-center gap-1 text-xs text-destructive hover:opacity-80"
+              >
+                <Trash2 className="h-3 w-3" /> Remover PDF atual
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadPdf(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </Group>
+    </div>
+  );
+}
+
+// ─── Sub-tab: Serviços e preços ───────────────────────────────────────────────
+
+type Service = {
+  id: string;
+  name: string;
+  category: string;
+  modality: "online" | "presencial" | "ambos";
+  price: string | null;
+  description: string | null;
+  is_active: boolean;
+};
+
+type ServiceForm = {
+  name: string;
+  category: string;
+  modality: "online" | "presencial" | "ambos";
+  price: string;
+  description: string;
+};
+
+const EMPTY_FORM: ServiceForm = {
+  name: "",
+  category: "Consulta",
+  modality: "presencial",
+  price: "",
+  description: "",
+};
+
+const MODALITY_LABEL: Record<string, string> = {
+  online: "Online",
+  presencial: "Presencial",
+  ambos: "Online e presencial",
+};
+
+function ServicosTab() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null); // service id or "new"
+  const [form, setForm] = useState<ServiceForm>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await api.get<{ services: Service[] }>("/api/services");
+      setServices(r.services);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao carregar serviços");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function startNew() {
+    setForm(EMPTY_FORM);
+    setEditing("new");
+  }
+
+  function startEdit(s: Service) {
+    setForm({
+      name: s.name,
+      category: s.category,
+      modality: s.modality,
+      price: s.price ?? "",
+      description: s.description ?? "",
+    });
+    setEditing(s.id);
+  }
+
+  function setF<K extends keyof ServiceForm>(key: K, value: ServiceForm[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function saveForm() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        category: form.category.trim() || "Consulta",
+        modality: form.modality,
+        price: form.price.trim() || undefined,
+        description: form.description.trim() || undefined,
+      };
+      if (editing === "new") {
+        await api.post("/api/services", payload);
+      } else {
+        await api.put(`/api/services/${editing}`, payload);
+      }
+      await load();
+      setEditing(null);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao salvar serviço");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: string) {
+    try {
+      await api.delete(`/api/services/${id}`);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao remover serviço");
+    }
+  }
+
+  if (loading) return <div className="text-sm text-muted-foreground">Carregando serviços...</div>;
+
+  return (
+    <div className="flex flex-col gap-5">
+      {message && (
+        <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
+          {message}
+        </div>
+      )}
+
+      <Group title="Serviços e preços" icon={<DollarSign className="h-4 w-4" />}>
+        <div className="flex flex-col gap-3">
+          {services.length === 0 && editing !== "new" && (
+            <p className="text-sm text-muted-foreground">Nenhum serviço cadastrado.</p>
+          )}
+
+          {services.map((s) =>
+            editing === s.id ? (
+              <ServiceFormCard
+                key={s.id}
+                form={form}
+                setF={setF}
+                saving={saving}
+                onSave={saveForm}
+                onCancel={() => setEditing(null)}
+              />
+            ) : (
+              <div
+                key={s.id}
+                className="flex items-start justify-between rounded-xl border border-border bg-surface-2/40 px-4 py-3"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-sm font-medium">{s.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {MODALITY_LABEL[s.modality]}
+                    {s.price ? ` · R$ ${s.price}` : ""}
+                    {s.description ? ` · ${s.description}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => startEdit(s)}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => remove(s.id)}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {editing === "new" && (
+            <ServiceFormCard
+              form={form}
+              setF={setF}
+              saving={saving}
+              onSave={saveForm}
+              onCancel={() => setEditing(null)}
+            />
+          )}
+
+          {editing === null && (
+            <button
+              onClick={startNew}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-dashed border-border px-4 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition"
+            >
+              <Plus className="h-4 w-4" /> Adicionar serviço
+            </button>
+          )}
+        </div>
+      </Group>
+    </div>
+  );
+}
+
+function ServiceFormCard({
+  form,
+  setF,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  form: ServiceForm;
+  setF: <K extends keyof ServiceForm>(key: K, value: ServiceForm[K]) => void;
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Nome do serviço *">
+          <input
+            value={form.name}
+            onChange={(e) => setF("name", e.target.value)}
+            placeholder="Ex: Consulta inicial"
+            className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+          />
+        </Field>
+        <Field label="Preço (ex: 250,00)">
+          <input
+            value={form.price}
+            onChange={(e) => setF("price", e.target.value)}
+            placeholder="250,00"
+            className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+          />
+        </Field>
+        <Field label="Modalidade">
+          <select
+            value={form.modality}
+            onChange={(e) => setF("modality", e.target.value as ServiceForm["modality"])}
+            className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+          >
+            <option value="presencial">Presencial</option>
+            <option value="online">Online</option>
+            <option value="ambos">Online e presencial</option>
+          </select>
+        </Field>
+        <Field label="Categoria">
+          <input
+            value={form.category}
+            onChange={(e) => setF("category", e.target.value)}
+            placeholder="Consulta"
+            className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+          />
+        </Field>
+        <div className="md:col-span-2">
+          <Field label="Descrição (opcional)">
+            <input
+              value={form.description}
+              onChange={(e) => setF("description", e.target.value)}
+              placeholder="Breve descrição do serviço"
+              className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50"
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          className="h-10 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={onSave}
+          disabled={saving || !form.name.trim()}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+          {saving ? "Salvando..." : "Salvar serviço"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tabs definition ──────────────────────────────────────────────────────────
 
 const TABS = [
@@ -1109,8 +1526,8 @@ function AssistentePageInner() {
         {activeTab === "identidade" && <IdentidadeTab />}
         {activeTab === "disponibilidade" && <DisponibilidadeTab />}
         {activeTab === "integracoes" && <IntegracoesTab />}
-        {activeTab === "conhecimento" && <ComingSoon title="Conhecimento" />}
-        {activeTab === "servicos" && <ComingSoon title="Serviços e preços" />}
+        {activeTab === "conhecimento" && <ConhecimentoTab />}
+        {activeTab === "servicos" && <ServicosTab />}
       </div>
     </div>
   );

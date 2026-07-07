@@ -721,3 +721,26 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS opted_out BOOLEAN DEFAULT false;
 
 -- Data de retorno definida pela nutri (quando o paciente deve voltar).
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS return_date DATE;
+
+-- ── Anamnese nutricional por paciente (2026-07-07) ───────────────────────────
+-- data: JSONB livre; campos sugeridos documentados em anamnesis.routes.ts
+CREATE TABLE IF NOT EXISTS anamneses (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nutritionist_id UUID NOT NULL REFERENCES nutritionists(id) ON DELETE CASCADE,
+  client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  data            JSONB NOT NULL DEFAULT '{}',
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(nutritionist_id, client_id)
+);
+CREATE INDEX IF NOT EXISTS idx_anamneses_client ON anamneses(nutritionist_id, client_id);
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_anamneses_updated BEFORE UPDATE ON anamneses FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ── Preferências de notificação do nutricionista (2026-07-07) ────────────────
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_ai_daily_report      BOOLEAN DEFAULT true;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_new_lead             BOOLEAN DEFAULT true;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_appointment_reminder BOOLEAN DEFAULT true;
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_whatsapp_disconnected BOOLEAN DEFAULT true;
