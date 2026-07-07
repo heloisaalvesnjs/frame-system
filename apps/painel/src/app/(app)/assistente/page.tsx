@@ -48,9 +48,11 @@ import {
   Trash2,
   Pencil,
   Check,
+  Settings2,
 } from "lucide-react";
 import { SectionGroup } from "@/components/section-group";
 import { LocationBadge } from "@/components/location-badge";
+import { LOCATION_PALETTE } from "@/lib/location-palette";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -509,6 +511,281 @@ function IdentidadeTab() {
   );
 }
 
+// ─── Dialog: Gerenciar Locais ─────────────────────────────────────────────────
+
+type LocationFormData = {
+  name: string;
+  city: string;
+  address: string;
+  modality: "presencial" | "online" | "ambos";
+  color: string;
+};
+
+const EMPTY_LOCATION_FORM: LocationFormData = {
+  name: "",
+  city: "",
+  address: "",
+  modality: "presencial",
+  color: LOCATION_PALETTE[0].hex,
+};
+
+function LocationManagerDialog({
+  locations,
+  onClose,
+  onChanged,
+}: {
+  locations: Location[];
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [form, setForm] = useState<LocationFormData>(EMPTY_LOCATION_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function startEdit(loc: Location) {
+    setEditingId(loc.id);
+    setForm({
+      name: loc.name,
+      city: loc.city ?? "",
+      address: loc.address ?? "",
+      modality: loc.modality,
+      color: loc.color,
+    });
+    setError(null);
+    setConfirmDeleteId(null);
+  }
+
+  function startNew() {
+    setEditingId(null);
+    setForm(EMPTY_LOCATION_FORM);
+    setError(null);
+    setConfirmDeleteId(null);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const body = {
+        name: form.name.trim(),
+        city: form.city.trim() || null,
+        address: form.address.trim() || null,
+        modality: form.modality,
+        color: form.color,
+      };
+      if (editingId) {
+        await api.put(`/api/locations/${editingId}`, body);
+      } else {
+        await api.post("/api/locations", body);
+      }
+      onChanged();
+      setEditingId(null);
+      setForm(EMPTY_LOCATION_FORM);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao salvar local");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      await api.delete(`/api/locations/${id}`);
+      onChanged();
+      setConfirmDeleteId(null);
+      if (editingId === id) {
+        setEditingId(null);
+        setForm(EMPTY_LOCATION_FORM);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao remover local");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold">Gerenciar locais de atendimento</h3>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto p-5">
+          {/* Lista de locais existentes */}
+          {locations.length > 0 && (
+            <div className="mb-5 flex flex-col gap-2">
+              {locations.map((loc) => (
+                <div
+                  key={loc.id}
+                  className={
+                    "flex items-center gap-3 rounded-xl border p-3 transition " +
+                    (editingId === loc.id
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-border bg-surface-2/40")
+                  }
+                >
+                  <span className="size-3 flex-shrink-0 rounded-full" style={{ backgroundColor: loc.color }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{loc.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[loc.city, loc.modality].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => startEdit(loc)}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+                      title="Editar"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    {confirmDeleteId === loc.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleDelete(loc.id)}
+                          disabled={saving}
+                          className="h-7 rounded-lg border border-destructive/50 bg-destructive/10 px-2 text-[11px] font-medium text-destructive hover:bg-destructive/20 disabled:opacity-50"
+                        >
+                          Confirmar
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="h-7 rounded-lg border border-border px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(loc.id)}
+                        className="grid h-7 w-7 place-items-center rounded-lg border border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive"
+                        title="Remover"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Formulário novo/editar */}
+          <div className="rounded-xl border border-border bg-surface-2/30 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-semibold">
+                {editingId ? "Editar local" : "Novo local"}
+              </h4>
+              {editingId && (
+                <button onClick={startNew} className="text-xs text-muted-foreground hover:text-foreground">
+                  + Novo
+                </button>
+              )}
+            </div>
+            <form onSubmit={handleSave} className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Nome *</span>
+                <input
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Ex: Clínica Centro"
+                  className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                />
+              </label>
+              <div className="flex gap-3">
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="text-xs text-muted-foreground">Cidade</span>
+                  <input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    placeholder="Ex: Vitória"
+                    className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted-foreground">Modalidade</span>
+                  <select
+                    value={form.modality}
+                    onChange={(e) => setForm({ ...form, modality: e.target.value as LocationFormData["modality"] })}
+                    className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                  >
+                    <option value="presencial">Presencial</option>
+                    <option value="online">Online</option>
+                    <option value="ambos">Ambos</option>
+                  </select>
+                </label>
+              </div>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Endereço</span>
+                <input
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Ex: Av. Paulista, 1000"
+                  className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                />
+              </label>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Cor</span>
+                <div className="flex flex-wrap gap-2">
+                  {LOCATION_PALETTE.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      title={p.label}
+                      onClick={() => setForm({ ...form, color: p.hex })}
+                      className={
+                        "relative flex h-7 w-7 items-center justify-center rounded-full border-2 transition " +
+                        (form.color === p.hex ? "border-foreground" : "border-transparent hover:border-foreground/40")
+                      }
+                      style={{ backgroundColor: p.hex }}
+                    >
+                      {form.color === p.hex && (
+                        <Check className="size-3.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+              <div className="mt-1 flex justify-end gap-2">
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={startNew}
+                    className="h-10 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Cancelar edição
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={saving || !form.name.trim()}
+                  className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-60"
+                >
+                  {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar local"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Sub-tab: Disponibilidade ─────────────────────────────────────────────────
 
 function DisponibilidadeTab() {
@@ -519,6 +796,7 @@ function DisponibilidadeTab() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<"presencial" | "online">("presencial");
+  const [showLocationManager, setShowLocationManager] = useState(false);
 
   const today = new Date();
   const [viewY, setViewY] = useState(today.getFullYear());
@@ -531,6 +809,15 @@ function DisponibilidadeTab() {
   const [dialogSlot, setDialogSlot] = useState("");
 
   useEffect(() => { loadAll(); }, []);
+
+  async function reloadLocations() {
+    try {
+      const locRes = await api.get<{ locations: Location[] }>("/api/locations");
+      setLocations(locRes.locations);
+    } catch {
+      // silencioso — loadAll já trata o erro principal
+    }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -697,17 +984,41 @@ function DisponibilidadeTab() {
             <Monitor className="size-3.5" /> Online
           </button>
         </div>
-        {innerTab === "presencial" && locations.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+        {innerTab === "presencial" && (
+          <div className="flex flex-wrap items-center gap-3">
             {locations.map((l) => (
               <div key={l.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="size-2.5 rounded-full" style={{ backgroundColor: l.color }} />
                 {l.name}
               </div>
             ))}
+            <button
+              onClick={() => setShowLocationManager(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
+            >
+              <Settings2 className="size-3" />
+              {locations.length === 0 ? "Cadastrar local" : "Gerenciar locais"}
+            </button>
           </div>
         )}
       </div>
+
+      {/* Aviso de empty state para locais */}
+      {innerTab === "presencial" && locations.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-surface-2/30 px-5 py-8 text-center">
+          <MapPin className="mx-auto mb-3 size-8 text-muted-foreground/40" />
+          <p className="text-sm font-medium">Nenhum local cadastrado</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cadastre pelo menos um local de atendimento para usar o calendário presencial.
+          </p>
+          <button
+            onClick={() => setShowLocationManager(true)}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110"
+          >
+            <Plus className="size-4" /> Cadastrar local
+          </button>
+        </div>
+      )}
 
       {innerTab === "presencial" ? (
         <section>
@@ -841,6 +1152,15 @@ function DisponibilidadeTab() {
             </div>
           </SectionGroup>
         )
+      )}
+
+      {/* Dialog de gerenciar locais */}
+      {showLocationManager && (
+        <LocationManagerDialog
+          locations={locations}
+          onClose={() => setShowLocationManager(false)}
+          onChanged={() => { reloadLocations(); }}
+        />
       )}
 
       {/* Dialog de dia — overlay customizado */}

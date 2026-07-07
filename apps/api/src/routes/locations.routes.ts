@@ -25,8 +25,8 @@ export async function locationsRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
     const schema = z.object({
       name:                 z.string().min(1).max(100),
-      city:                 z.string().optional(),
-      address:              z.string().optional(),
+      city:                 z.string().nullish(),
+      address:              z.string().nullish(),
       color:                z.string().default('#6366f1'),
       modality:             z.enum(['presencial', 'online', 'ambos']).default('presencial'),
       price:                z.string().nullish(),
