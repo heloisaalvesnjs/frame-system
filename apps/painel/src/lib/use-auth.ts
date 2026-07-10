@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStoredUser, getToken, type Nutritionist } from "@/lib/api";
+import { getStoredUser, getToken, type StoredUser } from "@/lib/api";
 
 export function useAuth() {
-  const [user, setUser] = useState<Nutritionist | null>(null);
+  const [user, setUser] = useState<StoredUser | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

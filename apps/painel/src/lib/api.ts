@@ -11,23 +11,33 @@ export type Nutritionist = {
   is_master: boolean;
 };
 
+export type TeamMemberUser = {
+  is_team_member: true;
+  name: string;
+  role: "admin" | "receptionist" | "viewer";
+  nutritionist_name: string;
+  email?: string;
+};
+
+export type StoredUser = Nutritionist | TeamMemberUser;
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TOKEN_KEY);
 }
 
-export function getStoredUser(): Nutritionist | null {
+export function getStoredUser(): StoredUser | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Nutritionist;
+    return JSON.parse(raw) as StoredUser;
   } catch {
     return null;
   }
 }
 
-export function setSession(token: string, user: Nutritionist) {
+export function setSession(token: string, user: StoredUser) {
   window.localStorage.setItem(TOKEN_KEY, token);
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
@@ -86,10 +96,77 @@ export const api = {
 };
 
 export async function login(email: string, password: string) {
-  const data = await request<{ token: string; nutritionist: Nutritionist }>(
-    "/api/auth/login",
-    { method: "POST", body: JSON.stringify({ email, password }) }
-  );
-  setSession(data.token, data.nutritionist);
-  return data.nutritionist;
+  // Tenta primeiro o login do dono (nutricionista)
+  try {
+    const data = await request<{ token: string; nutritionist: Nutritionist }>(
+      "/api/auth/login",
+      { method: "POST", body: JSON.stringify({ email, password }) }
+    );
+    setSession(data.token, data.nutritionist);
+    return data.nutritionist;
+  } catch (err) {
+    // Se foi 401, tenta como membro de equipe
+    if (err instanceof ApiError && err.status === 401) {
+      const teamData = await request<{ token: string; name: string; role: string; nutritionist_name: string }>(
+        "/api/team/login",
+        { method: "POST", body: JSON.stringify({ email, password }) }
+      );
+      const teamUser: TeamMemberUser = {
+        is_team_member: true,
+        name: teamData.name,
+        role: teamData.role as TeamMemberUser["role"],
+        nutritionist_name: teamData.nutritionist_name,
+        email,
+      };
+      setSession(teamData.token, teamUser);
+      return teamUser;
+    }
+    throw err;
+  }
+}
+
+// --- API de equipe ---
+export type TeamMember = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "admin" | "receptionist" | "viewer";
+  status: "pending" | "active";
+  created_at: string;
+  invite_link?: string;
+};
+
+export async function getTeamMembers(): Promise<TeamMember[]> {
+  const data = await request<{ members: TeamMember[] }>("/api/team");
+  return data.members;
+}
+
+export async function inviteTeamMember(email: string, role: TeamMember["role"]): Promise<TeamMember> {
+  const data = await request<{ member: TeamMember }>("/api/team/invite", {
+    method: "POST",
+    body: JSON.stringify({ email, role }),
+  });
+  return data.member;
+}
+
+export async function removeTeamMember(memberId: string): Promise<void> {
+  await request("/api/team/" + memberId, { method: "DELETE" });
+}
+
+export async function updateTeamMemberRole(memberId: string, role: TeamMember["role"]): Promise<void> {
+  await request("/api/team/" + memberId + "/role", {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function getInviteInfo(token: string): Promise<{ member: { id: string; email: string; role: string; status: string; nutritionist_name: string } }> {
+  return request("/api/team/join/" + token);
+}
+
+export async function acceptInvite(token: string, name: string, password: string): Promise<{ token: string; name: string; role: string; nutritionist_name: string }> {
+  return request("/api/team/join/" + token, {
+    method: "POST",
+    body: JSON.stringify({ name, password }),
+  });
 }

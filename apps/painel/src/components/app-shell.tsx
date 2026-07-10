@@ -126,7 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="min-w-0 leading-tight">
                 <div className="truncate text-sm font-medium">{userName}</div>
                 <div className="truncate text-[11px] text-muted-foreground">
-                  {user?.specialty ?? "Nutricionista"}
+                  {("specialty" in (user ?? {}) ? (user as { specialty?: string | null }).specialty : null) ?? ("is_team_member" in (user ?? {}) ? (user as { nutritionist_name?: string }).nutritionist_name : null) ?? "Nutricionista"}
                 </div>
               </div>
             </div>
