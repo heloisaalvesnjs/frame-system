@@ -592,6 +592,9 @@ CREATE INDEX IF NOT EXISTS idx_date_loc_overrides ON date_location_overrides(nut
 ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS start_time    TIME;
 ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS end_time      TIME;
 ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS slot_duration INT;
+-- (2026-07-10) Pausa de almoço no presencial (o online já tinha online_break_*)
+ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS break_start   TIME;
+ALTER TABLE date_location_overrides ADD COLUMN IF NOT EXISTS break_end     TIME;
 
 -- ── Membros de equipe (assistentes, recepcionistas, viewers) ──────────────────
 -- CREATE TABLE precisa vir antes dos ALTER TABLE team_members abaixo.

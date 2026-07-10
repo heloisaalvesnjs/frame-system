@@ -33,6 +33,11 @@ export type DateLocationOverride = {
   location_name: string | null;
   modality: string | null;
   color: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  slot_duration?: number | null;
+  break_start?: string | null;
+  break_end?: string | null;
 };
 
 export type OnlineAvailability = {

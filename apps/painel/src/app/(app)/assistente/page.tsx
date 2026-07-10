@@ -15,13 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -807,6 +800,8 @@ function DisponibilidadeTab() {
   const [dialogStart, setDialogStart] = useState("");
   const [dialogEnd, setDialogEnd] = useState("");
   const [dialogSlot, setDialogSlot] = useState("");
+  const [dialogBreakStart, setDialogBreakStart] = useState("");
+  const [dialogBreakEnd, setDialogBreakEnd] = useState("");
 
   useEffect(() => { loadAll(); }, []);
 
@@ -867,23 +862,29 @@ function DisponibilidadeTab() {
 
   function openDay(d: number) {
     const key = isoDate(viewY, viewM, d);
-    const existing = overrides.get(key) as (DateLocationOverride & { start_time?: string | null; end_time?: string | null; slot_duration?: number | null }) | undefined;
+    const existing = overrides.get(key);
     setDayDialog(key);
     setDialogCity(existing?.location_id ?? "");
-    setDialogStart(existing?.start_time ?? "");
-    setDialogEnd(existing?.end_time ?? "");
+    setDialogStart(existing?.start_time?.slice(0, 5) ?? "");
+    setDialogEnd(existing?.end_time?.slice(0, 5) ?? "");
     setDialogSlot(String(existing?.slot_duration ?? ""));
+    setDialogBreakStart(existing?.break_start?.slice(0, 5) ?? "");
+    setDialogBreakEnd(existing?.break_end?.slice(0, 5) ?? "");
   }
 
   async function saveDayCity() {
     if (!dayDialog || !dialogCity) return;
     try {
       const loc = locations.find((l) => l.id === dialogCity);
+      // Pausa só vale se os dois campos estiverem preenchidos
+      const breakOk = dialogBreakStart && dialogBreakEnd;
       await api.post("/api/availability/date-locations", {
         date: dayDialog, location_id: dialogCity,
         start_time: dialogStart || null,
         end_time: dialogEnd || null,
         slot_duration: dialogSlot ? Number(dialogSlot) : null,
+        break_start: breakOk ? dialogBreakStart : null,
+        break_end: breakOk ? dialogBreakEnd : null,
       });
       if (blocked.has(dayDialog)) {
         await api.delete(`/api/availability/blocked/${dayDialog}`).catch(() => {});
@@ -891,7 +892,14 @@ function DisponibilidadeTab() {
       }
       setOverrides((prev) => {
         const n = new Map(prev);
-        n.set(dayDialog, { id: dayDialog, date: dayDialog, location_id: dialogCity, location_name: loc?.name ?? null, modality: loc?.modality ?? null, color: loc?.color ?? null });
+        n.set(dayDialog, {
+          id: dayDialog, date: dayDialog, location_id: dialogCity,
+          location_name: loc?.name ?? null, modality: loc?.modality ?? null, color: loc?.color ?? null,
+          start_time: dialogStart || null, end_time: dialogEnd || null,
+          slot_duration: dialogSlot ? Number(dialogSlot) : null,
+          break_start: dialogBreakStart && dialogBreakEnd ? dialogBreakStart : null,
+          break_end: dialogBreakStart && dialogBreakEnd ? dialogBreakEnd : null,
+        });
         return n;
       });
       setDayDialog(null);
@@ -1070,6 +1078,11 @@ function DisponibilidadeTab() {
                   >
                     <span className="text-xs font-medium">{d}</span>
                     {ov && <LocationBadge color={ov.color ?? "#2E7D32"} name={ov.location_name ?? ""} />}
+                    {ov && ov.start_time && ov.end_time && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {ov.start_time.slice(0, 5)}–{ov.end_time.slice(0, 5)}
+                      </span>
+                    )}
                     {isBlocked && <span className="text-[10px] font-medium text-destructive">Fechado</span>}
                   </button>
                 );
@@ -1200,24 +1213,50 @@ function DisponibilidadeTab() {
 
               <div>
                 <div className="mb-2 text-xs text-muted-foreground">Local de atendimento</div>
-                <Select value={dialogCity} onValueChange={setDialogCity}>
-                  <SelectTrigger><SelectValue placeholder="Escolha o local" /></SelectTrigger>
-                  <SelectContent>
-                    {locations.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}{l.city ? ` — ${l.city}` : ""}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-2">
+                  {locations.map((l) => {
+                    const selected = dialogCity === l.id;
+                    return (
+                      <button
+                        key={l.id}
+                        onClick={() => setDialogCity(selected ? "" : l.id)}
+                        className={
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors " +
+                          (selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground")
+                        }
+                      >
+                        <MapPin className="size-3.5" />
+                        {l.name}
+                        {selected && <Check className="size-3.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label>Início (opcional)</Label>
+                  <Label>Início</Label>
                   <Input type="time" value={dialogStart} onChange={(e) => setDialogStart(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label>Fim (opcional)</Label>
+                  <Label>Fim</Label>
                   <Input type="time" value={dialogEnd} onChange={(e) => setDialogEnd(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 text-xs text-muted-foreground">Pausa (almoço) — opcional</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Início da pausa</Label>
+                    <Input type="time" value={dialogBreakStart} onChange={(e) => setDialogBreakStart(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Fim da pausa</Label>
+                    <Input type="time" value={dialogBreakEnd} onChange={(e) => setDialogBreakEnd(e.target.value)} />
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -1239,7 +1278,7 @@ function DisponibilidadeTab() {
                     onClick={clearDay}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Limpar
+                    Remover deste dia
                   </button>
                 )}
                 <button

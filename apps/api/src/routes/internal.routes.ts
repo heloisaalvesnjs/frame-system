@@ -497,6 +497,7 @@ export async function internalRoutes(app: FastifyInstance) {
           `SELECT dlo.location_id, l.name, l.address, l.city,
                   dlo.start_time::text AS start_time, dlo.end_time::text AS end_time,
                   dlo.slot_duration,
+                  dlo.break_start::text AS break_start, dlo.break_end::text AS break_end,
                   n.min_advance_hours, n.max_appointments_per_day
            FROM date_location_overrides dlo
            JOIN locations l ON l.id = dlo.location_id
@@ -516,8 +517,8 @@ export async function internalRoutes(app: FastifyInstance) {
           start_time:    override.start_time ?? DEFAULT_START,
           end_time:      override.end_time ?? DEFAULT_END,
           slot_duration: override.slot_duration ?? DEFAULT_SLOT,
-          break_start: null,
-          break_end: null,
+          break_start: override.break_start ?? null,
+          break_end: override.break_end ?? null,
           min_advance_hours: override.min_advance_hours,
           max_appointments_per_day: override.max_appointments_per_day,
         }

@@ -128,7 +128,8 @@ export async function availabilityRoutes(app: FastifyInstance) {
     const { id } = (request as any).user
     const rows = await query<any>(
       `SELECT d.id, d.date, d.location_id, l.name AS location_name, l.modality, l.color,
-              d.start_time::text AS start_time, d.end_time::text AS end_time, d.slot_duration
+              d.start_time::text AS start_time, d.end_time::text AS end_time, d.slot_duration,
+              d.break_start::text AS break_start, d.break_end::text AS break_end
        FROM date_location_overrides d
        LEFT JOIN locations l ON l.id = d.location_id
        WHERE d.nutritionist_id = $1 AND d.date >= CURRENT_DATE
@@ -149,15 +150,18 @@ export async function availabilityRoutes(app: FastifyInstance) {
       start_time:    z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
       end_time:      z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
       slot_duration: z.number().int().min(15).max(240).nullable().optional(),
+      break_start:   z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      break_end:     z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
     }).parse(request.body)
 
     const [row] = await query<any>(
-      `INSERT INTO date_location_overrides (nutritionist_id, date, location_id, start_time, end_time, slot_duration)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO date_location_overrides (nutritionist_id, date, location_id, start_time, end_time, slot_duration, break_start, break_end)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (nutritionist_id, date) DO UPDATE SET
-         location_id = $3, start_time = $4, end_time = $5, slot_duration = $6
-       RETURNING id, date, location_id, start_time::text AS start_time, end_time::text AS end_time, slot_duration`,
-      [id, body.date, body.location_id, body.start_time ?? null, body.end_time ?? null, body.slot_duration ?? null]
+         location_id = $3, start_time = $4, end_time = $5, slot_duration = $6, break_start = $7, break_end = $8
+       RETURNING id, date, location_id, start_time::text AS start_time, end_time::text AS end_time, slot_duration,
+                 break_start::text AS break_start, break_end::text AS break_end`,
+      [id, body.date, body.location_id, body.start_time ?? null, body.end_time ?? null, body.slot_duration ?? null, body.break_start ?? null, body.break_end ?? null]
     )
     return reply.send({ override: row })
   })
