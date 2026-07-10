@@ -141,17 +141,21 @@ export async function runAppointmentReminders(): Promise<void> {
       l.address,
       l.city,
       l.confirmation_message,
-      w.instance_token
+      w.instance_token,
+      ass.auto_reminder_message
     FROM appointments a
     JOIN clients c             ON c.id = a.client_id
     JOIN nutritionists n       ON n.id = a.nutritionist_id AND n.is_active = true
+    JOIN assistants ass         ON ass.nutritionist_id = a.nutritionist_id AND ass.is_active = true
     -- Não filtra por status='connected' (coluna defasada, ver runFollowupSequences acima)
     JOIN whatsapp_connections w ON w.nutritionist_id = a.nutritionist_id
     LEFT JOIN locations l      ON l.id = a.location_id
     WHERE a.status IN ('scheduled', 'confirmed')
       AND a.reminder_sent = false
-      AND a.scheduled_at BETWEEN NOW() + INTERVAL '23 hours'
-                              AND NOW() + INTERVAL '25 hours'
+      AND ass.auto_reminder_enabled = true
+      -- Janela de ±1h em torno de auto_reminder_hours_before, pra cobrir o intervalo entre execuções do cron
+      AND a.scheduled_at BETWEEN NOW() + (COALESCE(ass.auto_reminder_hours_before, 24) || ' hours')::INTERVAL - INTERVAL '1 hour'
+                              AND NOW() + (COALESCE(ass.auto_reminder_hours_before, 24) || ' hours')::INTERVAL + INTERVAL '1 hour'
   `)
 
   console.log(`[reminder] ${upcoming.length} lembrete(s) para enviar`)
@@ -168,15 +172,26 @@ export async function runAppointmentReminders(): Promise<void> {
       hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
     })
 
-    let message = `Olá${firstName ? `, ${firstName}` : ''}! 📅 Lembrando da sua consulta:\n\n`
-    message += `*${dateStr}* às *${timeStr}*`
-    if (appt.location_name) {
-      message += `\n📍 ${appt.location_name}`
-      if (appt.address) message += ` — ${appt.address}`
+    let message: string
+    if (appt.auto_reminder_message) {
+      message = appt.auto_reminder_message
+        .replace(/\{nome\}/gi, firstName)
+        .replace(/\{cliente\}/gi, firstName)
+        .replace(/\{data\}/gi, dateStr)
+        .replace(/\{hora\}/gi, timeStr)
+        .replace(/\{local\}/gi, appt.location_name || '')
+        .trim()
+    } else {
+      message = `Olá${firstName ? `, ${firstName}` : ''}! 📅 Lembrando da sua consulta:\n\n`
+      message += `*${dateStr}* às *${timeStr}*`
+      if (appt.location_name) {
+        message += `\n📍 ${appt.location_name}`
+        if (appt.address) message += ` — ${appt.address}`
+      }
+      if (appt.modality === 'online') message += `\n💻 Consulta online`
+      if (appt.confirmation_message) message += `\n\n${appt.confirmation_message}`
+      else message += `\n\nQualquer dúvida é só falar! 🙏`
     }
-    if (appt.modality === 'online') message += `\n💻 Consulta online`
-    if (appt.confirmation_message) message += `\n\n${appt.confirmation_message}`
-    else message += `\n\nQualquer dúvida é só falar! 🙏`
 
     try {
       if (HAS_N8N()) {
