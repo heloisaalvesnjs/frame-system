@@ -1297,6 +1297,7 @@ function DisponibilidadeTab() {
 // ─── Sub-tab: Integrações ─────────────────────────────────────────────────────
 
 type GoogleCalendarStatus = { connected: boolean; calendar_id: string };
+type GoogleCalendarOption = { id: string; summary: string; primary: boolean; selected: boolean };
 
 function IntegracoesTab() {
   const [wa, setWa] = useState<WhatsappStatus | null>(null);
@@ -1310,6 +1311,8 @@ function IntegracoesTab() {
   const [gcalLoading, setGcalLoading] = useState(true);
   const [gcalBusy, setGcalBusy] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [calendars, setCalendars] = useState<GoogleCalendarOption[] | null>(null);
+  const [calendarsError, setCalendarsError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -1359,10 +1362,34 @@ function IntegracoesTab() {
     try {
       const res = await api.get<GoogleCalendarStatus>("/api/google-calendar/status");
       setGcal(res);
+      if (res.connected) loadCalendars();
     } catch (err) {
       if (!(err instanceof ApiError)) throw err;
     } finally {
       setGcalLoading(false);
+    }
+  }
+
+  async function loadCalendars() {
+    setCalendarsError(null);
+    try {
+      const res = await api.get<{ calendars: GoogleCalendarOption[] }>("/api/google-calendar/calendars");
+      setCalendars(res.calendars);
+    } catch (err) {
+      setCalendarsError(err instanceof ApiError ? err.message : "Erro ao listar calendários");
+    }
+  }
+
+  async function changeCalendar(calendarId: string) {
+    setGcalBusy(true);
+    try {
+      await api.put("/api/google-calendar/calendar", { calendar_id: calendarId });
+      setMessage("Calendário atualizado! As próximas consultas vão sincronizar com ele.");
+      await loadGcal();
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao trocar de calendário");
+    } finally {
+      setGcalBusy(false);
     }
   }
 
@@ -1515,10 +1542,7 @@ function IntegracoesTab() {
               ) : gcal?.connected ? (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-medium">Conectado</div>
-                      <div className="text-xs text-muted-foreground">{gcal.calendar_id}</div>
-                    </div>
+                    <div className="text-sm font-medium">Conectado</div>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary">
                       <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                       Ativo
@@ -1529,6 +1553,31 @@ function IntegracoesTab() {
                     vão pra sua Google Agenda, e eventos criados direto na Google Agenda entram no sistema.
                     Os botões abaixo forçam uma checagem imediata.
                   </p>
+
+                  <div className="mt-4">
+                    <div className="mb-1.5 text-xs text-muted-foreground">Qual agenda sincronizar</div>
+                    {calendarsError ? (
+                      <p className="text-xs text-destructive">
+                        {calendarsError} — desconecte e conecte de novo pra autorizar o acesso à lista de agendas.
+                      </p>
+                    ) : !calendars ? (
+                      <p className="text-xs text-muted-foreground">Carregando agendas...</p>
+                    ) : (
+                      <select
+                        value={gcal.calendar_id}
+                        onChange={(e) => changeCalendar(e.target.value)}
+                        disabled={gcalBusy}
+                        className="h-10 w-full rounded-lg border border-border bg-surface-2/60 px-3 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+                      >
+                        {calendars.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.summary}{c.primary ? " (sua agenda principal)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
                   {syncResult && <p className="mt-2 text-xs text-primary">{syncResult}</p>}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button

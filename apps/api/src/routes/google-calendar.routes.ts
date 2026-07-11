@@ -1,10 +1,13 @@
 import { FastifyInstance } from 'fastify'
 import { query, queryOne } from '../db'
+import { z } from 'zod'
 import {
   getAuthUrl,
   handleOAuthCallback,
   importEventsFromGoogle,
   syncAppointmentsToGoogle,
+  listAvailableCalendars,
+  setCalendar,
 } from '../services/google-calendar.service'
 
 export async function googleCalendarRoutes(app: FastifyInstance) {
@@ -44,6 +47,31 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
       [id]
     )
     return reply.send({ connected: !!conn, calendar_id: conn?.calendar_id ?? 'primary' })
+  })
+
+  // GET /api/google-calendar/calendars — lista os calendários disponíveis na conta conectada
+  // (ex: quando a conta tem acesso a mais de uma agenda, tipo a própria e a de outra pessoa)
+  app.get('/calendars', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const conn = await queryOne<any>('SELECT id FROM google_calendar_connections WHERE nutritionist_id = $1', [id])
+    if (!conn) return reply.code(400).send({ error: 'Google Calendar não conectado' })
+
+    try {
+      const calendars = await listAvailableCalendars(id)
+      return reply.send({ calendars })
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || String(err)
+      // Erro comum: conta conectada antes do escopo readonly existir — precisa reconectar.
+      return reply.code(502).send({ error: `Erro ao listar calendários: ${msg}` })
+    }
+  })
+
+  // PUT /api/google-calendar/calendar — escolhe qual calendário da conta sincronizar
+  app.put('/calendar', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const { calendar_id } = z.object({ calendar_id: z.string().min(1) }).parse(request.body)
+    await setCalendar(id, calendar_id)
+    return reply.send({ ok: true })
   })
 
   // DELETE /api/google-calendar/disconnect — desconecta o Google Calendar

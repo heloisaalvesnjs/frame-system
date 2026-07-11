@@ -19,7 +19,13 @@ export function getAuthUrl(nutritionistId: string): string {
   const client = makeOAuth2Client()
   return client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/calendar.events'],
+    // readonly além de events: sem isso a API não deixa listar os calendários
+    // disponíveis na conta (ex: quando a conta logada tem acesso a mais de um
+    // calendário compartilhado, como "Heloísa Alves" e "David Effgen").
+    scope: [
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar.readonly',
+    ],
     prompt: 'consent',
     state: nutritionistId,
   })
@@ -53,7 +59,7 @@ export async function handleOAuthCallback(code: string, nutritionistId: string):
  * Monta um client OAuth2 autenticado pro nutricionista, já com listener pra
  * persistir tokens renovados automaticamente. Retorna null se não conectado.
  */
-async function getAuthedClient(nutritionistId: string) {
+export async function getAuthedClient(nutritionistId: string) {
   const conn = await queryOne<any>(
     'SELECT * FROM google_calendar_connections WHERE nutritionist_id = $1',
     [nutritionistId]
@@ -85,6 +91,48 @@ async function getAuthedClient(nutritionistId: string) {
   })
 
   return { client, calendarId: conn.calendar_id || 'primary' }
+}
+
+/**
+ * Lista os calendários visíveis pra conta Google conectada (ex: quando a
+ * conta logada tem acesso a mais de uma agenda — a própria e a de outra
+ * pessoa que compartilhou). Usado pra deixar escolher qual sincronizar.
+ */
+export async function listAvailableCalendars(nutritionistId: string): Promise<
+  { id: string; summary: string; primary: boolean; selected: boolean }[]
+> {
+  const authed = await getAuthedClient(nutritionistId)
+  if (!authed) return []
+
+  const { client, calendarId: currentCalendarId } = authed
+  const calendar = google.calendar({ version: 'v3', auth: client })
+  const res = await calendar.calendarList.list({ maxResults: 250 })
+
+  return (res.data.items || [])
+    .filter(c => c.accessRole === 'owner' || c.accessRole === 'writer') // só onde dá pra criar evento
+    .map(c => ({
+      id: c.id || '',
+      summary: c.summary || c.id || '',
+      primary: !!c.primary,
+      selected: (c.id || '') === currentCalendarId,
+    }))
+}
+
+/**
+ * Troca qual calendário da conta é usado pra importar/enviar consultas.
+ * Reseta gcal_synced_at das consultas futuras — trocar de calendário sem
+ * isso deixaria elas "presas" como já sincronizadas com o calendário antigo.
+ */
+export async function setCalendar(nutritionistId: string, calendarId: string): Promise<void> {
+  await query(
+    'UPDATE google_calendar_connections SET calendar_id = $1, updated_at = NOW() WHERE nutritionist_id = $2',
+    [calendarId, nutritionistId]
+  )
+  await query(
+    `UPDATE appointments SET gcal_synced_at = NULL
+     WHERE nutritionist_id = $1 AND scheduled_at >= NOW() AND status NOT IN ('cancelled')`,
+    [nutritionistId]
+  )
 }
 
 /**
