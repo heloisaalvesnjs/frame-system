@@ -50,6 +50,44 @@ export async function handleOAuthCallback(code: string, nutritionistId: string):
 }
 
 /**
+ * Monta um client OAuth2 autenticado pro nutricionista, já com listener pra
+ * persistir tokens renovados automaticamente. Retorna null se não conectado.
+ */
+async function getAuthedClient(nutritionistId: string) {
+  const conn = await queryOne<any>(
+    'SELECT * FROM google_calendar_connections WHERE nutritionist_id = $1',
+    [nutritionistId]
+  )
+  if (!conn) return null
+
+  const client = makeOAuth2Client()
+  client.setCredentials({
+    access_token:  conn.access_token,
+    refresh_token: conn.refresh_token,
+    expiry_date:   conn.token_expiry ? new Date(conn.token_expiry).getTime() : undefined,
+  })
+
+  client.on('tokens', async (tokens) => {
+    await query(
+      `UPDATE google_calendar_connections
+       SET access_token  = COALESCE($2, access_token),
+           refresh_token = COALESCE($3, refresh_token),
+           token_expiry  = $4,
+           updated_at    = NOW()
+       WHERE nutritionist_id = $1`,
+      [
+        nutritionistId,
+        tokens.access_token   || null,
+        tokens.refresh_token  || null,
+        tokens.expiry_date    ? new Date(tokens.expiry_date) : null,
+      ]
+    )
+  })
+
+  return { client, calendarId: conn.calendar_id || 'primary' }
+}
+
+/**
  * Cria um evento no Google Calendar do nutricionista.
  * Silencioso se não houver conexão ou ocorrer erro — não bloqueia o agendamento.
  */
@@ -60,38 +98,11 @@ export async function createCalendarEvent(nutritionistId: string, appointment: {
   duration?: number
   modality?: string
 }): Promise<void> {
-  const conn = await queryOne<any>(
-    'SELECT * FROM google_calendar_connections WHERE nutritionist_id = $1',
-    [nutritionistId]
-  )
-  if (!conn) return // Não conectado — ignora silenciosamente
+  const authed = await getAuthedClient(nutritionistId)
+  if (!authed) return // Não conectado — ignora silenciosamente
 
   try {
-    const client = makeOAuth2Client()
-    client.setCredentials({
-      access_token:  conn.access_token,
-      refresh_token: conn.refresh_token,
-      expiry_date:   conn.token_expiry ? new Date(conn.token_expiry).getTime() : undefined,
-    })
-
-    // Persiste tokens renovados automaticamente
-    client.on('tokens', async (tokens) => {
-      await query(
-        `UPDATE google_calendar_connections
-         SET access_token  = COALESCE($2, access_token),
-             refresh_token = COALESCE($3, refresh_token),
-             token_expiry  = $4,
-             updated_at    = NOW()
-         WHERE nutritionist_id = $1`,
-        [
-          nutritionistId,
-          tokens.access_token   || null,
-          tokens.refresh_token  || null,
-          tokens.expiry_date    ? new Date(tokens.expiry_date) : null,
-        ]
-      )
-    })
-
+    const { client, calendarId } = authed
     const calendar = google.calendar({ version: 'v3', auth: client })
 
     const start = new Date(appointment.scheduled_at)
@@ -100,7 +111,7 @@ export async function createCalendarEvent(nutritionistId: string, appointment: {
     const modalityLabel = appointment.modality === 'presencial' ? 'Presencial' : 'Online'
 
     await calendar.events.insert({
-      calendarId: conn.calendar_id || 'primary',
+      calendarId,
       requestBody: {
         summary:     `📋 Consulta ${modalityLabel} — ${appointment.client_name}`,
         description: `Agendado via Frame System\n\nCliente: ${appointment.client_name}\nWhatsApp: ${appointment.client_phone}\nModalidade: ${modalityLabel}`,
@@ -123,5 +134,144 @@ export async function createCalendarEvent(nutritionistId: string, appointment: {
     const msg = err?.response?.data?.error?.message || err?.message || String(err)
     console.error('[GCal] Erro ao criar evento:', msg)
     throw new Error(`Google Calendar: ${msg}`)
+  }
+}
+
+/**
+ * Importa eventos futuros/recentes do Google Calendar do nutricionista pro sistema.
+ * Ignora eventos de dia inteiro e os que já vieram do próprio Frame System.
+ */
+export async function importEventsFromGoogle(nutritionistId: string): Promise<{ imported: number; skipped: number; total: number }> {
+  const authed = await getAuthedClient(nutritionistId)
+  if (!authed) return { imported: 0, skipped: 0, total: 0 }
+
+  const { client, calendarId } = authed
+  const calendar = google.calendar({ version: 'v3', auth: client })
+  const now = new Date()
+  const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const future = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
+
+  const res = await calendar.events.list({
+    calendarId,
+    timeMin: past30.toISOString(),
+    timeMax: future.toISOString(),
+    singleEvents: true,
+    orderBy: 'startTime',
+    maxResults: 100,
+  })
+
+  const events = (res.data.items || []).filter(e =>
+    e.start?.dateTime &&
+    !e.summary?.includes('Frame System') &&
+    !e.summary?.includes('Consulta') // evita reimportar o que o proprio sync criou (createCalendarEvent usa "Consulta ...")
+  )
+
+  let imported = 0
+  let skipped = 0
+
+  for (const event of events) {
+    const scheduledAt = new Date(event.start!.dateTime!)
+
+    const existing = await queryOne<any>(
+      `SELECT id FROM appointments
+       WHERE nutritionist_id = $1
+         AND ABS(EXTRACT(EPOCH FROM (scheduled_at - $2::timestamptz))) < 300
+         AND status != 'cancelled'`,
+      [nutritionistId, scheduledAt.toISOString()]
+    )
+    if (existing) { skipped++; continue }
+
+    const title = event.summary || ''
+    const clientName = title.replace(/consulta\s*[-–—]?\s*/i, '').trim() || 'Paciente (Google Agenda)'
+
+    try {
+      let client_id: string | null = null
+      const existingClient = await queryOne<any>(
+        `SELECT id FROM clients WHERE nutritionist_id = $1 AND name ILIKE $2`,
+        [nutritionistId, `%${clientName}%`]
+      )
+      if (existingClient) {
+        client_id = existingClient.id
+      } else {
+        const fakePhone = `gcal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        const [newClient] = await query<any>(
+          `INSERT INTO clients (nutritionist_id, name, phone) VALUES ($1, $2, $3) RETURNING id`,
+          [nutritionistId, clientName, fakePhone]
+        )
+        client_id = newClient.id
+      }
+
+      const durationMs = event.end?.dateTime
+        ? new Date(event.end.dateTime).getTime() - scheduledAt.getTime()
+        : 50 * 60 * 1000
+      const duration = Math.round(durationMs / 60000)
+
+      await query(
+        `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, notes, created_by)
+         VALUES ($1, $2, $3, $4, 'presencial', 'scheduled', $5, 'nutritionist')`,
+        [nutritionistId, client_id, scheduledAt.toISOString(), duration,
+         `Importado do Google Agenda: ${event.summary}`]
+      )
+      imported++
+    } catch (err) {
+      console.error('[GCal import] Falha ao importar evento:', event.summary, err)
+      skipped++
+    }
+  }
+
+  return { imported, skipped, total: events.length }
+}
+
+/** Envia todos os agendamentos futuros (ainda não sincronizados) pro Google Calendar. */
+export async function syncAppointmentsToGoogle(nutritionistId: string): Promise<{ synced: number; total: number; lastError?: string }> {
+  const appointments = await query<any>(
+    `SELECT a.id, a.scheduled_at, a.duration, a.modality,
+            c.name AS client_name, c.phone AS client_phone
+     FROM appointments a
+     LEFT JOIN clients c ON c.id = a.client_id
+     WHERE a.nutritionist_id = $1
+       AND a.scheduled_at >= NOW()
+       AND a.status NOT IN ('cancelled')
+       AND a.gcal_synced_at IS NULL`,
+    [nutritionistId]
+  )
+
+  let synced = 0
+  let lastError = ''
+  for (const appt of appointments) {
+    try {
+      await createCalendarEvent(nutritionistId, {
+        client_name:  appt.client_name || 'Paciente',
+        client_phone: appt.client_phone || '',
+        scheduled_at: appt.scheduled_at,
+        duration:     appt.duration ?? 50,
+        modality:     appt.modality ?? 'online',
+      })
+      await query('UPDATE appointments SET gcal_synced_at = NOW() WHERE id = $1', [appt.id])
+      synced++
+    } catch (err: any) {
+      lastError = err?.message || String(err)
+      console.error('[GCal sync] Falha ao enviar evento:', err)
+    }
+  }
+
+  return { synced, total: appointments.length, lastError: lastError || undefined }
+}
+
+/**
+ * Cron de sincronização automática de mão dupla — roda periodicamente pra
+ * todos os nutricionistas conectados, sem precisar de ação manual no painel.
+ */
+export async function runGoogleCalendarAutoSync(): Promise<void> {
+  const connections = await query<{ nutritionist_id: string }>(
+    'SELECT nutritionist_id FROM google_calendar_connections'
+  )
+  for (const conn of connections) {
+    try {
+      await importEventsFromGoogle(conn.nutritionist_id)
+      await syncAppointmentsToGoogle(conn.nutritionist_id)
+    } catch (err) {
+      console.error(`[GCal auto-sync] Erro pra nutri ${conn.nutritionist_id}:`, err)
+    }
   }
 }

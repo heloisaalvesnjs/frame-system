@@ -27,8 +27,9 @@ import { teamRoutes } from './routes/team.routes'
 import { integrationsRoutes } from './routes/integrations.routes'
 import { followupSequencesRoutes } from './routes/followup-sequences.routes'
 import { onboardingFormRoutes } from './routes/onboarding-form.routes'
-import { runFollowupSequences, runAppointmentReminders, runPosConsulta, runRetorno } from './services/followup.service'
+import { runFollowupSequences, runAppointmentReminders, runPosConsulta, runRetorno, runDailySummary, checkWhatsappDisconnections } from './services/followup.service'
 import { runWeeklyReport } from './services/report.service'
+import { runGoogleCalendarAutoSync } from './services/google-calendar.service'
 import { readFileSync } from 'fs'
 import { db } from './db'
 
@@ -181,7 +182,22 @@ const start = async () => {
       }
     }, 60 * 60 * 1000)
 
-    console.log('⏰ Schedulers registrados: follow-up, lembrete, pós-consulta, retorno, relatório')
+    // Resumo diário pro nutricionista: verifica a cada 30 min (só dispara às 7h BRT, dedup interno)
+    setInterval(() => {
+      runDailySummary().catch(console.error)
+    }, 30 * 60 * 1000)
+
+    // WhatsApp desconectado: checa a cada 10 minutos
+    setInterval(() => {
+      checkWhatsappDisconnections().catch(console.error)
+    }, 10 * 60 * 1000)
+
+    // Google Calendar — sincronização automática de mão dupla: a cada 15 minutos
+    setInterval(() => {
+      runGoogleCalendarAutoSync().catch(console.error)
+    }, 15 * 60 * 1000)
+
+    console.log('⏰ Schedulers registrados: follow-up, lembrete, pós-consulta, retorno, relatório, notificações, google calendar')
     // ──────────────────────────────────────────────────────────
 
   } catch (err) {

@@ -193,4 +193,86 @@ export async function appointmentRoutes(app: FastifyInstance) {
     if (!updated) return reply.code(404).send({ error: 'Consulta não encontrada' })
     return reply.send(updated)
   })
+
+  // PUT /api/appointments/:id — edição completa (data/hora, modalidade, local, cliente, notas)
+  app.put('/:id', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { id } = request.params as any
+    const schema = z.object({
+      client_name:  z.string().optional(),
+      client_phone: z.string().optional(),
+      scheduled_at: z.string().optional(),
+      duration:     z.number().int().min(15).max(240).optional(),
+      modality:     z.enum(['online', 'presencial']).optional(),
+      location_id:  z.string().uuid().nullable().optional(),
+      notes:        z.string().nullable().optional(),
+    })
+    const body = schema.parse(request.body)
+
+    const existing = await queryOne<any>(
+      'SELECT id, client_id, scheduled_at FROM appointments WHERE id = $1 AND nutritionist_id = $2',
+      [id, nutritionistId]
+    )
+    if (!existing) return reply.code(404).send({ error: 'Consulta não encontrada' })
+
+    if (body.scheduled_at && body.scheduled_at !== existing.scheduled_at) {
+      const conflict = await queryOne(
+        `SELECT id FROM appointments
+         WHERE nutritionist_id = $1 AND scheduled_at = $2 AND status NOT IN ('cancelled') AND id != $3`,
+        [nutritionistId, body.scheduled_at, id]
+      )
+      if (conflict) return reply.code(409).send({ error: 'Horário já ocupado' })
+    }
+
+    if (body.client_name || body.client_phone) {
+      const sets: string[] = []
+      const params: any[] = []
+      if (body.client_name) { params.push(body.client_name); sets.push(`name = $${params.length}`) }
+      if (body.client_phone) { params.push(body.client_phone.replace(/\D/g, '')); sets.push(`phone = $${params.length}`) }
+      params.push(existing.client_id)
+      await query(`UPDATE clients SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    }
+
+    let locationName: string | null | undefined = undefined
+    if (body.location_id !== undefined) {
+      if (body.location_id === null) {
+        locationName = null
+      } else {
+        const loc = await queryOne<any>('SELECT name FROM locations WHERE id = $1', [body.location_id])
+        locationName = loc?.name ?? null
+      }
+    }
+
+    const sets: string[] = []
+    const params: any[] = []
+    if (body.scheduled_at !== undefined) { params.push(body.scheduled_at); sets.push(`scheduled_at = $${params.length}`) }
+    if (body.duration !== undefined)     { params.push(body.duration);     sets.push(`duration = $${params.length}`) }
+    if (body.modality !== undefined)     { params.push(body.modality);     sets.push(`modality = $${params.length}`) }
+    if (body.location_id !== undefined)  { params.push(body.location_id);  sets.push(`location_id = $${params.length}`) }
+    if (locationName !== undefined)      { params.push(locationName);      sets.push(`location_name = $${params.length}`) }
+    if (body.notes !== undefined)        { params.push(body.notes);        sets.push(`notes = $${params.length}`) }
+
+    if (sets.length === 0) return reply.code(400).send({ error: 'Nada para atualizar' })
+
+    params.push(id, nutritionistId)
+    const [updated] = await query(
+      `UPDATE appointments SET ${sets.join(', ')}
+       WHERE id = $${params.length - 1} AND nutritionist_id = $${params.length}
+       RETURNING *`,
+      params
+    )
+    return reply.send({ appointment: updated })
+  })
+
+  // DELETE /api/appointments/:id — remove definitivamente (uso: registros de teste/erro)
+  app.delete('/:id', auth, async (request, reply) => {
+    const { id: nutritionistId } = (request as any).user
+    const { id } = request.params as any
+    const [deleted] = await query(
+      'DELETE FROM appointments WHERE id = $1 AND nutritionist_id = $2 RETURNING id',
+      [id, nutritionistId]
+    )
+    if (!deleted) return reply.code(404).send({ error: 'Consulta não encontrada' })
+    return reply.send({ ok: true })
+  })
 }

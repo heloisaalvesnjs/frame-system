@@ -747,3 +747,13 @@ ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_ai_daily_report      B
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_new_lead             BOOLEAN DEFAULT true;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_appointment_reminder BOOLEAN DEFAULT true;
 ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS notify_whatsapp_disconnected BOOLEAN DEFAULT true;
+
+-- (2026-07-11) Sistema de notificacoes administrativas passou a funcionar de
+-- verdade (antes os 4 toggles acima nao disparavam nada). Estado de controle
+-- pros crons novos em followup.service.ts (runDailySummary, checkWhatsappDisconnections).
+ALTER TABLE nutritionists ADD COLUMN IF NOT EXISTS last_daily_summary_at DATE;
+ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS disconnect_alert_sent BOOLEAN DEFAULT false;
+
+-- Sincronizacao automatica de mao dupla com Google Calendar (cron periodico).
+-- Sem isso, cada ciclo do cron reenviaria/duplicaria os mesmos agendamentos.
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS gcal_synced_at TIMESTAMPTZ;

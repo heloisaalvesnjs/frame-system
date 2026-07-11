@@ -4,6 +4,7 @@ import { query, queryOne } from '../db'
 import { sendMessage } from '../services/whatsapp.service'
 import { runFollowupSequences, runAppointmentReminders } from '../services/followup.service'
 import { runWeeklyReport } from '../services/report.service'
+import { notifyNewLead } from '../services/notification.service'
 
 /**
  * Rotas internas — autenticadas via x-internal-key (para n8n e cron jobs).
@@ -315,6 +316,7 @@ export async function internalRoutes(app: FastifyInstance) {
           [nutritionist_id, client_phone]
         )
         client = rows[0]
+        notifyNewLead(nutritionist_id, client_phone) // fire-and-forget, não bloqueia o fluxo da IA
       }
 
       // 6. Busca ou cria conversa ativa

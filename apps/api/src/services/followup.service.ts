@@ -12,13 +12,18 @@
  */
 
 import { query, queryOne } from '../db'
-import { sendMessage } from './whatsapp.service'
+import { sendMessage, getInstanceStatus } from './whatsapp.service'
 import {
   fireWebhookEvent,
   buildFollowupPayload,
   buildPosConsultaPayload,
   buildRetornoPayload,
 } from './webhook-events.service'
+import {
+  notifyAppointmentReminder,
+  notifyDailySummary,
+  notifyWhatsappDisconnected,
+} from './notification.service'
 
 const HAS_N8N = () => !!process.env.N8N_WEBHOOK_URL
 
@@ -218,8 +223,73 @@ export async function runAppointmentReminders(): Promise<void> {
 
       await query('UPDATE appointments SET reminder_sent = true WHERE id = $1', [appt.id])
       console.log(`[reminder] ✓ Lembrete → ${appt.client_phone}`)
+
+      notifyAppointmentReminder(appt.nutritionist_id, appt.client_name, appt.scheduled_at, appt.location_name)
     } catch (err) {
       console.error(`[reminder] ✗ ${appt.client_phone}:`, err)
+    }
+  }
+}
+
+// ── 2b. Resumo diário pro nutricionista ───────────────────────────────────────
+// Roda uma vez por dia (verifica horário local pra evitar disparo repetido dentro
+// da mesma janela do cron), envia via WhatsApp pro próprio nutri.
+
+export async function runDailySummary(): Promise<void> {
+  const hourBR = Number(
+    new Date().toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' })
+  )
+  if (hourBR !== 7) return // só dispara na janela das 7h (horário de Brasília)
+
+  const nutris = await query<{ id: string; last_daily_summary_at: string | null }>(
+    `SELECT id, last_daily_summary_at::text FROM nutritionists
+     WHERE is_active = true AND notify_ai_daily_report = true
+       AND (last_daily_summary_at IS NULL OR last_daily_summary_at < CURRENT_DATE)`
+  )
+
+  for (const n of nutris) {
+    await notifyDailySummary(n.id)
+    await query('UPDATE nutritionists SET last_daily_summary_at = CURRENT_DATE WHERE id = $1', [n.id])
+  }
+}
+
+// ── 2c. Detecção de WhatsApp desconectado ─────────────────────────────────────
+// Roda a cada ciclo do cron, verifica instâncias que estavam conectadas e caíram.
+// disconnect_alert_sent evita reenviar o mesmo alerta a cada execução do cron
+// enquanto a instância continuar fora do ar.
+
+export async function checkWhatsappDisconnections(): Promise<void> {
+  const connections = await query<{ nutritionist_id: string; instance_token: string; status: string; disconnect_alert_sent: boolean }>(
+    `SELECT nutritionist_id, instance_token, status, disconnect_alert_sent
+     FROM whatsapp_connections WHERE instance_token IS NOT NULL`
+  )
+
+  for (const conn of connections) {
+    try {
+      const liveStatus = await getInstanceStatus(conn.instance_token)
+
+      if (liveStatus === 'connected') {
+        if (conn.status !== 'connected' || conn.disconnect_alert_sent) {
+          await query(
+            `UPDATE whatsapp_connections SET status = 'connected', disconnect_alert_sent = false
+             WHERE nutritionist_id = $1`,
+            [conn.nutritionist_id]
+          )
+        }
+        continue
+      }
+
+      // Caiu — só avisa uma vez por queda
+      if (!conn.disconnect_alert_sent) {
+        await query(
+          `UPDATE whatsapp_connections SET status = $1, disconnect_alert_sent = true
+           WHERE nutritionist_id = $2`,
+          [liveStatus, conn.nutritionist_id]
+        )
+        await notifyWhatsappDisconnected(conn.nutritionist_id)
+      }
+    } catch (err) {
+      console.error(`[whatsapp-check] Erro ao checar ${conn.nutritionist_id}:`, err)
     }
   }
 }
