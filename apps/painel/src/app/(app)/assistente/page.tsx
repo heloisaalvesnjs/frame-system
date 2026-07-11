@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { SectionGroup } from "@/components/section-group";
 import { LocationBadge } from "@/components/location-badge";
-import { LOCATION_PALETTE } from "@/lib/location-palette";
+import { LOCATION_PALETTE, normalizeLocationColor } from "@/lib/location-palette";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -629,7 +629,7 @@ function LocationManagerDialog({
                       : "border-border bg-surface-2/40")
                   }
                 >
-                  <span className="size-3 flex-shrink-0 rounded-full" style={{ backgroundColor: loc.color }} />
+                  <span className="size-3 flex-shrink-0 rounded-full" style={{ backgroundColor: normalizeLocationColor(loc.color) }} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{loc.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
@@ -995,10 +995,7 @@ function DisponibilidadeTab() {
         {innerTab === "presencial" && (
           <div className="flex flex-wrap items-center gap-3">
             {locations.map((l) => (
-              <div key={l.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="size-2.5 rounded-full" style={{ backgroundColor: l.color }} />
-                {l.name}
-              </div>
+              <LocationBadge key={l.id} color={l.color} name={l.name} />
             ))}
             <button
               onClick={() => setShowLocationManager(true)}

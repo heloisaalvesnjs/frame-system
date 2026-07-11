@@ -48,6 +48,7 @@ export async function clientRoutes(app: FastifyInstance) {
   // GET /api/clients/opportunities — lista clientes agrupados por estágio do funil
   app.get('/opportunities', auth, async (request, reply) => {
     const { id } = (request as any).user
+    const includeLost = (request.query as any)?.include_lost === 'true'
 
     const opportunities = await query(
       `
@@ -63,7 +64,7 @@ export async function clientRoutes(app: FastifyInstance) {
         cl.created_at
       FROM clients cl
       WHERE cl.nutritionist_id = $1
-        AND COALESCE(cl.stage, 'novo_contato') != 'perdido'
+        ${includeLost ? '' : `AND COALESCE(cl.stage, 'novo_contato') != 'perdido'`}
       ORDER BY cl.stage_updated_at DESC NULLS LAST
       `,
       [id]

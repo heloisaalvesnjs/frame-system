@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, Bell, LayoutDashboard, MessageSquare, CalendarDays, Users, Sparkles, Repeat, Settings, LogOut } from "lucide-react";
+import { Search, Bell, LayoutDashboard, MessageSquare, CalendarDays, Users, Sparkles, Repeat, Settings, LogOut, GitBranch } from "lucide-react";
 import { clearSession } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
@@ -16,6 +16,7 @@ const operation: NavItem[] = [
   { to: "/atendimento", label: "Atendimento", icon: <MessageSquare className="h-4 w-4" /> },
   { to: "/agenda", label: "Agenda", icon: <CalendarDays className="h-4 w-4" /> },
   { to: "/pacientes", label: "Pacientes", icon: <Users className="h-4 w-4" /> },
+  { to: "/pipeline", label: "Pipeline", icon: <GitBranch className="h-4 w-4" /> },
 ];
 const intelligence: NavItem[] = [
   { to: "/assistente", label: "Assistente (IA)", icon: <Sparkles className="h-4 w-4" /> },
