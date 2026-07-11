@@ -511,7 +511,7 @@ export default function AgendaPage() {
                         <LocationBadge
                           key={idx}
                           color={color}
-                          name={`${hour} ${a.client_name.split(" ")[0]}`}
+                          name={`${hour} ${(a.client_name ?? "Paciente").split(" ")[0]}`}
                         />
                       );
                     })}
