@@ -196,12 +196,19 @@ export async function importEventsFromGoogle(nutritionistId: string): Promise<{ 
   const { client, calendarId } = authed
   const calendar = google.calendar({ version: 'v3', auth: client })
   const now = new Date()
-  const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  // Só pra frente (com 1h de folga pra pegar algo criado momentos atrás) — o
+  // objetivo é evitar duplo agendamento em consultas FUTURAS, não importar o
+  // histórico inteiro. Uma janela de 30 dias pra trás varria anos de
+  // anotações antigas do nutri na agenda (nomes com preço/observação tipo
+  // "Fulana – mensal (R$450)") e criava um "cliente" fantasma com telefone
+  // falso pra cada uma — poluía Pacientes sem nenhuma utilidade real, já que
+  // esse telefone falso nunca vai bater com uma conversa de WhatsApp real.
+  const start = new Date(now.getTime() - 1 * 60 * 60 * 1000)
   const future = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
   const res = await calendar.events.list({
     calendarId,
-    timeMin: past30.toISOString(),
+    timeMin: start.toISOString(),
     timeMax: future.toISOString(),
     singleEvents: true,
     orderBy: 'startTime',
