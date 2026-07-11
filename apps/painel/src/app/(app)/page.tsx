@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { ArrowUpRight, CalendarCheck, Users, MessageSquare, TrendingUp } from "lucide-react";
@@ -155,9 +156,12 @@ export default function Home() {
               <h2 className="text-base font-semibold">Próximas consultas</h2>
               <p className="text-xs text-muted-foreground">Próximos 7 dias</p>
             </div>
-            <button className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
+            <Link
+              href="/agenda"
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
               Ver todas <ArrowUpRight className="h-3 w-3" />
-            </button>
+            </Link>
           </div>
           {upcoming.length === 0 ? (
             <p className="mt-6 text-sm text-muted-foreground">
