@@ -16,18 +16,19 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
   // GET /api/google-calendar/callback — recebe o código do Google e salva tokens
   app.get('/callback', async (request, reply) => {
     const { code, state, error } = request.query as any
-    const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000'
+    const painelUrl = process.env.PAINEL_URL || process.env.DASHBOARD_URL || 'http://localhost:3100'
+    const redirectBase = `${painelUrl}/assistente?tab=integracoes`
 
     if (error || !code || !state) {
-      return reply.redirect(`${dashboardUrl}/agenda?google_error=true`)
+      return reply.redirect(`${redirectBase}&google_error=true`)
     }
 
     try {
       await handleOAuthCallback(code, state)
-      return reply.redirect(`${dashboardUrl}/agenda?google_connected=true`)
+      return reply.redirect(`${redirectBase}&google_connected=true`)
     } catch (err) {
       console.error('[GCal callback]', err)
-      return reply.redirect(`${dashboardUrl}/agenda?google_error=true`)
+      return reply.redirect(`${redirectBase}&google_error=true`)
     }
   })
 

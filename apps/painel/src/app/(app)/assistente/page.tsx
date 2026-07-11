@@ -1296,12 +1296,31 @@ function DisponibilidadeTab() {
 
 // ─── Sub-tab: Integrações ─────────────────────────────────────────────────────
 
+type GoogleCalendarStatus = { connected: boolean; calendar_id: string };
+
 function IntegracoesTab() {
   const [wa, setWa] = useState<WhatsappStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => { load(); }, []);
+  const [gcal, setGcal] = useState<GoogleCalendarStatus | null>(null);
+  const [gcalLoading, setGcalLoading] = useState(true);
+  const [gcalBusy, setGcalBusy] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    load();
+    loadGcal();
+    const status = searchParams.get("google_connected");
+    const err = searchParams.get("google_error");
+    if (status === "true") setMessage("Google Calendar conectado com sucesso!");
+    if (err === "true") setMessage("Não foi possível conectar o Google Calendar. Tente novamente.");
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -1321,73 +1340,219 @@ function IntegracoesTab() {
     setRefreshing(false);
   }
 
+  async function disconnectWhatsapp() {
+    setDisconnecting(true);
+    try {
+      await api.post("/api/whatsapp/disconnect", {});
+      setMessage("WhatsApp desconectado. A IA para de responder até reconectar.");
+      setConfirmDisconnect(false);
+      await load();
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao desconectar WhatsApp");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  async function loadGcal() {
+    setGcalLoading(true);
+    try {
+      const res = await api.get<GoogleCalendarStatus>("/api/google-calendar/status");
+      setGcal(res);
+    } catch (err) {
+      if (!(err instanceof ApiError)) throw err;
+    } finally {
+      setGcalLoading(false);
+    }
+  }
+
+  async function connectGcal() {
+    setGcalBusy(true);
+    try {
+      const res = await api.get<{ url: string }>("/api/google-calendar/auth-url");
+      window.location.href = res.url;
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao iniciar conexão com Google");
+      setGcalBusy(false);
+    }
+  }
+
+  async function disconnectGcal() {
+    setGcalBusy(true);
+    try {
+      await api.delete("/api/google-calendar/disconnect");
+      setMessage("Google Calendar desconectado.");
+      await loadGcal();
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao desconectar Google Calendar");
+    } finally {
+      setGcalBusy(false);
+    }
+  }
+
+  async function syncGcal() {
+    setGcalBusy(true);
+    setSyncResult(null);
+    try {
+      const res = await api.post<{ synced: number; total: number; lastError?: string }>("/api/google-calendar/sync", {});
+      setSyncResult(`${res.synced} de ${res.total} consulta(s) enviada(s) pro Google Calendar.`);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao sincronizar com Google Calendar");
+    } finally {
+      setGcalBusy(false);
+    }
+  }
+
   const statusInfo = wa ? STATUS_LABEL[wa.status] ?? STATUS_LABEL.disconnected : null;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Group title="WhatsApp Business" icon={<Zap className="h-4 w-4" />}>
-        <div className="flex items-start gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-              <path d="M20 3.5A11.9 11.9 0 0 0 2.5 20L2 22l2-.5A11.9 11.9 0 1 0 20 3.5Zm-8 18.1a9.7 9.7 0 0 1-4.9-1.3l-.3-.2-3 .8.8-2.9-.2-.3A9.7 9.7 0 1 1 12 21.6Z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Verificando conexão...</p>
-            ) : (
-              <>
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-medium">
-                      {wa?.status === "connected" ? "Número conectado" : "WhatsApp"}
+    <div className="flex flex-col gap-4">
+      {message && (
+        <div className="rounded-md border border-border bg-accent px-3 py-2 text-sm text-accent-foreground">
+          {message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Group title="WhatsApp Business" icon={<Zap className="h-4 w-4" />}>
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
+                <path d="M20 3.5A11.9 11.9 0 0 0 2.5 20L2 22l2-.5A11.9 11.9 0 1 0 20 3.5Zm-8 18.1a9.7 9.7 0 0 1-4.9-1.3l-.3-.2-3 .8.8-2.9-.2-.3A9.7 9.7 0 1 1 12 21.6Z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Verificando conexão...</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium">
+                        {wa?.status === "connected" ? "Número conectado" : "WhatsApp"}
+                      </div>
+                      {wa?.phone && (
+                        <div className="text-xs text-muted-foreground">{wa.phone}</div>
+                      )}
                     </div>
-                    {wa?.phone && (
-                      <div className="text-xs text-muted-foreground">{wa.phone}</div>
+                    {statusInfo && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dotClass}`} />
+                        {statusInfo.label}
+                      </span>
                     )}
                   </div>
-                  {statusInfo && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                      <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dotClass}`} />
-                      {statusInfo.label}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={refresh}
-                    disabled={refreshing}
-                    className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
-                    Reconectar
-                  </button>
-                  <button className="h-9 rounded-lg border border-destructive/60 px-3 text-xs text-destructive">
-                    Desconectar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </Group>
 
-      <Group title="Google Calendar" icon={<Calendar className="h-4 w-4" />}>
-        <div className="flex items-start gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-            <Calendar className="h-5 w-5" />
+                  {confirmDisconnect ? (
+                    <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+                      <p className="text-xs text-destructive">
+                        Desconectar para de vez com o atendimento automático pelo WhatsApp. Confirma?
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={disconnectWhatsapp}
+                          disabled={disconnecting}
+                          className="h-8 rounded-lg bg-destructive px-3 text-xs font-semibold text-destructive-foreground disabled:opacity-50"
+                        >
+                          {disconnecting ? "Desconectando..." : "Sim, desconectar"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDisconnect(false)}
+                          disabled={disconnecting}
+                          className="h-8 rounded-lg border border-border px-3 text-xs"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={refresh}
+                        disabled={refreshing}
+                        className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                        Atualizar status
+                      </button>
+                      {wa?.status === "connected" && (
+                        <button
+                          onClick={() => setConfirmDisconnect(true)}
+                          className="h-9 rounded-lg border border-destructive/60 px-3 text-xs text-destructive"
+                        >
+                          Desconectar
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">Não conectado</div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Sincronize consultas automaticamente com seu Google Calendar.
-            </p>
-            <button className="mt-4 h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:brightness-110">
-              Conectar
-            </button>
+        </Group>
+
+        <Group title="Google Calendar" icon={<Calendar className="h-4 w-4" />}>
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              {gcalLoading ? (
+                <p className="text-sm text-muted-foreground">Verificando conexão...</p>
+              ) : gcal?.connected ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium">Conectado</div>
+                      <div className="text-xs text-muted-foreground">{gcal.calendar_id}</div>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      Ativo
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Envia as consultas do sistema pra sua Google Agenda. Não importa mudanças feitas direto na
+                    Google Agenda de volta pro sistema — isso ainda é manual.
+                  </p>
+                  {syncResult && <p className="mt-2 text-xs text-primary">{syncResult}</p>}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={syncGcal}
+                      disabled={gcalBusy}
+                      className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {gcalBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                      Sincronizar agora
+                    </button>
+                    <button
+                      onClick={disconnectGcal}
+                      disabled={gcalBusy}
+                      className="h-9 rounded-lg border border-destructive/60 px-3 text-xs text-destructive disabled:opacity-50"
+                    >
+                      Desconectar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-medium">Não conectado</div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Envia as consultas marcadas pelo sistema pra sua Google Agenda.
+                  </p>
+                  <button
+                    onClick={connectGcal}
+                    disabled={gcalBusy}
+                    className="mt-4 h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                  >
+                    {gcalBusy ? "Abrindo Google..." : "Conectar"}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </Group>
+        </Group>
+      </div>
     </div>
   );
 }
