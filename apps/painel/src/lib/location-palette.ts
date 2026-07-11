@@ -11,17 +11,31 @@ export const LOCATION_PALETTE = [
   { id: "slate",    label: "Ardósia", hex: "#90A4AE" },
 ] as const;
 
-// Cores de locais são texto livre no banco (dado antigo pode ser #ff0000 puro,
-// que fica horrível nos badges). Normaliza qualquer cor pra mais próxima da
-// paleta curada, por distância RGB. Inválida/vazia cai na primeira (sálvia).
+// Resolve qualquer cor CSS válida (hex, nome como "blue"/"purple", rgb(), etc.)
+// pra um trio [r,g,b]. Usa o próprio browser (via canvas) como parser de cor
+// em vez de reimplementar a tabela de nomes CSS. Retorna null se inválida.
+function resolveRgb(color: string): [number, number, number] | null {
+  if (typeof document === "undefined") return null;
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#000000";
+  ctx.fillStyle = color;
+  const resolved = ctx.fillStyle;
+  const m = /^#([0-9a-f]{6})$/i.exec(resolved);
+  if (!m) return null;
+  const hex = m[1];
+  return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+}
+
+// Cores de locais são texto livre no banco (nome CSS como "blue"/"purple", ou
+// hex cru tipo #ff0000 — nenhum dos dois fica bom nos badges). Normaliza
+// qualquer cor válida pra mais próxima da paleta curada, por distância RGB.
+// Inválida/vazia/SSR cai na primeira (sálvia).
 export function normalizeLocationColor(color: string | null | undefined): string {
   if (!color) return LOCATION_PALETTE[0].hex;
-  const m = /^#?([0-9a-f]{6})$/i.exec(color.trim());
-  if (!m) return LOCATION_PALETTE[0].hex;
-  const hex = m[1];
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
+  const rgb = resolveRgb(color.trim());
+  if (!rgb) return LOCATION_PALETTE[0].hex;
+  const [r, g, b] = rgb;
   let best: string = LOCATION_PALETTE[0].hex;
   let bestDist = Infinity;
   for (const p of LOCATION_PALETTE) {
