@@ -8,6 +8,7 @@ import {
   Plus,
   Clock,
   X,
+  CircleDollarSign,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { LOCATION_PALETTE } from "@/lib/location-palette";
@@ -24,6 +25,7 @@ type Appointment = {
   modality: string;
   status: string;
   notes: string | null;
+  payment_status: "pending" | "paid" | null;
 };
 
 const WEEK_LABELS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -263,9 +265,25 @@ function EditApptDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(appt.payment_status);
+  const [togglingPayment, setTogglingPayment] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function togglePayment() {
+    const next = paymentStatus === "paid" ? "pending" : "paid";
+    setTogglingPayment(true);
+    setError(null);
+    try {
+      await api.put(`/api/appointments/${appt.id}`, { payment_status: next });
+      setPaymentStatus(next);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao atualizar pagamento");
+    } finally {
+      setTogglingPayment(false);
+    }
   }
 
   async function save() {
@@ -323,6 +341,27 @@ function EditApptDialog({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {paymentStatus && (
+          <button
+            onClick={togglePayment}
+            disabled={togglingPayment}
+            className={[
+              "mb-5 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-xs transition disabled:opacity-50",
+              paymentStatus === "pending"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                : "border-primary/40 bg-primary/10 text-primary",
+            ].join(" ")}
+          >
+            <span className="flex items-center gap-2 font-medium">
+              <CircleDollarSign className="h-3.5 w-3.5" />
+              {paymentStatus === "pending" ? "Pagamento pendente" : "Pago"}
+            </span>
+            <span className="underline">
+              {togglingPayment ? "..." : paymentStatus === "pending" ? "Marcar como pago" : "Marcar como pendente"}
+            </span>
+          </button>
+        )}
 
         {error && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -521,7 +560,14 @@ function DayDialog({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{a.client_name ?? "Paciente"}</div>
-                        <div className="mt-1"><LocationBadge color={color} name={label} /></div>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <LocationBadge color={color} name={label} />
+                          {a.payment_status === "pending" && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+                              <CircleDollarSign className="h-2.5 w-2.5" /> Pendente
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   </li>

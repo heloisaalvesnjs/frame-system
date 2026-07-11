@@ -1023,18 +1023,23 @@ export async function internalRoutes(app: FastifyInstance) {
       }
 
       // 5. Cria o agendamento
+      // payment_status='pending' só pro presencial: a IA agenda a Avaliação
+      // Inicial (R$600) sem cobrar - etiqueta pro David decidir se cobra na
+      // hora ou só depois da consulta. Online não passa por aqui (a IA não
+      // agenda nada online, só encaminha pro time fechar o plano).
+      const paymentStatus = modality === 'presencial' ? 'pending' : null
       const apptRows = await query<any>(
         `INSERT INTO appointments
            (nutritionist_id, client_id, client_phone, scheduled_at, modality, city,
-            location_id, notes, created_by, status, duration)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'assistant', 'scheduled', $9)
+            location_id, notes, created_by, status, duration, payment_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'assistant', 'scheduled', $9, $10)
          RETURNING id, scheduled_at`,
         [
           nutritionist_id, client.id, client_phone,
           scheduledDatetime.toISOString(),
           modality, city || null,
           location_id, notes || null,
-          duration,
+          duration, paymentStatus,
         ]
       )
       const appt = apptRows[0]

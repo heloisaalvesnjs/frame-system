@@ -757,3 +757,9 @@ ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS disconnect_alert_sent 
 -- Sincronizacao automatica de mao dupla com Google Calendar (cron periodico).
 -- Sem isso, cada ciclo do cron reenviaria/duplicaria os mesmos agendamentos.
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS gcal_synced_at TIMESTAMPTZ;
+
+-- (2026-07-11) A IA nao cobra mais o presencial na hora de agendar (decisao
+-- da Heloisa/David) - agenda a Avaliacao Inicial (R$600) e etiqueta como
+-- pagamento pendente, pro David decidir se cobra na hora ou so depois da
+-- consulta. NULL = nao se aplica (ex: consulta online, criada manualmente).
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status TEXT;

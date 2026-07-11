@@ -206,6 +206,7 @@ export async function appointmentRoutes(app: FastifyInstance) {
       modality:     z.enum(['online', 'presencial']).optional(),
       location_id:  z.string().uuid().nullable().optional(),
       notes:        z.string().nullable().optional(),
+      payment_status: z.enum(['pending', 'paid']).nullable().optional(),
     })
     const body = schema.parse(request.body)
 
@@ -251,6 +252,7 @@ export async function appointmentRoutes(app: FastifyInstance) {
     if (body.location_id !== undefined)  { params.push(body.location_id);  sets.push(`location_id = $${params.length}`) }
     if (locationName !== undefined)      { params.push(locationName);      sets.push(`location_name = $${params.length}`) }
     if (body.notes !== undefined)        { params.push(body.notes);        sets.push(`notes = $${params.length}`) }
+    if (body.payment_status !== undefined) { params.push(body.payment_status); sets.push(`payment_status = $${params.length}`) }
 
     if (sets.length === 0) return reply.code(400).send({ error: 'Nada para atualizar' })
 
