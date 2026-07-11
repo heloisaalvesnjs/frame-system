@@ -246,6 +246,25 @@ export async function getInstanceStatus(instanceToken: string): Promise<'connect
 }
 
 /**
+ * Diagnóstico temporário — retorna a resposta crua da uazapi pra investigar
+ * por que getInstanceStatus() está classificando errado. Remover depois de
+ * resolvido (ver GET /api/whatsapp/status?debug=1).
+ */
+export async function debugInstanceStatus(instanceToken: string): Promise<{ httpStatus: number; ok: boolean; body: unknown; error?: string }> {
+  try {
+    const res = await fetch(`${UAZAPI_BASE_URL}/instance/status`, {
+      headers: instanceHeaders(instanceToken),
+    })
+    const text = await res.text()
+    let body: unknown = text
+    try { body = JSON.parse(text) } catch { /* mantém como texto cru */ }
+    return { httpStatus: res.status, ok: res.ok, body }
+  } catch (err) {
+    return { httpStatus: 0, ok: false, body: null, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
  * Inicia ou reinicia a conexão de uma instância — endpoint unificado da uazapi.
  *
  * Sem phone → inicia sessão de QR code.
