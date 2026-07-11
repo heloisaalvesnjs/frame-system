@@ -1395,9 +1395,22 @@ function IntegracoesTab() {
     setSyncResult(null);
     try {
       const res = await api.post<{ synced: number; total: number; lastError?: string }>("/api/google-calendar/sync", {});
-      setSyncResult(`${res.synced} de ${res.total} consulta(s) enviada(s) pro Google Calendar.`);
+      setSyncResult(`${res.synced} de ${res.total} consulta(s) nova(s) enviada(s) pro Google Calendar.`);
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Erro ao sincronizar com Google Calendar");
+    } finally {
+      setGcalBusy(false);
+    }
+  }
+
+  async function importGcal() {
+    setGcalBusy(true);
+    setSyncResult(null);
+    try {
+      const res = await api.post<{ imported: number; skipped: number; total: number }>("/api/google-calendar/import", {});
+      setSyncResult(`${res.imported} consulta(s) nova(s) importada(s) da Google Agenda.`);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao importar da Google Agenda");
     } finally {
       setGcalBusy(false);
     }
@@ -1512,8 +1525,9 @@ function IntegracoesTab() {
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Envia as consultas do sistema pra sua Google Agenda. Não importa mudanças feitas direto na
-                    Google Agenda de volta pro sistema — isso ainda é manual.
+                    Sincronização automática de mão dupla a cada 15 minutos: consultas marcadas no sistema
+                    vão pra sua Google Agenda, e eventos criados direto na Google Agenda entram no sistema.
+                    Os botões abaixo forçam uma checagem imediata.
                   </p>
                   {syncResult && <p className="mt-2 text-xs text-primary">{syncResult}</p>}
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -1523,7 +1537,15 @@ function IntegracoesTab() {
                       className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
                     >
                       {gcalBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
-                      Sincronizar agora
+                      Enviar agora
+                    </button>
+                    <button
+                      onClick={importGcal}
+                      disabled={gcalBusy}
+                      className="h-9 rounded-lg border border-border px-3 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {gcalBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                      Importar agora
                     </button>
                     <button
                       onClick={disconnectGcal}
