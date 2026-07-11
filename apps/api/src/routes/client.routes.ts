@@ -599,7 +599,37 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
       return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_')
     }
 
-    // ── Anamnese ─────────────────────────────────────────────────────────────
+    let imported = 0
+    let skipped  = 0
+
+    for (const row of rows) {
+      const normalized: Record<string, string> = {}
+      for (const k of Object.keys(row)) normalized[norm(k)] = String(row[k] ?? '').trim()
+
+      const name  = normalized['nome'] || normalized['nome_do_paciente'] || normalized['name'] || normalized['paciente'] || normalized['cliente'] || ''
+      const phone = (normalized['telefone'] || normalized['telefone_celular'] || normalized['celular'] || normalized['phone'] || normalized['whatsapp'] || normalized['fone'] || '')
+        .replace(/\D/g, '')
+      const email = normalized['email'] || ''
+
+      if (!name || !phone || phone.length < 10) { skipped++; continue }
+
+      // Upsert: se já existe o telefone para essa nutri, ignora
+      const inserted = await query(
+        `INSERT INTO clients (nutritionist_id, name, phone, email)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (nutritionist_id, phone) DO NOTHING
+         RETURNING id`,
+        [nutritionistId, name, phone, email || null]
+      ).catch(() => [])
+
+      if ((inserted as any[]).length > 0) imported++
+      else skipped++
+    }
+
+    return reply.send({ imported, skipped })
+  })
+
+  // ── Anamnese ─────────────────────────────────────────────────────────────
 
   // GET /api/clients/:clientId/anamnesis — retorna anamnese ou null
   app.get('/:clientId/anamnesis', auth, async (request, reply) => {
@@ -678,37 +708,5 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
        body.notes ?? null, body.logged_at ?? null]
     )
     return reply.code(201).send({ log })
-  })
-
-  // ── Import CSV/Excel ──────────────────────────────────────────────────────
-
-    let imported = 0
-    let skipped  = 0
-
-    for (const row of rows) {
-      const normalized: Record<string, string> = {}
-      for (const k of Object.keys(row)) normalized[norm(k)] = String(row[k] ?? '').trim()
-
-      const name  = normalized['nome'] || normalized['nome_do_paciente'] || normalized['name'] || normalized['paciente'] || normalized['cliente'] || ''
-      const phone = (normalized['telefone'] || normalized['telefone_celular'] || normalized['celular'] || normalized['phone'] || normalized['whatsapp'] || normalized['fone'] || '')
-        .replace(/\D/g, '')
-      const email = normalized['email'] || ''
-
-      if (!name || !phone || phone.length < 10) { skipped++; continue }
-
-      // Upsert: se já existe o telefone para essa nutri, ignora
-      const inserted = await query(
-        `INSERT INTO clients (nutritionist_id, name, phone, email)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (nutritionist_id, phone) DO NOTHING
-         RETURNING id`,
-        [nutritionistId, name, phone, email || null]
-      ).catch(() => [])
-
-      if ((inserted as any[]).length > 0) imported++
-      else skipped++
-    }
-
-    return reply.send({ imported, skipped })
   })
 }
