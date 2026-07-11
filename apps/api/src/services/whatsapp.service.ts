@@ -216,11 +216,29 @@ export async function getInstanceStatus(instanceToken: string): Promise<'connect
       headers: instanceHeaders(instanceToken),
     })
     if (!res.ok) return 'disconnected'
-    const data = await res.json() as { status?: string }
-    const state = data.status ?? ''
-    if (state === 'connected')  return 'connected'
-    if (state === 'connecting') return 'connecting'
-    // 'disconnected' | 'hibernated' | qualquer outro estado → desconectado
+    const data = await res.json() as Record<string, any>
+
+    // O campo de status nunca foi validado contra um payload real da uazapi —
+    // versões diferentes da API expõem isso em lugares diferentes (raiz,
+    // aninhado em "instance", ou como booleano "connected"/"loggedIn").
+    // Checa todas as variantes plausíveis antes de assumir desconectado.
+    const rawState = (
+      data.status ??
+      data.instance?.status ??
+      data.state ??
+      ''
+    ) as string
+    const normalized = String(rawState).toLowerCase()
+
+    if (normalized === 'connected' || normalized === 'open') return 'connected'
+    if (normalized === 'connecting' || normalized === 'qrcode' || normalized === 'starting') return 'connecting'
+
+    // Sem campo de status legível — tenta booleano explícito antes de desistir
+    if (data.connected === true || data.loggedIn === true || data.instance?.connected === true) {
+      return 'connected'
+    }
+
+    // 'disconnected' | 'close' | 'hibernated' | qualquer outro estado → desconectado
     return 'disconnected'
   } catch {
     return 'disconnected'

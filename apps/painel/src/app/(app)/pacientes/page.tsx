@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { Search, Phone, Target, MessageCircle, Calendar, X } from "lucide-react";
+import { Search, Phone, Target, MessageCircle, Calendar, X, Upload } from "lucide-react";
 
 type ClientRow = {
   id: string;
@@ -130,6 +130,95 @@ function NewPatientDialog({ onClose, onCreated }: { onClose: () => void; onCreat
   );
 }
 
+// ── Dialog importar planilha ────────────────────────────────────────────────────
+function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+
+  async function handleImport() {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = typeof window !== "undefined" ? window.localStorage.getItem("frame_token") : null;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/clients/import-csv`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao importar");
+      setResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 });
+      onImported();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao importar planilha");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Importar pacientes</h3>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {result ? (
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm text-primary">
+              {result.imported} paciente(s) importado(s)
+              {result.skipped > 0 && `, ${result.skipped} ignorado(s) (sem telefone ou já cadastrado)`}.
+            </div>
+            <button
+              onClick={onClose}
+              className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110"
+            >
+              Fechar
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground">
+              Envie a planilha (.xlsx ou .csv) com os pacientes. O sistema tenta reconhecer nome, telefone
+              e e-mail automaticamente pelos títulos das colunas — telefone é obrigatório pra cada linha.
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="text-sm file:mr-3 file:h-9 file:rounded-lg file:border file:border-border file:bg-surface-2/60 file:px-3 file:text-xs file:font-medium"
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={onClose} className="h-10 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground">
+                Cancelar
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!file || uploading}
+                className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+              >
+                {uploading ? "Importando..." : "Importar"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function PacientesPage() {
   const router = useRouter();
@@ -138,6 +227,7 @@ export default function PacientesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => load(search), 300);
@@ -178,6 +268,12 @@ export default function PacientesPage() {
               className="h-10 w-72 rounded-lg border border-border bg-surface-2/60 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
             />
           </div>
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground whitespace-nowrap"
+          >
+            <Upload className="h-3.5 w-3.5" /> Importar planilha
+          </button>
           <button
             onClick={() => setShowNew(true)}
             className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:brightness-110 whitespace-nowrap"
@@ -268,6 +364,9 @@ export default function PacientesPage() {
 
       {showNew && (
         <NewPatientDialog onClose={() => setShowNew(false)} onCreated={() => load(search)} />
+      )}
+      {showImport && (
+        <ImportDialog onClose={() => setShowImport(false)} onImported={() => load(search)} />
       )}
     </div>
   );

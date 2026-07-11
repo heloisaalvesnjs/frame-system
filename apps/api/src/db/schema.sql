@@ -763,3 +763,10 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS gcal_synced_at TIMESTAMPTZ;
 -- pagamento pendente, pro David decidir se cobra na hora ou so depois da
 -- consulta. NULL = nao se aplica (ex: consulta online, criada manualmente).
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status TEXT;
+
+-- (2026-07-11) Base de pacientes antigos do David (planilha, sem historico
+-- de consulta dentro do Frame System) importada via /api/clients/import-csv.
+-- is_returning hoje so olha COUNT(appointments) > 0, entao esses pacientes
+-- ficariam classificados como "lead novo" pela IA. Essa flag corrige isso -
+-- setada true SOMENTE no import em massa (nao em cadastro manual avulso).
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_legacy_patient BOOLEAN DEFAULT false;

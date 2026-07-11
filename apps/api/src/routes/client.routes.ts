@@ -352,8 +352,8 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
 
       try {
         await query(
-          `INSERT INTO clients (nutritionist_id, name, phone, email, goal, gender, height_cm, birthdate)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          `INSERT INTO clients (nutritionist_id, name, phone, email, goal, gender, height_cm, birthdate, is_legacy_patient)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)
            ON CONFLICT (nutritionist_id, phone) DO NOTHING`,
           [
             nutritionistId,
@@ -615,8 +615,8 @@ Mapeie TODAS as colunas. Se uma coluna não corresponder a nenhum campo, use "ig
 
       // Upsert: se já existe o telefone para essa nutri, ignora
       const inserted = await query(
-        `INSERT INTO clients (nutritionist_id, name, phone, email)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO clients (nutritionist_id, name, phone, email, is_legacy_patient)
+         VALUES ($1, $2, $3, $4, true)
          ON CONFLICT (nutritionist_id, phone) DO NOTHING
          RETURNING id`,
         [nutritionistId, name, phone, email || null]

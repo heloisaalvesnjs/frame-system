@@ -303,7 +303,7 @@ export async function internalRoutes(app: FastifyInstance) {
 
       // 5. Busca ou cria cliente pelo telefone
       let client = await queryOne<any>(
-        `SELECT id, name, phone, goal, stage, ai_summary, created_at
+        `SELECT id, name, phone, goal, stage, ai_summary, created_at, is_legacy_patient
          FROM clients
          WHERE nutritionist_id = $1 AND phone = $2`,
         [nutritionist_id, client_phone]
@@ -352,13 +352,15 @@ export async function internalRoutes(app: FastifyInstance) {
         created_at: m.created_at,
       }))
 
-      // 8. Determina is_returning (tem agendamento anterior)
+      // 8. Determina is_returning (tem agendamento anterior no sistema, OU veio
+      // da importacao de pacientes antigos do David - is_legacy_patient marca
+      // quem ja era paciente antes do sistema existir, sem historico aqui)
       const apptCountRow = await queryOne<any>(
         `SELECT COUNT(*)::int AS count FROM appointments
          WHERE client_id = $1 AND status != 'cancelled'`,
         [client.id]
       )
-      const isReturning = (apptCountRow?.count ?? 0) > 0
+      const isReturning = (apptCountRow?.count ?? 0) > 0 || client.is_legacy_patient === true
 
       // 9. Próxima consulta futura (se houver) — permite a IA reconhecer "já agendada"
       // sem precisar perguntar de novo.
