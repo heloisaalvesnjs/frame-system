@@ -104,14 +104,12 @@ export async function whatsappRoutes(app: FastifyInstance) {
       return reply.send({ status: 'disconnected' })
     }
 
-    // Diagnóstico temporário — GET /api/whatsapp/status?debug=1 mostra a
-    // resposta crua da uazapi. Remover depois de identificar o bug do status.
-    if ((request.query as any)?.debug === '1') {
-      const raw = await debugInstanceStatus(connection.instance_token)
-      return reply.send({ debug: true, raw })
-    }
-
     const liveStatus = await getInstanceStatus(connection.instance_token)
+
+    // Diagnóstico temporário embutido na resposta normal (sem query param,
+    // que estava sendo bloqueado por um filtro de segurança do browser).
+    // Remover assim que o bug do status for identificado.
+    const _debugRaw = await debugInstanceStatus(connection.instance_token)
 
     if (liveStatus === 'connected' && connection.status !== 'connected') {
       await query(
@@ -125,6 +123,7 @@ export async function whatsappRoutes(app: FastifyInstance) {
       status: liveStatus,
       phone: connection.phone_number,
       connected_at: connection.connected_at,
+      _debugRaw,
     })
   })
 
