@@ -707,10 +707,12 @@ async function detectAndCreateAppointment({
     const cityMatch = ctxText.match(/(?:cidad[ea]|em|de)\s+([A-ZÁÉÍÓÚÃÕÇÜ][a-záéíóúãõçü]+(?:\s+[A-ZÁÉÍÓÚÃÕÇÜ][a-záéíóúãõçü]+)?)/i)
     const city = cityMatch?.[1] || null
 
-    // Cria o agendamento
+    // Cria o agendamento. gcal_synced_at = NOW() porque createCalendarEvent()
+    // logo abaixo já cria o evento no Google Agenda diretamente — sem isso o
+    // sync automático do backend tentaria criar o mesmo evento de novo.
     const [newAppt] = await query<any>(
-      `INSERT INTO appointments (nutritionist_id, client_id, client_phone, scheduled_at, modality, city, created_by, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'assistant', 'scheduled') RETURNING id`,
+      `INSERT INTO appointments (nutritionist_id, client_id, client_phone, scheduled_at, modality, city, created_by, status, gcal_synced_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'assistant', 'scheduled', NOW()) RETURNING id`,
       [nutritionist_id, client.id, client_phone, scheduledAt, modality, city]
     )
     const newAppointmentId: string = newAppt?.id ?? null

@@ -1029,12 +1029,19 @@ export async function internalRoutes(app: FastifyInstance) {
       // Inicial (R$600) sem cobrar - etiqueta pro David decidir se cobra na
       // hora ou só depois da consulta. Online não passa por aqui (a IA não
       // agenda nada online, só encaminha pro time fechar o plano).
+      //
+      // gcal_synced_at = NOW() aqui é essencial: o proprio workflow do n8n ja
+      // cria o evento no Google Agenda nesse momento (node "Criar evento
+      // Google Agenda", credencial propria do n8n) - se nao marcar como ja
+      // sincronizado, o cron/botao de sync do backend (que serve pra
+      // agendamentos criados manualmente no painel, sem n8n) tentava criar o
+      // MESMO evento de novo 15 minutos depois, duplicando na agenda real.
       const paymentStatus = modality === 'presencial' ? 'pending' : null
       const apptRows = await query<any>(
         `INSERT INTO appointments
            (nutritionist_id, client_id, client_phone, scheduled_at, modality, city,
-            location_id, notes, created_by, status, duration, payment_status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'assistant', 'scheduled', $9, $10)
+            location_id, notes, created_by, status, duration, payment_status, gcal_synced_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'assistant', 'scheduled', $9, $10, NOW())
          RETURNING id, scheduled_at`,
         [
           nutritionist_id, client.id, client_phone,
