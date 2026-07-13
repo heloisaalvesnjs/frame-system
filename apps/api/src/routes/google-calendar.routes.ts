@@ -8,6 +8,8 @@ import {
   syncAppointmentsToGoogle,
   listAvailableCalendars,
   setCalendar,
+  markLegacyImportsAsSynced,
+  removeDuplicateSyncedEvents,
 } from '../services/google-calendar.service'
 
 export async function googleCalendarRoutes(app: FastifyInstance) {
@@ -101,5 +103,16 @@ export async function googleCalendarRoutes(app: FastifyInstance) {
 
     const result = await syncAppointmentsToGoogle(id)
     return reply.send({ ok: true, ...result })
+  })
+
+  // POST /api/google-calendar/fix-duplicates — correção pontual (2026-07-11):
+  // marca importados antigos como já sincronizados e apaga os eventos
+  // duplicados que o sync criou por engano no Google Agenda do nutri.
+  // Remover essa rota depois de rodada uma vez.
+  app.post('/fix-duplicates', auth, async (request, reply) => {
+    const { id } = (request as any).user
+    const marked = await markLegacyImportsAsSynced(id)
+    const { checked, deleted } = await removeDuplicateSyncedEvents(id)
+    return reply.send({ ok: true, marked_as_synced: marked, checked, deleted })
   })
 }

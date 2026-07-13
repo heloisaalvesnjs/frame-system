@@ -261,9 +261,13 @@ export async function importEventsFromGoogle(nutritionistId: string): Promise<{ 
         : 50 * 60 * 1000
       const duration = Math.round(durationMs / 60000)
 
+      // gcal_synced_at = NOW() aqui é essencial: esse agendamento VEIO do
+      // Google Agenda, o evento já existe lá. Sem isso, o próximo ciclo do
+      // sync (appointments -> Google) tratava como "nunca sincronizado" e
+      // criava um evento NOVO duplicado pro mesmo horário.
       await query(
-        `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, notes, created_by)
-         VALUES ($1, $2, $3, $4, 'presencial', 'scheduled', $5, 'nutritionist')`,
+        `INSERT INTO appointments (nutritionist_id, client_id, scheduled_at, duration, modality, status, notes, created_by, gcal_synced_at)
+         VALUES ($1, $2, $3, $4, 'presencial', 'scheduled', $5, 'nutritionist', NOW())`,
         [nutritionistId, client_id, scheduledAt.toISOString(), duration,
          `Importado do Google Agenda: ${event.summary}`]
       )
@@ -311,6 +315,72 @@ export async function syncAppointmentsToGoogle(nutritionistId: string): Promise<
   }
 
   return { synced, total: appointments.length, lastError: lastError || undefined }
+}
+
+/**
+ * Correção pontual (2026-07-11): agendamentos importados do Google Agenda
+ * ANTES do fix que marca gcal_synced_at na importação ficaram com esse campo
+ * NULL, e o sync (appointments -> Google) tentou reenviá-los pro Google,
+ * duplicando eventos que já existiam lá. Isso marca esses agendamentos como
+ * já sincronizados, pra parar de gerar mais duplicatas no próximo ciclo.
+ */
+export async function markLegacyImportsAsSynced(nutritionistId: string): Promise<number> {
+  const rows = await query<{ id: string }>(
+    `UPDATE appointments SET gcal_synced_at = NOW()
+     WHERE nutritionist_id = $1
+       AND notes LIKE 'Importado do Google Agenda:%'
+       AND gcal_synced_at IS NULL
+     RETURNING id`,
+    [nutritionistId]
+  )
+  return rows.length
+}
+
+/**
+ * Correção pontual (2026-07-11): remove os eventos duplicados que o sync
+ * criou no Google Agenda pra agendamentos que já tinham vindo de lá (ver
+ * markLegacyImportsAsSynced acima). Só apaga eventos com a assinatura da
+ * nossa própria criação ("📋 Consulta ...", vem de createCalendarEvent) que
+ * caem bem no horário de um agendamento marcado como "Importado do Google
+ * Agenda" — nunca toca em eventos que não tenham essa assinatura.
+ */
+export async function removeDuplicateSyncedEvents(nutritionistId: string): Promise<{ checked: number; deleted: number }> {
+  const authed = await getAuthedClient(nutritionistId)
+  if (!authed) return { checked: 0, deleted: 0 }
+  const { client, calendarId } = authed
+  const calendar = google.calendar({ version: 'v3', auth: client })
+
+  const imported = await query<{ id: string; scheduled_at: string }>(
+    `SELECT id, scheduled_at::text FROM appointments
+     WHERE nutritionist_id = $1 AND notes LIKE 'Importado do Google Agenda:%'`,
+    [nutritionistId]
+  )
+
+  let deleted = 0
+  for (const appt of imported) {
+    const start = new Date(appt.scheduled_at)
+    const windowStart = new Date(start.getTime() - 5 * 60 * 1000)
+    const windowEnd = new Date(start.getTime() + 5 * 60 * 1000)
+
+    try {
+      const res = await calendar.events.list({
+        calendarId,
+        timeMin: windowStart.toISOString(),
+        timeMax: windowEnd.toISOString(),
+        singleEvents: true,
+      })
+      const duplicates = (res.data.items || []).filter(e => e.summary?.startsWith('📋 Consulta'))
+      for (const dup of duplicates) {
+        if (!dup.id) continue
+        await calendar.events.delete({ calendarId, eventId: dup.id })
+        deleted++
+      }
+    } catch (err) {
+      console.error('[GCal cleanup] Falha ao checar/apagar duplicata:', err)
+    }
+  }
+
+  return { checked: imported.length, deleted }
 }
 
 /**
