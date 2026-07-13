@@ -1443,6 +1443,21 @@ function IntegracoesTab() {
     }
   }
 
+  // TEMPORÁRIO (2026-07-11): corrige as duplicatas criadas no Google Agenda
+  // pelo bug do sync. Remover este botão depois de rodado uma vez.
+  async function fixDuplicatesGcal() {
+    setGcalBusy(true);
+    setSyncResult(null);
+    try {
+      const res = await api.post<{ marked_as_synced: number; checked: number; deleted: number }>("/api/google-calendar/fix-duplicates", {});
+      setSyncResult(`Corrigido: ${res.marked_as_synced} marcado(s) como sincronizado, ${res.deleted} de ${res.checked} duplicata(s) apagada(s) do Google Agenda.`);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Erro ao corrigir duplicatas");
+    } finally {
+      setGcalBusy(false);
+    }
+  }
+
   const statusInfo = wa ? STATUS_LABEL[wa.status] ?? STATUS_LABEL.disconnected : null;
 
   return (
@@ -1602,6 +1617,13 @@ function IntegracoesTab() {
                       className="h-9 rounded-lg border border-destructive/60 px-3 text-xs text-destructive disabled:opacity-50"
                     >
                       Desconectar
+                    </button>
+                    <button
+                      onClick={fixDuplicatesGcal}
+                      disabled={gcalBusy}
+                      className="h-9 rounded-lg border border-amber-500/60 px-3 text-xs text-amber-500 disabled:opacity-50"
+                    >
+                      Corrigir duplicatas (temporário)
                     </button>
                   </div>
                 </>
